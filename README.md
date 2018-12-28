@@ -1,11 +1,17 @@
 # Net Install System Layout
 
+The sequence of booting installer and installing an OS with netinstall:
+
+<!--
     |------------| |-----------|  |---------|      |----------------------|
     | DHCP       | | TFTP      |  | HTTP    |      | HTTP Package mirror  |
     | Server     | | Server    |  | Server  |      | Server               |
     | - NBP Name | | - NBP File|  | - Kernel|      | - udeb, deb packages |
     | - TFTP Name| | - Menus   |  | - InitRD|      |
     |____________| |___________|  | - preseed.cfg
+-->
+![Boot Diagram](doc/netbootseq.png "Boot Sequence Diagram")
+
 
 ## DHCP Server
 
