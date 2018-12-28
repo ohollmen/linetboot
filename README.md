@@ -13,15 +13,48 @@ The sequence of booting installer and installing an OS with netinstall:
 ![Boot Diagram](doc/netbootseq.png "Boot Sequence Diagram")
 
 
+# Overview of Network boot and Install Subsystems
+
 ## DHCP Server
+
+PXE Booting standard and respective implementtaions start by consulting local DHCP server for IP address, "Boot file" and "Next Server". The next server allows a server other than DHCP server to handle delivery of "Boot file".
 
 Hopefully you get to utilize an existing DHCP server. However you have to buddy-up with the admins of the server
 to tweak the config in a minor way. See section "Changes to local DHCP Server".
 
-## TFTP/PXE Server
+## TFTP Server
 
 The first stage low level booting starts by loading (pxelinux) files 
-PXE Linux (e.g. pxelinux.0) is NOT a linux system, but a network bootloader system with configurable menu system designed to boot linux from network. This app will minimize the usage of TFTP to absolute bare minimum - only pxelinux bootloader NBP components and menus will be gotten from TFTP. All Linux stuff (Kernel, Initial ramdisk) will be delivered by this system using HTTP.
+PXE Linux (e.g. pxelinux.0) is NOT a linux OS or system, but a network bootloader system with configurable menu system designed to boot linux from network. linetboot will minimize the usage of TFTP to absolute bare minimum - only pxelinux bootloader NBP components and boot menu will be gotten from TFTP. All Linux stuff (Kernel, Initial ramdisk) will be delivered by this system using HTTP (See following section).
+
+## HTTP Server
+
+The HTTP server used by linetboot is a lighweight Node.js / Express server without presence of - or need to install "big" webserver like "Apache".
+
+Web server has dual roles:
+
+- Deliver static files like
+  - Kernel images, Initial ramdisk images (to boot the system)
+  - OS software packages (during the OS install)
+- Generate installation configurations for OS installers (basically instructions to automate the install) in the format that particular OS flavor prefers:
+  - In Debian family of OS:s a format called "Preseed" is used
+  - In RedHat family of OS:s a format called "kickstart" is used
+
+linetboot and its dependencies can be installed plainly with git and npm (Node.js ecosystem package installer).
+
+## Media
+
+The media used by linetboot is a set of CD/DVD ISO Image files that are mounted as "loopback file" or "loop device" (mount option `-o loop`). For more detailed information on this google "loop device" or read the man page for `mount`.
+
+Various OS ISO images are used for various purposes:
+- Some are Utility images like GpartEd Live that allows tweaking disk partitions, checking and recovering filesystems, diagnosing, extracting system data or testing memory (e.g. memtest86)
+- OS install media images allow to install a full OS on the client
+
+For latter purpose most OS:s allow network boot, although many of them also have bugs in installation process when doing the network install).
+
+The mount points of ISO images are symlinked (or alternatively URL-mapped) to be accessible by the HTTP server (viat the web server "document root").
+
+# Prerequisites
 
 Install Ubuntu/Debian package `pxelinux` and its bdependency `syslinux-common` on Ubuntu/Debian system as pxelinux has bootloader `lpxelinux.0` with http support and HTTP is what this system is all about (RedHat / CentOS version that I checked did not have `lpxelinux.0` at all).
 Files that are needed from `pxelinux` package come from directories:
@@ -44,11 +77,6 @@ After installing APT package pxelinux on your (recent) Ubuntu / Debian distribut
     
 TFTP Root on Debian/Ubuntu: /srv/tftp, Centos /var/lib/tftpboot
 
-## HTTP Server(s)
-
-- Provide Kernel and Initial Ram Disk
-- Provide dynamically generated preseed or kickstart config (based on flavor of linux, this is easily extendable)
-
 # Prerequisites
 
 - pxelinux - Provides network bootloaders (pxelinux0, lpxelinux.0, with latter supporting http)
@@ -60,20 +88,26 @@ TFTP Root on Debian/Ubuntu: /srv/tftp, Centos /var/lib/tftpboot
 Optional (Development):
 - devscripts - Tools to explore remote Ubuntu/Debian mirrors (e.g. rmadison linux-generic)
 
-# Boot Options
+# Pre-configured Boot Options
 
-- Boot AMD64 from local disk, first partition
+Planned / Pre-configyred boot options on the menu:
+
+- Boot from local disk, first partition
   - Possibly from 2nd, 3rd (dynamically by facts ?)
+- Run Gparted Live to tweak, fix or diagnose the system
+- Run memory test
 - Install on first partition
 - Install to automatically repartitioned drive
+
+Note: Currently the installation "recipe" will/may wipe out your disk. Please review the preseed and kickstart templates before using them to avoid data loss.
 
 # Using CDROM Content as preseed mirror
 
 Reverse engineered:
 - The Ubuntu top level / root of CDROM has subdir path "pool/main/" under it.
   - Has "aphabet dirs" (hashed ?) under it with package named dirs under it.
-- The Ubuntu mirrro site http://us.archive.ubuntu.com/ has subdir (for bionic)
-  - ubuntu/dists/bionic/ with main,multiverse,restricted,universe ... but content differs
+- The Ubuntu mirror site http://us.archive.ubuntu.com/ has subdir (for bionic)
+  - ubuntu/dists/bionic/ with main,multiverse,restricted,universe ... but content differs between mirror and CD/DVD.
 
 ## Using apt-mirror (from pkg apt-mirror)
 
@@ -329,4 +363,11 @@ mount failes and boot leads to single user mode.
 
 Q: Can I use this for non automated or semi-automated install
 A: Yes, Strip auto=true from menu file `append` line. This should work at least for Ubuntu/Debian.
+
+Q: Can I use another HTTP server if I suspect a problem with Express static file delivery ?
+A: Yes you can, try using Python lightweight HTTP server (we override the port to be Express default port 3000 to avoid regenerating configs):
+
+    python -m SimpleHTTPServer 3000
+
+Note: This basic static file delivery mode of SimpleHTTPServer does not generate appropriate Kisckstart or preseed configs. To do this run the python SimpleHTTPServer for static file delivery and Express for install config generation concurrently on different ports.
 
