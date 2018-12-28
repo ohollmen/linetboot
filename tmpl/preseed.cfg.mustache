@@ -1,0 +1,312 @@
+# Preseed Config
+# Generating a good starting file: sudo debconf-get-selections --installer > alloptions.cfg
+# (Depends on debconf-utils, run as sudo to have access). Does NOT Work.
+# If options are used from kernel CL, there needs to be equal sign (=) between config key and value
+# AND the value type manifestation (e.g "string", "boolean", ...) is missing
+# https://help.ubuntu.com/lts/installation-guide/example-preseed.txt
+# https://wiki.debian.org/TimeZoneChanges
+# https://deployeveryday.com/2015/03/15/install-linux-from-network.html
+# https://askubuntu.com/questions/667515/how-do-i-configure-preseed-to-populate-the-hostname-from-dhcp-and-not-stop-at-th - Important artice for netting passed network config (network gets partially
+#  configured before preseed gets fetched/processed)
+# https://wiki.debian.org/DebianInstaller/Preseed
+# https://bugs.launchpad.net/ubuntu/+source/preseed/+bug/775670
+# https://serverfault.com/questions/470962/ubuntu-preseed-not-using-local-mirror
+# https://ubuntuforums.org/showthread.php?t=2387570
+# https://github.com/simula/melodic-nornet/blob/master/src/images/preseed.cfg
+# https://gist.github.com/bugcy013/4058833
+# https://images.validation.linaro.org/kvm/debian-8.3.0-cd1-preseed.cfg
+# https://sites.google.com/site/sbobovyc/home/guides/deployment-manager/preseeding Preseeding from CD and PXE
+# https://github.com/inukshuk/boxes/blob/master/http/preseed.cfg
+# https://www.zyxware.com/articles/2657/how-to-mirror-the-entire-ubuntu-software-repository-locally-and-to-create-your-own-ubuntu-repository-dvds
+# https://www.howtoforge.com/local_debian_ubuntu_mirror
+# https://askubuntu.com/questions/288334/how-do-i-setup-a-fine-grained-preseed-with-tasksel-set-to-manual
+# https://wiki.debian.org/DebianRepository/Format
+# https://askubuntu.com/questions/806820/how-do-i-create-a-completely-unattended-install-of-ubuntu-desktop-16-04-1-lts
+# https://github.com/core-process/linux-unattended-installation
+# https://www.debian.org/releases/wheezy/ia64/apbs05.html.en - Explanation of "seen" and inte4ractivity (Boot: preseed/interactive=true ), Preseed Inclusion
+# https://wiki.debian.org/DebianInstaller/Preseed
+# Official Ubuntu Server Book
+# https://www.debian.org/releases/jessie/i386/ch05s03.html.en - preseed config vars. Discussed in context of passing to kernel CL
+# https://diegolemos.net/tag/preseeding/
+# https://github.com/nuada/ubuntu-preseed Ubuntu preseed templates
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=852158
+# http://hands.com/d-i/ - Excellent preseed internals / debug notes
+# http://git.hands.com/hands-off - Cgit website with examples
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/ch-consistent_network_device_naming Netword Device naming conventions
+# https://en.wikipedia.org/wiki/Consistent_Network_Device_Naming - Network Device naming (e.g. eth0, em1, eno1 ...)
+# https://blog.heckel.xyz/2015/10/18/how-to-create-debian-package-and-debian-repository/
+# 
+# # Validating preseed file
+#     sudo debconf-set-selections -c preseed.cfg
+# # Notes on kernel CLI
+# MUST have auto=true on kernel CLI ("auto" alone is not enough)
+# CL option: priority=critical - Only critical questions are asked
+# priority=critical stops hostname being prompted for (despite settings)
+# Installer log reveals debconf/priority=high
+# Also suggested kernel CL: hostname=unassigned-hostname domain=unassigned-domain
+# DEBCONF_DEBUG=5, Also BOOT_DEBUG=0 (0..3), DEBIAN_FRONTEND
+# # Ubuntu install log
+# Some things in: /var/log/installer
+# - syslog - Normal boot info in syslog, Network (DHCP) discovery, Fetching preseed.cfg, selections of preseed config values
+#   HDD detection, Ubuntu 18 Netplan creation
+# - See: /usr/share/zoneinfo - Timezone info
+
+############# Essential / Intial #############
+# See https://www.debian.org/releases/stable/i386/apbs02.html.en
+# Equivalent of "auto" kernel parameter, See also debconf/priority
+# https://www.debian.org/releases/lenny/hppa/apbs02.html.en Explains:
+#  delays the locale and keyboard questions until after there has been a chance to preseed them
+d-i auto-install/enable boolean true
+# Same as Boot CLI priority=critical, stops asking lower priority questions.
+# Installer default val seems to be "high"
+#d-i debconf/priority string critical
+# Preseed Include (Even HTTP is supported with basename approach, even sudir network/network.cfg works)
+#d-i preseed/include string network.cfg
+#d-i preseed/include_command string echo partition.cfg
+# Running a script (Relates to early_command, late_command)
+#d-i preseed/run string command.sh
+
+d-i debian-installer/quiet  boolean false
+d-i debian-installer/splash boolean false
+
+# Prompt *all* questions interactively (even if defaults by preseed are filled out).
+# Useful for debugging.
+d-i preseed/interactive boolean true
+
+############# Locale / Keymaps ###################
+# en_US, en_NZ, en_GB (en_US.UTF-8) {{ locale }}
+d-i debian-installer/locale string en_US
+# Individual step approach to previous
+#d-i debian-installer/language en
+#d-i debian-installer/country string NL
+#d-i debian-installer/theme string dark # UI Looks. e.g. "dark"
+d-i console-setup/ask_detect boolean false
+# Is following /layoutcode valid at all ?
+#d-i console-setup/layoutcode string us
+#d-i console-keymaps-at/keymap select us
+# Important / working (See similar above) {{ keymap }}
+d-i keyboard-configuration/layoutcode string us
+
+############ Network Config #############
+# See if Kernel CL supported ipv6.disable=1 is allowed in preseed
+# value Keywords for unassigned get_hostname/get_domain: unassigned-hostname unassigned-domain
+d-i netcfg/get_hostname string {{ net.hostname }}
+# {{ net.domain }}
+d-i netcfg/get_domain string
+# Setting this to false may benecessary to use netcfg/get_hostname string actualvalue
+# Actually seen means seen on screen (implies interacctive acceptance ?)
+#d-i netcfg/get_hostname seen true
+#d-i netcfg/get_domain seen true
+# Besides "auto", choose_interface Could be eth0,em1,eno1
+# Facts based estimate:
+# d-i netcfg/choose_interface select {{ net.dev }}
+d-i netcfg/choose_interface select auto
+# Increase from default 3 s.
+d-i netcfg/link_wait_timeout string 10
+# Debian
+#d-i netcfg/link_detection_timeout string 10
+#d-i netcfg/dhcp_timeout string 20
+# NEW (to enable)
+d-i netcfg/dhcp_failed note
+d-i netcfg/dhcp_options select Configure network manually
+#d-i netcfg/dhcp_hostname string {{ net.hostname }}
+d-i netcfg/disable_dhcp boolean true
+# Does this even exist ? # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=688273
+# Note from above: BOTH use_autoconfig false AND disable_autoconfig true must be set redundantly to use static (!?)
+d-i netcfg/use_autoconfig boolean false
+# To disable any DHCP or IPv6 autoconfig and allow manual config override
+# NEW/TODO: Note: This ssems to creating propting for hostname (!)
+d-i netcfg/disable_autoconfig boolean true
+
+# Static network configuration.
+#
+# IPv4 example
+# Explicit hostname (compare to get_hostname)
+#d-i netcfg/hostname string {{ net.hostname }}
+d-i netcfg/get_ipaddress string {{ net.ipaddress }}
+d-i netcfg/get_netmask string {{ net.netmask }}
+d-i netcfg/get_gateway string {{ net.gateway }}
+d-i netcfg/get_nameservers string {{ net.nameservers }}
+d-i netcfg/confirm_static boolean true
+
+#d-i hw-detect/load_firmware boolean true
+
+# Manual Network Config
+d-i netcfg/disable_autoconfig boolean true
+# d-i netcfg/wireless_wep string
+
+############# Clock Setup ##############
+d-i clock-setup/utc boolean true
+d-i clock-setup/utc-auto boolean true
+
+# Check (America/Los_Angeles)
+# Manual/variours sources suggest format: US/Pacific, US/Eastern, America/Chicago
+# {{ time_zone }}
+d-i time/zone string {{{ time_zone }}}
+d-i clock-setup/ntp boolean true
+#d-i clock-setup/ntp-server string {{ ntpserver }}
+
+############## Install Mirror #####################
+# Setup your local mirror
+# mirror/http/proxy left to empty ?
+# http,ftp, ...
+d-i mirror/protocol string http
+# Lower case us ("US" works) ? (Can be "manual"). This gets us passed "Ubu arch. mirror country" menu.
+# According to sources country overrides mirror/http/hostname
+# Set to "manual" to allow mirror/http/mirror to override (See +bug/775670)
+#d-i mirror/country string US
+d-i mirror/country string manual
+# Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com) {{ mirror.hostname }}
+d-i mirror/http/hostname string {{ mirror.hostname }}
+# Check /ubuntu/dists/bionic (e.g. "/ubuntu-11.04-server-i386", "/ubuntu14.04", "/ubuntu")
+d-i mirror/http/directory string {{{ mirror.directory }}}
+d-i mirror/http/proxy string
+#d-i mirror/http/proxy string http://<username>:<password>@<proxy>:8080
+# Orig example mirror/codename string natty
+#d-i mirror/suite string stretch
+#d-i mirror/codename string stretch
+# This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname)
+# e.g. my.local.mirror {{ mirror.hostname }}
+d-i mirror/http/mirror select {{ mirror.hostname }}
+# TODO: Possibly support local0
+#d-i apt-setup/local0/repository string http://apt.example.net/ubuntu &releasename; main
+#d-i apt-setup/local0/comment string local server
+#d-i apt-setup/local0/source boolean true
+# GPG Key
+#d-i apt-setup/local0/key string http://apt.example.net/key
+
+
+########### APT Settings (Packages) ###############
+# TODO: Choose OpenSSH Server basic ubuntu server (instead of just "core")
+# See: https://wiki.debian.org/tasksel
+popularity-contest popularity-contest/participate boolean false
+# Repositories
+d-i apt-setup/universe        boolean true
+d-i apt-setup/universe/source boolean false
+d-i apt-setup/multiverse      boolean true
+d-i apt-setup/multiverse/source boolean false
+d-i apt-setup/contrib         boolean true
+d-i apt-setup/restricted     boolean true
+#d-i apt-setup/backports     boolean true
+
+# Should not hurt w. install-language-support by Ubuntu examples (with no value)
+d-i pkgsel/language-pack-patterns   string
+d-i pkgsel/install-language-support boolean false
+# Example values: "ubuntu-server", "ubuntu-desktop" ubuntu-server kubuntu-desktop
+# Supposedly (old examples) standard system utilities, OpenSSH server, Basic Ubuntu server (comma separated options)
+# Debian manuals show "standard" and comma-separation, also desktop, web-server
+# TODO: Need to select in "Choose Software to install: "OpenSSH server", "Basic Ubuntu server"
+# "standard, ubuntu-server" seems to be right, but "ssh-server" (tried here) may need to be done as "pkgsel/include string openssh-server"
+# Eliminated: "ssh-server" (seems cannot be part of this, use pkgsel/include for this)
+tasksel tasksel/first multiselect standard, ubuntu-server
+# Install only security updates automatically
+#d-i pkgsel/update-policy select unattended-upgrades
+d-i pkgsel/update-policy select none
+# none, safe-upgrade, full-upgrade
+d-i pkgsel/upgrade select none
+#d-i pkgsel/upgrade select full-upgrade
+# system's locate database will be updated
+d-i pkgsel/updatedb boolean false
+
+# Kernel options ("Kernel to install:" in installer)
+# As per https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html possible option is: linux-generic
+# 14.04 (Trusty Tahr)Installer shows "Kernel to install:" options: linux-server,linux-virtual,linux-generic-lts-trusty.linux-image-server
+# Installer downloads successfully a lot of modules related to kernel 3.13.0-24.47
+# d-i base-installer/kernel/override-image string linux-server
+# d-i base-installer/kernel/override-image string linux-virtual
+# linux-image-3.8.0-19-generic Not avail on installer list
+# This is "string", not "select" by apbs04.html (!?)
+# d-i base-installer/kernel/image select linux-image-extra-3.13.0-98-generic
+d-i base-installer/kernel/image string linux-server
+# Installer talks about this.
+#d-i base-installer/kernel/linux/initrd string ????
+
+# Don't install APT/DPKG recommended items (--no-install-recommends)
+# Be careful w. this as probably default is true AND earlier/typical proven installs
+# in past are already done with this setting AND some recommended pkgs might be
+# depended on (by old working installations in prod).
+# NEW:
+d-i base-installer/install-recommends boolean {{ install_recommends }}
+# build-essential
+d-i pkgsel/include string openssh-server python
+
+############## Disk and Partitioning ####################
+# regular/lvm/crypto
+d-i partman-auto/method string regular
+# Heuristical ... custom, some_device, some_device_crypto, some_device_lvm
+#d-i partman-auto/init_automatically_partition select biggest_free
+# Explicit
+d-i partman-auto/disk string /dev/sda
+d-i partman-auto/purge_lvm_from_device boolean true
+#d-i partman-md/device_remove_md boolean true
+
+d-i partman/default_filesystem string ext4
+
+d-i partman/confirm_write_new_label boolean true
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman/choose_partition select finish
+# Recipe (On only local FS ?, See: partman-auto-recipe.txt)
+#d-i partman-auto/expert_recipe string \ ...(inlined)
+# TODO: Download by an early script hook ?
+#d-i partman-auto/expert_recipe_file string /hd-media/recipe
+d-i partman/mount_style select uuid
+d-i partman/unmount_active boolean true
+
+#d-i partman-lvm/confirm boolean true
+#d-i partman-lvm/confirm_nooverwrite boolean true
+# Auto-mode: atomic/home/multi
+#d-i partman-auto/choose_recipe select atomic
+
+########## User setup ######################
+d-i passwd/make-user boolean true
+d-i passwd/user-fullname string {{ user.fullname }}
+d-i passwd/username string {{ user.username }}
+d-i passwd/user-password password {{ user.password }}
+d-i passwd/user-password-again password {{ user.password }}
+#d-i passwd/user-uid string 1000
+d-i passwd/user-default-groups string {{ user.groups }}
+
+d-i user-setup/allow-password-weak boolean true
+d-i user-setup/encrypt-home boolean false
+
+d-i passwd/root-login boolean false
+# Use root-password for clear
+# d-i passwd/root-password-crypted password [MD5 hash]
+
+############ Grub / Bootloader ######################
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/with_other_os boolean true
+
+
+############ Hooks: early and late command #####################
+# Unmount drives with active partitions. Without this command all the
+# installation process would stop and require confirmation to unmount
+# drives that are already mounted. See also d-i partman/unmount_active boolean true
+# See if token "in-target" after type is valid. Actually it is a command.
+# Notes:
+# - early_command is ran *very* early. Right after fetching (and parsing) preseed.cfg
+# - for example wget may not be available for early_command (Unexpected error; command not executed: 'wget http://...')
+# - Commands wrapped with command in-target get executed in installation target
+# - Use command apt-install to install APT packages
+# - Use command preseed_fetch to do early HTTP get fetches (Used fetch-url underneath)
+# - The furure root partition is mounted in install time dir: /target
+# https://github.com/Jolicloud/ubiquity/blob/master/d-i/source/preseed/README.preseed_fetch
+#d-i preseed/early_command string umount /media || true
+# Change ";exit 0" to "; true" or " || true"
+d-i preseed/early_command string preseed_fetch http://{{ httpserver }}/installevent/start /dev/null || true
+
+#d-i preseed/late_command string \ ...
+d-i preseed/late_command string wget http://{{ httpserver }}/installevent/done || true
+#d-i preseed/late_command string in-target wget http://.../some.sh; ...
+
+# One or more (space sep.) commands to download and run
+# Pre this doc: https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html this is extremely useful for
+# circumventing the stubborn refusal to accept static network config: Set this to script that runs: kill-all-dhcp; netcfg
+d-i preseed/run string preseed_dhcp_hack.sh
+
+########### Ending / Rebooting #################
+d-i finish-install/reboot_in_progress note
+d-i debian-installer/exit/poweroff boolean true
+
+{{{ appendcont }}}

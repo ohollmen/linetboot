@@ -1,0 +1,75 @@
+@startuml
+
+title PXE+DHCP+PXELinux+linetboot Boot and Installation Sequence
+
+' order 10 - only supported in later plantuml. Unnecessary if you keep below in order.
+participant "Boot Client" as Client
+'database DHCP
+participant DHCP
+participant TFTP
+
+box "linetboot"
+' When used w/o Box (above)
+'participant "**linetboot** / HTTP" as HTTP
+participant HTTP
+participant Media
+'participant "Host Params and Install DB" as HP
+database "Host Params and\nInstall DB" as HP
+end box
+
+' "database" declared here instead of above messes up the order
+
+Client -> Client: Choose PXE Boot (e.g. F12) at startup
+Client -> DHCP: DHCP Request
+DHCP --> Client: Response w. Next-Server, Boot File
+
+Client -> TFTP: Bootloader Request (NBP Boot File)
+Client <-- TFTP: Bootloader binary (lpxelinux.0)
+
+Client -> TFTP: Boot Menu (txt) and Modules (*.c32)
+Client <-- TFTP: Menu (pxelinux.cfg/default) and Modules
+
+hnote over Client : Pause for user choice\n(90s. timeout)
+
+'...90 s. timeout ...
+
+Client->Client: Choose Boot Action Item (from Menu)
+
+Client -> HTTP: Kernel and Init RamDisk
+HTTP <-> Media
+Client <-- HTTP: vmlinux, initrd.img
+
+Client -> Client: Boot Linux (Installer or Tool)
+
+note right: Tool/Utility boot does not\ncontinue to OS Install from here\n(e.g. Gparted Live, memtest86)
+
+== OS Installation ==
+
+Client -> HTTP: Load Preseed or Kickstart Config
+
+HTTP -> HP: Lookup Host Info (by IP)
+HTTP <-- HP: Host Install Params
+note right: Hostname,IP,Netmask,\nGateway,DNS servers,\nDisk and Part. Info,\nInitial User Info\n...
+
+HTTP -> HTTP: Generate Config
+
+Client <-- HTTP: Installer Instructions / Config (txt) for (Full) Automation
+
+Client -> HTTP: Signal install  **start** event
+HTTP -> HP: New Install Session
+'== Fetch and Install all needed (N) packages ==
+
+group Fetch and Install all needed (N) packages
+Client -> HTTP: Request SW Packages
+HTTP <-> Media
+Client <-- HTTP: Deb: *.deb,*.udeb, RH: *.rpm
+end
+'Client -> Client: Install
+
+Client -> HTTP: Signal install  **end** event
+HTTP -> HP: End Install Session
+Client -> Client: Reboot
+
+footer (C) Olli Hollmen 2018
+
+@enduml

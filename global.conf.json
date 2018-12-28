@@ -1,0 +1,59 @@
+{
+  "httpserver": "192.168.1.141:3000",
+  "httpserverAPA": "192.168.1.141",
+  "httpserverBA": "10.85.233.180",
+  "userconfig": "initialuser.json",
+  "tmplfiles": {
+    "preseed": "./tmpl/preseed.cfg.mustache",
+    "ks":      "./tmpl/ks.cfg.mustache"
+  },
+  "fact_path": "/home/ohollmen/litefacter/hostinfo",
+  
+  "locale":"en_US.UTF-8",
+  "keymap":"us",
+  "time_zoneXX": "US/Pacific",
+  "time_zone": "America/Los_Angeles",
+  "install_recommends": true,
+  "ntpserver": "ntp.example.com",
+  
+  "hostnames": [
+    "banana1","cubox","db","odroid-32",
+    "martta-1001PX","nuc5","nuc7","perlix2"
+  ],
+  "net": {
+    "netmask": "255.255.240.0",
+    "gateway": "192.168.1.1",
+    "nameservers": ["192.168.1.107", "192.168.1.108"],
+    "domain": ""
+  },
+  
+  "maindocroot": "/var/www/html/",
+  "targetos": "/ubuntu14",
+  "useurlmapping": false,
+  "mirrors": [
+    {
+      "hostname":"192.168.1.141",
+      "proxy": "",
+      "directory": "/ubuntu14",
+      "docroot": "/isomnt/ubuntu14"
+    },
+    {
+      "hostname":"192.168.1.141:3000",
+      "proxy": "",
+      "directory": "/ubuntu18",
+      "docroot": "/isomnt/ubuntu18"
+    },
+    {
+      "hostname":"192.168.1.141:3000",
+      "proxy": "",
+      "directory": "/centos6",
+      "docroot": "/isomnt/centos6"
+    },
+    {
+      "hostname":"192.168.1.141:3000",
+      "proxy": "",
+      "directory": "/gparted",
+      "docroot": "/isomnt/gparted"
+    }
+  ]
+}

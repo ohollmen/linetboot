@@ -1,0 +1,178 @@
+# Example kickstart file
+
+# - Google: Ubuntu kickstart example
+# - https://help.ubuntu.com/lts/installation-guide/i386/ch04s06.html
+# - https://gist.github.com/funzoneq/d77369203ea447dc3cc2
+# - http://gyk.lt/ubuntu-16-04-desktop-unattended-installation/ - Good article on KS and Preseed settings,
+#    but is based on remastering a CD/DVD
+# - https://help.ubuntu.com/lts/installation-guide/s390x/apbs02.html
+# - https://blog.programster.org/kickstart-files
+# - https://help.ubuntu.com/community/KickstartCompatibility - Ubuntu KS compat. (w. links)
+# - https://github.com/programster/KVM-Command-Generator
+# - https://linuxconfig.org/automating-linux-installations-with-kickstart - Excellent elaboration
+#    on KS params/options
+# - https://searchitchannel.techtarget.com/feature/Performing-an-automated-Ubuntu-install-using-preseeding
+# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
+# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/s1-kickstart2-options
+# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/ch-parmfiles-Kickstart_parameters
+# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/sn-automating-installation
+# - https://gist.github.com/mineiro/5431336 - Centos 6 kickstart
+# - https://www.linuxtopia.org/online_books/rhel6/rhel_6_installation/rhel_6_installation_s1-kickstart2-options.html
+# - https://wiki.centos.org/HowTos/PXE/PXE_Setup - Some useful info on how to setup tftp and pxelinux (called syslinux) in CentOS
+#
+# KS & Preseed params: ks=... preseed/file=... preseed/url=http:// (also url=... works)
+# Preseed commands can be mixed here (for Ubuntu), but must start w. "preseed ...".
+# # Kernel CL
+# In both Debian/Ubuntu and native RedHat the kernel CL param is ks=URL
+# Naming convention for kickstart file (and suffix):
+# - Debian/Ubuntu: ks.cfg
+# - Redhat: Early on .ks suffix, nowadays naming like kickstart-NNN.cfg and especially ks.cfg is shown as recommendation.
+#   - Install-time settings are saved during install as /root/anaconda-ks.cfg
+# See also
+# - RUNKS=value (e.g. RUNKS=0, RUNKS=1)
+# - Kernel CL param: kssendmac (Send MAC address to distinguish machine in special HTTP headers)
+# - Discovered kervel CL param from /var/log/anaconda.log: BOOTIF=01-14-..... (Mac address, dash separated)
+# During Install (at least CentOS 6)
+# - this kickstart file gets downloaded to /tmp/ with name $SOMEHASH-ks.cfg
+# - Anaconda installer writes a log in /tmp/anaconda.log
+
+############### Language, Keyboard, Timezone ##################
+lang en_US
+#lang en_US.UTF-8
+# Unknown command: langsupport (Deprecated perl RH6 docs)
+#langsupport en_US
+# lang en_US.UTF-8
+
+keyboard us
+# Set clock to UTC (--utc) (e.g.  America/Los_Angeles) --ntpservers=
+timezone --utc {{{ time_zone }}}
+
+#################### Users #######################
+# No such option: --disabled
+# Leaving rootpw out completely (as --disabled is not supported) makes installer interactively prompt for passwd. --lock is new version of --disabled
+#NOT/LEGACY:rootpw --disabled
+#rootpw --plaintext devops1
+rootpw --lock devops1
+# Param --isccrypted means password is given in crypt(ed) format
+# legacy: --fullname (no such option)
+# TODO: --groups 
+user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir=/home_install/{{ user.username }}
+# Optional new group
+# group --name devops --gid 1000
+# System Auth (--passalgo ...md5, sha256, sha512). Possibly --enablemd5 is very legacy form for --passalgo=md5)
+auth --useshadow --passalgo=sha256
+# Install time SSH Access (sshpw --username=name password [--iscrypted|--plaintext] [--lock])
+#sshpw --username=installer installer --plaintext
+
+############ Install mode (graphical,text,cmdline) and install/upgrade #####################
+# This seems to be in 6.6 log (Needs to be 1st in whole KS ?)
+install
+# Completely non-interactive command line mode
+# cmdline
+# Text based, but with option for interaction
+text
+# Option to step through config screens and accept the KS delivered values (See also autostep)
+interactive
+# Step, but automatically (?)
+#autostep
+# Installation mode (How does this compare ti url --url ..)
+# --partition=sda2 (part. to install from)
+# no such option: --url. Seems this needs to be url --url=http://...
+# install --url=http://{{ mirror.hostname }}{{{ mirror.directory }}}
+# Logging levels: debug, info, warning, error, or critical.
+logging --level=debug
+# YUM Repos --baseurl OR --mirrorlist
+# Repository config goes to /etc/yum.repos.d/. --proxy=[protocol://][username[:password]@]host[:port]
+# Note: --baseurl=<url> and --mirrorlist=<url> are mutually exclusive
+# repo --name=repoid --baseurl={{ }} [options] --noverifyssl
+# Do not confure X
+skipx
+
+############ Disk and Partitions ############
+# There seems to be a persistent tendency for Anaconda to create LVM on FS.
+# How to avoid that ? Hints on: https://www.redhat.com/archives/kickstart-list/2008-August/msg00024.html
+# Redundant ?
+# ignoredisk --drives=sdb,sdc
+#ignoredisk --only-use=sda
+# --append="hdd=ide-scsi ide=nodma" --boot-drive=... (Example of drive ?)
+# bootloader .... --driveorder=sda
+bootloader --location=mbr
+# zerombr causes NO (UI) interaction for clearing parts (better for auto)
+zerombr
+
+# Remove prtitions from system --list=sda2,sda3,sdb1 (Only individual parts) --none --linux (Linux parts only)
+clearpart --drives=sda --all --initlabel
+# Automatic partitioning heuristics
+# --type plain implies --nolvm
+#No such option: --type (--type plain) no such option: --nolvm. Seems Centos 6 may not be accepting any options
+# --fstype ext4 --nohome
+# May encounter: cannot find enough space for automatic partitioning
+# Centos 6 autopart (w. no params) is overly simple and enforces LVM installation
+#autopart
+# Is this only for LVM ?
+#swap --recommended
+
+# Explicit partitioning (Sizes in MiB) --onpart=hda1
+# --size=10240 --size=1024 --fsoptions --resize=...
+# part/partition directive is ignored for upgrades (--ondisk=sda)
+part /boot --asprimary --fstype=ext4 --label="root" --size=500
+part /     --asprimary --fstype=ext4 --label="root" --size=32000
+part swap  --asprimary --fstype=swap --label="swap" --size=2048
+# Mount and optionally reformat
+#mount --reformat ext4 /dev/sda1 /boot
+#mount --reformat ext4 /dev/sda2 /
+#
+# Required (special) partitions (e.g. EFI, PRePBoot, ...)
+#reqpart --add-boot
+
+#################### Network Config and Firewall ###########################
+# Note nameservers need to be separated by comma for for Redhat KS (Preseed has space)
+# Must --activate (to not get installer error: not activating because --activate flag is not set)
+network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
+# network --bootproto=dhcp --device=eth0
+# firewall --enabled --ssh --smtp --http --ftp
+firewall --disabled
+########## Installation media: cdrom/harddrive/nfs/url (which may be http/https/ftp) ###############
+#cdrom
+#harddrive --partition=sdb3 --dir=/install
+#nfs --server=mynfs.server.org --dir=install
+# This is OK. With this out-of-box Mirror URL repo/media the installation starts fine (!)
+# Well, not a second time: complaint: ...
+#url --url="http://mirror.centos.org/centos/6/os/x86_64"
+#url --url=http://10.X.X.X/rhel/rhel6u6/x86_64-server
+url --url="http://{{ mirror.hostname }}{{{ mirror.directory }}}"
+#url --url ftp://username:password@server/path
+# Note: Installer is trying to find various files in /centos6/ : .treeinfo, treeinfo, repodata/repomd.xml
+# .../centos6/repodata/repomd.xml failed: [Errno 14] PYCURL ERROR 22 - ... 404 Not Found"
+# Installer (hi-level) message: Unable to read package metadata. This may be due to a missing repodata directory.
+# CentOS-6.6-x86_64-netinstall.iso only has 2 dirs, images, isolinux in root dir.
+
+# Supposedly an example working mirror (per https://www.tecmint.com/centos-6-netinstall-network-installation/)
+# http://mirror.liquidtelecom.com/centos/6.10/os/x86_64/
+
+################# Packages #######################
+# System Services
+services --disabled="NetworkManager"
+
+#%packages --excludedocs
+%packages
+@Base
+@Core
+#@ ubuntu-server
+#openssh-server
+%end
+#%pre
+#wget -O /tmp/preinstall.sh http://{{ }}/rhel6_preinstall.sh
+#%end
+# Some good ideas gathered here
+# --nochroot for seeing installation root as "/target/" (e.g. root homedir: "/target/root")
+# E.g. (old 2008 info) "%post nochroot --log=/tmp/post.log" to copy install time logs to permanent place
+# What is the current way: "nochroot" or "--nochroot"
+#%post
+#apt-get -f -y install
+#apt-get -y autoremove
+#apt-get clean
+#%end
+################## End of Install ###############
+# One of these, exclusive: reboot,shutdown,halt (shutdown -h),poweroff
+reboot

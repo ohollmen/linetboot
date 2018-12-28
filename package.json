@@ -1,0 +1,26 @@
+{
+  "name": "linetboot",
+  "version": "1.0.0",
+  "description": "Linux Network Boot and Installation System",
+  "main": "netboot.js",
+  "dependencies": {
+    "express": "4.16.4",
+    "mustache": "3.0.1",
+    "js-yaml": "3.12.0"
+  },
+  "devDependenciesPlanned": {
+    "serve-static": "*",
+    "morgan": "*"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "pxe",
+    "network",
+    "install",
+    "netboot"
+  ],
+  "author": "Olli Hollmen",
+  "license": "MIT"
+}

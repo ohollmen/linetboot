@@ -1,0 +1,6 @@
+{
+  "fullname": "John Smith",
+  "username": "jsmith",
+  "password": "s3Cr3T",
+  "groups": ["sudo","adm", "plugdev", "cdrom"]
+}
