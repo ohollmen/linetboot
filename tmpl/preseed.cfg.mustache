@@ -237,6 +237,8 @@ d-i partman-auto/method string regular
 #d-i partman-auto/init_automatically_partition select biggest_free
 # Explicit
 d-i partman-auto/disk string /dev/sda
+# Purge LVM or RAID (_md). See also partman-lvm/device_remove_lvm below.
+#d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-auto/purge_lvm_from_device boolean true
 #d-i partman-md/device_remove_md boolean true
 
