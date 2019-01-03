@@ -162,7 +162,8 @@ function preseed_gen(req, res) {
   if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
-  console.log("Preseed or KS Gen by (full) URL: " + req.url);
+  console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");
+  
   var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part"};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
@@ -305,7 +306,9 @@ function pkg_counts (req, res) {
 */
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
+  var xip = req.query["ip"];
   var ip = ipaddr_v4(req);
+  if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
   if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
   
