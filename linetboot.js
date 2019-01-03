@@ -159,7 +159,10 @@ function preseed_gen(req, res) {
   var osid = req.query["osid"] || global.targetos || "ubuntu18";
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
-  if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
+  if (!f) {
+    res.end(`# No IP Address ${ip} found in host DB\n`);
+    console.log(`# No IP Address ${ip} found in host DB\n`);
+    return; }
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");

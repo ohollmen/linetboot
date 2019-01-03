@@ -29,7 +29,7 @@ PXE Linux (e.g. pxelinux.0) is NOT a linux OS or system, but a network bootloade
 
 ## HTTP Server
 
-The HTTP server used by linetboot is a lighweight Node.js / Express server without presence of - or need to install "big" webserver like "Apache".
+The HTTP server used by linetboot is a lightweight Node.js / Express server without presence of - or need to install - a "big" webserver like "Apache".
 
 Web server has dual roles:
 
