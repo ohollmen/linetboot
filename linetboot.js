@@ -302,7 +302,8 @@ function pkg_counts (req, res) {
   });
   //res.json();
 }
-/** Generate Ubuntu 18 Netplan
+/** TODO: Generate Ubuntu 18 Netplan.
+* Extract network config essentials from Facts.
 */
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
@@ -311,17 +312,40 @@ function netplan_yaml(req, res) {
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
   if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
+  var d = f;
   
-  // var nproot = null;
-  var nproot = {greeting: "Hello"}; // TEST
-  
+  var np = {"version": 2, "renderer": "networkd", "ethernets": {} };
+  //# See also "ansible_em1" based on lookup to:
+  //# iface.alias
+  //# See: "ansible_fqdn" => hostname
+  var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
+  var ifname = iface_a["alias"];
+  //# TODO: Create /dec mask out of "netmask"
+  var iface = { "addresses": [iface_a["address"]], "gateway4": iface_a["gateway"] // # Netplan ingerface
+    
+  };
+  var dns_a = d["ansible_dns"];
+  var ns = {"search": dns_a["search"], "addresses": dns_a["nameservers"]};
+  iface["nameservers"] = ns;
+  np["ethernets"][ifname] = iface;
+  //# Unofficial, but helpful (at netplan root)
+  np["hostname_fqdn"] = d["ansible_fqdn"]; // # Leave at: ansible_hostname ?
+  np["domain"] = d["ansible_domain"];
+  np["macaddress"] = iface_a["macaddress"];
+  //# NOTE: We add the old-style "netmask" to the netplan even if it is not a standard member of it
+  iface["netmask"] = iface_a["netmask"];
+  var nproot = {"network": np}; //# Netplan - Complete
+  // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8')); // From
   // To YAML
-  // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8'));
   var ycfg = {
     'styles': { '!!null': 'canonical' }, // dump null as ~
     'sortKeys': true
   };
-  var ycont = yaml.safeDump(nproot, ycfg);
+  // YAMLException: unacceptable kind of an object to dump [object Undefined]
+  // Known workaround: JSON.parse(JSON.stringify(obj)) https://github.com/nodeca/js-yaml/issues/76
+  var ycont = yaml.safeDump(JSON.parse(JSON.stringify(nproot)), ycfg);
+  // JSON dumps fine (!!!???)
+  //var ycont = JSON.stringify(nproot, null, 2);
   // var ycont = yaml.safeDump(f, ycfg);
   res.type("text/plain");
   res.send(ycont);
