@@ -16,16 +16,18 @@ var Mustache = require("mustache");
 var fs      = require("fs");
 var express = require('express');
 var yaml    = require('js-yaml');
-// Config
-var nb      = require("./netboot.json");
-var global  = require("./global.conf.json");
-
-var user = require("./initialuser.json");
-user.groups = user.groups.join(" ");
-//var nb_tmpl = global.preseed_template; // "./tmpl/preseed.cfg.mustache";
+var cproc   = require('child_process');
+var async   = require('async');
+// Configurations
+// var nb      = require("./netboot.json"); // Not used.
+var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || "./global.conf.json";
+var global   = require(globalconf);
+var userconf = process.env["LINETBOOT_USER_CONF"] || global.userconfig || "./initialuser.json";
+var user     = require(userconf);
+user.groups  = user.groups.join(" ");
 global.tmpls = {};
 var app = express();
-var port = 3000;
+var port = 3000; // TODO: Config
 var fact_path;
 var hostcache = {};
 /**
@@ -88,7 +90,7 @@ function app_init() {
   global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
   global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
   if (!global.tmpls.preseed || !global.tmpls.ks) { console.error("Templates missing (see global config)"); process.exit(1); }
-  fact_path = process.env["FACT_PATH"];
+  fact_path = process.env["FACT_PATH"] || global.fact_path;
   //console.log(process.env);
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1);}
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
@@ -235,7 +237,7 @@ function host_params(f, global, ip, ctype, osid) {
   //////////////// Choose mirror (Use find() ?) //////////////////
   var choose_mirror = function (m) {
     return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
-  }
+  };
   var mirror = global.mirrors.filter(choose_mirror)[0];
   if (!mirror) { return null; } // NOT Found ! Hope we did not match many either.
   d.mirror = mirror;
@@ -289,9 +291,13 @@ function facts_load(hn) { // ipaddr
 function pkg_counts (req, res) {
   // Package dir root
   var root = "./pkgcache";
+  // map(function (hn) { return {name: hn, pkgcnt: 0}; });
   global.hostnames.forEach(function (hn) {
     var path = root+"/"+hn;
-    
+    // Call wc or open, split and count ? fgets() ?
+    cproc.exec('wc ' + path, function (error, stdout, stderr) {
+       console.log(stdout);
+    });
   });
   //res.json();
 }
@@ -303,7 +309,7 @@ function netplan_yaml(req, res) {
   var f = hostcache[ip];
   if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
   
-  var nproot = null;
+  // var nproot = null;
   var nproot = {greeting: "Hello"}; // TEST
   
   // To YAML
