@@ -9,11 +9,13 @@
     "js-yaml": "3.12.0",
     "mustache": "3.0.1"
   },
-  "devDependenciesPlanned": {
-    "serve-static": "*",
-    "morgan": "*"
+  "devDependencies": {
+    "jshint": "2.9.7"
   },
-  "optionalDependencies": {},
+  "optionalDependencies": {
+    "morgan": "1.9.1",
+    "serve-static": "*"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
