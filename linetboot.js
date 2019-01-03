@@ -261,7 +261,7 @@ function host_params(f, global, ip, ctype, osid) {
   var mirror = global.mirrors.filter(choose_mirror)[0];
   if (!mirror) { return null; } // NOT Found ! Hope we did not match many either.
   mirror = dclone(mirror); // NOTE: This should already be a copy ?
-  if (global.mirrorhost) { mirror.hostname = mirrorhost; } // Override with global
+  if (global.mirrorhost) { mirror.hostname = global.mirrorhost; } // Override with global
   d.mirror = mirror;
   return d;
 }
