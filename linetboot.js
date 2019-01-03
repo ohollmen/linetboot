@@ -161,7 +161,7 @@ function preseed_gen(req, res) {
   var f = hostcache[ip];
   if (!f) {
     res.end(`# No IP Address ${ip} found in host DB\n`);
-    console.log(`# No IP Address ${ip} found in host DB\n`);
+    console.log(`# No IP Address ${ip} found in host DB\nRun: nslookup ${ip} for further info on host.`);
     return; }
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
@@ -223,10 +223,15 @@ function patch_params(d, osid) {
 function host_params(f, global, ip, ctype, osid) {
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
-  if (anet.address != ip) { res.end(`# Hostinfo IP and detected ip not in agreement\n`); return; }
+  if (anet.address != ip) { res.end(`# Hostinfo IP and detected ip not in agreement\n`); return null; }
   net.ipaddress = ip;
   // TODO: Take from host facts (f) f.ansible_dns if available !!!
+  // Create netconfig as a blend of information from global network config
+  // and hostinfo facts.
+  //function netconfig(net, f) {
+  // var anet = f.ansible_default_ipv4;
   var dns_a = f.ansible_dns; // Has search,nameservers
+  
   net.nameservers = net.nameservers.join(" "); // Debian: space separated
   // Override nameservers, gateway and netmask from Ansible facts (if avail)
   if (dns_a.nameservers && Array.isArray(dns_a.nameservers)) {
@@ -236,6 +241,9 @@ function host_params(f, global, ip, ctype, osid) {
   if (anet.netmask) { net.netmask = anet.netmask; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
   net.dev = anet.interface; // See Also .alias
+  //  return ...;
+  //}
+  // netconfig(net, f);
   // Account for KS needing nameservers comma-separated
   if (ctype == 'ks') { net.nameservers = net.nameservers.replace(' ', ','); }
   // console.log(net);
@@ -252,6 +260,8 @@ function host_params(f, global, ip, ctype, osid) {
   };
   var mirror = global.mirrors.filter(choose_mirror)[0];
   if (!mirror) { return null; } // NOT Found ! Hope we did not match many either.
+  mirror = dclone(mirror); // NOTE: This should already be a copy ?
+  if (global.mirrorhost) { mirror.hostname = mirrorhost; } // Override with global
   d.mirror = mirror;
   return d;
 }

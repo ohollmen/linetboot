@@ -64,8 +64,9 @@ Create a small Ansible hosts file:
     linux1 ansible_user=admuser
     linux2 ansible_user=admuser
 
+Run facts gathering:
 
-     ansible all -m setup -u root --tree ~/hostinfo \
+     ansible netboot -m setup -u root --tree ~/hostinfo \
         --extra-vars "ansible_sudo_pass=..."
 
 Make sure your SSH key is copied to host(s) with ssh-copy-id.
@@ -73,7 +74,7 @@ If you have problems getting ansible running on lineboot machine, the hostinfo D
 
     rsync ~/hostinfo admuser@boothost:/home/admuser/hostinfo
 
-Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info).
+Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info). Hosts outside this list will not be counted in from the hostinfo directory.
 
 # Installation Prerequisites
 
