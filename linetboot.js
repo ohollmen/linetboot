@@ -210,7 +210,7 @@ function patch_params(d, osid) {
 }
 /** Generate host parameters based on global settings and host specific settings.
 * The final params returned will be directly used to fill the template.
-* @param f - Host Fats parameters (from Ansible)
+* @param f - Host Facts parameters (from Ansible)
 * @param global - Global parameters (e.g. network info)
 * @param ip - Requesting host's IP Address
 * @param ctype - Configuration type (ks or preseed)
@@ -222,7 +222,15 @@ function host_params(f, global, ip, ctype, osid) {
   var anet = f.ansible_default_ipv4; // Ansible net info
   if (anet.address != ip) { res.end(`# Hostinfo IP and detected ip not in agreement\n`); return; }
   net.ipaddress = ip;
+  // TODO: Take from host facts (f) f.ansible_dns if available !!!
+  var dns_a = f.ansible_dns; // Has search,nameservers
   net.nameservers = net.nameservers.join(" "); // Debian: space separated
+  // Override nameservers, gateway and netmask from Ansible facts (if avail)
+  if (dns_a.nameservers && Array.isArray(dns_a.nameservers)) {
+    net.nameservers = dns_a.nameservers.join(" ");
+  }
+  if (anet.gateway) { net.gateway = anet.gateway; }
+  if (anet.netmask) { net.netmask = anet.netmask; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
   net.dev = anet.interface; // See Also .alias
   // Account for KS needing nameservers comma-separated
@@ -232,8 +240,8 @@ function host_params(f, global, ip, ctype, osid) {
   d.net = net;
   d.user = user;
   // Comment function
-  d.comm = function (v) { return v ? "" : "# "; };
-  d.join = function (arr) {return arr.join(" "); }; // Default (Debian) Join
+  d.comm = function (v)   { return v ? "" : "# "; };
+  d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
   //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
   //////////////// Choose mirror (Use find() ?) //////////////////
   var choose_mirror = function (m) {
