@@ -5,7 +5,8 @@
   "userconfig": "initialuser.json",
   "tmplfiles": {
     "preseed": "./tmpl/preseed.cfg.mustache",
-    "ks":      "./tmpl/ks.cfg.mustache"
+    "ks":      "./tmpl/ks.cfg.mustache",
+    "netif":   "./tmpl/interfaces.mustache"
   },
   "fact_path": "/home/ohollmen/litefacter/hostinfo",
   
@@ -24,7 +25,8 @@
     "netmask": "255.255.240.0",
     "gateway": "192.168.1.1",
     "nameservers": ["192.168.1.107", "192.168.1.108"],
-    "domain": ""
+    "domain": "",
+    "dev": "auto"
   },
   
   "maindocroot": "/var/www/html/",
