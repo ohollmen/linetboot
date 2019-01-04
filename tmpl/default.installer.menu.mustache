@@ -87,7 +87,7 @@ kernel http://{{ httpserver }}/boot/ubuntu18/linux
 # --
 # priority=critical (works alternate to hostname...,domain... below) Another: debconf/priority=high
 # hostname=unassigned-hostname domain=unassigned-domain
-append initrd=http://{{ httpserver }}/boot/ubuntu18/initrd.gz auto=true ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+append initrd=http://{{ httpserver }}/boot/ubuntu18/initrd.gz auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -102,7 +102,7 @@ kernel http://{{ httpserver }}/boot/ubuntu14/linux
 # hostname=unassigned-hostname domain=unassigned-domain
 # Seems Ubu14 should use live-installer/net-image (https://ubuntuforums.org/showthread.php?t=2228972)
 # 
-append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz auto=true DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
+append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 

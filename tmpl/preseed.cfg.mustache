@@ -97,7 +97,7 @@ d-i keyboard-configuration/layoutcode string us
 # Value keywords for unassigned get_hostname/get_domain: unassigned-hostname unassigned-domain
 d-i netcfg/get_hostname string {{ net.hostname }}
 # {{ net.domain }}
-d-i netcfg/get_domain string
+d-i netcfg/get_domain string {{ net.domain }}
 # Setting this to false may benecessary to use netcfg/get_hostname string actualvalue
 # Actually seen means seen on screen (implies interacctive acceptance ?)
 #d-i netcfg/get_hostname seen true

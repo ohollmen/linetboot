@@ -90,6 +90,7 @@ function app_init() {
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   
   app.get('/netplan.yaml', netplan_yaml);
+  app.get('/preseed_dhcp_hack.sh', dhcp_hack);
   //////////////// Load Templates ////////////////
   global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
   global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
@@ -121,6 +122,7 @@ app.use(function (req, res, next) {
   var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
   if (mfn && fs.existsSync(mfn)) {
     iptrans = require(mfn); // TODO: try/catch ?
+    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
   }
   next();
 });
@@ -256,8 +258,11 @@ function host_params(f, global, ip, ctype, osid) {
   }
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
+  // Domain !
+  if (f.ansible_domain) { net.domain = f.ansible_domain; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
-  net.dev = anet.interface; // See Also .alias
+  //net.dev = anet.interface; // See Also .alias
+  net.dev = "auto"; // Default ?
   // TODO: Extract interface (also alias) number !
   // Rules for extraction:
   // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
@@ -398,4 +403,13 @@ function netplan_yaml(req, res) {
   res.type("text/plain");
   res.send(ycont);
   //res.send(f);
+}
+/** Send a shell script / commands for a well know hack to allow preseeding
+* to reconfigure network after initial chicken and egg problem with network -
+* network must be configured to fetch preseed, which contains network config.
+* This script kills dhcp networking and reconfigures network.
+*/
+function dhcp_hack(req, res) {
+  // #!/bin/sh\n
+  res.send("kill-all-dhcp; netcfg\n");
 }
