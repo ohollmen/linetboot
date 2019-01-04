@@ -26,11 +26,15 @@ var userconf = process.env["LINETBOOT_USER_CONF"] || global.userconfig || "./ini
 var user     = require(userconf);
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
+// IP Translation table for hosts that at pxelinux DHCP stage got IP address different
+// from their DNS static IP address (and name). This only gets loaded by request via Env.variable
+var iptrans = {};
 var app = express();
 var port = 3000; // TODO: Config
 var fact_path;
 var hostcache = {};
-/**
+
+/** Initialize Application / Module with settings from global conf.
 * TODO:
 * Perform sanity checks in mirror docroot.
 */
@@ -113,6 +117,11 @@ app.use(function (req, res, next) {
     if (!msg && s) { msg = s.size; }
     console.log("URL/File: " + req.url + " " + msg); 
   }
+  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
+  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
+  if (mfn && fs.existsSync(mfn)) {
+    iptrans = require(mfn); // TODO: try/catch ?
+  }
   next();
 });
 
@@ -123,10 +132,17 @@ app.listen(port, function () {
 });
 /** Deep clone any data structure */
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
-/** */
+/** Get Boot Client IP Address from HTTP request.
+ * For convenience the exception translation is handled here (this is subject to change if it shows to be a bad idea).
+ * @param req - Node.js / Express HTTP Request object (holding the client address)
+ * @return Real or mapped Client address.
+ */
 function ipaddr_v4(req) {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   if (ip.substr(0, 7) == "::ffff:") { ip = ip.substr(7); }
+  // We now have the actual client address. See if mapping / translation is needed
+  var newip = iptrans[ip];
+  if (newip) { return newip; }
   return ip;
 }
 /** Generate Preseed or KS file based on global settings and host facts.
@@ -167,7 +183,7 @@ function preseed_gen(req, res) {
   console.log("req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");
   
-  var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part"};
+  var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part", "interfaces" : "netif"};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
   //var ctype = tmplmap[req.url]; // Do not use - contains parameters
@@ -229,6 +245,7 @@ function host_params(f, global, ip, ctype, osid) {
   // Create netconfig as a blend of information from global network config
   // and hostinfo facts.
   //function netconfig(net, f) {
+  // if (!f) { return; } // No facts, cannot do overrides
   // var anet = f.ansible_default_ipv4;
   var dns_a = f.ansible_dns; // Has search,nameservers
   
@@ -241,6 +258,12 @@ function host_params(f, global, ip, ctype, osid) {
   if (anet.netmask) { net.netmask = anet.netmask; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
   net.dev = anet.interface; // See Also .alias
+  // TODO: Extract interface (also alias) number !
+  // Rules for extraction:
+  // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
+  // var ifnum; var marr;
+  //if (marr = anet.interface.match(/^eth(\d)/))      { ifnum = parseInt(marr[1]); ifnum++; }
+  //if (marr = anet.interface.match(/^(em|eno)(\d)/)) { ifnum = parseInt(marr[2]); }
   //  return ...;
   //}
   // netconfig(net, f);
@@ -302,10 +325,14 @@ function facts_load(hn) { // ipaddr
   //var ip = facts.ansible_facts.ansible_all_ipv4_addresses;
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
-  var ip = facts.ansible_default_ipv4.address;
+  var ifinfo = facts.ansible_default_ipv4;
+  var ip = ifinfo.address;
+  var maca = ifinfo.macaddress;
   // Brute force cache by name and ip addr to same cache / hash table
   hostcache[hn] = facts;
   hostcache[ip] = facts;
+  // NEW: Also index by ethernet address. In facts it is lower case !!!
+  if (maca) { hostcache[maca] = facts; }
 }
 /** Package counts
 * 
