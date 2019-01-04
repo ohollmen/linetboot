@@ -104,6 +104,14 @@ function app_init() {
   if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames"); process.exit(1);}
   hnames.forEach(function (hn) { facts_load(hn); });
   console.log("Cached: " + Object.keys(hostcache).join(','));
+  
+  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
+  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
+  if (mfn && fs.existsSync(mfn)) {
+    iptrans = require(mfn); // TODO: try/catch ?
+    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
+  }
+  
 }
 // Simple logging for ALL HTTP requests.
 app.use(function (req, res, next) {
@@ -118,12 +126,7 @@ app.use(function (req, res, next) {
     if (!msg && s) { msg = s.size; }
     console.log("URL/File: " + req.url + " " + msg); 
   }
-  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
-  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
-  if (mfn && fs.existsSync(mfn)) {
-    iptrans = require(mfn); // TODO: try/catch ?
-    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
-  }
+  
   next();
 });
 
