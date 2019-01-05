@@ -2,5 +2,6 @@
   "fullname": "John Smith",
   "username": "jsmith",
   "password": "s3Cr3T",
-  "groups": ["sudo","adm", "plugdev", "cdrom"]
+  "groups": ["sudo","adm", "plugdev", "cdrom"],
+  "homedir" : "/home_install/jsmith"
 }
