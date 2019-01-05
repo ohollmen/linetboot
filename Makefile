@@ -53,3 +53,5 @@ dia:
 	# to avoid starting by java -jar plantuml.jar ...
 	plantuml doc/netbootseq.plantuml
 	eog doc/netbootseq.png
+test: FORCE
+	./test/test_http.sh
