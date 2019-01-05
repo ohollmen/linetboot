@@ -78,8 +78,6 @@ function app_init() {
   // For kernel and initrd (/linux, /initrd.gz) respectively
   // Installer Kernel and Initrd from mirror area (CD/DVD)
   // global.mirror.docroot
-  // What was this for - these files are at the TFTP server !!!
-  // app.use(express.static("/mnt/install/netboot/ubuntu-installer/amd64/"));
   // For local disk boot (recent) kernels and network install as well
   if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot does not exist"); process.exit(1); }
   app.use(express.static(global.maindocroot));
@@ -90,7 +88,10 @@ function app_init() {
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   
   app.get('/netplan.yaml', netplan_yaml);
-  app.get('/preseed_dhcp_hack.sh', dhcp_hack);
+  // Scipts & misc install data (e.g sources.list)
+  //app.get('/preseed_dhcp_hack.sh', script_send);
+  //app.get('/sources.list', script_send);
+  app.get('/scripts/:filename', script_send);
   //////////////// Load Templates ////////////////
   global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
   global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
@@ -407,12 +408,49 @@ function netplan_yaml(req, res) {
   res.send(ycont);
   //res.send(f);
 }
-/** Send a shell script / commands for a well know hack to allow preseeding
+/** Send a shell script / commands (or any text content) using HTTP GET.
+* TODO: Make this pull content from some add-on / misc directory (probably other than tmpl, rename to )
+* - for a well know hack to allow preseeding
 * to reconfigure network after initial chicken and egg problem with network -
 * network must be configured to fetch preseed, which contains network config.
 * This script kills dhcp networking and reconfigures network.
 */
-function dhcp_hack(req, res) {
+function script_send(req, res) {
   // #!/bin/sh\n
-  res.send("kill-all-dhcp; netcfg\n");
+  var ip = ipaddr_v4(req);
+  var url = req.url;
+  var fname = req.params.filename;
+  
+  console.log("Send Script with fname "+fname+" to " + ip);
+  res.type("text/plain");
+  // TODO: Create later a smarter data driven solution
+  // if (fname == 'preseed_dhcp_hack.sh') { res.send("kill-all-dhcp; netcfg\n"); return; }
+  var fullname = "./scripts/" + fname;
+  if (!fs.existsSync(fullname)) { res.send("# Hmmm ... No such file.\n"); return; }
+  var cont = fs.readFileSync(fullname, 'utf8');
+  var tpc;
+  if (tpc = needs_template(cont)) {
+    console.error("need templating w." + tpc);
+    var p = {};
+    if (tpc == 'user') { p = user; }
+    if (tpc == 'net') { p = global.net; } // TODO: adjust
+    // console.error("Params: ", p);
+    cont = Mustache.render(cont, p);
+  }
+  //else { console.error("No need for templating"); }
+  if (cont) { res.send(cont); return; }
+  res.send("# Hmmm ... Unknown file.\n");
+}
+function needs_template(cont) {
+  if (!cont) { return null; }
+  var arr = cont.split(/\n/);
+  var marr;
+  // TODO: run on str, no need to split.
+  // var marr = cont.match(/\bTEMPLATE_WITH:\s+(\w+)/);
+  // if (marr ) { return marr[1]; }
+  var tcs = arr.map(function (l) { return (marr = l.match(/.+TEMPLATE_WITH:\s+(\w+)/)) ? marr[1] : false; })
+    .filter(function ( it ) { return it; });
+  if (!tcs.length) { return null; }
+  if (tcs.length > 1) { console.error("Ambiguous ...."); return null; }
+  return tcs[0];
 }
