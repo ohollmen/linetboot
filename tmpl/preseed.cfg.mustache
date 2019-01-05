@@ -36,7 +36,8 @@
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/ch-consistent_network_device_naming Netword Device naming conventions
 # https://en.wikipedia.org/wiki/Consistent_Network_Device_Naming - Network Device naming (e.g. eth0, em1, eno1 ...)
 # https://blog.heckel.xyz/2015/10/18/how-to-create-debian-package-and-debian-repository/
-# 
+# https://help.ubuntu.com/community/InstallCDCustomization/PreseedExamples
+#
 # # Validating preseed file
 #     sudo debconf-set-selections -c preseed.cfg
 # # Notes on kernel CLI
@@ -50,6 +51,11 @@
 # Some things in: /var/log/installer
 # - syslog - Normal boot info in syslog, Network (DHCP) discovery, Fetching preseed.cfg, selections of preseed config values
 #   HDD detection, Ubuntu 18 Netplan creation
+# - partman - Partition manager related info (Does not have timestamps)
+# - cdebconf/ - dir with Installer info: questions.dat templates.dat
+# - initial-status.gz - Package database in its initial state (nothing installed yet)
+# - status - Package statuses for installer (not installed) packages (? shows 186 packages on ubuntu server)
+# - lsb-release - Manifestation or current Distro release (This is copied verbatim to /etc/lsb-release)
 # - See: /usr/share/zoneinfo - Timezone info
 
 ############# Essential / Intial #############
@@ -73,7 +79,7 @@ d-i debian-installer/splash boolean false
 #d-i debian-installer/allow_unauthenticated string true
 
 # Prompt *all* questions interactively (even if defaults by preseed are filled out).
-# Useful for debugging.
+# Useful for debugging. Seems debconf/priority overrides this preseed/interactive (?)
 d-i preseed/interactive boolean true
 
 ############# Locale / Keymaps ###################
@@ -81,7 +87,8 @@ d-i preseed/interactive boolean true
 d-i debian-installer/locale string en_US
 # Individual step approach to previous
 #d-i debian-installer/language en
-#d-i debian-installer/country string NL
+# US, NL
+#d-i debian-installer/country string US
 #d-i debian-installer/theme string dark # UI Looks. e.g. "dark"
 d-i console-setup/ask_detect boolean false
 # Is following /layoutcode valid at all ?
@@ -158,7 +165,7 @@ d-i clock-setup/ntp boolean true
 d-i mirror/protocol string http
 # Lower case us ("US" works) ? (Can be "manual"). This gets us passed "Ubu arch. mirror country" menu.
 # According to sources country overrides mirror/http/hostname
-# Set to "manual" to allow mirror/http/mirror to override (See +bug/775670)
+# Set to "manual" to allow mirror/http/mirror to override (See +bug/775670) /country ... "New Zealand"
 #d-i mirror/country string US
 d-i mirror/country string manual
 # Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com) {{ mirror.hostname }}
@@ -167,7 +174,7 @@ d-i mirror/http/hostname string {{ mirror.hostname }}
 d-i mirror/http/directory string {{{ mirror.directory }}}
 d-i mirror/http/proxy string
 #d-i mirror/http/proxy string http://<username>:<password>@<proxy>:8080
-# Orig example mirror/codename string natty (Is this a directory ? Under mirror.directory ?)
+# Orig example mirror/codename string natty (Is this a directory ? Under mirror.directory ?) Ubu:/suite ... dapper
 #d-i mirror/suite string stretch
 #d-i mirror/codename string stretch
 # This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname)
@@ -204,7 +211,11 @@ d-i pkgsel/install-language-support boolean false
 # TODO: Need to select in "Choose Software to install: "OpenSSH server", "Basic Ubuntu server"
 # "standard, ubuntu-server" seems to be right, but "ssh-server" (tried here) may need to be done as "pkgsel/include string openssh-server"
 # Eliminated: "ssh-server" (seems cannot be part of this, use pkgsel/include for this)
-tasksel tasksel/first multiselect standard, ubuntu-server
+# Note: the kw may be "server", NOT "ubuntu-server" as there is also "ubuntu-standard" pkg.
+# apt-cache Shows "Task:" for many packages as "server" (See tasksel --list-tasks).
+# Here (despite the "multiselect") either there can be only one choice, first gets considerd or there cannot be comma delim.
+# E.g. "server" alone works.
+tasksel tasksel/first multiselect server
 # Install only security updates automatically
 #d-i pkgsel/update-policy select unattended-upgrades
 d-i pkgsel/update-policy select none
@@ -223,25 +234,28 @@ d-i pkgsel/updatedb boolean false
 # linux-image-3.8.0-19-generic Not avail on installer list
 # This is "string", not "select" by apbs04.html (!?)
 # d-i base-installer/kernel/image select linux-image-extra-3.13.0-98-generic
-d-i base-installer/kernel/image string linux-server
+# d-i base-installer/kernel/image string linux-server
 # Installer talks about this.
 #d-i base-installer/kernel/linux/initrd string ????
 
-# Don't install APT/DPKG recommended items (--no-install-recommends)
+# Install / Don't install APT/DPKG recommended items (--no-install-recommends)
+# Note: The setting is logically reversed as compated to APT --no-install-recommends.
 # Be careful w. this as probably default is true AND earlier/typical proven installs
 # in past are already done with this setting AND some recommended pkgs might be
 # depended on (by old working installations in prod).
 # NEW:
 d-i base-installer/install-recommends boolean {{ install_recommends }}
-# build-essential
-d-i pkgsel/include string openssh-server python
+# build-essential openssh-server ubuntu-server
+# When task (tasksel/first) "server" is selected "ubuntu-server" is unnecessary)
+d-i pkgsel/include string python
 
 ############## Disk and Partitioning ####################
 # regular/lvm/crypto
-d-i partman-auto/method string regular
+# NOTE: Leave out to enable biggest_free
+# d-i partman-auto/method string regular
 # Heuristical ... custom, some_device, some_device_crypto, some_device_lvm
-# Note: only effective when partman-auto/method NOT set
-#d-i partman-auto/init_automatically_partition select biggest_free
+# Note: only effective when partman-auto/method is NOT set
+d-i partman-auto/init_automatically_partition select biggest_free
 # Explicit
 d-i partman-auto/disk string /dev/sda
 # Purge LVM or RAID (_md). See also partman-lvm/device_remove_lvm below.
@@ -253,7 +267,8 @@ d-i partman-auto/purge_lvm_from_device boolean true
 
 d-i partman/default_filesystem string ext4
 # true = Write w/o confirmation
-d-i partman/confirm_write_new_label boolean true
+# Was disabled for minimally interactive install. What does this do / add ?
+#d-i partman/confirm_write_new_label boolean true
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 d-i partman/choose_partition select finish
@@ -269,11 +284,13 @@ d-i partman/unmount_active boolean true
 
 
 ########## User setup ######################
+# User setup is performed very close to the end of the install, but before late_command
 d-i passwd/make-user boolean true
 d-i passwd/user-fullname string {{ user.fullname }}
 d-i passwd/username string {{ user.username }}
 d-i passwd/user-password password {{ user.password }}
 d-i passwd/user-password-again password {{ user.password }}
+# ... groups=1000(XXXXXXX),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),108(lxd),113(lpadmin),114(sambashare)
 #d-i passwd/user-uid string 1000
 d-i passwd/user-default-groups string {{ user.groups }}
 
@@ -300,24 +317,32 @@ d-i grub-installer/with_other_os boolean true
 # - Commands wrapped with command in-target get executed in installation target
 # - Use command apt-install to install APT packages early
 # - Use command preseed_fetch to do early HTTP get fetches (Used fetch-url underneath)
-# - The furure root partition is mounted in install time dir: /target
+# - The future root partition is mounted in install time dir: /target
+# - Examples show that a CL with multiple ";" separated commands can be run (like in sh / bash) by late_command
 # https://github.com/Jolicloud/ubiquity/blob/master/d-i/source/preseed/README.preseed_fetch
 #d-i preseed/early_command string umount /media || true
 # Change ";exit 0" to "; true" or " || true"
-d-i preseed/early_command string preseed_fetch http://{{ httpserver }}/installevent/start /dev/null || true
+d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start&uid=$UID"`pwd` /dev/null || true
 
+# Late Command has all packages installed available (e.g. wget works)
+# Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root)
 #d-i preseed/late_command string \ ...
-d-i preseed/late_command string wget http://{{ httpserver }}/installevent/done || true
+d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done&uid=$UID"`pwd` || true ;\
+  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
-# One or more (space sep.) commands to download and run
+# One or more (space sep.) commands to download and run.
+# Note that this is done just *before* early_command.
 # Pre this doc: https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html this is extremely useful for
 # circumventing the stubborn refusal to accept static network config: Set this to script that runs: kill-all-dhcp; netcfg
 # (Also from: https://www.debian.org/releases/stable/amd64/apbs04.html.en#preseed-network)
-d-i preseed/run string preseed_dhcp_hack.sh
+d-i preseed/run string /scripts/preseed_net_restart.sh
 
 ########### Ending / Rebooting #################
+d-i debian-installer/main-menu-title LiNetBoot Install
+# Could leave a note here ?
 d-i finish-install/reboot_in_progress note
+#d-i debian-installer/exit/halt boolean true
 d-i debian-installer/exit/poweroff boolean true
 
 {{{ appendcont }}}
