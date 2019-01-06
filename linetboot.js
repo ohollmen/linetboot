@@ -85,6 +85,7 @@ function app_init() {
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
   app.get('/sysconfig_network', preseed_gen);
+  app.get('/interfaces', preseed_gen);
   // Install event logger (evtype is start/done)
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   
@@ -198,7 +199,7 @@ function preseed_gen(req, res) {
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");
   
   var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part",
-     "interfaces" : "netif", "/sysconfig_network": "netw_rh"};
+     "interfaces" : "netif", "/sysconfig_network": "netw_rh", "/interfaces" : "netif"};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
   //var ctype = tmplmap[req.url]; // Do not use - contains parameters
