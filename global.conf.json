@@ -1,12 +1,12 @@
 {
   "httpserver": "192.168.1.141:3000",
-  "httpserverAPA": "192.168.1.141",
-  "httpserverBA": "10.85.233.180",
   "userconfig": "initialuser.json",
   "tmplfiles": {
     "preseed": "./tmpl/preseed.cfg.mustache",
     "ks":      "./tmpl/ks.cfg.mustache",
-    "netif":   "./tmpl/interfaces.mustache"
+    "netif":   "./tmpl/interfaces.mustache",
+    "netw_rh": "./tmpl/sysconfig_network.mustache"
+    
   },
   "fact_path": "/home/ohollmen/litefacter/hostinfo",
   
@@ -32,6 +32,7 @@
   "maindocroot": "/var/www/html/",
   "targetos": "/ubuntu14",
   "useurlmapping": false,
+  "mirrorhost": "192.168.1.141:3000",
   "mirrors": [
     {
       "hostname":"192.168.1.141",
