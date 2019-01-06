@@ -87,7 +87,7 @@ kernel http://{{ httpserver }}/boot/ubuntu18/linux
 # --
 # priority=critical (works alternate to hostname...,domain... below) Another: debconf/priority=high
 # hostname=unassigned-hostname domain=unassigned-domain
-append initrd=http://{{ httpserver }}/boot/ubuntu18/initrd.gz auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+append initrd=http://{{ httpserver }}/boot/ubuntu18/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -102,7 +102,7 @@ kernel http://{{ httpserver }}/boot/ubuntu14/linux
 # hostname=unassigned-hostname domain=unassigned-domain
 # Seems Ubu14 should use live-installer/net-image (https://ubuntuforums.org/showthread.php?t=2228972)
 # 
-append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
+append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -119,7 +119,7 @@ append initrd=http://{{ httpserver }}/boot/centos6/initrd.img auto=true devfs=no
 # Centos 7
 # See: https://www.tecmint.com/install-pxe-network-boot-server-in-centos-7/
 label localinst_centos7
-menu label TODO: Install CentOS 7 (Full Automated)
+menu label Install CentOS 7 (Full Automated)
 # method=http://mirror.centos.org/centos/7/os/x86_64/
 kernel http://{{ httpserver }}/boot/centos7/vmlinuz
-append initrd=http://{{ httpserver }}/boot/centos7/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos6
+append initrd=http://{{ httpserver }}/boot/centos7/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
