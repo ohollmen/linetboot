@@ -1,6 +1,7 @@
 #!/bin/bash
 # Move Initial user homedir out-of-the-way because Automounting
-# will "cover" or "shadow" the subdirs of original /home. 
+# will "cover" or "shadow" the subdirs of original /home.
+# Not needed in RH/CentOS, because homedir can be directly set in KS.
 # Needs to be run as root
 # Keep path on root partition.
 # TEMPLATE_WITH: user
