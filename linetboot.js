@@ -84,6 +84,7 @@ function app_init() {
   // Generated preseed and kickstart shared handler
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
+  app.get('/sysconfig_network', preseed_gen);
   // Install event logger (evtype is start/done)
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   
@@ -93,9 +94,16 @@ function app_init() {
   //app.get('/sources.list', script_send);
   app.get('/scripts/:filename', script_send);
   //////////////// Load Templates ////////////////
-  global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
-  global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
-  if (!global.tmpls.preseed || !global.tmpls.ks) { console.error("Templates missing (see global config)"); process.exit(1); }
+  var tkeys = Object.keys(global.tmplfiles);
+  //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
+  //global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
+  //if (!global.tmpls.preseed || !global.tmpls.ks) { console.error("Templates missing (see global config)"); process.exit(1); }
+  tkeys.forEach(function (k) {
+    // TODO: try/catch
+    global.tmpls[k] = fs.readFileSync(global.tmplfiles[k], 'utf8');
+    
+  });
+  console.error("loaded " + tkeys.length + " templates.");
   fact_path = process.env["FACT_PATH"] || global.fact_path;
   //console.log(process.env);
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1);}
@@ -189,7 +197,8 @@ function preseed_gen(req, res) {
   console.log("req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");
   
-  var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part", "interfaces" : "netif"};
+  var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part",
+     "interfaces" : "netif", "/sysconfig_network": "netw_rh"};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
   //var ctype = tmplmap[req.url]; // Do not use - contains parameters
@@ -387,7 +396,7 @@ function netplan_yaml(req, res) {
   np["ethernets"][ifname] = iface;
   //# Unofficial, but helpful (at netplan root)
   np["hostname_fqdn"] = d["ansible_fqdn"]; // # Leave at: ansible_hostname ?
-  np["domain"] = d["ansible_domain"];
+  np["domain"]        = d["ansible_domain"];
   np["macaddress"] = iface_a["macaddress"];
   //# NOTE: We add the old-style "netmask" to the netplan even if it is not a standard member of it
   iface["netmask"] = iface_a["netmask"];
