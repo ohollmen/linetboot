@@ -329,7 +329,7 @@ d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installe
 # Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root)
 #d-i preseed/late_command string \ ...
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
-  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list
+  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/mv_homedir_for_autofs.sh"; in-target chmod a+x mv_homedir_for_autofs.sh; in-target ./mv_homedir_for_autofs.sh
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
 # One or more (space sep.) commands to download and run.
