@@ -7,15 +7,16 @@ GATEWAY={{ net.gateway }}
 #NISDOMAIN={{ net.nisdomainname }}
 NETWORKING_IPV6=no
 
-# ifcfg config example
+# ifcfg config example (e.g. /etc/sysconfig/network-scripts/ifcfg-em1)
 # RH/CentOS 7 Still use em...
-#DEVICE="em1"
+# Example: DEVICE="em1"
 #DEVICE="{{ net.dev }}"
 #BOOTPROTO="static"
 #IPADDR="{{ net.ipaddress }}"
 #IPV6INIT="no"
 #MTU="1500"
 #NETMASK="{{ net.netmask }}"
+# NM=NetworkManager
 #NM_CONTROLLED="no"
 #ONBOOT="yes"
 #TYPE="Ethernet"
