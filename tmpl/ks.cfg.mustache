@@ -50,13 +50,14 @@ timezone --utc {{{ time_zone }}}
 #################### Users #######################
 # No such option: --disabled
 # Leaving rootpw out completely (as --disabled is not supported) makes installer interactively prompt for passwd. --lock is new version of --disabled
-#NOT/LEGACY:rootpw --disabled
+#NOT/LEGACY:rootpw --disabled. --lock Locks account.
+# In RH Family first user is not privileged. The culture is to use root account, not sudo.
 #rootpw --plaintext devops1
-rootpw --lock devops1
+rootpw {{{ user.password }}}
 # Param --isccrypted means password is given in crypt(ed) format
 # legacy: --fullname (no such option)
 # TODO: --groups 
-user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir=/home_install/{{ user.username }}
+user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir={{ user.homedir }}
 # Optional new group
 # group --name devops --gid 1000
 # System Auth (--passalgo ...md5, sha256, sha512). Possibly --enablemd5 is very legacy form for --passalgo=md5)
@@ -72,7 +73,8 @@ install
 # Text based, but with option for interaction
 text
 # Option to step through config screens and accept the KS delivered values (See also autostep)
-interactive
+# "interactive" (below) stops anaconda for Cnetos 7 w. Unknown command: interactive
+#interactive
 # Step, but automatically (?)
 #autostep
 # Installation mode (How does this compare ti url --url ..)
@@ -158,21 +160,28 @@ services --disabled="NetworkManager"
 %packages
 @Base
 @Core
+git
+openssh-server
+python-paramiko
+perl-libwww-perl
+perl-JSON
 #@ ubuntu-server
 #openssh-server
 %end
-#%pre
+%pre
 #wget -O /tmp/preinstall.sh http://{{ }}/rhel6_preinstall.sh
-#%end
+wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
+%end
 # Some good ideas gathered here
 # --nochroot for seeing installation root as "/target/" (e.g. root homedir: "/target/root")
 # E.g. (old 2008 info) "%post nochroot --log=/tmp/post.log" to copy install time logs to permanent place
 # What is the current way: "nochroot" or "--nochroot"
-#%post
+%post
 #apt-get -f -y install
 #apt-get -y autoremove
 #apt-get clean
-#%end
+wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true
+%end
 ################## End of Install ###############
 # One of these, exclusive: reboot,shutdown,halt (shutdown -h),poweroff
 reboot
