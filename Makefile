@@ -1,6 +1,9 @@
 # Miscellaneous useful ops when setting up a PXE Install Environment
 TFTP_HOST=root@banana2
+# TFTP Root directories (for case remote and local)
+# Defaults are Examples of Debian and RedHat TFTP Paths
 TFTP_PATH=/srv/tftp/
+TFTP_PATH_LOCAL=/var/lib/tftpboot/
 HTTP_ROOT=/var/www/html
 # https://stackoverflow.com/questions/3860137/how-to-get-pid-of-my-make-command-in-the-makefile
 # Also $$PPID of a command here would give make process id.
@@ -21,6 +24,11 @@ transdefault: FORCE
 	# Rsync to TFTP Server
 	rsync -av /tmp/default $(TFTP_HOST):$(TFTP_PATH)/pxelinux.cfg/
 	# Remove /tmp/default (Should leave for later inspection ?)
+	rm /tmp/default
+# Make Boot menu for a local system hosting the TFTP
+default_local: gendefault
+	echo "Copy to local TFTP Server path"
+	cp -p /tmp/default $(TFTP_PATH_LOCAL)/pxelinux.cfg/
 	rm /tmp/default
 # Fake target to set as dependency to force another target to run (despite what Make thinks about "is up to date" situation)
 FORCE:
