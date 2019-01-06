@@ -103,7 +103,6 @@ d-i keyboard-configuration/layoutcode string us
 # will succeed unless passed from Kernel CL (In which they lose their customization value as boot menu cannot be custom/host)
 # Value keywords for unassigned get_hostname/get_domain: unassigned-hostname unassigned-domain
 d-i netcfg/get_hostname string {{ net.hostname }}
-# {{ net.domain }}
 d-i netcfg/get_domain string {{ net.domain }}
 # Setting this to false may benecessary to use netcfg/get_hostname string actualvalue
 # Actually seen means seen on screen (implies interacctive acceptance ?)
@@ -247,7 +246,7 @@ d-i pkgsel/updatedb boolean false
 d-i base-installer/install-recommends boolean {{ install_recommends }}
 # build-essential openssh-server ubuntu-server
 # When task (tasksel/first) "server" is selected "ubuntu-server" is unnecessary)
-d-i pkgsel/include string python
+d-i pkgsel/include string openssh-server python
 
 ############## Disk and Partitioning ####################
 # regular/lvm/crypto
@@ -271,7 +270,9 @@ d-i partman/default_filesystem string ext4
 #d-i partman/confirm_write_new_label boolean true
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
-d-i partman/choose_partition select finish
+# MUST remain commented (with value finish), Otherwise locks install with infinite "UI loop"
+# and error: "No root file system is defined..." Selecting "Partition disks" goes back to loop.
+# d-i partman/choose_partition select finish
 # Recipe (On only local FS ?, See: partman-auto-recipe.txt)
 #d-i partman-auto/expert_recipe string \ ...(inlined)
 # TODO: Download by an early script hook ?
@@ -322,12 +323,12 @@ d-i grub-installer/with_other_os boolean true
 # https://github.com/Jolicloud/ubiquity/blob/master/d-i/source/preseed/README.preseed_fetch
 #d-i preseed/early_command string umount /media || true
 # Change ";exit 0" to "; true" or " || true"
-d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start&uid=$UID"`pwd` /dev/null || true
+d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` /dev/null || true
 
 # Late Command has all packages installed available (e.g. wget works)
 # Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root)
 #d-i preseed/late_command string \ ...
-d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done&uid=$UID"`pwd` || true ;\
+d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
   in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
@@ -336,7 +337,7 @@ d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installe
 # Pre this doc: https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html this is extremely useful for
 # circumventing the stubborn refusal to accept static network config: Set this to script that runs: kill-all-dhcp; netcfg
 # (Also from: https://www.debian.org/releases/stable/amd64/apbs04.html.en#preseed-network)
-d-i preseed/run string /scripts/preseed_net_restart.sh
+d-i preseed/run string scripts/preseed_net_restart.sh
 
 ########### Ending / Rebooting #################
 d-i debian-installer/main-menu-title LiNetBoot Install
