@@ -1,0 +1,22 @@
+# RH-Style /etc/sysconfig/network
+# See also (e.g): /etc/sysconfig/network-scripts/ifcfg-em1
+# TODO: nameservers ?
+HOSTNAME={{ net.hostname }}
+NETWORKING=yes
+GATEWAY={{ net.gateway }}
+#NISDOMAIN={{ net.nisdomainname }}
+NETWORKING_IPV6=no
+
+# ifcfg config example
+# RH/CentOS 7 Still use em...
+#DEVICE="em1"
+#DEVICE="{{ net.dev }}"
+#BOOTPROTO="static"
+#IPADDR="{{ net.ipaddress }}"
+#IPV6INIT="no"
+#MTU="1500"
+#NETMASK="{{ net.netmask }}"
+#NM_CONTROLLED="no"
+#ONBOOT="yes"
+#TYPE="Ethernet"
+#UUID="1524976b-6ce0-4650-8fc8-cf9f6985e142"
