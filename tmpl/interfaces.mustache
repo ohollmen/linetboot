@@ -1,0 +1,17 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface (Named typically em... still in Ubuntu 14.04)
+auto em1
+#iface em1 inet dhcp
+iface em1 inet static
+  address {{ net.ipaddress }}
+  netmask {{ net.netmask }}
+  gateway {{ net.gateway }}
+# With resolvconf program (apt: "resolvconf", Should be space separated list)
+# dns-search ...
+# dns-nameservers {{ net.nameservers }}
