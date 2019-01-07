@@ -223,14 +223,17 @@ function preseed_gen(req, res) {
   res.end(output);
 }
 
-/** Do situational patching on params.
+/** Do situational and custom patching on params.
 * TODO: Separate these as osid specific plugins, where each plugin can do
 * patching for os. Some plugins could be user written to facilitate particular
 * environment (Also possibly contributed as "useful examples", also possibly
 * making their way into this app as toggelable plugins.
 * Add here member d.appendcont to produce completely new Preseed / KS. directives.
+* @param d {object} - Templating params produced originally in host_params()
+* @param osid {string} - linetboot OS id (e.g. ubuntu18, centos6 ...)
 */
 function patch_params(d, osid) {
+  console.error("Patching ..." + osid);
   if (osid.indexOf("ubuntu14") > -1) {
     // Checked vmlinuz-3.16.0-77-generic to be valid 14.04 kernel, whereas
     // All vmlinuz-4.4.0-*-generic kernels are xenian/16.04 kernels and fail the install
@@ -241,6 +244,10 @@ function patch_params(d, osid) {
   // Centos* TODO: Change groups to be RH Compatible
   if (osid.indexOf("centos") > -1) {
     // d.user.groups = ""; // String or array at this point ?
+    var net = d.net;
+    if (!net) { console.error("No d.net for patching centos (" + osid + ")"); return; }
+    // RH and Centos 7 still seems to prefer "em" (Check later ...)
+    net.dev = "em" + net.ifnum;
   }
 }
 /** Generate host parameters based on global settings and host specific settings.
@@ -257,6 +264,7 @@ function host_params(f, global, ip, ctype, osid) {
   var anet = f.ansible_default_ipv4; // Ansible net info
   if (anet.address != ip) { res.end(`# Hostinfo IP and detected ip not in agreement\n`); return null; }
   net.ipaddress = ip;
+  ////////////////////////// NET /////////////////////////////////////
   // TODO: Take from host facts (f) f.ansible_dns if available !!!
   // Create netconfig as a blend of information from global network config
   // and hostinfo facts.
@@ -280,18 +288,78 @@ function host_params(f, global, ip, ctype, osid) {
   // TODO: Extract interface (also alias) number !
   // Rules for extraction:
   // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
-  // var ifnum; var marr;
-  //if (marr = anet.interface.match(/^eth(\d)/))      { ifnum = parseInt(marr[1]); ifnum++; }
-  //if (marr = anet.interface.match(/^(em|eno)(\d)/)) { ifnum = parseInt(marr[2]); }
+  var ifnum; var marr;
+  if      (marr = anet.interface.match(/^eth(\d+)/))      { ifnum = parseInt(marr[1]); ifnum++; } // Old 0-based
+  else if (marr = anet.interface.match(/^(em|eno)(\d+)/)) { ifnum = parseInt(marr[2]); } // New 1-based
+  else { console.log("None matched: " + anet.interface); ifnum = 1; } // Guess / Default
+  net.ifnum = ifnum;
   //  return ...;
   //}
   // netconfig(net, f);
+  ///////////////////////// DISK /////////////////////////////////
+  /** Generate Disk parameters for super simple disk layout: root+swap (and optional boot).
+  * Calculate disk params based on the facts
+  * The unit on numbers is MBytes (e.g. 32000 = 32 GB)
+  * See facts sections: ansible_device_links ansible_devices ansible_memory_mb
+  * @param facts 
+  */
+  function disk_params (f) {
+    var disk = {rootsize: 40000, swapsize: 8000, bootsize: 500}; // Safe undersized defaults in case we return early (should not happen)
+    
+    var ddevs = f.ansible_devices;
+    var mem = f.ansible_memory_mb;
+    if (!ddevs) { return disk; }
+    if (!mem || !mem.real || !mem.real.total) { return disk; }
+    var memtot = mem.real.total; // In MB
+    console.log("Got devices: " + Object.keys(ddevs));
+    var sda = ddevs.sda;
+    if (!sda) { console.error("Weird ... Machine does not have disk 'sda' !"); return disk; }
+    var disktot = disk_calc_size(sda);
+    ///////////////////// Calc root, swap as function of disktot, memtot /////////////////////
+    if (memtot > disktot) { console.error("Warning: memory exceeds size of disk !"); return disk; }
+    var rootsize = (disktot - memtot);
+    // Memory is over 20% of disk, reduce 
+    if ((memtot/disktot) > 0.20) { rootsize = 0.80 * disktot; }
+    // Set final figures
+    disk.rootsize = rootsize;
+    disk.swapsize = (disktot - rootsize - disk.bootsize - 1000); // Need to schrink a bit furter.
+    console.error("Calculated Disk Plan:", disk);
+    return disk;
+  }
+  /** Compute size of a disk from its partitions (within facts)
+  * @param sda {object} - Disk Object (containing partitions ...)
+  * @return size of the disk.
+  */
+  function disk_calc_size(sda) {
+    var unitfactor = { "GB": 1000, "MB": 1, "KB": 0.1 };
+    var parts = sda.partitions;
+    var pnames = Object.keys(parts);
+    console.log("Got parts: " + pnames);
+    var disktot = 0;
+    for (var i in pnames) {
+      var pn = pnames[i]; // e.g. sda1
+      var part = parts[pn];
+      //console.log(pn); continue; // DEBUG
+      marr = part.size.match(/^([0-9\.]+)\s+([KMGB]+)/);
+      console.log(marr + " len:" + marr.length);
+      if (marr && (marr.length == 3)) {
+        var sf = parseFloat(marr[1]);
+	var uf = unitfactor[marr[2]];
+	if (!uf) { console.error("Weird unit: " + marr[2]); continue; }
+	disktot += (sf * uf);
+      }
+    }
+    return disktot;
+  }
+  var disk = disk_params(f);
+  
   // Account for KS needing nameservers comma-separated
   if (ctype == 'ks') { net.nameservers = net.nameservers.replace(' ', ','); }
   // console.log(net);
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
   d.user = user;
+  d.disk = disk;
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
@@ -438,8 +506,8 @@ function script_send(req, res) {
   var fullname = "./scripts/" + fname;
   if (!fs.existsSync(fullname)) { res.send("# Hmmm ... No such file.\n"); return; }
   var cont = fs.readFileSync(fullname, 'utf8');
-  var tpc;
-  if (tpc = needs_template(cont)) {
+  var tpc = needs_template(cont);
+  if (tpc) {
     console.error("need templating w." + tpc);
     var p = {};
     if (tpc == 'user') { p = user; }
