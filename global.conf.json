@@ -16,6 +16,7 @@
   "time_zone": "America/Los_Angeles",
   "install_recommends": true,
   "ntpserver": "ntp.example.com",
+  "postscript": "mv_homedir_for_autofs.sh",
   
   "hostnames": [
     "banana1","cubox","db","odroid-32",
