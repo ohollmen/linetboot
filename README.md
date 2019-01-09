@@ -281,12 +281,20 @@ in Centos follow the system log file /var/log/messages for messages.
 - Ubuntu installer virtual console #4
   - Installer runtime (ramdisk?) /var/log/syslog (Only "more" pager is avail during install, also use tail -n 200 ...)
 - CentOS installer virtual console #3 (filesystems),#4 (networking),#5 (other, all excellent sources of detailed information)
+- CentOS installer leaves
+  - anakonda-ks.cfg (Installer modified Kickstart w. packages added, commands resequenced, recommented etc.) and original-ks.cfg (your original KS as it came from server, verbatim) to homedir of root user (/root on root partition)
+  - Various anakonda installer in /var/log/anakonda
+    - ifcfg.log - Network config (Interesting python dump snippets for if configs, under label "all settings")
+    - packaging.log - Info about YUM repos, mirrors and packages.
+    - storage.log - Info about disk controlled, disk devices, partitions (partitioning flow has python log messages)
+    - journal.log - Full Log (like dmesg/syslo/message, includeing DHCP traffic, Starting Anaconda)
+    - syslog, anaconda.log, program.log,ks-script-*.log
 
 ## Testing DHCP
 
 - Real (ISC) DHCP Client: /sbin/dhclient (-v = verbose, -x Stop the running DHCP client without releasing the current lease.)
 - dhcping - Not sure how this works sudo dhcping -s 192.168.1.107 reponds: "no answer"
-- sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles)
+- sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
 
 ## Web server file delivery
 
@@ -295,6 +303,8 @@ Enable Apache static file delivery (assuming typical Apache port 80) by changing
 to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will still be delivered by net boot install system.
 
 ## PXE Client and PXE Linux Error messages
+
+The problem with PXE Boot error messages are that they remain on screen for a very short time.
 
 - `PXE-E53: No boot filename received` - DHCP config option "filename" or 
 - `Failed to load COM32 file ....c32` - PXELinux module (*.c32) defined in menu was not found on tftp server path relative to root  or a path relative to "path" directive (also found in menu). Follow TFTP server log to see what files were being tried.
@@ -305,6 +315,9 @@ to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will s
   - One of the may files in same subdirectory identified or named by client unique id (e.g. 44454c4c-5900-1046-804c-b1c04f4b4232), dash separated MAC address (e.g. 01-28-f1-0e-5d-61-af), 
 Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address (with one digit dropped from tail at the time)
   - Place boot menu file by name pxelinux.cfg/default in correct format on the TFTP server.
+
+- PSE-E51: No DHCP or Proxy Offers were received.
+- Media Test failure, check cable
 
 # Changes to local DHCP Server
 
@@ -425,4 +438,7 @@ Note: This basic static file delivery mode of SimpleHTTPServer does not generate
 
 Q: What happens if host on which I'm trying to install OS does not have its (Ansible) facts available ?
 A: In the name off KISS priciple, current behaviour is Garbage in, garbage out. The Preseed or Kickstart output will be malformatted and your installer will either terminate or fall back to fully manual install mode. It would be nice if installers supported a mode where Preseed or KS config can send an error message displayed by installed with good high level reasoning for terminating (not allowing) installation (E.g. "we do not have sufficient information about your host to proceed with OS install. Please ...").
+
+Q: Is linetboot limited to installing server installations ? can I install desktop Linux with ?
+A: lineboot does not have any built in limitations installing Desktop linux. It seems Ubuntu/Canonical wrote a variant of Debian installer called Ubiquity, which may use a variant of Debian-Installer directives or behave differently. Testing current preseed (and creating necessay parametrizations) or creating variation of preseed template for Ubiquity install would be needed.
 
