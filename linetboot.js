@@ -33,6 +33,7 @@ var app = express();
 var port = 3000; // TODO: Config
 var fact_path;
 var hostcache = {};
+var hostarr = [];
 
 /** Initialize Application / Module with settings from global conf.
 * TODO:
@@ -94,6 +95,11 @@ function app_init() {
   //app.get('/preseed_dhcp_hack.sh', script_send);
   //app.get('/sources.list', script_send);
   app.get('/scripts/:filename', script_send);
+  
+  // SSH Key delivery
+  app.get('/ssh/:item', ssh_key);
+  app.get('/list', hostinfolist);
+  app.get('/list/:viewtype', hostinfolist);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -112,6 +118,9 @@ function app_init() {
   
   var hnames = global.hostnames;
   if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames"); process.exit(1);}
+  // Allow easy commenting-out as JSON itself does not have comments.
+  hnames = hnames.filter(function (hn) { return ! hn.match(/^#/); });
+  if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
   hnames.forEach(function (hn) { facts_load(hn); });
   console.log("Cached: " + Object.keys(hostcache).join(','));
   
@@ -408,7 +417,7 @@ function facts_load(hn) { // ipaddr
     //var keys = Object.keys(facts); // ansible_facts,changed
     //console.log("Found keys:" + keys.join(","));
   }
-  catch (e) { console.error("Error loading Host JSON ("+absname+"): " +e.message);}
+  catch (e) { console.error("Error loading Host JSON ("+absname+"): " +e.message); }
   //var ip = facts.ansible_facts.ansible_all_ipv4_addresses;
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
@@ -420,6 +429,7 @@ function facts_load(hn) { // ipaddr
   hostcache[ip] = facts;
   // NEW: Also index by ethernet address. In facts it is lower case !!!
   if (maca) { hostcache[maca] = facts; }
+  hostarr.push(facts);
 }
 /** Package counts
 * 
@@ -532,3 +542,141 @@ function needs_template(cont) {
   if (tcs.length > 1) { console.error("Ambiguous ...."); return null; }
   return tcs[0];
 }
+/** Deliver SSH key / keys for the old host for placing them onto new installation.
+* Triggered via URL: '/ssh/:item'. Allow URL parameter ":item" to be:
+* - dsa, dsa.pub (DSA is deprecated and no more Ubuntu 18.04)
+* - ecdsa, ecdsa.pub
+* - ed25519, ed25519.pub
+* - rsa, rsa.pub
+* - all - For delivering all keys in JSON (for python, js or perl processing)
+* URL parameter: "item"
+* Notes:
+* - ONLY the public keys are available in host facts.
+* 
+* Ansible keys are missing:
+* - the Key type label from the beginning (ssh-ed25519)
+* - the " user@this-host" (space separated from key) from end
+* If LINETBOOT_SSHKEY_PATH is used (e.g. ~/.linetboot/sshkeys) , every host has a subdir
+* by its FQDN hostname and ssh keys under it by their official well known names.
+*/
+function ssh_key(req, res) {
+  var ip = ipaddr_v4(req);
+  var xip = req.query["ip"];
+  if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
+  var f = hostcache[ip];
+  var keytypes = {
+    "dsa":    "ansible_ssh_host_key_dsa_public",
+    "rsa":    "ansible_ssh_host_key_rsa_public",
+    "ecdsa":  "ansible_ssh_host_key_ecdsa_public",
+    "ed25519":"ansible_ssh_host_key_ed25519_public"
+    
+  };
+  if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
+  var keypath = process.env["LINETBOOT_SSHKEY_PATH"];
+  //if (keypath && !fs.) {}
+  res.type("text/plain");
+  var item = req.params.item;
+  if (!item) { console.error("No key param found (:item)" + ktype); res.send("# Error"); return; }
+  var fnprefix; // var ktype;
+  var ispublic = 0;
+  // var marr;
+  // var keycont;
+  var marr = item.match(/^(\w+)\.?/);
+  if (!marr) { console.error("Not in correct format {:item}:" + ktype); res.send("# Error");return; }
+  var ktype = marr[1];
+  marr = item.match(/\.pub$/);
+  if (marr) { ispublic = 1; }
+  console.error("lookup key type: " + ktype + " public: " + ispublic);
+  var pubdb = "facts";
+  // Lookup from Facts
+  if (ispublic && (pubdb = "facts")) {
+    var anskey = keytypes[ktype];
+    if (!anskey) { console.error("Not a valid key type:" + ktype); res.send("# Error");return; }
+    var keycont = f[anskey];
+    if (!keycont) { console.error("No key content:" + ktype + "(Sending empty file)"); res.send("");return; }
+    var comm = " root@" + f.ansible_hostname;
+    var keytypelbl = "ssh-" + ktype + " ";
+    // By testing this produces *exactly* correct MD5 despite being "reassebled". Do NOT remove "\n" at end.
+    res.send(keytypelbl + keycont + comm + "\n");
+  }
+  
+  // Filesystem cached key directory tree lookup
+  if (keypath) {
+    // Form an actual filename
+    var fname = "ssh_host_"+ktype+"_key" + (ispublic ? ".pub" : "");
+    var absfname = keypath + "/" + f.ansible_fqdn + "/" + fname; // Full path
+    if (!fs.existsSync(absfname)) { console.error("No key file:"+absfname+" ktype " + ktype + "(Sending empty file)"); res.send("");return; }
+    var cont = fs.readFileSync(absfname, 'utf8');
+    if (!cont) { console.error("No key content:" + ktype + "(Sending empty file)"); res.send("");return; }
+    res.send(cont);
+    return;
+  }
+  res.send("# Error (not public, not private or keydir missing)\n");
+}
+/** Create a listing of host info.
+* Important facts resources here are:
+* - ansible_fqdn, ansible_hostname
+* - ansible_default_ipv4 - Network Info
+* - ansible_distribution, ansible_distribution_version
+* Others: ansible_form_factor (e.g. "Desktop"), ansible_uptime_seconds
+*/
+
+var cbs = {"net": netinfo, "hw": hwinfo, "os": osinfo, "": function (f, h) { netinfo(f, h); osinfo(f, h); hwinfo(f, h); }};
+
+function hostinfolist (req, res) {
+  // Note: Do NOT overwrite (now global) hostarr on (future) map() or filter() or sort()
+  var arr = [];
+  //res.type("application/json"); // Redundant
+  var viewtype = req.params["viewtype"] || "";
+  var vcb = cbs[viewtype]; // Callback to populate data
+  if (!vcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
+  // Use array here (f = Host facts).
+  hostarr.forEach(function (f) {
+    var h = {hname: f.ansible_fqdn}; // Local generic hostlist entry (for any/all viewtype(s))
+    vcb(f, h);
+    arr.push(h);
+  });
+  res.json(arr);
+}
+
+/* All callbacks below convert anything from host facts to a recod to display on list view. */
+  function netinfo(f, h) {
+    var anet = f.ansible_default_ipv4;
+    h.dev = anet.interface; // netdev
+    h.ipaddr  = anet.address;
+    h.macaddr = anet.macaddress;
+    
+    
+    h.netmask = anet.netmask;
+    h.gateway = anet.gateway;
+    // type: ether
+    var dns = f.ansible_dns;
+    h.dns = dns && dns.nameservers ?  dns.nameservers.join(" ") : "";
+    h.domain = f.ansible_domain;
+  }
+  // Also see: ansible_lsb (id, release)
+  function osinfo(f, h) {
+    h.distname = f.ansible_distribution;
+    h.distver  = f.ansible_distribution_version;
+    // h.osfam = f.ansible_os_family; // e.g. Ubuntu => Debian
+    // f.ansible_distribution_release;
+    h.kernelver = f.ansible_kernel;
+  }
+  function hwinfo(f, h) {
+    h.cpuarch = f.ansible_machine;
+    h.cores = f.ansible_processor_vcpus; // f.ansible_processor_count
+    h.sysvendor = f.ansible_system_vendor; // f.ansible_product_version
+    h.prodver = f.ansible_product_version;
+    // Disk
+    var devs = f.ansible_devices; // Disk Devices (OoO)
+    if (devs && devs.sda) {
+      var sda = devs.sda;
+      h.diskmod = sda.model;
+      // h.diskctrl = sda.host;
+      h.diskrot  = sda.rotational;
+      h.disksize = sda.size; // Has unit "MB","GB",...
+      h.diskvirt = sda.virtual;
+    }
+    
+  }
+  
