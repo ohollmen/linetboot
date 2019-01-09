@@ -73,7 +73,7 @@ install
 # Text based, but with option for interaction
 text
 # Option to step through config screens and accept the KS delivered values (See also autostep)
-# "interactive" (below) stops anaconda for Cnetos 7 w. Unknown command: interactive
+# "interactive" (below) stops anaconda for Centos 7 w. Unknown command: interactive
 #interactive
 # Step, but automatically (?)
 #autostep
@@ -103,6 +103,8 @@ bootloader --location=mbr
 zerombr
 
 # Remove prtitions from system --list=sda2,sda3,sdb1 (Only individual parts) --none --linux (Linux parts only)
+# Note: Term "disklabel" or "label" seems to mean partition table (!), NOT partition or filesystem name/label (!).
+# parted seems to have "makelabel", "maketable" as synonyms for creating partition table.
 clearpart --drives=sda --all --initlabel
 # Automatic partitioning heuristics
 # --type plain implies --nolvm
@@ -117,8 +119,11 @@ clearpart --drives=sda --all --initlabel
 # Explicit partitioning (Sizes in MiB) --onpart=hda1
 # --size=10240 --size=1024 --fsoptions --resize=...
 # part/partition directive is ignored for upgrades (--ondisk=sda)
-part /boot --asprimary --fstype=ext4 --label="root" --size=500
+# bootsize = {{ disk.bootsize }}
+part /boot --asprimary --fstype=ext4 --label="boot" --size=500
+# rootsize = {{ disk.rootsize }}
 part /     --asprimary --fstype=ext4 --label="root" --size=32000
+# swapsize = {{ disk.swapsize }}
 part swap  --asprimary --fstype=swap --label="swap" --size=2048
 # Mount and optionally reformat
 #mount --reformat ext4 /dev/sda1 /boot
