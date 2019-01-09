@@ -37,6 +37,7 @@
 # https://en.wikipedia.org/wiki/Consistent_Network_Device_Naming - Network Device naming (e.g. eth0, em1, eno1 ...)
 # https://blog.heckel.xyz/2015/10/18/how-to-create-debian-package-and-debian-repository/
 # https://help.ubuntu.com/community/InstallCDCustomization/PreseedExamples
+# https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
 #
 # # Validating preseed file
 #     sudo debconf-set-selections -c preseed.cfg
@@ -50,7 +51,7 @@
 # # Ubuntu install log
 # Some things in: /var/log/installer
 # - syslog - Normal boot info in syslog, Network (DHCP) discovery, Fetching preseed.cfg, selections of preseed config values
-#   HDD detection, Ubuntu 18 Netplan creation
+#   HDD detection, Ubuntu 18 Netplan creation, late_command execution
 # - partman - Partition manager related info (Does not have timestamps)
 # - cdebconf/ - dir with Installer info: questions.dat templates.dat
 # - initial-status.gz - Package database in its initial state (nothing installed yet)
@@ -326,10 +327,11 @@ d-i grub-installer/with_other_os boolean true
 d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` /dev/null || true
 
 # Late Command has all packages installed available (e.g. wget works)
-# Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root)
+# Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root).
+# The cwd seems to be set (by chroot) to root of new OS install root directory.
 #d-i preseed/late_command string \ ...
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
-  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/mv_homedir_for_autofs.sh"; in-target chmod a+x mv_homedir_for_autofs.sh; in-target ./mv_homedir_for_autofs.sh
+  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}"; in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}}
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
 # One or more (space sep.) commands to download and run.
