@@ -58,16 +58,18 @@ The mount points of ISO images are symlinked (or alternatively URL-mapped) to be
 
 Hostinfo DB is not really a just filesystem based JSON document (file) collection gathered by Ansible fact gathering process. The steps to collect this info are:
 
-Create a small Ansible hosts file:
+Create a small Ansible hosts file (e.g. hosts):
 
     [netboot]
     linux1 ansible_user=admuser
     linux2 ansible_user=admuser
 
 Run facts gathering:
-
-     ansible netboot -m setup -u root --tree ~/hostinfo \
-        --extra-vars "ansible_sudo_pass=..."
+     
+     # inventory group = netboot (-u root would eliminate need for ansible_user= in inventory)
+     ansible netboot -i ./hosts -m setup --tree ~/hostinfo --extra-vars "ansible_sudo_pass=..."
+     # Single host w/o inventory
+     ansible -b -u admuser -K -i linux1, all -m setup --tree ~/hostinfo
 
 Make sure your SSH key is copied to host(s) with ssh-copy-id.
 If you have problems getting ansible running on lineboot machine, the hostinfo DB can be easily rsynced from another host (that is more capable running ansible):
@@ -272,11 +274,11 @@ RedHat/Centos (Default TFTP Server data/content root: /var/lib/tftpboot).
     tftp localhost -c get dummy.txt
     cat dummy.txt
 
-in Centos follow the system log file /var/log/messages for messages.
+in Centos follow the system log file `/var/log/messages` for TFTP daemon messages.
 
 # Debugging and Troubleshooting
 
-## Linux installer on Install client
+## Linux installer on Install client host
 
 - Ubuntu installer virtual console #4
   - Installer runtime (ramdisk?) /var/log/syslog (Only "more" pager is avail during install, also use tail -n 200 ...)
@@ -296,6 +298,12 @@ in Centos follow the system log file /var/log/messages for messages.
 - dhcping - Not sure how this works sudo dhcping -s 192.168.1.107 reponds: "no answer"
 - sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
 
+## TFTP Server
+
+Follow TFTP Server lod for filenames. Many TFTP servers log into OS syslog file (Debian: /var/log/syslog, RH: /var/log/messages)
+
+Problem: `tftpd: read: Connection refused` - after request for a valid file the network seems to blocked by firewall (?). This seems to happen when there is a rapid progression of trying different (non-existing) pxelinux menu files from server. Solution is to create a symlink by ethernet address (with correct convention) to the menu file "default" in subdir "pxelinux.cfg".
+
 ## Web server file delivery
 
 Express static files delivery module "static" is not great about allowing intercept the success of static file delivery.
@@ -306,8 +314,9 @@ to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will s
 
 The problem with PXE Boot error messages are that they remain on screen for a very short time.
 
-- `PXE-E53: No boot filename received` - DHCP config option "filename" or 
-- `Failed to load COM32 file ....c32` - PXELinux module (*.c32) defined in menu was not found on tftp server path relative to root  or a path relative to "path" directive (also found in menu). Follow TFTP server log to see what files were being tried.
+- `PXE-E53: No boot filename received` - DHCP config option "filename" was not gotten in DHCP offer (response for discovery).
+  The lineboot compatible value for this is "lpxelinux.0". Check your DHCP Configuration.
+- `Failed to load COM32 file ....c32` - PXELinux module (*.c32) defined in menu was not found on tftp server path relative to root  or a path relative to "path" directive (also found in menu). Follow TFTP server log to see what files were being tried. You likely forgot to place the *.c32 modules onto your TFTP server.
 - PXE-T01 File Not Found, PXE-E38 TFTP Error - Filename was given in response from by DHCP Server, but file by that name was not found on the TFTP Server
 - Failed to load ldlinux.c32 - same/similar as above on QLogic PXE Firmware
 - `Unable to locate configuration file` ... Boot failed - PXE Linux is not finding its configuration file in TFTP directory pxelinux.cfg/ more particularly:
@@ -316,8 +325,9 @@ The problem with PXE Boot error messages are that they remain on screen for a ve
 Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address (with one digit dropped from tail at the time)
   - Place boot menu file by name pxelinux.cfg/default in correct format on the TFTP server.
 
-- PSE-E51: No DHCP or Proxy Offers were received.
-- Media Test failure, check cable
+- PSE-E51: No DHCP or Proxy Offers were received. PXE-M0F ...
+- ... Media Test failure, check cable Your PXE ROM Configuration likely asks to PXE boot from wrong Network Interface port, which has not cable connected. 
+- PXE-T01: File not nound PXE-E3B: TFTP Error - File Not found PXE-M0F Exiting ... Your PXE Implementation already tried to load a file by name which it does not display to you to challenge your debugging skills. Got to the log of your TFTP server and see what filename was tried. Example real life case: file requested was pxelinux.0, should be lpxelinux.0.
 
 # Changes to local DHCP Server
 
@@ -372,7 +382,11 @@ Configuration in the main config file `global.conf.json`
 
 Environment Variables:
 - FACT_PATH - Ansible facts path. Must contain files named by hostname.
+- PKGLIST_PATH - Path with host package list files.
+- LINETBOOT_GLOBAL_CONF - Full path to lineboot config file.
 - LINETBOOT_USER_CONF - OS Install Default User config JSON (See example initialuser.json)
+- LINETBOOT_IPTRANS_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
+- LINETBOOT_SSHKEY_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
 
 # Additional Topics
 
@@ -399,7 +413,7 @@ Centos (6, 7):
 
 Symlink to these files from respective $DOCROOT/boot/$OSID/ directory.
 
-## Configuring Server for PXE Boot
+## Configuring Server BIOS for PXE Boot
 
 The instructions here are specifically applicable for Dell servers but flow is likely very similar for other Intel based hardware with BIOS.
 
@@ -423,6 +437,8 @@ mount fails and boot leads to single user mode.
   (e.g. CentOS-6.10-x86_64-minimal.iso) on the server, of course versions fully matching
   - See https://www.tecmint.com/centos-6-netinstall-network-installation/  refers: http://mirror.liquidtelecom.com/centos/6.10/os/x86_64/
 - Create systemd startup file for linetboot
+- Rename main config from ...global... to linetboot.
+- Create a automatic logic to lookup custom configs, templates from dir ~/.linetboot
 
 # FAQ
 
