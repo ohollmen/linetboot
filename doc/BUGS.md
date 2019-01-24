@@ -119,3 +119,32 @@ Kernel panic - not syncing: Attempted to kill init!
 Pid: 1, comm: init not tainted 2.6.32-754.el6.x86_64 #1
 
 Possible solution: Add /boot ? Prevent installer from using complex LVM scheme
+
+# Centos 7 Failing network config
+
+Problem:
+From journal.log: network: apply kickstart: --device auto does not exist
+Solution:
+DO NOT leak value auto that is valid on preseed (as a substitute for concrete device name) to Kickstart. This is parameter of "network" command, where --device=auto creates a problem.
+
+# Ubuntu Installer doing fast install
+Registerd as of git state 2019-01-05 (evening):
+- Normal install wi. root+swap partitions on disk, filling the disk
+- Takes 4.5 mins, stops at partitioning and forces to manually choose install to esiting partitioning.
+
+After Centos7 install
+- on ~500GB disk with RH create parts w. sizes (MB) boot: 500, root: 32000,  swap: 2000 leaving a lot of space (400+ GB) on disk
+- Installer runs 100% unattended in 3.5 mins
+- Conclusion: partman-auto/init_automatically_partition select biggest_free probably means "Biggest free unallocated space" and allows partman-auto to proceed completely automatically, where as existing 400+ GB partition (not unallocated space) would require manual interaction and selections.
+
+Complete disk settings at the time:
+
+d-i partman-auto/init_automatically_partition select biggest_free
+d-i partman-auto/disk string /dev/sda
+d-i partman-auto/purge_lvm_from_device boolean true
+d-i partman/default_filesystem string ext4
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman/mount_style select uuid
+d-i partman/unmount_active boolean true
+
