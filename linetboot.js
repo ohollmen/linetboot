@@ -1,8 +1,11 @@
-/** Netboot server for Installation of OS
+/** @file
+
+ Netboot server for Installation of OS
  Author Copyright: Olli Hollmen 2018
  
  # Generate content w. mustache CL utility
  cat initialuser.json | ./node_modules/mustache/bin/mustache - ./tmpl/preseed.cfg.mustache
+ 
  # Testing
  cd /tmp
  md5sum /boot/memtest86+.bin
@@ -36,10 +39,10 @@ var hostcache = {};
 var hostarr = [];
 
 /** Initialize Application / Module with settings from global conf.
-* TODO:
-* Perform sanity checks in mirror docroot.
+* @param cfg {object} - Global linetboot configuration
+* @todo Perform sanity checks in mirror docroot.
 */
-function app_init() {
+function app_init(global) {
   app.set('json spaces', 2);
   //app.use(express.static('pkgcache'));
   // Express static path mapping
@@ -85,21 +88,26 @@ function app_init() {
   // Generated preseed and kickstart shared handler
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
+  // Network configs (still same handler)
   app.get('/sysconfig_network', preseed_gen);
   app.get('/interfaces', preseed_gen);
   // Install event logger (evtype is start/done)
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
-  
+  // Netplan (custom YAML based handler)
   app.get('/netplan.yaml', netplan_yaml);
   // Scipts & misc install data (e.g sources.list)
   //app.get('/preseed_dhcp_hack.sh', script_send);
   //app.get('/sources.list', script_send);
+  // New generic any-script handler
   app.get('/scripts/:filename', script_send);
   
   // SSH Key delivery
   app.get('/ssh/:item', ssh_key);
+  // Host Info Viewer
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
+  // Package stats
+  app.get('/hostpkgcounts', pkg_counts);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -150,11 +158,15 @@ app.use(function (req, res, next) {
 });
 
 
-app_init();
+app_init(global);
 app.listen(port, function () {
   console.log(`Linux Network Installer app listening on host:port http://localhost:${port} OK`);
 });
-/** Deep clone any data structure */
+
+/** Deep clone any data structure.
+* @param data {object} - Root of the data structure to clone (deep copy)
+* @return Full deep copy of data structure.
+*/
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 /** Get Boot Client IP Address from HTTP request.
  * For convenience the exception translation is handled here (this is subject to change if it shows to be a bad idea).
@@ -169,6 +181,7 @@ function ipaddr_v4(req) {
   if (newip) { return newip; }
   return ip;
 }
+
 /** Generate Preseed or KS file based on global settings and host facts.
 * Additionally Information for initial user to create is extracted from local
 * config file (given by setting global.userconfig).
@@ -178,18 +191,24 @@ function ipaddr_v4(req) {
 * Derives the format needed from URL and outputs the Install configuration in
 * valid Preseed or Kickstart format.
 * 
-* # Request Headers from installers
+* #### Request Headers from installers
 *
 * These could be potentially used by generator.
 *
-* req.headers shows (initially)
+* Debian Installer req.headers shows (initially)
+*
 *     'user-agent': 'debian-installer',
-* then also:
+*
+* then (later) also:
+*
 *     'user-agent': "Debian APT-HTTP/1.3 (1.6.3)"
+*
 * Redhat/CentOS:
+*
 *     'user-agent': 'anaconda/13.21.229'
 *     'x-anaconda-architecture': 'x86_64',
 *     'x-anaconda-system-release': 'CentOS'
+*
 */
 function preseed_gen(req, res) {
   // OLD: Translate ip to name to use for facts file name
@@ -385,11 +404,16 @@ function host_params(f, global, ip, ctype, osid) {
   return d;
 }
   
-/** 
+/** Receive an install "milestone" event from client host to be installed.
+* Currently events start/done are received.
 * Register this via parametric URL with param ":evtype", e.g
-*     app.get('/installevent/:evtype', oninstallevent);
-* and call e.g.:
-*     http://localhost:3000/installevent/start
+*
+*      app.get('/installevent/:evtype', oninstallevent);
+*
+* and call in the install script (e.g. "pre" script here):
+*
+*      # let lineboot know the start of install
+*      http://localhost:3000/installevent/start
 */
 function oninstallevent(req,res) {
   var ip = ipaddr_v4(req);
@@ -403,6 +427,7 @@ function oninstallevent(req,res) {
 * This is to be done during init phase.
 * Cache facts into global facts cache by both (fqdn) hostname and ip address.
 * @param hn - Hostname
+* @return None
 */
 function facts_load(hn) { // ipaddr
   var absname = fact_path + "/" + hn;
@@ -418,6 +443,11 @@ function facts_load(hn) { // ipaddr
     //console.log("Found keys:" + keys.join(","));
   }
   catch (e) { console.error("Error loading Host JSON ("+absname+"): " +e.message); }
+  // Detect discrepancies in hostname in local linetboot config and what's found in facts
+  var hnerr = ""; // hn/fqdn/both
+  if (hn != facts.ansible_fqdn) { hnerr = "fqdn"; }
+  if (hn != facts.ansible_hostname) { hnerr += hnerr ? " and hostname" : "hostname"; }
+  if (hnerr) { console.error("WARNING: Host '" + hn + "' not matching fqdn and/or hostname: " + hnerr); }
   //var ip = facts.ansible_facts.ansible_all_ipv4_addresses;
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
@@ -431,24 +461,42 @@ function facts_load(hn) { // ipaddr
   if (maca) { hostcache[maca] = facts; }
   hostarr.push(facts);
 }
-/** Package counts
-* 
+/** Get OS Disto package counts for each of the hosts.
+* Respond with a JSON structure with package counts.
 */
 function pkg_counts (req, res) {
   // Package dir root
-  var root = "./pkgcache";
-  // map(function (hn) { return {name: hn, pkgcnt: 0}; });
-  global.hostnames.forEach(function (hn) {
-    var path = root+"/"+hn;
+  var root = process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
+  var jr = {status: "err", msg: "Package list collection failed."};
+  if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
+  // Get package count for a single host.
+  function gethostpackages(hn, cb) {
+    var path = root + "/" + hn;
+    var stat = {hname: hn, pkgcnt: 0};
+    // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
+    if (!fs.existsSync(path))   { var err = "No pkg file for host: " + hn;      console.log(err); return cb(null, stat); }
+    if (path.indexOf("_") > -1) { var err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
-    cproc.exec('wc ' + path, function (error, stdout, stderr) {
-       console.log(stdout);
+    cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
+      if (error) { return cb(error, null); }
+      // console.log(stdout);
+      stat.pkgcnt = parseInt(stdout);
+      return cb(null, stat);
     });
+  }
+  //global.hostnames.forEach(function (hn) {
+  //  gethostpackages(hn, function (err, cnt) { console.log("Got pkgs for " + hn + ": " + cnt);});
+  //});
+  async.map(global.hostnames, gethostpackages, function(err, results) {
+    if (err) {jr.msg += "Error collecting stats: " + err; return res.json(jr); }
+    res.json({status: "ok", data: results});
   });
-  //res.json();
+  
 }
-/** TODO: Generate Ubuntu 18 Netplan.
+/** Generate Ubuntu 18 Netplan (via HTTP get).
 * Extract network config essentials from Facts.
+* Respond with YAML netplan content.
+* @todo Convert netmask to CIDR notation.
 */
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
@@ -498,10 +546,14 @@ function netplan_yaml(req, res) {
 }
 /** Send a shell script / commands (or any text content) using HTTP GET.
 * TODO: Make this pull content from some add-on / misc directory (probably other than tmpl, rename to )
-* - for a well know hack to allow preseeding
+*
+* This was initially created for a well known hacky workaround to allow preseeding
 * to reconfigure network after initial chicken and egg problem with network -
 * network must be configured to fetch preseed, which contains network config.
 * This script kills dhcp networking and reconfigures network.
+* 
+* Now network restart has been moved to external file and script_send() also delivers lot of other
+* installation related scripts.
 */
 function script_send(req, res) {
   // #!/bin/sh\n
@@ -529,6 +581,11 @@ function script_send(req, res) {
   if (cont) { res.send(cont); return; }
   res.send("# Hmmm ... Unknown file.\n");
 }
+/** Detect if file needs template processing by special tagging left in file.
+* The tagging also indicates what kind of template parameter context is needed.
+* @param {string} content - Template (file) content as string.
+* @return True for "needs template processing", false for not.
+*/
 function needs_template(cont) {
   if (!cont) { return null; }
   var arr = cont.split(/\n/);
@@ -543,8 +600,8 @@ function needs_template(cont) {
   return tcs[0];
 }
 /** Deliver SSH key / keys for the old host for placing them onto new installation.
-* Triggered via URL: '/ssh/:item'. Allow URL parameter ":item" to be:
-* - dsa, dsa.pub (DSA is deprecated and no more Ubuntu 18.04)
+* Triggered via URL: '/ssh/:item'. Allow URL parameter ":item" to be (for private key, public key, respectively):
+* - dsa, dsa.pub (DSA is deprecated and no more used by Ubuntu 18.04)
 * - ecdsa, ecdsa.pub
 * - ed25519, ed25519.pub
 * - rsa, rsa.pub
@@ -558,6 +615,8 @@ function needs_template(cont) {
 * - the " user@this-host" (space separated from key) from end
 * If LINETBOOT_SSHKEY_PATH is used (e.g. ~/.linetboot/sshkeys) , every host has a subdir
 * by its FQDN hostname and ssh keys under it by their official well known names.
+*
+* @todo Create some kind of key-passing mechanism to be allowed to fetch keys.
 */
 function ssh_key(req, res) {
   var ip = ipaddr_v4(req);
@@ -613,27 +672,29 @@ function ssh_key(req, res) {
   }
   res.send("# Error (not public, not private or keydir missing)\n");
 }
-/** Create a listing of host info.
-* Important facts resources here are:
-* - ansible_fqdn, ansible_hostname
-* - ansible_default_ipv4 - Network Info
-* - ansible_distribution, ansible_distribution_version
-* Others: ansible_form_factor (e.g. "Desktop"), ansible_uptime_seconds
-*/
+
 
 var cbs = {"net": netinfo, "hw": hwinfo, "os": osinfo, "": function (f, h) { netinfo(f, h); osinfo(f, h); hwinfo(f, h); }};
 
+/** Create a listing of host info.
+* Important facts contained resources here are:
+* - ansible_fqdn, ansible_hostname
+* - ansible_default_ipv4 - Network Info
+* - ansible_distribution, ansible_distribution_version
+*
+* Others: ansible_form_factor (e.g. "Desktop"), ansible_uptime_seconds
+*/
 function hostinfolist (req, res) {
   // Note: Do NOT overwrite (now global) hostarr on (future) map() or filter() or sort()
   var arr = [];
   //res.type("application/json"); // Redundant
   var viewtype = req.params["viewtype"] || "";
-  var vcb = cbs[viewtype]; // Callback to populate data
-  if (!vcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
+  var datafillcb = cbs[viewtype]; // Callback to populate data
+  if (!datafillcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
   // Use array here (f = Host facts).
   hostarr.forEach(function (f) {
     var h = {hname: f.ansible_fqdn}; // Local generic hostlist entry (for any/all viewtype(s))
-    vcb(f, h);
+    datafillcb(f, h);
     arr.push(h);
   });
   res.json(arr);
@@ -651,7 +712,7 @@ function hostinfolist (req, res) {
     h.gateway = anet.gateway;
     // type: ether
     var dns = f.ansible_dns;
-    h.dns = dns && dns.nameservers ?  dns.nameservers.join(" ") : "";
+    h.dns = dns && dns.nameservers ?  dns.nameservers.join(", ") : "";
     h.domain = f.ansible_domain;
   }
   // Also see: ansible_lsb (id, release)
@@ -667,6 +728,8 @@ function hostinfolist (req, res) {
     h.cores = f.ansible_processor_vcpus; // f.ansible_processor_count
     h.sysvendor = f.ansible_system_vendor; // f.ansible_product_version
     h.prodver = f.ansible_product_version;
+    // /usr/sbin/dmidecode -s system-serial-number
+    h.prodser = f.ansible_product_serial;
     // Disk
     var devs = f.ansible_devices; // Disk Devices (OoO)
     if (devs && devs.sda) {
