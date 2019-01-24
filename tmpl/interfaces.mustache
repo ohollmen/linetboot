@@ -12,6 +12,6 @@ iface em1 inet static
   address {{ net.ipaddress }}
   netmask {{ net.netmask }}
   gateway {{ net.gateway }}
-# With resolvconf program (apt: "resolvconf", Should be space separated list)
-# dns-search ...
-# dns-nameservers {{ net.nameservers }}
+  # With resolvconf program (apt: "resolvconf", Should be space separated list)
+  # dns-search {{ net.namesearch }} # TODO
+  # dns-nameservers {{ net.nameservers }}
