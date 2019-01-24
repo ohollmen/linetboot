@@ -19,13 +19,14 @@
   "postscript": "mv_homedir_for_autofs.sh",
   
   "hostnames": [
-    "banana1","cubox","db","odroid-32",
+    "banana1","cubox-i","odroid-db","odroid-32",
     "martta-1001PX","nuc5","nuc7","perlix2"
   ],
   "net": {
     "netmask": "255.255.240.0",
     "gateway": "192.168.1.1",
     "nameservers": ["192.168.1.107", "192.168.1.108"],
+    "namesearch" : null,
     "domain": "",
     "dev": "auto"
   },
