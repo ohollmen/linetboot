@@ -1,0 +1,30 @@
+{
+  "name": "hostinfo",
+  "homepage": "https://github.com/ohollmen/linetboot",
+  "authors": [
+    "Olli Hollmen <olli.hollmen@gmail.com>"
+  ],
+  "description": "Host Information Inventory",
+  "main": "index.html",
+  "keywords": [
+    "host",
+    "inventory"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery-ui": "1.12.1",
+    "jsgrid": "js-grid#1.5.3",
+    "axios": "0.18.0",
+    "bootstrap": "3.3.5",
+    "mustache": "3.0.1",
+    "chart.js": "2.7.3"
+  }
+}
