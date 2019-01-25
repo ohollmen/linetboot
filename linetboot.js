@@ -106,7 +106,7 @@ function app_init(global) {
   // Host Info Viewer
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
-  // Package stats
+  // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
   app.get('/hostpkgcounts', pkg_counts);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
