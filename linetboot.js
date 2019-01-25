@@ -726,6 +726,13 @@ function hostinfolist (req, res) {
   function hwinfo(f, h) {
     h.cpuarch = f.ansible_machine;
     h.cores = f.ansible_processor_vcpus; // f.ansible_processor_count
+    // h.cpuname = f.facter_processor0; // Only avail sometimes (-b ?)
+    // TODO: ARM CPU's show "1" - refine logic to cover ARM !!!
+    // e.g. search for f.ansible_processor.filter(function (c) {return c.match(/(Intel|ARM); } )[0]; // OR find()
+    h.cpuname = f.ansible_processor ? f.ansible_processor[2] : "??";
+    // Consider facter_memorysize
+    //h.memsize = ( f.ansible_memory_mb && f.ansible_memory_mb.real ) ? f.ansible_memory_mb.real.total : 0;
+    h.memsize = f.ansible_memtotal_mb;
     h.sysvendor = f.ansible_system_vendor; // f.ansible_product_version
     h.sysmodel = f.ansible_product_name;
     h.prodver = f.ansible_product_version;
