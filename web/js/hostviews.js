@@ -49,6 +49,7 @@
      {name: "cpuarch",  title: "CPU Arch", type: "text", width: 70},
      {name: "cores",    title: "# Cores", type: "number", width: 70},
      {name: "sysvendor",title: "System Vendor", type: "text", width: 120},
+     {name: "sysmodel", title: "Model", type: "text", width: 120},
      {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
      {name: "prodser",  title: "Prod.Ser.", type: "text", width: 100},
      {name: "diskmod",  title: "Disk Model", type: "text", width: 120},
@@ -126,7 +127,8 @@ window.onload = function () {
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
-    var dopts = {modal: true}; // show: {effect: "", duration: 1000}, hide: {}
+    var dopts = {modal: true, width: 600, // See min,max versions
+                    height: 500}; // show: {effect: "", duration: 1000}, hide: {}
     // Hook Only after grid created
     // $(".hostname").click(function (ev) {
     $(".hostcell").click(function (ev) {
@@ -163,16 +165,20 @@ window.onload = function () {
     console.log(JSON.stringify(cdata, null, 2));
     
     showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
+    // Position for 'label' of each dataset. 'top' / 'bottom'
+    //title: {display: true,text: 'Chart.js Bar Chart'}
+    // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
+    var scales = {yAxes: [{
+                ticks: {
+                    suggestedMin: 0,
+                    suggestedMax: 1000
+                }
+            }]};
+    var copts = { responsive: true, legend: {position: 'top'}, scales: scales};
     window.myBar = new Chart(ctx, {
       type: 'bar',
       data: cdata,
-      options: {
-    	responsive: true,
-	// Position for 'label' of each dataset.
-    	legend: {position: 'top'} // 'top' / 'bottom'
-    	//
-    	//title: {display: true,text: 'Chart.js Bar Chart'}
-      }
+      options: copts
     });
   })
   .catch(function (error) { console.log(error); });
