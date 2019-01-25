@@ -65,9 +65,11 @@
   /* */
   .redhat {background-color: #FF0000; border: 5px solid #FF4444; }
   .osicon {height: 20px; width: 20px%; float: right; }
-  // For long-line pre use: white-space: pre-wrap;
+  /* For long-line pre use: white-space: pre-wrap; */
   .macaddr {font-family: monospace; white-space: pre;}
   .hostcell { font-weight: bold; }
+  /* Dialog */
+  
   </style>
 </head>
 <!--
@@ -102,6 +104,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <h3>Host {{ hname }}</h3>
 <ul>
 <li>Vendor: {{ sysvendor }}</li>
+<li>CPU: {{ cpuarch }}</li>
+<li>#Cores: {{ cores }}</li>
 </ul>
 </template>
 

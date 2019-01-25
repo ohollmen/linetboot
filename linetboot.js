@@ -727,6 +727,7 @@ function hostinfolist (req, res) {
     h.cpuarch = f.ansible_machine;
     h.cores = f.ansible_processor_vcpus; // f.ansible_processor_count
     h.sysvendor = f.ansible_system_vendor; // f.ansible_product_version
+    h.sysmodel = f.ansible_product_name;
     h.prodver = f.ansible_product_version;
     // /usr/sbin/dmidecode -s system-serial-number
     h.prodser = f.ansible_product_serial;
