@@ -48,6 +48,9 @@
      // Disk
      {name: "cpuarch",  title: "CPU Arch", type: "text", width: 70},
      {name: "cores",    title: "# Cores", type: "number", width: 70},
+     
+     {name: "cpuname",    title: "CPU", type: "text", width: 170},
+     {name: "memsize",  title: "Mem (MB)", type: "number", width: 70},
      {name: "sysvendor",title: "System Vendor", type: "text", width: 120},
      {name: "sysmodel", title: "Model", type: "text", width: 120},
      {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
@@ -60,7 +63,7 @@
    var fldinfo_pkg = [
      hostfld,
      {name: "pkgcnt",  title: "# Pkgs", type: "number", width: 70},
-   ]
+   ];
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg};
    // Need to be inside some buildGrid
     var ActionButtonField = function(config) {
@@ -76,10 +79,10 @@
    function js_grid_filter (filter) {
        //console.log("Filter:" + JSON.stringify(filter));
        //console.log("This::", this);
-       if (!this.datakey) { throw "Data key not defined for filtering"; return; }
-       if (!this[this.datakey]) { throw "Data key ("+this.datakey+") does not exist in controller"; return; }
+       if (!this.datakey) { throw "Data key not defined for filtering";  } // return;
+       if (!this[this.datakey]) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
        var myarr = this[this.datakey];
-       if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") does not exist in controler"; return; }
+       if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") does not exist in controler"; } // return;
        var fkeys = Object.keys(filter);
        var debug = this.filterdebug || 0;
        if (debug) { console.log("Filter keys:" + JSON.stringify(fkeys)); }
@@ -121,8 +124,8 @@ window.onload = function () {
     // handle success
     //console.log(response);
     db.hosts = response.data;
-    response.data[5].distname = "RedHat";
-    response.data[6].distname = "";
+    response.data[5].distname = "RedHat"; // TEST
+    response.data[6].distname = ""; // TEST
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
@@ -168,12 +171,20 @@ window.onload = function () {
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
-    var scales = {yAxes: [{
+    var scales = {
+	  yAxes: [{
                 ticks: {
+					beginAtZero: true, // NEW
                     suggestedMin: 0,
                     suggestedMax: 1000
                 }
-            }]};
+            }],
+       xAxes: [{
+      ticks: {
+        autoSkip: 0
+      }
+    }]
+    };
     var copts = { responsive: true, legend: {position: 'top'}, scales: scales};
     window.myBar = new Chart(ctx, {
       type: 'bar',
@@ -182,7 +193,7 @@ window.onload = function () {
     });
   })
   .catch(function (error) { console.log(error); });
-}
+};
 
 // $("#jsGrid").jsGrid("sort", field);
 function showgrid (divid, griddata, fields) {
