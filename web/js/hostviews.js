@@ -124,8 +124,6 @@ window.onload = function () {
     // handle success
     //console.log(response);
     db.hosts = response.data;
-    response.data[5].distname = "RedHat"; // TEST
-    response.data[6].distname = ""; // TEST
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
@@ -172,18 +170,22 @@ window.onload = function () {
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
     var scales = {
-	  yAxes: [{
-                ticks: {
-					beginAtZero: true, // NEW
-                    suggestedMin: 0,
-                    suggestedMax: 1000
-                }
-            }],
-       xAxes: [{
-      ticks: {
-        autoSkip: 0
-      }
-    }]
+      yAxes: [
+        {
+          ticks: {
+            beginAtZero: true, // NEW
+            suggestedMin: 0,
+            suggestedMax: 1000
+          }
+        }
+      ],
+      xAxes: [
+        {
+          ticks: {
+          autoSkip: 0
+          }
+        }
+      ]
     };
     var copts = { responsive: true, legend: {position: 'top'}, scales: scales};
     window.myBar = new Chart(ctx, {
@@ -201,7 +203,7 @@ function showgrid (divid, griddata, fields) {
     // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
     width: "100%",
     //height: "400px",
-    pageSize: 50,
+    pageSize: 100,
     //inserting: true,
     //editing: true,
     sorting: true,
