@@ -584,7 +584,8 @@ function script_send(req, res) {
 /** Detect if file needs template processing by special tagging left in file.
 * The tagging also indicates what kind of template parameter context is needed.
 * @param {string} content - Template (file) content as string.
-* @return True for "needs template processing", false for not.
+* @return Templating context, which will also be true value for "needs template processing" and false
+* (no templating context) for no templating needed.
 */
 function needs_template(cont) {
   if (!cont) { return null; }
