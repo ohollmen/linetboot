@@ -549,7 +549,7 @@ function pkg_list_gen(req, res) {
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
-    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, pkglistpath: paths: paths};
+    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, paths: paths};
     //if (f.ansible_os_family) {}
     var cmd = "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     if (req.query.setup) {
