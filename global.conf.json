@@ -22,6 +22,11 @@
     "banana1","cubox-i","odroid-db","odroid-32",
     "martta-1001PX","nuc5","nuc7","perlix2"
   ],
+  "groups": [
+    {"id": "nuc", "name": "NUCs", "patt": "^nuc"},
+    {"id": "odroid", "name": "Odroid:s", "patt": "^odroid"},
+    {"id": "other", "name": "Other Hosts", "policy": "nongrouped"}
+  ],
   "net": {
     "netmask": "255.255.240.0",
     "gateway": "192.168.1.1",
