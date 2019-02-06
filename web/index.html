@@ -69,7 +69,8 @@
   .macaddr {font-family: monospace; white-space: pre;}
   .hostcell { font-weight: bold; }
   /* Dialog */
-  
+  #dialog img {float: left; }
+  #dialog img {height: 100px; width: 100px; padding: 15px; }
   </style>
 </head>
 <!--
@@ -102,10 +103,19 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <div id="dialog" title="Host Details" style="display: none;"></div>
 <template id="singlehost">
 <h3>Host {{ hname }}</h3>
+<div><img src="img/iconfinder_Processor_858709.png"></div>
 <ul>
-<li>Vendor: {{ sysvendor }}</li>
-<li>CPU: {{ cpuarch }}</li>
-<li>#Cores: {{ cores }}</li>
+<li>Machine: {{ sysvendor }} - {{ sysmodel }} (Serial: {{ prodser }})</li>
+<li>CPU: {{ cpuname }}({{ cpuarch }}, {{ cores }} cores)</li>
+<li>Memory: {{ memsize }} MB</li>
+<li>Disk: {{ disksize }} (Drive/Controller: <a href="https://www.google.com/search?q={{ diskmod }}">{{ diskmod }}</a>)</li>
+</ul>
+<hr>
+<div><img src="img/iconfinder_Processor_858709.png"></div>
+<ul>
+<li>Networking: via {{ dev }} (MAC: {{ macaddr }})</li>
+<li>IP Address: {{ ipaddr }}</li>
+<li>TCP/IP Config: netmask: {{ netmask }} GW: {{ gateway }}</li>
 </ul>
 </template>
 
