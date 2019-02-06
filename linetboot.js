@@ -108,6 +108,10 @@ function app_init(global) {
   app.get('/list/:viewtype', hostinfolist);
   // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
   app.get('/hostpkgcounts', pkg_counts);
+  // Group lists
+  app.get('/groups', grouplist);
+  // Commands to list pkgs
+  app.get('/pkglistgen', pkg_list_gen);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -123,15 +127,41 @@ function app_init(global) {
   //console.log(process.env);
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1);}
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
-  
+  ///////////// Hosts and Groups ////////////////////
   var hnames = global.hostnames;
+  if (global.hostsfile) {}
   if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames"); process.exit(1);}
   // Allow easy commenting-out as JSON itself does not have comments.
-  hnames = hnames.filter(function (hn) { return ! hn.match(/^#/); });
+  hnames = hnames.filter(function (hn) { return ! hn.match(/^(#|\[)/); });
   if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
   hnames.forEach(function (hn) { facts_load(hn); });
   console.log("Cached: " + Object.keys(hostcache).join(','));
-  
+  //////////////// Groups /////////////////
+  var groups = global.groups;
+  var isgrouped = {}; // Flags (counts ?) for hosts joined to any group.
+  if (global.groups && Array.isArray(global.groups)) {
+    var grp_other = [];
+    // TODO: Make more generic and allow matching on any attribute (not just hostname)
+    groups.forEach(function (it) {
+      
+      if (it.patt) {
+        var re = new RegExp(it.patt);
+	// it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
+	it.hostnames = hostarr.reduce(function (oarr, h) {
+	  if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
+	  return oarr;
+	}, []);
+      }
+      if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
+      if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
+    });
+    // Second pass for non-grouped
+    // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
+    var othernames = hostarr.reduce(function (oarr, h) { if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); } return oarr; }, []);
+    grp_other.forEach(function (g) { g.hostnames = othernames; });
+    
+  }
+  console.log(groups); // DEBUG
   /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
   var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
   if (mfn && fs.existsSync(mfn)) {
@@ -446,7 +476,8 @@ function facts_load(hn) { // ipaddr
   // Detect discrepancies in hostname in local linetboot config and what's found in facts
   var hnerr = ""; // hn/fqdn/both
   if (hn != facts.ansible_fqdn) { hnerr = "fqdn"; }
-  if (hn != facts.ansible_hostname) { hnerr += hnerr ? " and hostname" : "hostname"; }
+  // NEW: Do not care about the plain hostname
+  //if (hn != facts.ansible_hostname) { hnerr += hnerr ? " and hostname" : "hostname"; }
   if (hnerr) { console.error("WARNING: Host '" + hn + "' not matching fqdn and/or hostname: " + hnerr); }
   //var ip = facts.ansible_facts.ansible_all_ipv4_addresses;
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
@@ -462,7 +493,10 @@ function facts_load(hn) { // ipaddr
   hostarr.push(facts);
 }
 /** Get OS Disto package counts for each of the hosts.
-* Respond with a JSON structure with package counts.
+* Respond with a JSON structure (Array of Objects) with package counts.
+* Inner objects will have members:
+* - hname - Hostname
+* - pkgcnt - Package counts
 */
 function pkg_counts (req, res) {
   // Package dir root
@@ -492,6 +526,38 @@ function pkg_counts (req, res) {
     res.json({status: "ok", data: results});
   });
   
+}
+/** Generate package list extraction.
+* TODO: Plan to migrate this to ...for_all() handler that foucuses on doing an op to all hosts
+* 
+*/
+function pkg_list_gen(req, res) {
+  var cont = "";
+  // See also (e.g.): ansible_pkg_mgr: "yum"
+  var os_pkg_cmd = {
+    "RedHat": "yum list installed", // rpm -qa, repoquery -a --installed, dnf list installed
+    "Debian" : "dpkg --get-selections", // apt list --installed (cluttered output), dpkg -l (long, does not start w. pkg)
+    // Suse, Slackware,
+    // "Arch???": "pacman -Q",
+    //"SUSE???": "zypper se --installed-only",
+  };
+  var username = process.env['USER'] || user.username || "root";
+  var paths = {
+    pkglist: "~/hostpkginfo",
+    hostinfo: "~/hostinfo",
+  };
+  hostarr.forEach(function (f) {
+    var plcmd = os_pkg_cmd[f.ansible_os_family];
+    if (!plcmd) { cont += "# No package list command for os\n"; return; }
+    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, pkglistpath: paths: paths};
+    //if (f.ansible_os_family) {}
+    var cmd = "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
+    if (req.query.setup) {
+      cmd = "ansible -i ~/linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+    }
+    cont += cmd + "\n";
+  });
+  res.end(cont);
 }
 /** Generate Ubuntu 18 Netplan (via HTTP get).
 * Extract network config essentials from Facts.
@@ -699,6 +765,26 @@ function hostinfolist (req, res) {
     arr.push(h);
   });
   res.json(arr);
+}
+/** List Groups if configured.
+*/
+function grouplist(req, res) {
+  var jr = {status: "err", msg: "Unable to List Host Groups."};
+  if (!global.groups) { jr.msg += " No hostgroups declared"; return res.json(jr); }
+  res.set('Access-Control-Allow-Origin', "*");
+  // Deep clone (and remove irrelevant members ?)
+  var groups = JSON.parse(JSON.stringify(global.groups));
+  groups.forEach(function (g) {
+    g.hosts = [];
+    g.hostnames.map(function (hn) {
+      var f = hostcache[hn];
+      if (!f) { return; } // Todo - improve - should splice hostname out ?
+      var h = {hname: f.ansible_fqdn};
+      cbs[''](f, h); // Fill info !
+      g.hosts.push(h);
+    });
+  });
+  res.json(groups);
 }
 
 /* All callbacks below convert anything from host facts to a recod to display on list view. */
