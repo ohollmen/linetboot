@@ -19,7 +19,7 @@
   "postscript": "mv_homedir_for_autofs.sh",
   
   "hostnames": [
-    "banana1","cubox-i","odroid-db","odroid-32",
+    "banana1","cubox-i","odroid-db","odroid-32 k=v",
     "martta-1001PX","nuc5","nuc7","perlix2"
   ],
   "groups": [
