@@ -128,14 +128,7 @@ function app_init(global) {
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1);}
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
   ///////////// Hosts and Groups ////////////////////
-  var hnames = global.hostnames;
-  if (global.hostsfile) {}
-  if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames"); process.exit(1);}
-  // Allow easy commenting-out as JSON itself does not have comments.
-  hnames = hnames.filter(function (hn) { return ! hn.match(/^(#|\[)/); });
-  if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
-  hnames.forEach(function (hn) { facts_load(hn); });
-  console.log("Cached: " + Object.keys(hostcache).join(','));
+  hosts_load(global);
   //////////////// Groups /////////////////
   var groups = global.groups;
   var isgrouped = {}; // Flags (counts ?) for hosts joined to any group.
@@ -169,6 +162,54 @@ function app_init(global) {
     console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
   }
   
+}
+/** Find out the configured hostnames (from various possible places) and load host facts.
+* TODO: throw on errors
+*/
+function hosts_load(global) {
+  var hnames = global.hostnames;
+  var hfn = global.hostsfile;
+  if (hfn) {
+    // Fatal or NOT ?!!!
+    if (!fs.existsSync(hfn)) { console.log("hostsfile given ("+hfn+"), but does not exist !"); }
+    // Keep else as above is not fatal for now. Parse hostsfile.
+    else {
+      // Refrain from doing too much hostsfile specific work here. Instead assume host lines in either
+      // source - line oriented text fire and json array have the same format (refine stuff in common section)
+      hnames_f = fs.readFileSync(hfn, 'utf8').split("\n");
+      hnames_f = hnames_f.filter(function (it) { return it.match(/^\s*$/) ? false : true; }); // Weed out empties
+      if (Array.isArray(hnames)) { hnames.push(hnames_f); }
+    }
+  }
+  if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source"); process.exit(1);}
+  // Allow easy commenting-out as JSON itself does not have comments.
+  hnames = hnames.filter(function (hn) { return ! hn.match(/^(#|\[)/); });
+  if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
+  // NEW: Parse inverntory-style free-form params here
+  global.hostparams = {};
+  var i = 0;
+  hnames.forEach(function (hn) {
+    if (hn.match(/\s+/)) {
+      var rec = hn.split(/\s+/);
+      hnames[i] = rec.shift();
+      // Parse rec
+      console.log(rec);
+      global.hostparams[hn] = {}; // Init params !
+      rec.forEach(function (pair) {
+        
+        var kv = pair.split(/=/, 2);
+	global.hostparams[hn][kv[0]] = kv[1];
+      });
+      console.log("Pairs found: ", global.hostparams[hn]);
+    }
+    
+    //else {return;};
+    i++;
+  });
+  global.hostnames = hnames;
+  console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
+  hnames.forEach(function (hn) { facts_load(hn); });
+  console.log("Cached: " + Object.keys(hostcache).join(','));
 }
 // Simple logging for ALL HTTP requests.
 app.use(function (req, res, next) {
