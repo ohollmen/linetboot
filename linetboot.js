@@ -568,7 +568,7 @@ function pkg_counts (req, res) {
   });
   
 }
-/** Generate package list extraction.
+/** Generate package list extraction. /pkglistgen
 * TODO: Plan to migrate this to ...for_all() handler that foucuses on doing an op to all hosts
 * 
 */
@@ -595,6 +595,18 @@ function pkg_list_gen(req, res) {
     var cmd = "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     if (req.query.setup) {
       cmd = "ansible -i ~/linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+    }
+    if (req.query.barename) {
+      //console.log(req.query);
+      var ps = req.query.para;
+      cmd = info.hname;
+      if (ps) {
+        //console.log("Got to barename, have params");
+        ps = ps.split(/,/);
+	var pstr = ps.map(function (p) {return p+"="}).join(" ");
+	console.log(pstr);
+	cmd += " " + pstr;
+      }
     }
     cont += cmd + "\n";
   });
