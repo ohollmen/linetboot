@@ -128,6 +128,7 @@ window.onload = function () {
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
+    // Dialog options
     var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
     // Hook Only after grid created
@@ -144,12 +145,25 @@ window.onload = function () {
     });
   })
   .catch(function (error) { console.log(error); });
+  ////////////////////// Groups ///////////
+  axios.get('/groups')
+  .then(function (response) {
+    var grps = response.data; // AoOoAoO...
+    //console.log(JSON.stringify(grps, null, 2));
+    grps.forEach(function (g) {
+      var harr = g.hosts;
+      $('#tabs-5').append("<h2>"+g.name+"</h2>\n");
+      $('#tabs-5').append("<div id=\"grp_"+g.id+"\"></div>\n");
+      showgrid("grp_"+g.id, harr, fldinfo_hw); // newt, hw,
+    });
+  })
+  .catch(function (error) { console.log(error); });
   /////// Packages //////////////
   axios.get('/hostpkgcounts')
   .then(function (response) {
     if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
     var pkginfo = response.data.data;
-    console.log(response.data.data);
+    // console.log(response.data.data);
     var idx = {};
     response.data.data.forEach(function (it) { idx[it.hname] = it.pkgcnt; });
     db.hosts.forEach(function (it) { it.pkgcnt = idx[it.hname]; });
