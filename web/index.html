@@ -69,8 +69,10 @@
   .macaddr {font-family: monospace; white-space: pre;}
   .hostcell { font-weight: bold; }
   /* Dialog */
-  #dialog img {float: left; }
-  #dialog img {height: 100px; width: 100px; padding: 15px; }
+  #dialogXX img,i {float: left; }
+  #dialog div {float: left; }
+  #dialog img {height: 100px; width: 110px; padding: 5px; padding-right: 20px; }
+  #dialog i { padding: 5px; padding-right: 25px; }
   </style>
 </head>
 <!--
@@ -91,6 +93,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-2">Hardware</a></li>
     <li><a href="#tabs-3">OS/Version</a></li>
     <li><a href="#tabs-4">Packgages</a></li>
+    <li><a href="#tabs-5">Groups</a></li>
   </ul>
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
   <div id="tabs-2"><div id="jsGrid_hw"></div></div>
@@ -99,10 +102,24 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <div id="jsGrid_pkg"></div>
      <canvas id="canvas"></canvas>
   </div>
+  <div id="tabs-5">
+  
+  </div>
 </div>
+
 <div id="dialog" title="Host Details" style="display: none;"></div>
 <template id="singlehost">
 <h3>Host {{ hname }}</h3>
+
+<div><i id="index" class="glyphicon glyphicon-cog" style="font-size:80px;"></i></div>
+<ul>
+<li>OS/Distribution: {{ distname }} ({{ distver }})</li>
+<li>OS Family: {{ osfamily }}</li>
+<li>Kernel: {{ kernelver }} ({{ cpuarch }})</li>
+<li>Firmware: {{ biosver }} ({{ biosdate }})</li>
+</ul>
+<hr>
+
 <div><img src="img/iconfinder_Processor_858709.png"></div>
 <ul>
 <li>Machine: {{ sysvendor }} - {{ sysmodel }} (Serial: {{ prodser }})</li>
@@ -111,11 +128,13 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>Disk: {{ disksize }} (Drive/Controller: <a href="https://www.google.com/search?q={{ diskmod }}">{{ diskmod }}</a>)</li>
 </ul>
 <hr>
-<div><img src="img/iconfinder_Processor_858709.png"></div>
+<!-- <img src="img/iconfinder_share_925908.svg"> -->
+<div><i id="index" class="glyphicon glyphicon-transfer" style="font-size:80px;"></i></div>
 <ul>
 <li>Networking: via {{ dev }} (MAC: {{ macaddr }})</li>
 <li>IP Address: {{ ipaddr }}</li>
 <li>TCP/IP Config: netmask: {{ netmask }} GW: {{ gateway }}</li>
+<li>DNS Servers: {{ dns }}</li>
 </ul>
 </template>
 
