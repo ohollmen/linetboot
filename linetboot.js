@@ -819,7 +819,7 @@ function hostinfolist (req, res) {
   });
   res.json(arr);
 }
-/** List Groups if configured.
+/** List Groups if configured (HTTP GET /groups).
 */
 function grouplist(req, res) {
   var jr = {status: "err", msg: "Unable to List Host Groups."};
@@ -859,7 +859,7 @@ function grouplist(req, res) {
   function osinfo(f, h) {
     h.distname = f.ansible_distribution;
     h.distver  = f.ansible_distribution_version;
-    // h.osfam = f.ansible_os_family; // e.g. Ubuntu => Debian
+    h.osfamily = f.ansible_os_family; // e.g. Ubuntu => Debian
     // f.ansible_distribution_release;
     h.kernelver = f.ansible_kernel;
   }
@@ -888,6 +888,7 @@ function grouplist(req, res) {
       h.disksize = sda.size; // Has unit "MB","GB",...
       h.diskvirt = sda.virtual;
     }
-    
+    h.biosver = h.ansible_bios_version;
+    h.biosdate = h.ansible_bios_date;
   }
   
