@@ -121,5 +121,7 @@ append initrd=http://{{ httpserver }}/boot/centos6/initrd.img auto=true devfs=no
 label localinst_centos7
 menu label Install CentOS 7 (Full Automated)
 # method=http://mirror.centos.org/centos/7/os/x86_64/
+# Note: Centos 7 says: 'method=' is deprecated. Using 'repo=http://...' instead. --noipv6 should be supported.
+# RH 6 supports param "text" (?)
 kernel http://{{ httpserver }}/boot/centos7/vmlinuz
-append initrd=http://{{ httpserver }}/boot/centos7/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+append initrd=http://{{ httpserver }}/boot/centos7/initrd.img auto=true devfs=nomount repo=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
