@@ -114,16 +114,34 @@
      // this here is the db
      loadData: js_grid_filter
    };
-   
+   var scales = {
+      yAxes: [
+        {
+          ticks: {
+            beginAtZero: true, // NEW
+            suggestedMin: 0,
+            suggestedMax: 1000
+          }
+        }
+      ],
+      xAxes: [
+        {
+          ticks: {
+          autoSkip: 0
+          }
+        }
+      ]
+    };
+    
 window.onload = function () {
   // Setup Tabs
   $( "#tabs" ).tabs();
   // Also 2nd {params: {}}
   axios.get('/list')
   .then(function (response) {
-    // handle success
     //console.log(response);
     db.hosts = response.data;
+    pkg_stats(); // Only now trigger fetch of pkg stats
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
@@ -159,56 +177,40 @@ window.onload = function () {
   })
   .catch(function (error) { console.log(error); });
   /////// Packages //////////////
+  function pkg_stats() {
   axios.get('/hostpkgcounts')
   .then(function (response) {
     if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
     var pkginfo = response.data.data;
     // console.log(response.data.data);
     var idx = {};
-    response.data.data.forEach(function (it) { idx[it.hname] = it.pkgcnt; });
+    response.data.data.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
     db.hosts.forEach(function (it) { it.pkgcnt = idx[it.hname]; });
     //console.log(db.hosts); console.log(idx);
     var color = Chart.helpers.color;
     var cdata = {labels: [], datasets: [{label: "Packages", borderWidth: 1, data: []}]};
     cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
+    // Transform AoO to Chart data
     function chartdata(pkginfo, cdata) {
       cdata.labels = pkginfo.map(function (it) { return it.hname; });
       cdata.datasets[0].data = pkginfo.map(function (it) { return it.pkgcnt; });
     }
     var ctx = document.getElementById('canvas').getContext('2d');
     chartdata(pkginfo, cdata);
-    console.log(JSON.stringify(cdata, null, 2));
+    // console.log(JSON.stringify(cdata, null, 2));
     
-    showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
+    // showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
-    var scales = {
-      yAxes: [
-        {
-          ticks: {
-            beginAtZero: true, // NEW
-            suggestedMin: 0,
-            suggestedMax: 1000
-          }
-        }
-      ],
-      xAxes: [
-        {
-          ticks: {
-          autoSkip: 0
-          }
-        }
-      ]
-    };
+    
     var copts = { responsive: true, legend: {position: 'top'}, scales: scales};
-    window.myBar = new Chart(ctx, {
-      type: 'bar',
-      data: cdata,
-      options: copts
-    });
+    window.myBar = new Chart(ctx, { type: 'bar', data: cdata, options: copts });
   })
   .catch(function (error) { console.log(error); });
+  
+  }
+  
 };
 
 // $("#jsGrid").jsGrid("sort", field);
