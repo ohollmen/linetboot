@@ -28,6 +28,7 @@
   <script type="text/javascript" src="bower_components/mustache/mustache.js"></script>
   
   <script type="text/javascript" src="bower_components/chart.js/dist/Chart.js"></script>
+  <script type="text/javascript" src="bower_components/async/dist/async.js"></script>
   <script type="text/javascript" src="js/hostviews.js"></script>
   <!-- <script type="text/javascript" src="hostinfo.js"></script> -->
 
@@ -72,7 +73,7 @@
   #dialogXX img,i {float: left; }
   #dialog div {float: left; }
   #dialog img {height: 100px; width: 110px; padding: 5px; padding-right: 20px; }
-  #dialog i { padding: 5px; padding-right: 25px; }
+  #dialog i { padding: 5px; padding-right: 25px; color: #666666; }
   </style>
 </head>
 <!--
@@ -108,7 +109,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </div>
 
 <div id="dialog" title="Host Details" style="display: none;"></div>
-<template id="singlehost">
+<template id="singlehost" type="text/template">
 <h3>Host {{ hname }}</h3>
 
 <div><i id="index" class="glyphicon glyphicon-cog" style="font-size:80px;"></i></div>
@@ -131,7 +132,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <!-- <img src="img/iconfinder_share_925908.svg"> -->
 <div><i id="index" class="glyphicon glyphicon-transfer" style="font-size:80px;"></i></div>
 <ul>
-<li>Networking: via {{ dev }} (MAC: {{ macaddr }})</li>
+<li>Networking: via {{ dev }} (MAC: <tt>{{ macaddr }}</tt>)</li>
 <li>IP Address: {{ ipaddr }}</li>
 <li>TCP/IP Config: netmask: {{ netmask }} GW: {{ gateway }}</li>
 <li>DNS Servers: {{ dns }}</li>
