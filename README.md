@@ -329,6 +329,13 @@ Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address 
 - ... Media Test failure, check cable Your PXE ROM Configuration likely asks to PXE boot from wrong Network Interface port, which has not cable connected. 
 - PXE-T01: File not nound PXE-E3B: TFTP Error - File Not found PXE-M0F Exiting ... Your PXE Implementation already tried to load a file by name which it does not display to you to challenge your debugging skills. Got to the log of your TFTP server and see what filename was tried. Example real life case: file requested was pxelinux.0, should be lpxelinux.0.
 
+- PXELinux: Unable to locate configuration file
+  - Check TFTP server log to see which file was tried to be loaded.
+  - Usually many files are tried by various names (See pxelinux config file
+    name rules)
+  - RedHat firewall heuristics may refuse tftp traffic after too may rapid tries
+  - Solution: Create symlink by one of the first tried filenames (e.g. MAC address with octets dash-separated).
+
 # Changes to local DHCP Server
 
 Independent of which particular kind of DHCP Server your environment is using you have to configure it to
@@ -377,7 +384,7 @@ Configuration in the main config file `global.conf.json`
 - fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be enabled for install.
 - maindocroot (str) - The dcocument root of linetboot (Express) static file delivery
 - useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
-- hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts redoreded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down).
+- hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down).
 - Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now): locale, keymap, time_zone, install_recommends (D-I only), ntpserver, net (Object with global network base settings)
 
 Environment Variables:
@@ -425,6 +432,25 @@ The instructions here are specifically applicable for Dell servers but flow is l
 
 At this point booting ARM hardware is not supported as PXELinux is Intel X86 w. PXE BIOS -only
 (However You *can* run linetboot on ARM fine, just the machine to netboot/install cannot be ARM based). Supposedly Using Grub 2 with its net booting capabilities (NBP: grubaa64.efi) would be the solution.
+
+### Interference with iSCSI or FCoE
+
+The PXE boot-time error "PXE-E51: No DHCP or proxyDHCP offers were received" can be caused by
+iSCSI or FCoE boot being enabled. To avoid this (examples given for typical Dell server) run through listed checks below.
+- In general iSCSI and FCoE settings should be disabled (below are disablement hints for settings that may be most likely enabled in out-of-box factory settings)
+- Additionally there may be multiple interfaces to perform these settings on
+  (you may need to go through all of them). Check the interface MAC address that correlates to your main OS MAC address to configure it as PXE enabled.
+- Start at "Device Settings" (Next to System BIOS, iDRAC Settings)
+- Main Config. Page => iSCSI Config. => iSCSI General parameters:
+  - TCP/IP Parameters via DHCP: Disabled
+  - Boot to Target: Disabled
+- Main Config. Page => FCoE Config => FCoE General parameters:
+  - Boot to FCoE Target: Disabled
+
+Enable in "NIC Configuration":
+- Legacy Boot Protocol: PXE
+- Boot Sttrap Type: Auto Detect
+- Surprisingly setting "Retries" to more than one (e.g. even 2) may help.
 
 ## TODO
 
