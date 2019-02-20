@@ -19,6 +19,7 @@
 # - https://gist.github.com/mineiro/5431336 - Centos 6 kickstart
 # - https://www.linuxtopia.org/online_books/rhel6/rhel_6_installation/rhel_6_installation_s1-kickstart2-options.html
 # - https://wiki.centos.org/HowTos/PXE/PXE_Setup - Some useful info on how to setup tftp and pxelinux (called syslinux) in CentOS
+# - https://bugs.centos.org/view.php?id=14221 Centos 7 install problems and ideas / tips for Boot CL
 #
 # KS & Preseed params: ks=... preseed/file=... preseed/url=http:// (also url=... works)
 # Preseed commands can be mixed here (for Ubuntu), but must start w. "preseed ...".
@@ -57,7 +58,7 @@ rootpw {{{ user.password }}}
 # Param --isccrypted means password is given in crypt(ed) format
 # legacy: --fullname (no such option)
 # TODO: --groups 
-user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir={{ user.homedir }}
+user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir={{{ user.homedir }}}
 # Optional new group
 # group --name devops --gid 1000
 # System Auth (--passalgo ...md5, sha256, sha512). Possibly --enablemd5 is very legacy form for --passalgo=md5)
@@ -172,6 +173,7 @@ perl-libwww-perl
 perl-JSON
 yp-tools
 autofs
+nfs-utils
 # automake autoconf make
 #@ ubuntu-server
 #openssh-server
