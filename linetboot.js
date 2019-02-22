@@ -111,7 +111,8 @@ function app_init(global) {
   // Group lists
   app.get('/groups', grouplist);
   // Commands to list pkgs
-  app.get('/pkglistgen', pkg_list_gen);
+  app.get('/allhostgen/:lbl', pkg_list_gen);
+  app.get('/allhostgen', pkg_list_gen);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -440,7 +441,7 @@ function host_params(f, global, ip, ctype, osid) {
       var part = parts[pn];
       //console.log(pn); continue; // DEBUG
       marr = part.size.match(/^([0-9\.]+)\s+([KMGB]+)/);
-      console.log(marr + " len:" + marr.length);
+      console.log(marr + " len:" + marr ? marr.length: "None");
       if (marr && (marr.length == 3)) {
         var sf = parseFloat(marr[1]);
 	var uf = unitfactor[marr[2]];
@@ -570,10 +571,20 @@ function pkg_counts (req, res) {
 }
 /** Generate package list extraction. /pkglistgen
 * TODO: Plan to migrate this to ...for_all() handler that foucuses on doing an op to all hosts
-* 
+* - setup
+* - barename
+* - maclink
 */
 function pkg_list_gen(req, res) {
+  var genopts = [
+    {lbl: "barename", name: "Host names (w. params)"},
+    {lbl: "maclink", name: "MAC Address Symlinks"},
+    {lbl: "setup", name: "Facts Gathering"},
+    {lbl: "pkgcoll", name: "Package List Extraction"}
+  ];
+  var lbl = req.params.lbl;
   var cont = "";
+  
   // See also (e.g.): ansible_pkg_mgr: "yum"
   var os_pkg_cmd = {
     "RedHat": "yum list installed", // rpm -qa, repoquery -a --installed, dnf list installed
@@ -607,6 +618,12 @@ function pkg_list_gen(req, res) {
 	console.log(pstr);
 	cmd += " " + pstr;
       }
+    }
+    if (req.query.maclink) {
+      var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+      if (!mac) { return; }
+      mac.replace(":", "-");
+      cmd = "ln -s default " + "01-" + mac; // Prefix: "01"
     }
     cont += cmd + "\n";
   });
