@@ -510,6 +510,7 @@ function facts_load(hn) { // ipaddr
     var cont = fs.readFileSync(absname, 'utf8');
     facts = JSON.parse(cont);
     facts = facts.ansible_facts; // Simplify !
+    if (!facts) { console.error("No ansible_facts branch for host '" + hn + "'"); return; }
     // test keys
     //var keys = Object.keys(facts); // ansible_facts,changed
     //console.log("Found keys:" + keys.join(","));
