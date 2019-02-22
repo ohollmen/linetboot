@@ -434,7 +434,7 @@ function host_params(f, global, ip, ctype, osid) {
     var unitfactor = { "GB": 1000, "MB": 1, "KB": 0.1 };
     var parts = sda.partitions;
     var pnames = Object.keys(parts);
-    console.log("Got parts: " + pnames);
+    console.error("Got parts: " + pnames);
     var disktot = 0;
     for (var i in pnames) {
       var pn = pnames[i]; // e.g. sda1
