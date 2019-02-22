@@ -155,7 +155,7 @@ function app_init(global) {
     grp_other.forEach(function (g) { g.hostnames = othernames; });
     
   }
-  console.log(groups); // DEBUG
+  // console.log(groups); // DEBUG
   /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
   var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
   if (mfn && fs.existsSync(mfn)) {
@@ -208,9 +208,9 @@ function hosts_load(global) {
     i++;
   });
   global.hostnames = hnames;
-  console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
+  //console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
   hnames.forEach(function (hn) { facts_load(hn); });
-  console.log("Cached: " + Object.keys(hostcache).join(','));
+  //console.log("Cached: " + Object.keys(hostcache).join(','));
 }
 // Simple logging for ALL HTTP requests.
 app.use(function (req, res, next) {
@@ -441,7 +441,7 @@ function host_params(f, global, ip, ctype, osid) {
       var part = parts[pn];
       //console.log(pn); continue; // DEBUG
       marr = part.size.match(/^([0-9\.]+)\s+([KMGB]+)/);
-      console.log(marr + " len:" + marr ? marr.length: "None");
+      console.log(marr + " len:" + (marr ? marr.length: "None"));
       if (marr && (marr.length == 3)) {
         var sf = parseFloat(marr[1]);
 	var uf = unitfactor[marr[2]];
