@@ -74,6 +74,14 @@
   #dialog div {float: left; }
   #dialog img {height: 100px; width: 110px; padding: 5px; padding-right: 20px; }
   #dialog i { padding: 5px; padding-right: 25px; color: #666666; }
+  /* nav */
+  nav ul { height: 18px; margin: 0; padding: 0; padding-left: 15px; }
+  
+  nav ul li { float: left; list-style-type: none;  }
+  
+  nav a { font-size: 12px; Xheight: 15px;  padding-right: 15px; }
+  
+  Xnav Xli { float: left;  }
   </style>
 </head>
 <!--
@@ -86,7 +94,14 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <!-- glyphicon-home -->
   <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span style="font-weight: bold;">Hosts Inventory</span></h1>
 </div>
-<!--<h1>Host Information</h1>-->
+<nav>
+<ul style="display:none">
+<li><a href="#">Hosts Information</a></li>
+<li><a href="#">OS Packages</a></li>
+<li><a href="#">Generated Content</a></li>
+<li><a href="#">About</a></li>
+</ul>
+</nav>
 
 <div id="tabs">
   <ul>
