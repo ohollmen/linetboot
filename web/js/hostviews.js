@@ -189,11 +189,17 @@ window.onload = function () {
     //console.log(db.hosts); console.log(idx);
     var color = Chart.helpers.color;
     var cdata = {labels: [], datasets: [{label: "Packages", borderWidth: 1, data: []}]};
-    cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
+    // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
     // Transform AoO to Chart data
+    var cmap = {
+      // "Ubuntu":color('rgb(246, 223, 12)').alpha(0.5).rgbString(), // Yellow
+      "Ubuntu":color('rgb(237, 52, 23)').alpha(0.8).rgbString(), // #DD4814
+      "Debian":color('rgb(255, 99, 132)').alpha(0.5).rgbString(),
+      "RedHat":color('rgb(180, 36, 36)').alpha(0.5).rgbString(), "CentOS":color('rgb(30, 130, 25)').alpha(0.5).rgbString()};
     function chartdata(pkginfo, cdata) {
       cdata.labels = pkginfo.map(function (it) { return it.hname; });
       cdata.datasets[0].data = pkginfo.map(function (it) { return it.pkgcnt; });
+      cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
     }
     var ctx = document.getElementById('canvas').getContext('2d');
     chartdata(pkginfo, cdata);
@@ -209,7 +215,7 @@ window.onload = function () {
   })
   .catch(function (error) { console.log(error); });
   
-  }
+  } // pkg_stats
   
 };
 
