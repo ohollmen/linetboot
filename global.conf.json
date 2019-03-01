@@ -8,7 +8,9 @@
     "netw_rh": "./tmpl/sysconfig_network.mustache"
     
   },
-  "fact_path": "/home/ohollmen/litefacter/hostinfo",
+  "fact_path":  "/home/ohollmen/hostinfo",
+  "rmgmt_path": "/home/ohollmen/hostrmgmt",
+  "rmgmt_ena": false,
   
   "locale":"en_US.UTF-8",
   "keymap":"us",
