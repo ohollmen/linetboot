@@ -113,6 +113,8 @@ function app_init(global) {
   // Commands to list pkgs
   app.get('/allhostgen/:lbl', pkg_list_gen);
   app.get('/allhostgen', pkg_list_gen);
+  // rmgmt_list
+  app.get('/hostrmgmt', rmgmt_list);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -549,7 +551,9 @@ function pkg_counts (req, res) {
   // Get package count for a single host.
   function gethostpackages(hn, cb) {
     var path = root + "/" + hn;
-    var stat = {hname: hn, pkgcnt: 0};
+    // Lookup host for addl. info (for set to be self-contained)
+    var f = hostcache[hn];
+    var stat = {hname: hn, pkgcnt: 0, "distname": (f ? f.ansible_distribution: "???")};
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
     if (!fs.existsSync(path))   { var err = "No pkg file for host: " + hn;      console.log(err); return cb(null, stat); }
     if (path.indexOf("_") > -1) { var err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
@@ -580,7 +584,7 @@ function pkg_list_gen(req, res) {
   var genopts = [
     {lbl: "barename", name: "Host names (w. params)"},
     {lbl: "maclink", name: "MAC Address Symlinks"},
-    {lbl: "setup", name: "Facts Gathering"},
+    {lbl: "setup",   name: "Facts Gathering"},
     {lbl: "pkgcoll", name: "Package List Extraction"}
   ];
   var lbl = req.params.lbl;
@@ -589,7 +593,7 @@ function pkg_list_gen(req, res) {
   // See also (e.g.): ansible_pkg_mgr: "yum"
   var os_pkg_cmd = {
     "RedHat": "yum list installed", // rpm -qa, repoquery -a --installed, dnf list installed
-    "Debian" : "dpkg --get-selections", // apt list --installed (cluttered output), dpkg -l (long, does not start w. pkg)
+    "Debian": "dpkg --get-selections", // apt list --installed (cluttered output), dpkg -l (long, does not start w. pkg)
     // Suse, Slackware,
     // "Arch???": "pacman -Q",
     //"SUSE???": "zypper se --installed-only",
@@ -875,7 +879,7 @@ function grouplist(req, res) {
   }
   // Also see: ansible_lsb (id, release)
   function osinfo(f, h) {
-    h.distname = f.ansible_distribution;
+    h.distname = f.ansible_distribution; // e.g. Ubuntu
     h.distver  = f.ansible_distribution_version;
     h.osfamily = f.ansible_os_family; // e.g. Ubuntu => Debian
     // f.ansible_distribution_release;
@@ -909,4 +913,31 @@ function grouplist(req, res) {
     h.biosver = h.ansible_bios_version;
     h.biosdate = h.ansible_bios_date;
   }
-  
+/** List Remote Management interfaces for hosts that have them.
+*
+*/
+function rmgmt_list(req, res) {
+  var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path || "/home/" + process.env['USER'] + "/.linetboot/rmgmt";
+  var ipmi = require("./ipmi.js");
+  var arr = [];
+  hostarr.forEach(function (f) {
+    var hn = f.ansible_fqdn; // { hname: f.ansible_fqdn }
+    var fn = rmgmtpath + "/" + hn + ".lan.txt";
+    if (!fs.existsSync(fn)) { return; }
+    var cont = fs.readFileSync(fn, 'utf8');
+    if (!cont || !cont.length) { return; }
+    fn = rmgmtpath + "/" + hn + ".users.txt";
+    var cont2 = fs.readFileSync(fn, 'utf8');
+    if (!cont2 || !cont2.length) { return; }
+    var lan   = ipmi.lan_parse(cont);
+    var users = ipmi.users_parse(cont2);
+    var ulist = "";
+    if (users && Array.isArray(users)) { users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(','); }
+    var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
+      ipaddrtype: lan['IP Address Source'], gw: lan['Default Gateway IP'],
+      users: users
+    };
+    arr.push(ent);
+  });
+  res.json(arr);
+}
