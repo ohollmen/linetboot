@@ -43,6 +43,7 @@
      //{name: "", title: "", type: "control", editButton: false, deleteButton: false}
      // {name: "foo", title: "Action !", type: "actionButton"} // Works
    ];
+   function rmgmtcell(value, item) { return "<a href=\"https://"+value+"/\">"+value+"</a>"; }
    var fldinfo_hw = [
      hostfld,
      // Disk
@@ -56,7 +57,7 @@
      {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
      {name: "prodser",  title: "Prod.Ser.", type: "text", width: 100},
      {name: "diskmod",  title: "Disk Model", type: "text", width: 120},
-     {name: "diskrot",  title: "Disk Type", type: "text", width: 70, itemTemplate: rotcell},
+     {name: "diskrot",  title: "Disk Type", type: "text", width: 70, itemTemplate: rmgmtcell},
      {name: "disksize", title: "Disk Size", type: "text", width: 70},
      {name: "diskvirt", title: "Virtual Disk", type: "text", width: 80, visible: 0}, // This is wrong most of the time
    ];
@@ -66,7 +67,8 @@
    ];
    var fldinfo_rmgmt = [
      hostfld,
-     fldinfo_net[2],
+     // fldinfo_net[2],
+     {name: "ipaddr",  title: "IP Addr", type: "text", width: 120, itemTemplate: },
      fldinfo_net[5],
      
      {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120},
