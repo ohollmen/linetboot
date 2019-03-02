@@ -154,7 +154,14 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </ul>
 </template>
 
-<script></script>
+<template id="rmgmtusers" type="text/template">
+<h3>Remote Management Users on {{ hname }}</h3>
+<ul>
+{{#users}}
+<li>{{ ID }} - {{ Name }} ({{ Channel_Priv_Limit }})</li>
+{{/users}}
+</ul>
+</template>
 
 </body>
 </html>

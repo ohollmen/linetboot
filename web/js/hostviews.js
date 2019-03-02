@@ -145,7 +145,18 @@
         }
       ]
     };
-    
+var rmgmt_data = [];
+
+function on_rmgmt_click(ev) {
+  var tmpl = $("#rmgmtusers").html();
+  // console.log("Ev:", ev, " Val:"); //  // , "td"
+  var hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
+  var ent = rmgmt_data.filter(function (it) { return it.hname == hname; })[0];
+  var output = Mustache.render(tmpl, ent); // {hname: hname}
+  $( "#dialog" ).html(output);
+  $( "#dialog" ).dialog(dopts);
+}
+
 window.onload = function () {
   // Setup Tabs
   $( "#tabs" ).tabs();
@@ -168,13 +179,16 @@ window.onload = function () {
     $(".hostcell").click(function (ev) {
       
       var tmpl = $("#singlehost").html();
-      console.log("Ev:", ev, " Val:"); //  // , "td"
+      // console.log("Ev:", ev, " Val:"); //  // , "td"
       var hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
       var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
       var output = Mustache.render(tmpl, ent); // {hname: hname}
       $( "#dialog" ).html(output);
       $( "#dialog" ).dialog(dopts);
     });
+    
+    
+    
   })
   .catch(function (error) { console.log(error); });
   ////////////////////// Groups ///////////
@@ -233,9 +247,10 @@ window.onload = function () {
   function rmgmt() {
     axios.get('/hostrmgmt')
     .then(function (response) {
-      var rmgmt_data = response.data; // TODO: .data
+      rmgmt_data = response.data; // TODO: .data
       if (!rmgmt_data || !rmgmt_data.length) { return; } // Dialog
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
+      $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click);
     })
     .catch(function (error) { console.log(error); });
   }

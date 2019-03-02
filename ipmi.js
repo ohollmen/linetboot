@@ -85,7 +85,9 @@ function lan_parse(lanstr, opts) {
 * @return Array of Objects for IPMI User accounts with trailing "empty" accounts stripped out.
 */
 function users_parse(userlist, opts) {
+  // Original headers, Verbatim
   var attrs = ["ID","Name","Callin","Link Auth","IPMI Msg","Channel Priv Limit"]; // "Limit" ?
+  var attrs2 = ["ID","Name","Callin","Link_Auth","IPMI_Msg","Channel_Priv_Limit"];
   var users = userlist.split(/\n/).filter(function (l) {return l; });
   // NOTE: Headers have misc tabs (\t) ! Would need to do compicated tab expansion to use this.
   // var offs = attrs.map(function (at) { return users[0].indexOf(at); });
@@ -98,7 +100,7 @@ function users_parse(userlist, opts) {
   users.forEach(function (l) {
     var i = 0;
     var user = {};
-    attrs.forEach(function (at) {
+    attrs2.forEach(function (at) {
       user[at] = l.slice(offs[i], offs[i+1]-1);
       user[at] = user[at].trim();
       i++;
