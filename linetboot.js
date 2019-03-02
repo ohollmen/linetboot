@@ -914,7 +914,7 @@ function grouplist(req, res) {
     h.biosdate = h.ansible_bios_date;
   }
 /** List Remote Management interfaces for hosts that have them.
-*
+* Display on URL /hostrmgmt
 */
 function rmgmt_list(req, res) {
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path || "/home/" + process.env['USER'] + "/.linetboot/rmgmt";
@@ -932,10 +932,11 @@ function rmgmt_list(req, res) {
     var lan   = ipmi.lan_parse(cont);
     var users = ipmi.users_parse(cont2);
     var ulist = "";
-    if (users && Array.isArray(users)) { users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(','); }
+    if (users && Array.isArray(users)) { ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(','); }
     var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
       ipaddrtype: lan['IP Address Source'], gw: lan['Default Gateway IP'],
-      users: users
+      users: users,
+      ulist: ulist
     };
     arr.push(ent);
   });
