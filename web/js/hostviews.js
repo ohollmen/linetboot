@@ -155,6 +155,7 @@ window.onload = function () {
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
+    rmgmt();
     // Dialog options
     var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
@@ -229,6 +230,7 @@ window.onload = function () {
     axios.get('/hostrmgmt')
     .then(function (response) {
       var rmgmt_data = response.data; // TODO: .data
+      if (!rmgmt_data || !rmgmt_data.length) { return; } // Dialog
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
     })
     .catch(function (error) { console.log(error); });
