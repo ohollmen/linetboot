@@ -64,7 +64,16 @@
      hostfld,
      {name: "pkgcnt",  title: "# Pkgs", type: "number", width: 70},
    ];
-   var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg};
+   var fldinfo_rmgmt = [
+     hostfld,
+     fldinfo_net[2],
+     fldinfo_net[5],
+     
+     {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120},
+     fldinfo_net[3],
+     {name: "ulist",  title: "Users", type: "text", width: 150},
+   ];
+   var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg, "rmgmt": fldinfo_rmgmt};
    // Need to be inside some buildGrid
     var ActionButtonField = function(config) {
         //jsGrid.Field.call(this, config);
@@ -184,7 +193,7 @@ window.onload = function () {
     var pkginfo = response.data.data;
     // console.log(response.data.data);
     var idx = {};
-    response.data.data.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
+    pkginfo.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
     db.hosts.forEach(function (it) { it.pkgcnt = idx[it.hname]; });
     //console.log(db.hosts); console.log(idx);
     var color = Chart.helpers.color;
@@ -216,7 +225,14 @@ window.onload = function () {
   .catch(function (error) { console.log(error); });
   
   } // pkg_stats
-  
+  function rmgmt() {
+    axios.get('/hostrmgmt')
+    .then(function (response) {
+      var rmgmt_data = response.data; // TODO: .data
+      showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
+    })
+    .catch(function (error) { console.log(error); });
+  }
 };
 
 // $("#jsGrid").jsGrid("sort", field);
