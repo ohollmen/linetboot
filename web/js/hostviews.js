@@ -22,7 +22,8 @@
    function servtagcell(value, item) {
      var dsurl = "https://www.dell.com/support/home/us/en/04/product-support/servicetag/";
      // if (typeof value == 'undefined' || value == "") { return "??"; }
-     if (item.sysvendor.match(/\bDell\b/)) { return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
+     if (item && item.sysvendor && item.sysvendor.match(/\bDell\b/)) {
+       return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
      return value;
    }
    var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
