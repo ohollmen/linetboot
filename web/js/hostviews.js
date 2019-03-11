@@ -19,6 +19,12 @@
      if (value == "1") { return("HDD");}
      return "SSD";
    }
+   function servtagcell(value, item) {
+     var dsurl = "https://www.dell.com/support/home/us/en/04/product-support/servicetag/";
+     // if (typeof value == 'undefined' || value == "") { return "??"; }
+     if (item.sysvendor.match(/\bDell\b/)) { return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
+     return value;
+   }
    var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
    var fldinfo_net = [
      hostfld,
@@ -52,12 +58,12 @@
      {name: "cpuarch",  title: "CPU Arch", type: "text", width: 70},
      {name: "cores",    title: "# Cores", type: "number", width: 70},
      
-     {name: "cpuname",    title: "CPU", type: "text", width: 170},
+     {name: "cpuname",  title: "CPU", type: "text", width: 170},
      {name: "memsize",  title: "Mem (MB)", type: "number", width: 70},
      {name: "sysvendor",title: "System Vendor", type: "text", width: 120},
      {name: "sysmodel", title: "Model", type: "text", width: 120},
      {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
-     {name: "prodser",  title: "Prod.Ser.", type: "text", width: 100},
+     {name: "prodser",  title: "Prod.Ser.", type: "text", width: 100, itemTemplate: servtagcell}, // Link On Dell
      {name: "diskmod",  title: "Disk Model", type: "text", width: 120},
      {name: "diskrot",  title: "Disk Type", type: "text", width: 70, itemTemplate: rotcell},
      {name: "disksize", title: "Disk Size", type: "text", width: 70},
