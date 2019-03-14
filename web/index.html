@@ -111,6 +111,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-4">Packgages</a></li>
     <li><a href="#tabs-5">Groups</a></li>
     <li><a href="#tabs-6">Remote Mgmt</a></li>
+    <li><a href="#tabs-7">About ...</a></li>
   </ul>
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
   <div id="tabs-2"><div id="jsGrid_hw"></div></div>
@@ -121,6 +122,12 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   </div>
   <div id="tabs-5"></div>
   <div id="tabs-6"><div id="jsGrid_rmgmt">No Remote management being used.</div></div>
+  <div id="tabs-7">
+<h4>Linetboot Hosts Inventory</h4>
+<p>Web GUI evolved as an add-on around the (Ansible) host facts that <a href="#">linetboot</a> net-boot system uses.</p>
+(C): Olli Hollmen 2018-2019
+<p>For some raw output optons see: /allhostgen (barename, maclink, setup, pkgcoll)</p>
+  </div>
 </div>
 
 <div id="dialog" title="Host Details" style="display: none;"></div>
@@ -154,7 +161,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </ul>
 </template>
 
-<template id="rmgmtusers" type="text/template">
+<template id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
 <ul>
 {{#users}}

@@ -21,7 +21,6 @@
    }
    function servtagcell(value, item) {
      var dsurl = "https://www.dell.com/support/home/us/en/04/product-support/servicetag/";
-     // if (typeof value == 'undefined' || value == "") { return "??"; }
      if (item && item.sysvendor && item.sysvendor.match(/\bDell\b/)) {
        return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
      return value;
@@ -51,7 +50,7 @@
      // {name: "foo", title: "Action !", type: "actionButton"} // Works
    ];
    function rmgmtcell(value, item) {
-     return "<a href=\"https://" + value + "/\">" + value + "</a>" ;
+     return value ? "<a href=\"https://" + value + "/\">" + value + "</a>" : "N/A" ;
    }
    var fldinfo_hw = [
      hostfld,
@@ -177,7 +176,7 @@ window.onload = function () {
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
-    rmgmt();
+    rmgmt(response.data);
     // Dialog options
     var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
@@ -251,11 +250,13 @@ window.onload = function () {
   .catch(function (error) { console.log(error); });
   
   } // pkg_stats
-  function rmgmt() {
+  function rmgmt(hosts) {
     axios.get('/hostrmgmt')
     .then(function (response) {
       rmgmt_data = response.data; // TODO: .data
       if (!rmgmt_data || !rmgmt_data.length) { return; } // Dialog
+      // Merge sets: index
+      // var hidx = {}; hosts.forEach(function (it) {hidx[it.hname] = it; });
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
       $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click);
     })

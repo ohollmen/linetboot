@@ -508,8 +508,10 @@ function facts_load(hn) { // ipaddr
   var facts;
   try {
     //facts = require(absname);
+    if (!fs.existsSync(absname)) { console.error("No ansible_facts file ("+absname+") for host '" + hn + "'"); return; }
     // For some reason this works for ansible host files as above does not.
     var cont = fs.readFileSync(absname, 'utf8');
+    
     facts = JSON.parse(cont);
     facts = facts.ansible_facts; // Simplify !
     if (!facts) { console.error("No ansible_facts branch for host '" + hn + "'"); return; }
@@ -574,7 +576,7 @@ function pkg_counts (req, res) {
   });
   
 }
-/** Generate package list extraction. /pkglistgen
+/** Generate package list extraction. OLD:/pkglistgen /allhostgen
 * TODO: Plan to migrate this to ...for_all() handler that foucuses on doing an op to all hosts
 * - setup
 * - barename
@@ -619,7 +621,7 @@ function pkg_list_gen(req, res) {
       if (ps) {
         //console.log("Got to barename, have params");
         ps = ps.split(/,/);
-	var pstr = ps.map(function (p) {return p+"="}).join(" ");
+	var pstr = ps.map(function (p) {return p+"=";}).join(" ");
 	console.log(pstr);
 	cmd += " " + pstr;
       }
@@ -920,15 +922,17 @@ function rmgmt_list(req, res) {
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path || "/home/" + process.env['USER'] + "/.linetboot/rmgmt";
   var ipmi = require("./ipmi.js");
   var arr = [];
+  function dummy_add(dum) { arr.push(dum); } // Dummy entry w/o rm info.
   hostarr.forEach(function (f) {
-    var hn = f.ansible_fqdn; // { hname: f.ansible_fqdn }
+    var hn = f.ansible_fqdn;
+    var ent_dummy = { hname: f.ansible_fqdn, "ipaddr": "" }; // Dummy stub
     var fn = rmgmtpath + "/" + hn + ".lan.txt";
-    if (!fs.existsSync(fn)) { return; }
+    if (!fs.existsSync(fn)) { return dummy_add(ent_dummy); }
     var cont = fs.readFileSync(fn, 'utf8');
-    if (!cont || !cont.length) { return; }
+    if (!cont || !cont.length) { return dummy_add(ent_dummy); }
     fn = rmgmtpath + "/" + hn + ".users.txt";
     var cont2 = fs.readFileSync(fn, 'utf8');
-    if (!cont2 || !cont2.length) { return; }
+    if (!cont2 || !cont2.length) { return dummy_add(ent_dummy); }
     var lan   = ipmi.lan_parse(cont);
     var users = ipmi.users_parse(cont2);
     var ulist = "";
@@ -938,6 +942,7 @@ function rmgmt_list(req, res) {
       users: users,
       ulist: ulist
     };
+    // TODO: Try resolving by DNS
     arr.push(ent);
   });
   res.json(arr);
