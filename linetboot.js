@@ -167,12 +167,25 @@ function app_init(global) {
   
 }
 /** Find out the configured hostnames (from various possible places) and load host facts.
+Hosts can come from:
+- A Inventory style text file given in `global.hostsfile`
+- A JSON array given in global.hostnames
+
+In either case the (string) entries are in the same format, String:
+- Starts with hostname
+- Optional key value pairs follow in key=my+value
+
+As shown in sample key-value pair above, the spaces must be escaped with
+same rules as URL (%HH sequences or '+' for space).
+
 * TODO: throw on errors
 */
 function hosts_load(global) {
   var hnames = global.hostnames;
   var hfn = global.hostsfile;
+  // Line oriented text file
   if (hfn) {
+    hnames = [];
     // Fatal or NOT ?!!!
     if (!fs.existsSync(hfn)) { console.log("hostsfile given ("+hfn+"), but does not exist !"); }
     // Keep else as above is not fatal for now. Parse hostsfile.
@@ -181,13 +194,15 @@ function hosts_load(global) {
       // source - line oriented text fire and json array have the same format (refine stuff in common section)
       hnames_f = fs.readFileSync(hfn, 'utf8').split("\n");
       hnames_f = hnames_f.filter(function (it) { return it.match(/^\s*$/) ? false : true; }); // Weed out empties
-      if (Array.isArray(hnames)) { hnames.push(hnames_f); }
+      if (Array.isArray(hnames_f)) { hnames = hnames_f; }
     }
   }
   if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source"); process.exit(1);}
+  console.error("Hosts:", hnames);
   // Allow easy commenting-out as JSON itself does not have comments.
   hnames = hnames.filter(function (hn) { return ! hn.match(/^(#|\[)/); });
   if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
+  
   // NEW: Parse inverntory-style free-form params here
   global.hostparams = {};
   var i = 0;
@@ -201,7 +216,8 @@ function hosts_load(global) {
       rec.forEach(function (pair) {
         
         var kv = pair.split(/=/, 2);
-	global.hostparams[hn][kv[0]] = kv[1];
+	kv[1] = kv[1].replace('+', ' ');
+	global.hostparams[hn][kv[0]] = decodeURI(kv[1]); // Unescape
       });
       console.log("Pairs found: ", global.hostparams[hn]);
     }
@@ -583,15 +599,36 @@ function pkg_counts (req, res) {
 * - maclink
 */
 function pkg_list_gen(req, res) {
+  var genopts_idx = {};
   var genopts = [
-    {lbl: "barename", name: "Host names (w. params)"},
-    {lbl: "maclink", name: "MAC Address Symlinks"},
-    {lbl: "setup",   name: "Facts Gathering"},
-    {lbl: "pkgcoll", name: "Package List Extraction"}
+    {"lbl": "barename", name: "Bare Host Names Listing (w. optional params)", "cb": function (info, f) {
+      var ps = req.query.para; // Comma sep.
+      var cmd = info.hname;
+      if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
+      return cmd;
+    }},
+    {"lbl": "maclink", name: "MAC Address Symlinks", "cb": function (info, f) {
+      var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+      if (!mac) { return; }
+      mac.replace(":", "-");
+      return "ln -s default " + "01-" + mac; // Prefix: "01"
+    }},
+    {"lbl": "setup",   name: "Facts Gathering", "cb": function (info, f) {
+      return  "ansible -i ~/linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+    }},
+    {"lbl": "pkgcoll", name: "Package List Extraction", "cb": function (info, f) {
+      return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
+    }},
+    {"lbl": "rmgmtcoll", name: "Remote management info Extraction", "cb": function (info, f) {
+      return  "ansible-playbook -i ~/linetboot/hosts " + info.hname + " build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+    }},
   ];
+  genopts.forEach(function (it) { genopts_idx[it.lbl] = it; });
+  if (!req.params) { return res.end("# URL routing params missing completely.\n"); }
   var lbl = req.params.lbl;
   var cont = "";
-  
+  var op = genopts_idx[lbl];
+  if (!op) { return res.end("# "+lbl+" - No such op.\n"); }
   // See also (e.g.): ansible_pkg_mgr: "yum"
   var os_pkg_cmd = {
     "RedHat": "yum list installed", // rpm -qa, repoquery -a --installed, dnf list installed
@@ -605,40 +642,34 @@ function pkg_list_gen(req, res) {
     pkglist: "~/hostpkginfo",
     hostinfo: "~/hostinfo",
   };
+  function pstr_gen(ps) {
+    if (!ps) { return ""; }
+    //console.log("Got to barename, have params");
+    ps = ps.split(/,/);
+    var pstr = ps.map(function (p) {return p+"=";}).join(" ");
+    console.log(pstr);
+    return pstr;
+  }
+  
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
     var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, paths: paths};
     //if (f.ansible_os_family) {}
-    var cmd = "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
-    if (req.query.setup) {
-      cmd = "ansible -i ~/linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
-    }
-    if (req.query.barename) {
-      //console.log(req.query);
-      var ps = req.query.para;
-      cmd = info.hname;
-      if (ps) {
-        //console.log("Got to barename, have params");
-        ps = ps.split(/,/);
-	var pstr = ps.map(function (p) {return p+"=";}).join(" ");
-	console.log(pstr);
-	cmd += " " + pstr;
-      }
-    }
-    if (req.query.maclink) {
-      var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
-      if (!mac) { return; }
-      mac.replace(":", "-");
-      cmd = "ln -s default " + "01-" + mac; // Prefix: "01"
-    }
+    var cmd = op.cb(info, f);
+    /*
+    var cmd = genopts[3].cb(info, f);
+    if (req.query.setup)    { cmd = genopts[2].cb(info, f); }
+    if (req.query.barename) { cmd = genopts[0].cb(info, f); }
+    if (req.query.maclink)  { cmd = genopts[1].cb(info, f); }
+    */
     cont += cmd + "\n";
   });
   res.end(cont);
 }
 /** Generate Ubuntu 18 Netplan (via HTTP get).
 * Extract network config essentials from Facts.
-* Respond with YAML netplan content.
+* Respond with netplan YAML content.
 * @todo Convert netmask to CIDR notation.
 */
 function netplan_yaml(req, res) {
