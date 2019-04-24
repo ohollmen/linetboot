@@ -81,9 +81,17 @@
      
      {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120},
      fldinfo_net[3],
-     {name: "ulist",  title: "Users", type: "text", width: 150},
+     {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
    ];
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg, "rmgmt": fldinfo_rmgmt};
+   // All-hosts output types
+   var outtypes = [
+     {"lbl": "barename", name: "Bare Host Names"},
+     {"lbl": "maclink", name: "MAC Address Symlinks"},
+     {"lbl": "setup",   name: "Facts Gathering"},
+     {"lbl": "pkgcoll", name: "Package List Extraction"},
+     {"lbl": "rmgmtcoll", name: "Remote management info Extraction"}
+   ];
    // Need to be inside some buildGrid
     var ActionButtonField = function(config) {
         //jsGrid.Field.call(this, config);
@@ -163,6 +171,24 @@ function on_rmgmt_click(ev) {
   $( "#dialog" ).dialog(dopts);
 }
 
+
+function on_host_click(ev, barinfo) {
+      
+      var tmpl = $("#singlehost").html();
+      // console.log("Ev:", ev, " Val:"); //  // , "td"
+      var hname;
+      hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
+      // Try
+      if (!hname && barinfo) { hname = barinfo[0]._model.label; }
+      if (!hname) { alert("No hostname !"); return; }
+      var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+      var output = Mustache.render(tmpl, ent); // {hname: hname}
+      $( "#dialog" ).html(output);
+      $( "#dialog" ).dialog(dopts);
+    }
+var dopts = {modal: true, width: 600, // See min,max versions
+                    height: 500}; // show: {effect: "", duration: 1000}, hide: {}
+		    
 window.onload = function () {
   // Setup Tabs
   $( "#tabs" ).tabs();
@@ -177,21 +203,11 @@ window.onload = function () {
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
     rmgmt(response.data);
-    // Dialog options
-    var dopts = {modal: true, width: 600, // See min,max versions
-                    height: 500}; // show: {effect: "", duration: 1000}, hide: {}
+    // Dialog options (moved to bigger scope)
+    
     // Hook Only after grid created
     // $(".hostname").click(function (ev) {
-    $(".hostcell").click(function (ev) {
-      
-      var tmpl = $("#singlehost").html();
-      // console.log("Ev:", ev, " Val:"); //  // , "td"
-      var hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
-      var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
-      var output = Mustache.render(tmpl, ent); // {hname: hname}
-      $( "#dialog" ).html(output);
-      $( "#dialog" ).dialog(dopts);
-    });
+    $(".hostcell").click(on_host_click);
     
     
     
@@ -210,6 +226,10 @@ window.onload = function () {
     });
   })
   .catch(function (error) { console.log(error); });
+  // Output Gen
+  var otmpl = document.getElementById("outputs").innerHTML;
+  var olistout = Mustache.render(otmpl, {outtypes: outtypes});
+  document.getElementById("tabs-65").innerHTML = olistout;
   /////// Packages //////////////
   function pkg_stats() {
   axios.get('/hostpkgcounts')
@@ -227,29 +247,42 @@ window.onload = function () {
     // Transform AoO to Chart data
     var cmap = {
       // "Ubuntu":color('rgb(246, 223, 12)').alpha(0.5).rgbString(), // Yellow
-      "Ubuntu":color('rgb(237, 52, 23)').alpha(0.8).rgbString(), // #DD4814
-      "Debian":color('rgb(255, 99, 132)').alpha(0.5).rgbString(),
-      "RedHat":color('rgb(180, 36, 36)').alpha(0.5).rgbString(), "CentOS":color('rgb(30, 130, 25)').alpha(0.5).rgbString()};
+      "Ubuntu": color('rgb(237, 52, 23)').alpha(0.8).rgbString(), // #DD4814
+      "Debian": color('rgb(255, 99, 132)').alpha(0.5).rgbString(),
+      "RedHat": color('rgb(180, 36, 36)').alpha(0.5).rgbString(),
+      "CentOS": color('rgb(30, 130, 25)').alpha(0.5).rgbString()
+    };
+    // Generate cdata.datasets[0].data into cdata
     function chartdata(pkginfo, cdata) {
       cdata.labels = pkginfo.map(function (it) { return it.hname; });
       cdata.datasets[0].data = pkginfo.map(function (it) { return it.pkgcnt; });
+      // Lookup BG color for each bar
       cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
     }
     var ctx = document.getElementById('canvas').getContext('2d');
     chartdata(pkginfo, cdata);
     // console.log(JSON.stringify(cdata, null, 2));
     
-    // showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
+    // OLD: showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
-    
-    var copts = { responsive: true, legend: {position: 'top'}, scales: scales};
+    // Chart Click (detects particular bar)
+    function onCC(ev, ent) {
+      //alert(p1 + p2 + p3);
+      console.log(ent);
+      var hn = ent[0]._model.label;
+      console.log("Hostname: "+hn);
+      console.log(JSON.stringify(ent[0]._model, null, 2));
+      //console.log(JSON.stringify(p2)); // Cyclic
+    } // 
+    var copts = { responsive: true, legend: {position: 'top'}, scales: scales, onClick: on_host_click}; // onCC
     window.myBar = new Chart(ctx, { type: 'bar', data: cdata, options: copts });
   })
   .catch(function (error) { console.log(error); });
   
   } // pkg_stats
+  // Create Remote management info (grid).
   function rmgmt(hosts) {
     axios.get('/hostrmgmt')
     .then(function (response) {
