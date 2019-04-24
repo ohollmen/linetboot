@@ -111,6 +111,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-4">Packgages</a></li>
     <li><a href="#tabs-5">Groups</a></li>
     <li><a href="#tabs-6">Remote Mgmt</a></li>
+    <li><a href="#tabs-65">Output Fmts</a></li>
     <li><a href="#tabs-7">About ...</a></li>
   </ul>
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
@@ -122,11 +123,17 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   </div>
   <div id="tabs-5"></div>
   <div id="tabs-6"><div id="jsGrid_rmgmt">No Remote management being used.</div></div>
+  <div id="tabs-65">
+  <h3>Collective (all hosts) Outputs</h3>
+  
+  </div>
   <div id="tabs-7">
 <h4>Linetboot Hosts Inventory</h4>
 <p>Web GUI evolved as an add-on around the (Ansible) host facts that <a href="#">linetboot</a> net-boot system uses.</p>
-(C): Olli Hollmen 2018-2019
-<p>For some raw output optons see: /allhostgen (barename, maclink, setup, pkgcoll)</p>
+<p>(C): Olli Hollmen 2018-2019</p>
+<!--
+<p>For some raw output optons see: /allhostgen (barename, maclink, setup, pkgcoll, rmgmtcoll)</p>
+-->
   </div>
 </div>
 
@@ -167,6 +174,15 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 {{#users}}
 <li>{{ ID }} - {{ Name }} ({{ Channel_Priv_Limit }})</li>
 {{/users}}
+</ul>
+</template>
+
+<template id="outputs" type="text/template" title="All-hosts Collective Output Generation">
+<h3>All-hosts Collective Output Generation</h3>
+<ul>
+{{#outtypes}}
+<li><a href="/allhostgen/{{ lbl }}">{{ name }}</a></li>
+{{/outtypes}}
 </ul>
 </template>
 
