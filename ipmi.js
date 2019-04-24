@@ -20,6 +20,7 @@ function users_test() {
   console.log(users);
 }
 // console.log(process.argv);
+// Detect calling CL utility and trigger test mode.
 if (process.argv[1].match(/\bipmi\b/)) {
   lan_test();
   users_test();
@@ -46,7 +47,7 @@ function hosts_rmgmt_info(hlist, sshpara) {
       ssh.execCommand(cmd, execopts).then(function (result) {
         var lan = ipmi_lan_parse(result); // result.stdout
 	cb(lan);
-      });
+      }); // .catch(function (err) {})
     });
   }
   // async.map(hlist, host_rm_info, function () {});
@@ -80,7 +81,10 @@ function lan_parse(lanstr, opts) {
   // if (opts && opts.shortkeys) { ... }
   return lan;
 }
-/** Parse the results of IPMI User Listing.
+/** Parse the results of IPMI user listing output.
+* output usually has a fixed number of "user-slots" (e.g. 16), where most of accounts are
+* unused and without username. These empty accounts will be detected and stripped out,
+* however the ID:s of the accounts are preserved as-is (i.e. NOT renumbered).
 * @param userlist {string} - Userlist string as output by ipmitool
 * @return Array of Objects for IPMI User accounts with trailing "empty" accounts stripped out.
 */
