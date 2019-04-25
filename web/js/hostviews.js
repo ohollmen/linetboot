@@ -171,7 +171,8 @@ function on_rmgmt_click(ev) {
   $( "#dialog" ).dialog(dopts);
 }
 
-
+/** Shared click handler for host click.
+*/
 function on_host_click(ev, barinfo) {
       
       var tmpl = $("#singlehost").html();
@@ -284,10 +285,13 @@ window.onload = function () {
   } // pkg_stats
   // Create Remote management info (grid).
   function rmgmt(hosts) {
+    
     axios.get('/hostrmgmt')
     .then(function (response) {
+      
       rmgmt_data = response.data; // TODO: .data
-      if (!rmgmt_data || !rmgmt_data.length) { return; } // Dialog
+      console.log("Remote Mgmt data: ", rmgmt_data);
+      if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
       // Merge sets: index
       // var hidx = {}; hosts.forEach(function (it) {hidx[it.hname] = it; });
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
