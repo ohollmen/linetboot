@@ -176,7 +176,8 @@ In either case the (string) entries are in the same format, String:
 - Optional key value pairs follow in key=my+value
 
 As shown in sample key-value pair above, the spaces must be escaped with
-same rules as URL (%HH sequences or '+' for space).
+same rules as URL (%HH sequences or '+' for space) as parsing the line
+is whitespace delimiter based.
 
 * TODO: throw on errors
 */
@@ -206,10 +207,10 @@ function hosts_load(global) {
   // NEW: Parse inverntory-style free-form params here
   global.hostparams = {};
   var i = 0;
-  hnames.forEach(function (hn) {
-    if (hn.match(/\s+/)) {
-      var rec = hn.split(/\s+/);
-      hnames[i] = rec.shift();
+  hnames.forEach(function (hnline) {
+    if (hnline.match(/\s+/)) {
+      var rec = hnline.split(/\s+/);
+      var hn = hnames[i] = rec.shift();
       // Parse rec
       console.log(rec);
       global.hostparams[hn] = {}; // Init params !
@@ -219,10 +220,10 @@ function hosts_load(global) {
 	kv[1] = kv[1].replace('+', ' ');
 	global.hostparams[hn][kv[0]] = decodeURI(kv[1]); // Unescape
       });
-      console.log("Pairs found: ", global.hostparams[hn]);
+      console.log("Pairs found ("+hn+"): ", global.hostparams[hn]);
     }
     
-    //else {return;};
+    //else {global.hostparams[hnline] = {}; return;};
     i++;
   });
   global.hostnames = hnames;
@@ -368,7 +369,9 @@ function patch_params(d, osid) {
     net.dev = "em" + net.ifnum;
   }
 }
-/** Generate host parameters based on global settings and host specific settings.
+/** Generate host parameters for OS installation.
+* Parameters are based on global linetboot settings and host
+* specific (facts) settings.
 * The final params returned will be directly used to fill the template.
 * @param f - Host Facts parameters (from Ansible)
 * @param global - Global parameters (e.g. network info)
@@ -601,7 +604,7 @@ function pkg_counts (req, res) {
 function pkg_list_gen(req, res) {
   var genopts_idx = {};
   var genopts = [
-    {"lbl": "barename", name: "Bare Host Names Listing (w. optional params)", "cb": function (info, f) {
+    {"lbl": "barename", name: "Bare Host Names Listing (w. optional params by para=p1,p2,p3)", "cb": function (info, f) {
       var ps = req.query.para; // Comma sep.
       var cmd = info.hname;
       if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
@@ -647,7 +650,7 @@ function pkg_list_gen(req, res) {
     //console.log("Got to barename, have params");
     ps = ps.split(/,/);
     var pstr = ps.map(function (p) {return p+"=";}).join(" ");
-    console.log(pstr);
+    // console.log(pstr);
     return pstr;
   }
   
@@ -849,7 +852,10 @@ function ssh_key(req, res) {
 }
 
 
-var cbs = {"net": netinfo, "hw": hwinfo, "os": osinfo, "": function (f, h) { netinfo(f, h); osinfo(f, h); hwinfo(f, h); }};
+var cbs = {
+  "net": netinfo, "hw": hwinfo, "os": osinfo,
+  "": function (f, h) { netinfo(f, h); osinfo(f, h); hwinfo(f, h); }
+};
 
 /** Create a listing of host info.
 * Important facts contained resources here are:
@@ -866,10 +872,19 @@ function hostinfolist (req, res) {
   var viewtype = req.params["viewtype"] || "";
   var datafillcb = cbs[viewtype]; // Callback to populate data
   if (!datafillcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
+  function hostparainfo(hpara, h) {
+    h.use = hpara.use || "";
+    h.loc = hpara.loc || "";
+  }
+  var hps = global.hostparams || {};
   // Use array here (f = Host facts).
   hostarr.forEach(function (f) {
     var h = {hname: f.ansible_fqdn}; // Local generic hostlist entry (for any/all viewtype(s))
     datafillcb(f, h);
+    // Temp solution, hard-wired add
+    var hpara = hps[h.hname] || {};
+    console.log("HPARA:", hpara);
+    hostparainfo(hpara, h);
     arr.push(h);
   });
   res.json(arr);
