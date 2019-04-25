@@ -221,8 +221,8 @@ window.onload = function () {
     //console.log(JSON.stringify(grps, null, 2));
     grps.forEach(function (g) {
       var harr = g.hosts;
-      $('#tabs-5').append("<h2>"+g.name+"</h2>\n");
-      $('#tabs-5').append("<div id=\"grp_"+g.id+"\"></div>\n");
+      $('#tabs-5').append("<h2>"+g.name+"("+ harr.length +")</h2>\n");
+      $('#tabs-5').append("<div id=\"grp_"+ g.id +"\"></div>\n");
       showgrid("grp_"+g.id, harr, fldinfo_hw); // newt, hw,
     });
   })
