@@ -19,8 +19,8 @@
   "install_recommends": true,
   "ntpserver": "ntp.example.com",
   "postscript": "mv_homedir_for_autofs.sh",
-  
-  "hostnames": [
+  "hostsfile" : "/home/ohollmen/.linetboot/hosts",
+  "hostnamesX": [
     "banana1","cubox-i","odroid-db","odroid-32 k=v",
     "martta-1001PX","nuc5","nuc7","perlix2"
   ],

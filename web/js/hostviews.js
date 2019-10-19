@@ -89,6 +89,7 @@
    // All-hosts output types
    var outtypes = [
      {"lbl": "barename", name: "Bare Host Names"},
+     {"lbl": "addrname", name: "IP-Address, Hostname pairs"},
      {"lbl": "maclink", name: "MAC Address Symlinks"},
      {"lbl": "setup",   name: "Facts Gathering"},
      {"lbl": "pkgcoll", name: "Package List Extraction"},

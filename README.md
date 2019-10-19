@@ -385,6 +385,8 @@ Configuration in the main config file `global.conf.json`
 - maindocroot (str) - The dcocument root of linetboot (Express) static file delivery
 - useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
 - hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down).
+- hostsfile - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config
+  (array valued) key for hostnames.
 - Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now): locale, keymap, time_zone, install_recommends (D-I only), ntpserver, net (Object with global network base settings)
 
 Environment Variables:

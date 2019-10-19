@@ -251,7 +251,7 @@ app.use(function (req, res, next) {
 
 app_init(global);
 app.listen(port, function () {
-  console.log(`Linux Network Installer app listening on host:port http://localhost:${port} OK`);
+  console.log("Linux Network Installer app listening on host:port http://localhost:"+port+" OK"); // ${port}
 });
 
 /** Deep clone any data structure.
@@ -310,8 +310,8 @@ function preseed_gen(req, res) {
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
   if (!f) {
-    res.end(`# No IP Address ${ip} found in host DB\n`);
-    console.log(`# No IP Address ${ip} found in host DB\nRun: nslookup ${ip} for further info on host.`);
+    res.end("# No IP Address "+ip+" found in host DB\n"); // ${ip}
+    console.log("# No IP Address "+ip+" found in host DB\nRun: nslookup ${ip} for further info on host."); // ${ip}
     return; }
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
@@ -383,7 +383,7 @@ function patch_params(d, osid) {
 function host_params(f, global, ip, ctype, osid) {
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
-  if (anet.address != ip) { res.end(`# Hostinfo IP and detected ip not in agreement\n`); return null; }
+  if (anet.address != ip) { res.end("# Hostinfo IP and detected ip not in agreement\n"); return null; }
   net.ipaddress = ip;
   ////////////////////////// NET /////////////////////////////////////
   // TODO: Take from host facts (f) f.ansible_dns if available !!!
@@ -410,8 +410,9 @@ function host_params(f, global, ip, ctype, osid) {
   // Rules for extraction:
   // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
   var ifnum; var marr;
-  if      (marr = anet.interface.match(/^eth(\d+)/))      { ifnum = parseInt(marr[1]); ifnum++; } // Old 0-based
-  else if (marr = anet.interface.match(/^(em|eno)(\d+)/)) { ifnum = parseInt(marr[2]); } // New 1-based
+  if      ( (marr = anet.interface.match(/^eth(\d+)/)) )      { ifnum = parseInt(marr[1]); ifnum++; } // Old 0-based
+  
+  else if ( (marr = anet.interface.match(/^(em|eno)(\d+)/)) ) { ifnum = parseInt(marr[2]); } // New 1-based
   else { console.log("None matched: " + anet.interface); ifnum = 1; } // Guess / Default
   net.ifnum = ifnum;
   //  return ...;
@@ -576,8 +577,9 @@ function pkg_counts (req, res) {
     var f = hostcache[hn];
     var stat = {hname: hn, pkgcnt: 0, "distname": (f ? f.ansible_distribution: "???")};
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
-    if (!fs.existsSync(path))   { var err = "No pkg file for host: " + hn;      console.log(err); return cb(null, stat); }
-    if (path.indexOf("_") > -1) { var err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
+    var err;
+    if (!fs.existsSync(path))   { err = "No pkg file for host: " + hn;      console.log(err); return cb(null, stat); }
+    if (path.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
     cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
       if (error) { return cb(error, null); }
@@ -610,6 +612,13 @@ function pkg_list_gen(req, res) {
       if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
       return cmd;
     }},
+    {"lbl": "addrname", name: "IP Address, Hostname Pairs", "cb": function (info, f) {
+      var ps = req.query.para; // Comma sep.
+      var cmd = info.hname;
+      if (!info.hname) { return ""; }
+      var padsize = 16-info.ipaddr.length; // Max IP: 15, 
+      return info.ipaddr + " ".repeat(padsize) + info.hname;
+    }},
     {"lbl": "maclink", name: "MAC Address Symlinks", "cb": function (info, f) {
       var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
       if (!mac) { return; }
@@ -617,13 +626,13 @@ function pkg_list_gen(req, res) {
       return "ln -s default " + "01-" + mac; // Prefix: "01"
     }},
     {"lbl": "setup",   name: "Facts Gathering", "cb": function (info, f) {
-      return  "ansible -i ~/linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+      return  "ansible -i ~/.linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
     }},
     {"lbl": "pkgcoll", name: "Package List Extraction", "cb": function (info, f) {
       return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     }},
     {"lbl": "rmgmtcoll", name: "Remote management info Extraction", "cb": function (info, f) {
-      return  "ansible-playbook -i ~/linetboot/hosts " + info.hname + " build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+      return  "ansible-playbook -i ~/.linetboot/hosts " + info.hname + " build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
     }},
   ];
   genopts.forEach(function (it) { genopts_idx[it.lbl] = it; });
@@ -657,7 +666,7 @@ function pkg_list_gen(req, res) {
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
-    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, paths: paths};
+    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, paths: paths, ipaddr: f.ansible_default_ipv4.address};
     //if (f.ansible_os_family) {}
     var cmd = op.cb(info, f);
     /*
@@ -681,7 +690,7 @@ function netplan_yaml(req, res) {
   var ip = ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
-  if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
+  if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
   var d = f;
   
   var np = {"version": 2, "renderer": "networkd", "ethernets": {} };
@@ -808,7 +817,7 @@ function ssh_key(req, res) {
     "ed25519":"ansible_ssh_host_key_ed25519_public"
     
   };
-  if (!f) { res.end(`# No IP Address ${ip} found in host DB\n`); return; }
+  if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
   var keypath = process.env["LINETBOOT_SSHKEY_PATH"];
   //if (keypath && !fs.) {}
   res.type("text/plain");

@@ -31,5 +31,9 @@
     "":""
   },
   "author": "Olli Hollmen",
-  "license": "MIT"
+  "license": "MIT",
+  "jshintConfig" : {
+    "sub": true,
+    "curly": true
+  }
 }

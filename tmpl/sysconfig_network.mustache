@@ -1,23 +1,41 @@
-# RH-Style /etc/sysconfig/network
+# RH/CentOS Style /etc/sysconfig/network
 # See also (e.g): /etc/sysconfig/network-scripts/ifcfg-em1
 # TODO: nameservers ?
-HOSTNAME={{ net.hostname }}
-NETWORKING=yes
+TYPE="Ethernet"
+PROXY_METHOD="none"
+BROWSER_ONLY="no"
+BOOTPROTO="static"
+DEFROUTE="yes"
+IPV4_FAILURE_FATAL="no"
+IPV6INIT="yes"
+IPV6_AUTOCONF="yes"
+IPV6_DEFROUTE="yes"
+IPV6_FAILURE_FATAL="no"
+IPV6_ADDR_GEN_MODE="stable-privacy"
+NAME="{{ net.dev }}"
+# No HOSTNAME,NETWORKING in Centos 7.6
+## HOSTNAME={{ net.hostname }}
+## NETWORKING=yes
+# Netmask as bits ...
+PREFIX="20"
+# GATEWAY IP Addr
 GATEWAY={{ net.gateway }}
+# NOT in IF Config file in Centos
 #NISDOMAIN={{ net.nisdomainname }}
 NETWORKING_IPV6=no
 
 # ifcfg config example (e.g. /etc/sysconfig/network-scripts/ifcfg-em1)
 # RH/CentOS 7 Still use em...
 # Example: DEVICE="em1"
+# DEVICE => now NAME
 #DEVICE="{{ net.dev }}"
-#BOOTPROTO="static"
+
 #IPADDR="{{ net.ipaddress }}"
-#IPV6INIT="no"
+
 #MTU="1500"
 #NETMASK="{{ net.netmask }}"
 # NM=NetworkManager
 #NM_CONTROLLED="no"
 #ONBOOT="yes"
-#TYPE="Ethernet"
+
 #UUID="1524976b-6ce0-4650-8fc8-cf9f6985e142"

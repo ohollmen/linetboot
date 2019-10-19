@@ -66,6 +66,25 @@ dia:
 	eog doc/netbootseq.png
 test: FORCE
 	./test/test_http.sh
+# Create a default config in ~/.linetboot of current user.
+dotlinetboot:
+	@cp ./global.conf.json ~/.linetboot/global.conf.json
+	# >> ~/.linetboot/hosts
+	@[ ! -f "~/.linetboot/hosts" ] && echo "# Add hosts with fqdn in this file" 
+	# Create empty stub of IP translation file
+	# [ ! -f ~/.linetboot/iptrans.json ] && echo "{}" > ~/.linetboot/iptrans.json
+	@mkdir -p ~/.linetboot/sshkeys
+	@mkdir -p ~/.linetboot/tmpl
+	@echo "Copying PXE (preseed,kickstart) Install templates for you to customize"
+	@cp ./tmpl/* ~/.linetboot/tmpl
+	@[ ! -f "~/.linetboot/user.conf.json" ] && cp ./initialuser.json ~/.linetboot/user.conf.json
+	@echo "Set following env variables in your ~/.bashrc (or equivalent shell config)"
+	@echo "(Note: Change /home/ to /Users/ on Mac!)"
+	@echo "export LINETBOOT_GLOBAL_CONF=/home/$USER/.linetboot/global.conf.json"
+	@echo "export LINETBOOT_IPTRANS_MAP=/home/$USER/.linetboot/iptrans.json"
+	@echo "export LINETBOOT_USER_CONF=/home/$USER/.linetboot/user.conf.json"
+	@ls -al ~/.linetboot
+	
 jsdoc: FORCE
 	jsdoc linetboot.js -R README.md -c doc/.jsdoc.conf.json
 	#mkdir -p out/doc; cd out/doc; [ ! -L "netbootseq.png" ] && ln -s ../../doc/netbootseq.png netbootseq.png
