@@ -31,7 +31,7 @@ function resolve(hnode, cb) {
   cb = cb || function () {};
   var hn = hnode.ansible_fqdn;
   var ip_org = hnode.ansible_default_ipv4.address;
-  var prec = {hn: hn, ip: ip_org, ipok: 0, nameok: 0}; // probe record
+  var prec = {hname: hn, ip: ip_org, ipok: 0, nameok: 0}; // probe record
   var pingcfg = {timeout: 10};
   // TODO: Pull from module config
   var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey};

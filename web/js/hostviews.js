@@ -25,6 +25,22 @@
        return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
      return value;
    }
+   function dnsentcell(value, item) {
+     //if (typeof item.addrs != 'object') { return ""; }
+     if (!Array.isArray(item.addrs)) { return ""; }
+     // type: 'A' => address: "<IP>" ... "type": "CNAME", "value": "<HOSTNAME>"
+     var cont = "";
+     var aent = value[0]; // Sample first
+     if (typeof aent != 'object') { return ""; }
+     var cbs = {
+       'A': function (aent) { return(aent.address); },
+       'CNAME': function (aent) { return(aent.value); }
+     };
+     console.log(item);
+     cont = cbs[aent.type] ? cbs[aent.type](aent) : "????";
+     cont += "(" + aent.type + ")";
+     return cont;
+   }
    var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
    var fldinfo_net = [
      hostfld,
@@ -52,7 +68,14 @@
      // {name: "foo", title: "Action !", type: "actionButton"} // Works
    ];
    function rmgmtcell(value, item) {
+     
      return value ? "<a href=\"https://" + value + "/\">" + value + "</a>" : "N/A" ;
+   }
+   function probeokcell(value, item) {
+     console.log("Got value:'" + value + "'");
+     var ok = value ? 1 : 0;
+     var markers = [{col:"#B42424",txt:"Fail"},{col:"#1A7A0C", txt:"OK"}];
+     return "<span style=\"color: "+markers[ok].col+"\">"+markers[ok].txt+"</span>"
    }
    var fldinfo_hw = [
      hostfld,
@@ -85,7 +108,18 @@
      fldinfo_net[3],
      {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
    ];
-   var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg, "rmgmt": fldinfo_rmgmt};
+   var fldinfo_probe = [
+     hostfld, // Need hn ?
+     // itemTemplate: probeokcell
+     {name: "ip",     title: "IP Addr", type: "text", width: 70},
+     {name: "addrs",  title: "DNS Addresses", type: "text", width: 170, itemTemplate: dnsentcell},
+     {name: "ipok",   title: "IP Ok", type: "number", width: 30, itemTemplate: probeokcell},
+     {name: "nameok",  title: "Hostname Ok", type: "number", width: 30, itemTemplate: probeokcell},
+     {name: "ping",  title: "Ping Ok", type: "number", width: 30, itemTemplate: probeokcell},
+     {name: "sshconn",  title: "SSH Ok", type: "number", width: 30, itemTemplate: probeokcell},
+   ];
+   var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
+      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe};
    // All-hosts output types
    var outtypes = [
      {"lbl": "barename", name: "Bare Host Names"},
@@ -207,6 +241,7 @@ window.onload = function () {
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
     rmgmt(response.data);
+    probeinfo()
     // Dialog options (moved to bigger scope)
     
     // Hook Only after grid created
@@ -287,7 +322,7 @@ window.onload = function () {
   
   } // pkg_stats
   // Create Remote management info (grid).
-  function rmgmt(hosts) {
+  function rmgmt(hosts) { // hosts not used
     
     axios.get('/hostrmgmt')
     .then(function (response) {
@@ -299,6 +334,17 @@ window.onload = function () {
       // var hidx = {}; hosts.forEach(function (it) {hidx[it.hname] = it; });
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
       $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click);
+    })
+    .catch(function (error) { console.log(error); });
+  }
+  function probeinfo() {
+    axios.get('/nettest')
+    .then(function (response) {
+      var pinfo = response.data.data;
+      console.log("Probe data: ", pinfo);
+      if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
+      showgrid("jsGrid_probe", pinfo, fldinfo.probe);
+      // $("jsGrid_probe .hostcell").click(on_rmgmt_click); // Reload
     })
     .catch(function (error) { console.log(error); });
   }
