@@ -46,7 +46,7 @@ function resolve(hnode, cb) {
     addrs.forEach(function (rec) {
       // Note: For 'CNAME' Recs rec.value contains name
       // Avoid: The "name" argument must be of type string. Received type undefined
-      var ipaddr = rec.address || rec.value; // Skip IPv6 ?
+      var ipaddr = rec.address || ip_org; // rec.value; // Skip IPv6 ?
       dns.reverse(ipaddr, function (err, domains) {
         if (err) { console.log("Reverse Resolution error: " + err); return cb(); }
 	if (domains[0] == hn) { prec.nameok = 1;}
