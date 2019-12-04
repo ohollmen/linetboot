@@ -38,7 +38,7 @@
      };
      console.log(item);
      cont = cbs[aent.type] ? cbs[aent.type](aent) : "????";
-     cont += "(" + aent.type + ")";
+     cont += " (type " + aent.type + ")";
      return cont;
    }
    var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
@@ -72,10 +72,12 @@
      return value ? "<a href=\"https://" + value + "/\">" + value + "</a>" : "N/A" ;
    }
    function probeokcell(value, item) {
-     console.log("Got value:'" + value + "'");
+     // console.log("Got value:'" + value + "'");
      var ok = value ? 1 : 0;
-     var markers = [{col:"#B42424",txt:"Fail"},{col:"#1A7A0C", txt:"OK"}];
-     return "<span style=\"color: "+markers[ok].col+"\">"+markers[ok].txt+"</span>"
+     var markers = [
+       {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
+       {sty:"color: #1A7A0C;", txt:"OK"}];
+     return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>"
    }
    var fldinfo_hw = [
      hostfld,

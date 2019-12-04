@@ -1015,6 +1015,11 @@ function nettest(req, res) {
   netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   netprobe.probe_all(hostarr, function (results) {
+    // Note: There seems to be null (non-Object) entries in the results Array.
+    // These seem to be due to resolveAny() failing and cb params missing.
+    // Could weed these out by:
+    // results = results.filter(function (it) { return it; });
+    // ... but adding proper cb() params seems to eliminate need.
     res.json({data: results});
   });
 }

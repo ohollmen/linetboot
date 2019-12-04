@@ -39,7 +39,7 @@ function resolve(hnode, cb) {
   if (typeof cb != 'function') { throw "resolve: cb is not a function !"; }
   // resolve4, resolveAny, resolveCname
   dns.resolveAny(hn, dnsopts, function (err, addrs) {
-    if (err) { console.log("Resolution error: " + err); return cb(); }
+    if (err) { console.log("Resolution error: " + err); return cb(null, prec); }
     console.log("IPv4 Addresses: ", addrs);
     if (addrs[0].address == ip_org) { prec.ipok = 1; }
     prec.addrs = addrs; // Results of resolveAny()
@@ -48,7 +48,7 @@ function resolve(hnode, cb) {
       // Avoid: The "name" argument must be of type string. Received type undefined
       var ipaddr = rec.address || ip_org; // rec.value; // Skip IPv6 ?
       dns.reverse(ipaddr, function (err, domains) {
-        if (err) { console.log("Reverse Resolution error: " + err); return cb(); }
+        if (err) { console.log("Reverse Resolution error: " + err); return cb(null, prec); }
 	if (domains[0] == hn) { prec.nameok = 1;}
         console.log("Reverse: " + JSON.stringify(domains));
 	ping.sys.probe(ipaddr, function (isok) {
