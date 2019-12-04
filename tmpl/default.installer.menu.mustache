@@ -64,11 +64,21 @@ kernel http://{{ httpserver }}/gparted/live/memtest
 #kernel memtest86+
 
 # GpartEd (https://gparted.org/livepxe.php)
-# This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support.
+# This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support. Works always with Dell servers.
 label gparted
-menu label GpartEd Live (Netboot)
+menu label GpartEd Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/boot/gparted/vmlinuz
 append initrd=http://{{ httpserver }}/boot/gparted/initrd.img boot=live config components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs
+
+
+# Clonezilla Live PXE
+# Example almost directly from https://clonezilla.org/livepxe.php
+# ...but converted to Linetboot HTTP context.
+# TODO: Convert to current mainstream iso loop mount scheme 
+label clonezilla
+menu label Clonezilla Live (Ramdisk Netboot)
+kernel http://{{ httpserver }}/clzilla/live/vmlinuz
+append initrd=http://{{ httpserver }}/clzilla/live/initrd.img boot=live username=user union=overlay config components quiet noswap edd=on nomodeset nodmraid locales= keyboard-layouts= ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
 
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks

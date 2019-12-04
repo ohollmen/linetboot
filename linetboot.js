@@ -111,10 +111,11 @@ function app_init(global) {
   // Group lists
   app.get('/groups', grouplist);
   // Commands to list pkgs
-  app.get('/allhostgen/:lbl', pkg_list_gen);
-  app.get('/allhostgen', pkg_list_gen);
+  app.get('/allhostgen/:lbl', gen_allhost_output);
+  app.get('/allhostgen', gen_allhost_output);
   // rmgmt_list
   app.get('/hostrmgmt', rmgmt_list);
+  app.get('/nettest', nettest);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
@@ -597,13 +598,18 @@ function pkg_counts (req, res) {
   });
   
 }
-/** Generate package list extraction. OLD:/pkglistgen /allhostgen
+/** Generate output for all hosts (/allhostgen)
+* Output can be (for example):
+*
+* - Certain well known file format for an application / OS subsystem
+* - Commands to carry out certain op on all hosts
+*
 * TODO: Plan to migrate this to ...for_all() handler that foucuses on doing an op to all hosts
 * - setup
 * - barename
 * - maclink
 */
-function pkg_list_gen(req, res) {
+function gen_allhost_output(req, res) {
   var genopts_idx = {};
   var genopts = [
     {"lbl": "barename", name: "Bare Host Names Listing (w. optional params by para=p1,p2,p3)", "cb": function (info, f) {
@@ -1001,4 +1007,14 @@ function rmgmt_list(req, res) {
     arr.push(ent);
   });
   res.json(arr);
+}
+/** Perform set of network tests (DNS, Ping)
+*/
+function nettest(req, res) {
+  var netprobe = require("./netprobe.js");
+  netprobe.init();
+  // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
+  netprobe.probe_all(hostarr, function (results) {
+    res.json({data: results});
+  });
 }

@@ -5,21 +5,23 @@
   "main": "netboot.js",
   "dependencies": {
     "async": "2.6.1",
+    "dns": "0.2.2",
     "express": "4.16.4",
     "js-yaml": "3.12.0",
     "mustache": "3.0.1",
-    "node-ssh": "5.1.2"
+    "node-ssh": "5.1.2",
+    "ping": "0.2.2"
   },
   "devDependencies": {
     "jshint": "2.9.7",
-    "pm2":"3.2.8"
+    "pm2": "3.2.8"
   },
   "optionalDependencies": {
     "morgan": "1.9.1",
     "serve-static": "*"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "": ""
   },
   "keywords": [
     "pxe",
@@ -27,12 +29,9 @@
     "install",
     "netboot"
   ],
-  "scripts": {
-    "":""
-  },
   "author": "Olli Hollmen",
   "license": "MIT",
-  "jshintConfig" : {
+  "jshintConfig": {
     "sub": true,
     "curly": true
   }
