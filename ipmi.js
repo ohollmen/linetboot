@@ -97,8 +97,9 @@ function lan_parse(lanstr, opts) {
 function lan_hostname(ent, cb) {
   
   var ipaddr = ent["ipaddr"]; // ent["IP Address"];
+  if (!ipaddr) { ent.rmhname = "NA"; return cb(null, ent); }
   dns.reverse(ipaddr, function (err, domains) {
-    if (err) { ent.rmhname = "";  } // return cb(null, "");
+    if (err) { ent.rmhname = "NA(err)";  } // return cb(null, "");
     else { ent.rmhname = domains[0]; } // Add resolved name
     cb(null, ent); // domains[0]
   });
