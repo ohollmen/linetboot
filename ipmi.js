@@ -97,9 +97,10 @@ function lan_parse(lanstr, opts) {
 function lan_hostname(ent, cb) {
   
   var ipaddr = ent["ipaddr"]; // ent["IP Address"];
-  if (!ipaddr) { ent.rmhname = "N/A"; return cb(null, ent); }
+  ent.rmhname = ""; // Keep N/A out
+  if (!ipaddr) {  return cb(null, ent); } // ent.rmhname = "N/A";
   dns.reverse(ipaddr, function (err, domains) {
-    if (err) { ent.rmhname = "N/A(err)";  } // return cb(null, "");
+    if (err) {   } // return cb(null, ""); // ent.rmhname = "N/A(err)";
     else { ent.rmhname = domains[0]; } // Add resolved name
     cb(null, ent); // domains[0]
   });
