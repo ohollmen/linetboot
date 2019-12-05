@@ -103,10 +103,11 @@
    var fldinfo_rmgmt = [
      hostfld,
      // fldinfo_net[2],
-     {name: "ipaddr",  title: "IP Addr", type: "text", width: 120, itemTemplate: rmgmtcell},
+     {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 120, itemTemplate: rmgmtcell},
+     {name: "rmhname",  title: "Rmgmt Host", type: "text", width: 120},
      fldinfo_net[5],
      
-     {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120},
+     // {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120}, // Redundant
      fldinfo_net[3],
      {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
    ];
@@ -340,13 +341,14 @@ window.onload = function () {
     .catch(function (error) { console.log(error); });
   }
   function probeinfo() {
+    console.log("Launch Probe ...");
     axios.get('/nettest')
     .then(function (response) {
       var pinfo = response.data.data;
       console.log("Probe data: ", pinfo);
       if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
       showgrid("jsGrid_probe", pinfo, fldinfo.probe);
-      // $("jsGrid_probe .hostcell").click(on_rmgmt_click); // Reload
+      $("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
     })
     .catch(function (error) { console.log(error); });
   }

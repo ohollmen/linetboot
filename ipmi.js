@@ -5,6 +5,7 @@
 var fs = require('fs');
 var ssh = require("node-ssh");
 var async = require("async");
+var dns = require('dns');
 
 function lan_test () {
   var lfn = "./ipmi_lan_sample.txt";
@@ -22,17 +23,23 @@ function users_test() {
 // console.log(process.argv);
 // Detect calling CL utility and trigger test mode.
 if (process.argv[1].match(/\bipmi\b/)) {
-  lan_test();
-  users_test();
+  var act = process.argv[2];
+  if (act == 'lan') { lan_test(); }
+  else if (act == 'user') { users_test(); }
+  else { hosts_rmgmt_info(); }
 }
-/** Get remote management info for the hosts
+/** Get remote management info for the hosts by SSH.
+* Hosts are listed by name as array of strings in hlist.
+* @param hlist {array} - list of hostnames
+* @param sshpara {object} - SSH parameters "template" (server hostname is
+*      varied for each host connection)
 */
 function hosts_rmgmt_info(hlist, sshpara) {
   sshpara = sshpara || {};
   // host,username, privateKey
   if (!sshpara) { throw "Need SSH params"; }
   if (!sshpara.privateKey) {
-    sshpara.privateKey = "/home/"+process.env["USER"]+"/.ssh/id_rsa";
+    sshpara.privateKey = process.env["HOME"]+"/.ssh/id_rsa";
   }
   if (!sshpara.username) { sshpara.username = process.env["USER"]; }
   var cmd = "sudo  ipmitool lan print 1"; // Not going to work w/o root ssh
@@ -45,17 +52,19 @@ function hosts_rmgmt_info(hlist, sshpara) {
     ssh.connect(sshpara2).then(function () {
       // with stream: 'stdout' ... result is directly stdout
       ssh.execCommand(cmd, execopts).then(function (result) {
-        var lan = ipmi_lan_parse(result); // result.stdout
+        var lan = lan_parse(result); // result.stdout
 	cb(lan);
       }); // .catch(function (err) {})
     });
   }
-  // async.map(hlist, host_rm_info, function () {});
+  async.map(hlist, host_rm_info, function (results) {
+    console.log(JSON.stringify(results, null, 2));
+  });
 }
 
 /** Parse IPMI Lan Info.
 * Return ke-value Object with current LAN settings.
-* @param Output of `ipmitool lan print`
+* @param lanstr {string} - Output of `ipmitool lan print`
 * @return key-value Object with LAN settings
 * @todo Improve parsing on weirdly or inconsistently formatted fields (with nested values, e.g. 'Auth Type Enable', 'Cipher Suite Priv Max'). Luckily these are less frequently used, less useful.
 * @todo: Allow option for condensed short keys (taken from the set-parameters of IPMI tool.
@@ -79,20 +88,34 @@ function lan_parse(lanstr, opts) {
   });
   // Transform to short keys (used also by ipmitool in set commands)
   // if (opts && opts.shortkeys) { ... }
+  // NOTHERE: if (opts.dnsname) {}
   return lan;
 }
+/** Resolve IPMI LANInfo hostname.
+* Uses field 'IP Address' as param for resolution.
+*/
+function lan_hostname(ent, cb) {
+  
+  var ipaddr = ent["ipaddr"]; // ent["IP Address"];
+  dns.reverse(ipaddr, function (err, domains) {
+    if (err) { ent.rmhname = "";  } // return cb(null, "");
+    else { ent.rmhname = domains[0]; } // Add resolved name
+    cb(null, ent); // domains[0]
+  });
+}
+
 /** Parse the results of IPMI user listing output.
 * output usually has a fixed number of "user-slots" (e.g. 16), where most of accounts are
 * unused and without username. These empty accounts will be detected and stripped out,
 * however the ID:s of the accounts are preserved as-is (i.e. NOT renumbered).
-* @param userlist {string} - Userlist string as output by ipmitool
+* @param userliststr {string} - Userlist string as output by ipmitool
 * @return Array of Objects for IPMI User accounts with trailing "empty" accounts stripped out.
 */
-function users_parse(userlist, opts) {
+function users_parse(userliststr, opts) {
   // Original headers, Verbatim
   var attrs = ["ID","Name","Callin","Link Auth","IPMI Msg","Channel Priv Limit"]; // "Limit" ?
   var attrs2 = ["ID","Name","Callin","Link_Auth","IPMI_Msg","Channel_Priv_Limit"];
-  var users = userlist.split(/\n/).filter(function (l) {return l; });
+  var users = userliststr.split(/\n/).filter(function (l) {return l; });
   // NOTE: Headers have misc tabs (\t) ! Would need to do compicated tab expansion to use this.
   // var offs = attrs.map(function (at) { return users[0].indexOf(at); });
   var offs = [0, 4, 21, 29, 40, 51, 100]; // Sampled from output
@@ -119,5 +142,6 @@ function users_parse(userlist, opts) {
 module.exports = {
   hosts_rmgmt_info: hosts_rmgmt_info,
   lan_parse: lan_parse,
-  users_parse: users_parse
+  users_parse: users_parse,
+  lan_hostname: lan_hostname
 };

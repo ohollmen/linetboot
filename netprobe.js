@@ -63,7 +63,11 @@ function resolve(hnode, cb) {
 	    //  prec.sshrunok = 1; // result.stdout;
 	      return cb(null, prec); // Success
 	    //}).catch(function () { console.log("Run error: " + hn);return cb(null, prec); });
-	  }).catch(function () { return cb(null, prec); });
+	  }).catch(function (err) {
+	    console.log("SSH Conn. Err: " + err);
+	    prec.ssherr = err.toString();
+	    return cb(null, prec);
+	  });
 	  
 	  //return cb(null, prec);
 	  
