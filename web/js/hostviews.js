@@ -104,7 +104,7 @@
      hostfld,
      // fldinfo_net[2],
      {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 120, itemTemplate: rmgmtcell},
-     {name: "rmhname",  title: "Rmgmt Host", type: "text", width: 120},
+     {name: "rmhname",  title: "Rmgmt Host", type: "text", width: 120, itemTemplate: rmgmtcell}, // 
      fldinfo_net[5],
      
      // {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120}, // Redundant

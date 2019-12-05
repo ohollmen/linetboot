@@ -901,7 +901,9 @@ function rmgmt_list(req, res) {
     var ulist = "";
     if (users && Array.isArray(users)) {
       // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
-      ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(','); }
+      //ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(',');
+      ulist = users.filter(function (it) {return it.Name;}).map(function (it) {return it.Name + "(" + it.ID + ")";}).join(',');
+    }
     var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
       ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
       users: users,
