@@ -1,6 +1,11 @@
-/** Module to expose some of the ipmi extractable info.
+/** @file
+* # Module to expose some of the ipmi info.
+*
+* Allows parsing:
 * - LAN Info
-* - TODO: Accounts. Start allowing changing settings.
+* - User Accounts.
+* ## TODO:
+* Start allowing changing settings.
 */
 var fs = require('fs');
 var ssh = require("node-ssh");
@@ -91,8 +96,11 @@ function lan_parse(lanstr, opts) {
   // NOTHERE: if (opts.dnsname) {}
   return lan;
 }
-/** Resolve IPMI LANInfo hostname.
-* Uses field 'IP Address' as param for resolution.
+/** Resolve IPMI LANInfo hostname from ip address.
+* Uses field "ipaddr" (Orig field 'IP Address') as IP address param to resolve.
+* Sets member "rmhname" (for remote management hostname) in the object passed to it.
+* @param ent {object) - Remote management Info object (with short attributes).
+* @param cb {function} - Callback to call (with original ent as param) after name resolution.
 */
 function lan_hostname(ent, cb) {
   
