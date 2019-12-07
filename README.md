@@ -160,6 +160,7 @@ Download and mount CD/DVD Images (*.iso) as aloopback mount under /mnt by sequen
     wget http://releases.ubuntu.com/14.04/ubuntu-14.04.5-server-amd64.iso
     #wget http://cdimage.ubuntu.com/releases/14.04.5/release/ubuntu-14.04.5-server-amd64+mac.iso
     wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
+    wget https://osdn.net/frs/redir.php?m=constant&f=clonezilla%2F71563%2Fclonezilla-live-2.6.3-7-amd64.iso
     # Create mountpoints and mount
     sudo mkdir -p /isomnt/ubuntu14 /isomnt/ubuntu18 /isomnt/centos6 /isomnt/centos7 /isomnt/gparted
     ls -al /isomnt/
@@ -167,6 +168,7 @@ Download and mount CD/DVD Images (*.iso) as aloopback mount under /mnt by sequen
     sudo mount -o loop ubuntu-18.04.1-server-amd64.iso /isomnt/ubuntu18
     sudo mount -o loop CentOS-6.10-x86_64-minimal.iso  /isomnt/centos6
     sudo mount -o loop gparted-live-0.31.0-1-amd64.iso /isomnt/gparted
+    sudo mount -o loop clonezilla-live-2.6.3-7-amd64.iso /isomnt/clzilla
     # sudo mkdir -p /isomnt/centos6
     # sudo mount -o loop CentOS-6.6-x86_64-netinstall.iso /isomnt/centos6
     # As an excercise ... add Centos ... :-)
