@@ -773,11 +773,13 @@ function ssh_key(req, res) {
   }
   res.send("# Error (not public, not private or keydir missing)\n");
 }
-
+/** List Archived Host keys for (all) hosts.
+*/
 function ssh_keys_list(req, res) {
   var hks = require("./hostkeys.js");
-  var files = hks.hostkeys_list(hostcache);
-  res.send({data: files});
+  var keylist = hks.hostkeys_list(hostcache);
+  var keylist2 = hks.hostkeys_all_hosts(hostarr, keylist);
+  res.send({data: keylist2});
 }
 
 var cbs = {
@@ -954,4 +956,32 @@ function nettest(req, res) {
     // ... but adding proper cb() params seems to eliminate need.
     res.json({data: results});
   });
+}
+
+/** Mockup: Run set of ansible playbooks on set of hosts (POST).
+* Main paremeters are playbooks and hosts:
+* 
+* - Set of ansible playbooks should be given by a profile
+* (Or passing playbook names for maximum flexibility).
+* - Hosts could be given as individual hosts or group (as defined by
+* lineboot host groups).
+* 
+*/
+function ansible_run(req, res) {
+  var jr = {status: "err", msg: "Not running Ansible. "};
+  if (req.method != "POST") { jr.msg += "Send request as POST"; return; }
+  var p = req.body;
+  // Ansible command template
+  var anscmd = "";
+  // TODO: *real* Object
+  if (typeof p != 'object') { jr.msg += "Send POST body as Object"; return; }
+  console.log(JSON.stringify(p, null, 2));
+  // Validate hostnames against which ones we know through facts (hostcache).
+  var hostnames = p.hostnames; // hnames ?
+  var playbooks = p.playbooks; // Individual Playbooks (complete name ?)
+  var playprofile = p.playprofile;
+  // For now do not allow both
+  if (playbooks && playprofile) { jr.msg += "playbooks vs playprofile is ambiguos. Only send one."; return; }
+  // Lookup list of individual playbooks (from where ?)
+  if (playprofile) {}
 }

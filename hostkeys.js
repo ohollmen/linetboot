@@ -1,6 +1,10 @@
 var fs = require("fs");
 /** List cached / backup stored hostkeys from local system.
-* @
+* Creates listing *only* for hosts that have their hostkeys recorded.
+* See hostkeys_all_hosts() for producing listing for even hosts whose archived keys are missing.
+* 
+* @param hostcache {object} - Host Index to resolve IP address and hostname info for host
+* @param cfg {object} - 
 */
 function hostkeys_list(hostcache, cfg) {
   cfg = cfg || {};
@@ -44,6 +48,22 @@ function hostkeys_list(hostcache, cfg) {
   });
   return keylist;
 }
+/** Merge 
+*/
+function hostkeys_all_hosts(hostarr, keylist) {
+  // Index keylist
+  var keylist_idx = {};
+  keylist.forEach(function (ke) { keylist_idx[ke.hname] = ke; });
+  var hkarr = []; // Complete list
+  hostarr.forEach(function (he) {
+    var ent = {hname: he.ansible_fqdn}; // Default for no keys archived
+    if (keylist_idx[ent.hname]) { ent = keylist_idx[ent.hname]; }
+    hkarr.push(ent);
+  });
+  return hkarr;
+}
+
 module.exports = {
-  hostkeys_list: hostkeys_list
+  hostkeys_list: hostkeys_list,
+  hostkeys_all_hosts: hostkeys_all_hosts
 };
