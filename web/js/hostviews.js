@@ -121,8 +121,24 @@
      {name: "ping",  title: "Ping Ok", type: "number", width: 30, itemTemplate: probeokcell},
      {name: "sshconn",  title: "SSH Ok", type: "number", width: 30, itemTemplate: probeokcell},
    ];
+   function hkeycell(value, item) {
+     return value ? "OK" : "-";
+   }
+   var fldinfo_sshkeys = [
+     hostfld, // Need hn ?
+     // itemTemplate: probeokcell
+     {name: "rsa_pub",    title: "RSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "rsa_priv",   title: "RSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "dsa_pub",    title: "DSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "dsa_priv",   title: "DSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ecdsa_pub",  title: "ECDSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ecdsa_priv", title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ed25519_pub",  title: "ED25519 Pub",  type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ed25519_priv", title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell}
+     
+   ];
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
-      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe};
+      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "sshkeys" : fldinfo_sshkeys};
    // All-hosts output types
    var outtypes = [
      {"lbl": "barename", name: "Bare Host Names"},
@@ -130,7 +146,8 @@
      {"lbl": "maclink", name: "MAC Address Symlinks"},
      {"lbl": "setup",   name: "Facts Gathering"},
      {"lbl": "pkgcoll", name: "Package List Extraction"},
-     {"lbl": "rmgmtcoll", name: "Remote management info Extraction"}
+     {"lbl": "rmgmtcoll", name: "Remote management info Extraction"},
+     {"lbl": "sshkeyarch", name: "SSH Key archiving"}
    ];
    // Need to be inside some buildGrid
     var ActionButtonField = function(config) {
@@ -244,7 +261,8 @@ window.onload = function () {
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
     rmgmt(response.data);
-    probeinfo()
+    probeinfo();
+    sshkeys();
     // Dialog options (moved to bigger scope)
     
     // Hook Only after grid created
@@ -349,6 +367,18 @@ window.onload = function () {
       if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
       showgrid("jsGrid_probe", pinfo, fldinfo.probe);
       $("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
+    })
+    .catch(function (error) { console.log(error); });
+  }
+  function sshkeys() {
+    console.log("Launch SSH KeyInfo ...");
+    axios.get('/ssh/keylist')
+    .then(function (response) {
+      var pinfo = response.data.data;
+      console.log("SSH Key data: ", pinfo);
+      if (!pinfo || !pinfo.length) { alert("No SSH Key data"); return; }
+      showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
+      // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
     })
     .catch(function (error) { console.log(error); });
   }
