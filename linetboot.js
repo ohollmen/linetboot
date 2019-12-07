@@ -102,7 +102,9 @@ function app_init(global) {
   app.get('/scripts/:filename', script_send);
   
   // SSH Key delivery
+  app.get('/ssh/keylist', ssh_keys_list);
   app.get('/ssh/:item', ssh_key);
+  
   // Host Info Viewer
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
@@ -470,7 +472,8 @@ function pkg_counts (req, res) {
   var root = process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
   var jr = {status: "err", msg: "Package list collection failed."};
   if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
-  // Get package count for a single host.
+  // Get package count for a single host. Uses global hostcache and 9outer var) root.
+  // TODO: Pass facts, map(hostarr, ...)
   function gethostpackages(hn, cb) {
     var path = root + "/" + hn;
     // Lookup host for addl. info (for set to be self-contained)
@@ -538,8 +541,12 @@ function gen_allhost_output(req, res) {
       return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     }},
     {"lbl": "rmgmtcoll", name: "Remote management info Extraction", "cb": function (info, f) {
-      return  "ansible-playbook -i ~/.linetboot/hosts " + info.hname + " build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
+      return  "ansible-playbook -i ~/.linetboot/hosts  build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
     }},
+    // SSH Key archiving
+    {"lbl": "sshkeyarch", name: "SSH Key archiving", "cb": function (info, f) {
+      return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
+    }}
   ];
   genopts.forEach(function (it) { genopts_idx[it.lbl] = it; });
   if (!req.params) { return res.end("# URL routing params missing completely.\n"); }
@@ -572,7 +579,8 @@ function gen_allhost_output(req, res) {
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
-    var info = {hname: f.ansible_fqdn, username: username, pkglistcmd: plcmd, paths: paths, ipaddr: f.ansible_default_ipv4.address};
+    var info = {hname: f.ansible_fqdn, username: username, userhome: process.env["HOME"],
+      pkglistcmd: plcmd, paths: paths, ipaddr: f.ansible_default_ipv4.address};
     //if (f.ansible_os_family) {}
     var cmd = op.cb(info, f);
     /*
@@ -766,6 +774,11 @@ function ssh_key(req, res) {
   res.send("# Error (not public, not private or keydir missing)\n");
 }
 
+function ssh_keys_list(req, res) {
+  var hks = require("./hostkeys.js");
+  var files = hks.hostkeys_list(hostcache);
+  res.send({data: files});
+}
 
 var cbs = {
   "net": netinfo, "hw": hwinfo, "os": osinfo,
@@ -894,6 +907,7 @@ function rmgmt_list(req, res) {
     var cont = fs.readFileSync(fn, 'utf8');
     if (!cont || !cont.length) { return dummy_add(ent_dummy); }
     fn = rmgmtpath + "/" + hn + ".users.txt";
+    if (!fs.existsSync(fn)) { return dummy_add(ent_dummy); }
     var cont2 = fs.readFileSync(fn, 'utf8');
     if (!cont2 || !cont2.length) { return dummy_add(ent_dummy); }
     var lan   = ipmi.lan_parse(cont);
