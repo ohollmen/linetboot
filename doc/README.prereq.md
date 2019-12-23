@@ -34,6 +34,8 @@ Content needed on TFTP Server (relative to TFTP server root):
     menu.c32
     vesamenu.c32
     libcom32.c32
+    # Memdisk kernel (from syslinux-common) for loading ISO:s and raw images
+    memdisk
     # Bootmenu in a subdir named "pxelinux.cfg"
     # There can also be per-client differentiated boot menus by MAC address (e.g. symlinks)
     pxelinux.cfg/
