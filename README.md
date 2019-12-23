@@ -17,7 +17,7 @@ The sequence of booting installer and installing an OS with netinstall:
 
 ## DHCP Server
 
-PXE Booting standard and respective implementtaions start by consulting local DHCP server for IP address, "Boot file" and "Next Server". The next server allows a server other than DHCP server to handle delivery of "Boot file".
+PXE Booting standard and respective implementations start by consulting local DHCP server for IP address, "Boot file" and "Next Server". The next server allows a server other than DHCP server to handle delivery of "Boot file".
 
 Hopefully you get to utilize an existing DHCP server. However you have to buddy-up with the admins of the server
 to tweak the config in a minor way. See section "Changes to local DHCP Server".
@@ -33,16 +33,16 @@ The HTTP server used by linetboot is a lightweight Node.js / Express server with
 
 Web server has dual roles:
 
-- Deliver static files like
-  - Kernel images, Initial ramdisk images (to boot the system)
+- Deliver static files like ...:
+  - Kernel images, Initial ramdisk and filesystem images (to boot the system)
   - OS software packages (during the OS install)
-- Generate installation configurations for OS installers (basically instructions to automate the install) in the format that particular OS flavor prefers:
+- Generate dynamically installation configurations for OS installers (basically instructions to automate the install) in the format that particular OS flavor prefers:
   - In Debian family of OS:s a format called "Preseed" is used
   - In RedHat family of OS:s a format called "kickstart" is used
 
 linetboot and its dependencies can be installed plainly with git and npm (Node.js ecosystem package installer).
 
-## Media
+## Media (Server)
 
 The media used by linetboot is a set of CD/DVD ISO Image files that are mounted as "loopback file" or "loop device" (mount option `-o loop`). For more detailed information on this google "loop device" or read the man page for `mount`.
 
@@ -54,9 +54,9 @@ For latter purpose most OS:s allow network boot, although many of them also have
 
 The mount points of ISO images are symlinked (or alternatively URL-mapped) to be accessible by the HTTP server (viat the web server "document root").
 
-## Hostinfo DB
+## Hostinfo (Facts) DB
 
-Hostinfo DB is not really a just filesystem based JSON document (file) collection gathered by Ansible fact gathering process. The steps to collect this info are:
+Hostinfo DB is not a real DB server, but just filesystem based JSON document (file) collection gathered by Ansible fact gathering process. The steps to collect this info are:
 
 Create a small Ansible hosts file (e.g. hosts):
 
@@ -64,10 +64,13 @@ Create a small Ansible hosts file (e.g. hosts):
     linux1 ansible_user=admuser
     linux2 ansible_user=admuser
 
+Note: The linetboot external hosts file (given by "hostsfile" main config property) is compatible with ansible and all
+this info can be given in there.
+
 Run facts gathering:
      
      # inventory group = netboot (-u root would eliminate need for ansible_user= in inventory)
-     ansible netboot -i ./hosts -m setup --tree ~/hostinfo --extra-vars "ansible_sudo_pass=..."
+     ansible -b netboot -i ./hosts -m setup --tree ~/hostinfo --extra-vars "ansible_sudo_pass=..."
      # Single host w/o inventory
      ansible -b -u admuser -K -i linux1, all -m setup --tree ~/hostinfo
 
@@ -78,45 +81,13 @@ If you have problems getting ansible running on lineboot machine, the hostinfo D
 
 Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info). Hosts outside this list will not be counted in from the hostinfo directory.
 
-# Installation Prerequisites
+For further info see documents for:
 
-List of prerequisites for a functional lineboot system:
+- [Installation Pre-requisites](doc/README.prereq.md "Installation Pre-requisites for all related SW")
+- [Troubleshooting](doc/README.troubleshoot.md "Troubleshooting the whole Linetboot system functionality")
 
-- pxelinux - Provides network bootloaders (pxelinux0, lpxelinux.0, with latter supporting http)
-- Ubuntu install CD/DVD Image (from http://archive.ubuntu.com/ubuntu/dists/)
-- Gparted Live CD Image (from https://gparted.org/download.php)
-- Centos Install CD:s 
-- Tftp server - to store PXE Linux and menus on (Debian/Ubuntu: tftpd, tftpd-hpa or atftpd, Redhat/CentOS: tftp-server)
-- nodejs and npm - to run the preseed generation (and optionally mirror server for static file content (packages))
-- ansible - to record host facts
+-------------------------------------------------------------------------------------------------
 
-Optional (Development):
-- devscripts - Tools to explore remote Ubuntu/Debian mirrors (e.g. rmadison linux-generic)
-
-## PXE Linux Bootloader
-
-Install Ubuntu/Debian package `pxelinux` and its dependency `syslinux-common` on Ubuntu/Debian system as pxelinux has bootloader `lpxelinux.0` with HTTP support and HTTP is what this system is largely all about (RedHat / CentOS version that I checked did not have `lpxelinux.0` at all).
-Files that are needed from `pxelinux` package come from directories:
-- /usr/lib/PXELINUX/*pxelinux.0 - 3 possible `*pxelinux.0` bootloaders, but we linetboot mandates the `lpxelinux.0` with HTTP support
-- /usr/lib/syslinux/modules/bios/*.c32 pxelinux bootloader modules (from `syslinux-common`)
-
-Content needed on TFTP Server (relative to TFTP server root):
-
-    lpxelinux.0
-    ldlinux.c32
-    libutil.c32
-    menu.c32
-    vesamenu.c32
-    libcom32.c32
-    # Bootmenu in a subdir named "pxelinux.cfg"
-    pxelinux.cfg/
-    pxelinux.cfg/default
-
-After installing APT package pxelinux on your (recent) Ubuntu / Debian distribution, install the pxelinux and pxelinux modules (*.c32) by rsync or scp to TFTP server root directory.
-  
-TFTP Root on Debian/Ubuntu: /srv/tftp, Centos /var/lib/tftpboot.
-In RH/Centos pxelinux and its modules are installed by `yum install syslinux`, but this may not provide the lpxelinux.0' that is required by linetboot.
-    
 ## Pre-configured Boot Options in pxelinux.cfg/default
 
 Planned / Pre-configured boot options on the menu:
@@ -225,131 +196,19 @@ updates have cumulated), that are labeled with new "dot-version" at the end of o
 first patch release update after launch of "18.04". This appears in the CD/DVD image name. Choose the highest version to minimize the amount
 of update downloads after install.
 
-## Installing Node.js
 
-Ubuntu: `sudo apt-get install nodejs npm`
-
-Generic linux install: Download: `wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz`
-All download options: https://nodejs.org/dist/v10.14.2/
-
-See https://github.com/nodejs/help/wiki/Installation for installing under /usr/local/lib/nodejs.
-Alternative rsync install (directly) under /usr/local/:
-
-    cd /tmp
-    wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
-    
-    # Go to root of binary install tree after unpackaging
-    cd node-v10.14.2-linux-x64
-    echo -e "CHANGELOG.md\nLICENSE\nREADME.md\nexclude.txt" > exclude.txt
-    # test: --dry-run
-    sudo rsync -av  --exclude-from exclude.txt ./ /usr/local/
-    hash -r
-
-The generic Node install from nodejs.org may become handy with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way.
-
-## Installing TFTP Server
-
-Debian/Ubuntu (Default TFTP Server data/content root: /srv/tftp).
-
-    # This "just works". No config needed. Default TFTP root /srv/tftp
-    sudo apt-get install tftp tftpd
-
-RedHat/Centos (Default TFTP Server data/content root: /var/lib/tftpboot).
-
-    # See if you already got tftp-server or tftp
-    yum list installed | grep tftp
-    # Prefer having both tftp.x86_64 and tftp-server.x86_64, former (client)
-    # for diagnosing/testing/troubleshootting. Will be used for testing below.
-    sudo yum install tftp-server tftp
-    # Edit and change disable to 'no'
-    # For logging verbosity add -v,--verbose to server_args (-s,--secure = chroot server root,
-    # -v may be added multiple times)
-    sudo vi /etc/xinetd.d/tftp
-    # Verify
-    grep disable /etc/xinetd.d/tftp
-    disable = no
-    sudo service xinetd restart
-    # Testing
-    # Copy dummy to /var/lib/tftpboot and try get
-    echo "Hello" | sudo tee  /var/lib/tftpboot/dummy.txt
-    # test getting the test file
-    tftp localhost -c get dummy.txt
-    cat dummy.txt
-
-in Centos follow the system log file `/var/log/messages` for TFTP daemon messages.
-
-# Debugging and Troubleshooting
-
-## Linux installer on Install client host
-
-- Ubuntu installer virtual console #4
-  - Installer runtime (ramdisk?) /var/log/syslog (Only "more" pager is avail during install, also use tail -n 200 ...)
-- CentOS installer virtual console #3 (filesystems),#4 (networking),#5 (other, all excellent sources of detailed information)
-- CentOS installer leaves
-  - anakonda-ks.cfg (Installer modified Kickstart w. packages added, commands resequenced, recommented etc.) and original-ks.cfg (your original KS as it came from server, verbatim) to homedir of root user (/root on root partition)
-  - Various anakonda installer in /var/log/anakonda
-    - ifcfg.log - Network config (Interesting python dump snippets for if configs, under label "all settings")
-    - packaging.log - Info about YUM repos, mirrors and packages.
-    - storage.log - Info about disk controlled, disk devices, partitions (partitioning flow has python log messages)
-    - journal.log - Full Log (like dmesg/syslo/message, includeing DHCP traffic, Starting Anaconda)
-    - syslog, anaconda.log, program.log,ks-script-*.log
-
-## Testing DHCP
-
-- Real (ISC) DHCP Client: /sbin/dhclient (-v = verbose, -x Stop the running DHCP client without releasing the current lease.)
-- dhcping - Not sure how this works sudo dhcping -s 192.168.1.107 reponds: "no answer"
-- sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
-
-## TFTP Server
-
-Follow TFTP Server lod for filenames. Many TFTP servers log into OS syslog file (Debian: /var/log/syslog, RH: /var/log/messages)
-
-Problem: `tftpd: read: Connection refused` - after request for a valid file the network seems to blocked by firewall (?). This seems to happen when there is a rapid progression of trying different (non-existing) pxelinux menu files from server. Solution is to create a symlink by ethernet address (with correct convention) to the menu file "default" in subdir "pxelinux.cfg".
-
-## Web server file delivery
-
-Express static files delivery module "static" is not great about allowing intercept the success of static file delivery.
-Enable Apache static file delivery (assuming typical Apache port 80) by changing original "httpserver" value  `"192.168.1.141:3000"`
-to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will still be delivered by net boot install system.
-
-## PXE Client and PXE Linux Error messages
-
-The problem with PXE Boot error messages are that they remain on screen for a very short time.
-
-- `PXE-E53: No boot filename received` - DHCP config option "filename" was not gotten in DHCP offer (response for discovery).
-  The lineboot compatible value for this is "lpxelinux.0". Check your DHCP Configuration.
-- `Failed to load COM32 file ....c32` - PXELinux module (*.c32) defined in menu was not found on tftp server path relative to root  or a path relative to "path" directive (also found in menu). Follow TFTP server log to see what files were being tried. You likely forgot to place the *.c32 modules onto your TFTP server.
-- PXE-T01 File Not Found, PXE-E38 TFTP Error - Filename was given in response from by DHCP Server, but file by that name was not found on the TFTP Server
-- Failed to load ldlinux.c32 - same/similar as above on QLogic PXE Firmware
-- `Unable to locate configuration file` ... Boot failed - PXE Linux is not finding its configuration file in TFTP directory pxelinux.cfg/ more particularly:
-  - default file pxelinux.cfg/default
-  - One of the may files in same subdirectory identified or named by client unique id (e.g. 44454c4c-5900-1046-804c-b1c04f4b4232), dash separated MAC address (e.g. 01-28-f1-0e-5d-61-af), 
-Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address (with one digit dropped from tail at the time)
-  - Place boot menu file by name pxelinux.cfg/default in correct format on the TFTP server.
-
-- PSE-E51: No DHCP or Proxy Offers were received. PXE-M0F ...
-- ... Media Test failure, check cable Your PXE ROM Configuration likely asks to PXE boot from wrong Network Interface port, which has not cable connected. 
-- PXE-T01: File not nound PXE-E3B: TFTP Error - File Not found PXE-M0F Exiting ... Your PXE Implementation already tried to load a file by name which it does not display to you to challenge your debugging skills. Got to the log of your TFTP server and see what filename was tried. Example real life case: file requested was pxelinux.0, should be lpxelinux.0.
-
-- PXELinux: Unable to locate configuration file
-  - Check TFTP server log to see which file was tried to be loaded.
-  - Usually many files are tried by various names (See pxelinux config file
-    name rules)
-  - RedHat firewall heuristics may refuse tftp traffic after too may rapid tries
-  - Solution: Create symlink by one of the first tried filenames (e.g. MAC address with octets dash-separated).
-
-# Changes to local DHCP Server
+# Config changes to local DHCP Server
 
 Independent of which particular kind of DHCP Server your environment is using you have to configure it to
 send following configuration information to the hosts that you want to include in the auto-installation setup:
 
-- Boot Image / NBP (Network Boot Program) name (e.g. Linux standard "pxelinux.0" or "lpxelinux.0")
-- The TFTP server, aka "Next-Server" (separate from DHCP server itself) from which the above Boot Image / NBP is available using the simple TFTP
+- Boot Image / NBP (Network Boot Program, DHCP Option 67) name (e.g. Linux standard "pxelinux.0" or "lpxelinux.0")
+- The TFTP server, aka "Next-Server" (separate from DHCP server itself, DHCP Option 66) from which the above Boot Image / NBP is available using the simple TFTP
   - ISC DHCP calls this descriptively  "next-server" in it's configuration
 
 Examples of configuring this in various DHCP servers:
 
-## ISC DHCP 3 Server
+## Configuring ISC DHCP 3 Server
 
 In a subnet block include (among other options)
 
@@ -361,13 +220,13 @@ In a subnet block include (among other options)
     # NBP Filename (assumed to be at root dir of TFTP server)
     filename "lpxelinux.0";
     
-## dnsmasq Server
+## Configuring dnsmasq Server
 
 In main config include (How to limit this to only a range of hosts ?):
     
     dhcp-boot=lpxelinux.0,mytftphost-001,10.1.10.5
 
-## Infoblox appliance DHCP Server (Commercial DHCP/DNS Server)
+## Configuring Infoblox appliance DHCP Server (Commercial DHCP/DNS Server)
 
 See: https://docs.infoblox.com/display/NAG8/Configuring+IPv4+BOOTP+and+PXE+Properties
 
@@ -405,7 +264,7 @@ Environment Variables:
 
 In Ubuntu/Debian CD/DVD images: $CDROOT/preseed (Note: these are not very comprehensive examples). Google for "Preseed example".
 
-## Boot Kernels and Initramdisk images on CD
+## Boot Kernels and Initramdisk images on ISO images
 
 The answers to "wheres's the kernel and init ramdisk for boot of particular OS" can be quickly gotten by find utility,
 but just to speed up the process and to provide confirmation, here are the *likely* path locations for boot kernel
@@ -424,7 +283,7 @@ Centos (6, 7):
 
 Symlink to these files from respective $DOCROOT/boot/$OSID/ directory.
 
-## Configuring Server BIOS for PXE Boot
+## Configuring Host BIOS for PXE Boot
 
 The instructions here are specifically applicable for Dell servers but flow is likely very similar for other Intel based hardware with BIOS.
 
@@ -453,8 +312,8 @@ iSCSI or FCoE boot being enabled. To avoid this (examples given for typical Dell
 
 Enable in "NIC Configuration":
 - Legacy Boot Protocol: PXE
-- Boot Sttrap Type: Auto Detect
-- Surprisingly setting "Retries" to more than one (e.g. even 2) may help.
+- Boot Strap Type: Auto Detect
+- Surprisingly setting "Retries" to more than one (e.g. even 2-3) may help.
 
 ## TODO
 
@@ -472,8 +331,11 @@ mount fails and boot leads to single user mode.
 
 # FAQ
 
-Q: Can I use this for non automated or semi-automated install
+Q: Can I use linetboot for non automated or semi-automated install
 A: Yes, Strip auto=true from menu file `append` line. This should work at least for Ubuntu/Debian.
+Get familiar with your distro linux commandline ooptions to do this. Generally leaving certain "aspects"
+out in kickstart/preseed file (Installer config file) - in other words leaving the answers to certain istaller questions out - will make the installer go to
+interactive mode and prompt the user to answer to these missing things. Linux installers rarely (and thus fairly) decide things on behalf of installing user, but it's all up to particular distro (and its version) behavior.
 
 Q: Can I use another HTTP server if I suspect a problem with Express static file delivery ?
 A: Yes you can, try using Python lightweight HTTP server (we override the port to be Express default port 3000 to avoid regenerating configs):
