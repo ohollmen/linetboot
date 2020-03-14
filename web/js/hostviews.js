@@ -1,145 +1,19 @@
 "use strict;";
-   // Note: type(s) are mostly "widget" based: "text" (not string), "textarea", "number"
+   // Note: jsgrid type(s) are mostly "widget" based: "text" (not string), "textarea", "number"
    // //autosearch: true, // Not in a field ?
    // Disp Name: title (js-grid,vue-table), displayName (ui-grid)
    // Visibility: visible (ui-grid,vue-table)
    // Value transform: callback(vue-table), cellTemplate (ui-grid) itemTemplate(cb in js-grid)
    // Sortability: sortField(vue-table, must set), All(ui-grid: sort: {direction(asc/desc), priority}, sortingAlgorithm: cb)
-   // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
-   function distrocell(value, item) {
-     var img = "iconfinder_logo_brand_brands_logos_linux_3215592.svg"; // Default
-     if (value == "Debian") { img = "iconfinder_debian_386459.svg"; }
-     if (value == "Ubuntu") { img = "iconfinder_Ubuntu_2744987.svg"; }
-     if (value == "RedHat") { img = "iconfinder_redhat_7353.png"; }
-     
-     return value + "<img src=\"img/"+img+"\" class=\"osicon\">"; // 
-   }
-   function rotcell(value, item) {
-     if (typeof value == 'undefined' || value == "") { return "??"; }
-     if (value == "1") { return("HDD");}
-     return "SSD";
-   }
-   function servtagcell(value, item) {
-     var dsurl = "https://www.dell.com/support/home/us/en/04/product-support/servicetag/";
-     if (item && item.sysvendor && item.sysvendor.match(/\bDell\b/)) {
-       return("<a href='" + dsurl + value + "' target='dellinfo'>" + value + "</a>"); }
-     return value;
-   }
-   function dnsentcell(value, item) {
-     //if (typeof item.addrs != 'object') { return ""; }
-     if (!Array.isArray(item.addrs)) { return ""; }
-     // type: 'A' => address: "<IP>" ... "type": "CNAME", "value": "<HOSTNAME>"
-     var cont = "";
-     var aent = value[0]; // Sample first
-     if (typeof aent != 'object') { return ""; }
-     var cbs = {
-       'A': function (aent) { return(aent.address); },
-       'CNAME': function (aent) { return(aent.value); }
-     };
-     console.log(item);
-     cont = cbs[aent.type] ? cbs[aent.type](aent) : "????";
-     cont += " (type " + aent.type + ")";
-     return cont;
-   }
-   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
-   var fldinfo_net = [
-     hostfld,
-     // Network
-     {name: "dev",     title: "Device", type: "text", width: 40},
-     {name: "ipaddr",  title: "IP Addr", type: "text", width: 120},
-     {name: "macaddr", title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
-     {name: "netmask", title: "NetMask", type: "text", width: 120},
-     {name: "gateway", title: "Gateway", type: "text", width: 120},
-     {name: "dns", title: "DNS Server(s)", type: "text", width: 160},
-   ];
-   var fldinfo_dist = [
-     hostfld,
-     // Distro
-     // insertTemplate: "<img src='foo.png'> Hi"
-     {name: "distname",  title: "Distro", type: "text", width: 80, itemTemplate: distrocell }, // css: "osicon"
-     {name: "distver",   title: "Ver", type: "number", width: 50},
-     {name: "kernelver", title: "Kernel", type: "text", width: 150},
-     {name: "use", title: "Usage", type: "text", width: 100},
-     {name: "loc", title: "Location", type: "text", width: 100},
-     //{name: "", title: "", type: "text"},
-     // https://codepen.io/shunty/pen/Njywpz
-     //
-     //{name: "", title: "", type: "control", editButton: false, deleteButton: false}
-     // {name: "foo", title: "Action !", type: "actionButton"} // Works
-   ];
-   function rmgmtcell(value, item) {
-     
-     return value ? "<a href=\"https://" + value + "/\">" + value + "</a>" : "N/A" ;
-   }
-   function probeokcell(value, item) {
-     // console.log("Got value:'" + value + "'");
-     var ok = value ? 1 : 0;
-     var markers = [
-       {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
-       {sty:"color: #1A7A0C;", txt:"OK"}];
-     return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>"
-   }
-   var fldinfo_hw = [
-     hostfld,
-     // Disk
-     {name: "cpuarch",  title: "CPU Arch", type: "text", width: 70},
-     {name: "cores",    title: "# Cores", type: "number", width: 70},
-     
-     {name: "cpuname",  title: "CPU", type: "text", width: 170},
-     {name: "memsize",  title: "Mem (MB)", type: "number", width: 70},
-     {name: "sysvendor",title: "System Vendor", type: "text", width: 120},
-     {name: "sysmodel", title: "Model", type: "text", width: 120},
-     {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
-     {name: "prodser",  title: "Prod.Ser.", type: "text", width: 100, itemTemplate: servtagcell}, // Link On Dell
-     {name: "diskmod",  title: "Disk Model", type: "text", width: 120},
-     {name: "diskrot",  title: "Disk Type", type: "text", width: 70, itemTemplate: rotcell},
-     {name: "disksize", title: "Disk Size", type: "text", width: 70},
-     {name: "diskvirt", title: "Virtual Disk", type: "text", width: 80, visible: 0}, // This is wrong most of the time
-   ];
-   var fldinfo_pkg = [
-     hostfld,
-     {name: "pkgcnt",  title: "# Pkgs", type: "number", width: 70},
-   ];
-   var fldinfo_rmgmt = [
-     hostfld,
-     // fldinfo_net[2],
-     {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 120, itemTemplate: rmgmtcell},
-     {name: "rmhname",  title: "Rmgmt Host", type: "text", width: 120, itemTemplate: rmgmtcell}, // 
-     fldinfo_net[5],
-     
-     // {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120}, // Redundant
-     fldinfo_net[3],
-     {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
-   ];
-   var fldinfo_probe = [
-     hostfld, // Need hn ?
-     // itemTemplate: probeokcell
-     {name: "ip",     title: "IP Addr", type: "text", width: 70},
-     {name: "addrs",  title: "DNS Addresses", type: "text", width: 170, itemTemplate: dnsentcell},
-     {name: "ipok",   title: "IP Ok", type: "number", width: 30, itemTemplate: probeokcell},
-     {name: "nameok",  title: "Hostname Ok", type: "number", width: 30, itemTemplate: probeokcell},
-     {name: "ping",  title: "Ping Ok", type: "number", width: 30, itemTemplate: probeokcell},
-     {name: "sshconn",  title: "SSH Ok", type: "number", width: 30, itemTemplate: probeokcell},
-   ];
-   function hkeycell(value, item) {
-     return value ? "OK" : "-";
-   }
-   var fldinfo_sshkeys = [
-     hostfld, // Need hn ?
-     // itemTemplate: probeokcell
-     {name: "rsa_pub",    title: "RSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "rsa_priv",   title: "RSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "dsa_pub",    title: "DSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "dsa_priv",   title: "DSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ecdsa_pub",  title: "ECDSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ecdsa_priv", title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ed25519_pub",  title: "ED25519 Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ed25519_priv", title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell}
-     
-   ];
-   var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
-      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "sshkeys" : fldinfo_sshkeys};
-   // All-hosts output types
+   
+/**   # TODO
+ 
+ Create emit/subscribe mechanism to (e.g.) setup link event handlers on grid
+ (events.js / ee = EventEmitter();ee.emit("evname", data) ? Node only ?)
+*/
+
+   // All-hosts output types (Share betw. Serv and Client)
+   // TODO: Use http://localhost:3000/allhostgen/
    var outtypes = [
      {"lbl": "barename", name: "Bare Host Names"},
      {"lbl": "addrname", name: "IP-Address, Hostname pairs"},
@@ -190,7 +64,7 @@
        if (debug) { console.log("After filter:" + arr.length + " items"); }
        return arr;
      }
-   
+   // 
    var db = {
      datakey: "hosts",
      filterdebug: 0,
@@ -216,7 +90,11 @@
         }
       ]
     };
+// Must be shared for event handler
 var rmgmt_data = [];
+var grps = [];
+var datasets = {};
+var ee = new EventEmitter(); // events processing.
 
 function on_rmgmt_click(ev) {
   var tmpl = $("#rmgmtusers").html();
@@ -227,45 +105,189 @@ function on_rmgmt_click(ev) {
   $( "#dialog" ).html(output);
   $( "#dialog" ).dialog(dopts);
 }
+/** Create Dialog related to single host with parametrized template.
+* Can be called from event handler context, but does not work in event context.
+* @param {string} tmplsel - Template (HTML) element selector (e.g. '#mytmpl')
+* @todo Allow alternatively passing whole template content (by testing ^# or ^\. in tmplsel) ?
+*/
+//function host_dialog(hname, tmplsel) {
+  
+//}
+
+function on_docker_info(ev) {
+  var hname = '';
+  var tmplsel = "#dockerimg";
+  //var tmpl = $(tmplsel).html(); // Not needed
+  var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+  var gridsel = "jsGrid_dockerimg_d";
+  // Launch 
+  //$( "#dialog" ).html(output);
+  
+  var cb = function (pinfo) {
+    console.log("Call dialog CB ..." + "#dockerimg");
+    showgrid(gridsel, pinfo, fldinfo.dockerimg);
+    
+    $( "#dockerimg" ).dialog(dopts_grid);
+  }
+  dockerinfo(hname, gridsel, cb);
+  //showgrid(gridsel, response.data, fldinfo.net);
+}
 
 /** Shared click handler for host click.
 */
 function on_host_click(ev, barinfo) {
-      
-      var tmpl = $("#singlehost").html();
-      // console.log("Ev:", ev, " Val:"); //  // , "td"
-      var hname;
-      hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
-      // Try
-      if (!hname && barinfo) { hname = barinfo[0]._model.label; }
-      if (!hname) { alert("No hostname !"); return; }
-      var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
-      var output = Mustache.render(tmpl, ent); // {hname: hname}
-      $( "#dialog" ).html(output);
-      $( "#dialog" ).dialog(dopts);
+  
+  
+  // console.log("Ev:", ev, " Val:"); //  // , "td"
+  var hname;
+  hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
+  // Try
+  if (!hname && barinfo) { hname = barinfo[0]._model.label; }
+  var tmplsel = "#singlehost";
+  
+  var tmpl = $(tmplsel).html();
+  if (!hname) { alert("No hostname !"); return; }
+  // Lookup host
+  var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+  var output = Mustache.render(tmpl, ent); // {hname: hname}
+  $( "#dialog" ).html(output);
+  $( "#dialog" ).dialog(dopts);
+}
+
+
+// From UI ...
+  function form_obj_fd (sel) {
+    var fe = document.querySelector(sel); // "#ansform"
+    var formData = new FormData(fe);
+    // var fdp = formData.getAll(); // get(key) / getAll(somepara)
+    var fdp = formData.values(); // entries()
+    var obj = {};
+    for(var pair of formData.entries()) { // entries()
+      console.log(pair[0]+ ', '+ pair[1]); 
+      //console.log(pair);
+      obj[pair[0]] = pair[1];
     }
+    return obj;
+  }
+  //console.log("Got UI FormData params:", fdp);
+  
+  
+  function form_obj(sel, arrattr) {
+    var ismulti = {};
+    arrattr = arrattr || [];
+    arrattr.forEach(function (k) { ismulti[k] = 1; });
+    var arr  = $(sel).serializeArray(); // serialize() gets one k=v pair
+    var obj = {};
+    // Could take either orientation: "not in yet" or "is multi"
+    arr.forEach(function (it) {
+      var k = it.name;
+      var multi = ismulti[k];
+      // Not in yet
+      if (!obj[k]) {
+        if (multi) { obj[k] = [it.value]; return; }
+	obj[k] = it.value; // Assume scalar
+      }
+      // In already (not unique)
+      else {
+        if (multi || Array.isArray(obj[k])) { obj[k].push(it.value); return; }
+	obj[k] = [obj[k]]; obj[k].push(it.value);  // Convert old scalar to array and push
+      }
+    });
+    return obj;
+  }
+/** Show Ansible UI */
+function ansishow(ev) {
+  
+  var tmpl = $("#ansrun").html();
+  if (!tmpl) { return alert("No tmpl !"); }
+  // var sets = ["aplays","aprofs"];
+  var p = { hosts: db.hosts, groups: grps, aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
+  console.log("Got to ansishow w. para: ", p);
+  var output = Mustache.render(tmpl, p);
+  $( "#dialog_ans" ).html(output);
+  var dopts = {modal: true, width: 650, // See min,max versions
+                    height: 600}
+  $( "#dialog_ans" ).dialog(dopts);
+  // Hook select-reset listeners
+  $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
+  $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
+}
+/** Get values from UI and run ansible POST request.
+// - ansrunhosts, ansrungroups
+// - ..
+* https://stackoverflow.com/questions/1857781/best-way-to-unselect-a-select-in-jquery
+*/
+function ansirun(ev) {
+  var para = form_obj("#ansform", ["hostnames","hostgroups", "playbooks", ]); // "playprofile"
+  console.log("Got UI params: ", JSON.stringify(para, null, 2) );
+  //return;
+  function is_not_given(v) {
+    if (!v) { return 1; }
+    if (Array.isArray(v) && !v.length) { return 1; }
+    return 0;
+  }
+  
+  if (is_not_given(para.playbooks) && is_not_given(para.playprofile)) { alert("Neither playbooks or playprofile given !"); return; }
+  axios.post("/ansrun", para).then(function (response) {
+    var rp = response.data;
+    // TODO: Toaster
+    console.log("Got Ansible run server resp: ", rp);
+  });
+  
+}
 var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
-		    
+// MUST have separate custom opts (wide grid)
+// See min,max versions
+var dopts_grid = {modal: true, width: 1000, height: 500};
+    		    
 window.onload = function () {
   // Setup Tabs
   $( "#tabs" ).tabs();
+  //var dataurls = ["/list", "/groups", "/hostpkgcounts", "/hostrmgmt", "/nettest", "/ssh/keylist"];
   // Also 2nd {params: {}}
+  data_load('/anslist/play', 'aplays');
+  data_load('/anslist/prof', 'aprofs');
   axios.get('/list')
   .then(function (response) {
     //console.log(response);
     db.hosts = response.data;
     pkg_stats(); // Only now trigger fetch of pkg stats
+    // Immediate grids
+    ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
+    ee.on("on_jsGrid_dist_done", function (d) {  });
+    ee.on("on_jsGrid_hw_done", function (d) {  });
+    // Others
+    ee.on("on_jsGrid_rmgmt_done", function (d) { $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); });
+    //  // Reload. TODO: Wait ...
+    function on_probe_reload() {
+      $("#jsGrid_probe").fadeOut();
+      $("#reloadsym").removeClass().addClass("glyphicon glyphicon-hourglass");
+      probeinfo();
+    }
+    ee.on("on_jsGrid_probe_done", function (d) {
+      $("#jsGrid_probe").fadeIn(2000);
+      $("#reloadsym").removeClass().addClass("glyphicon glyphicon-refresh");
+      // Should hook these ONCE
+      //$("#proberun").click(on_probe_reload);
+      $("#proberun2").click(on_probe_reload);
+    });
+    // Docker
+    ee.on("on_dockerimg_done", function (d) { $("#dockerimg").dialog(dopts_grid); });
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
+    
+    // Shared data, different views
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
-    rmgmt(response.data);
-    probeinfo();
-    sshkeys();
+    // 
+    rmgmt(); // Unused: response.data
+    probeinfo(); // Launches HTTP
+    sshkeys(); // Launches HTTP (NO UI setup)
+    // dockerinfo(); // NOT HERE
     // Dialog options (moved to bigger scope)
     
-    // Hook Only after grid created
+    // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
     $(".hostcell").click(on_host_click);
     
@@ -276,7 +298,7 @@ window.onload = function () {
   ////////////////////// Groups ///////////
   axios.get('/groups')
   .then(function (response) {
-    var grps = response.data; // AoOoAoO...
+    grps = response.data; // AoOoAoO...
     //console.log(JSON.stringify(grps, null, 2));
     grps.forEach(function (g) {
       var harr = g.hosts;
@@ -291,6 +313,7 @@ window.onload = function () {
   var olistout = Mustache.render(otmpl, {outtypes: outtypes});
   document.getElementById("tabs-65").innerHTML = olistout;
   /////// Packages //////////////
+  // load and Chart package statistics
   function pkg_stats() {
   axios.get('/hostpkgcounts')
   .then(function (response) {
@@ -312,15 +335,19 @@ window.onload = function () {
       "RedHat": color('rgb(180, 36, 36)').alpha(0.5).rgbString(),
       "CentOS": color('rgb(30, 130, 25)').alpha(0.5).rgbString()
     };
-    // Generate cdata.datasets[0].data into cdata
-    function chartdata(pkginfo, cdata) {
+    /** Generate cdata.datasets[0].data into cdata.
+    * @param pkginfo {array} - Package info (AoO) for all hosts
+    * @param cdata - Chart Data (structure) to populate with values and colors
+    * Accesses outer scope Color map (cmap)
+    */
+    function chartdata(pkginfo, cdata, cmap) {
       cdata.labels = pkginfo.map(function (it) { return it.hname; });
       cdata.datasets[0].data = pkginfo.map(function (it) { return it.pkgcnt; });
       // Lookup BG color for each bar
       cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
     }
     var ctx = document.getElementById('canvas').getContext('2d');
-    chartdata(pkginfo, cdata);
+    chartdata(pkginfo, cdata, cmap);
     // console.log(JSON.stringify(cdata, null, 2));
     
     // OLD: showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
@@ -328,12 +355,13 @@ window.onload = function () {
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
     // Chart Click (detects particular bar)
+    // 
     function onCC(ev, ent) {
       //alert(p1 + p2 + p3);
       console.log(ent);
       var hn = ent[0]._model.label;
-      console.log("Hostname: "+hn);
-      console.log(JSON.stringify(ent[0]._model, null, 2));
+      //console.log("Hostname: "+hn);
+      //console.log(JSON.stringify(ent[0]._model, null, 2));
       //console.log(JSON.stringify(p2)); // Cyclic
     } // 
     var copts = { responsive: true, legend: {position: 'top'}, scales: scales, onClick: on_host_click}; // onCC
@@ -342,36 +370,46 @@ window.onload = function () {
   .catch(function (error) { console.log(error); });
   
   } // pkg_stats
+  $(document).on('keypress', function(ev){
+    console.log(ev.originalEvent); // Dump
+    // shiftKey, metaKey, ctrlKey
+    //if (ev.originalEvent.charCode == 98) { console.log("Got key"); }
+    //if (ev.which == 80 && e.ctrlKey) { console.log("ctrl + p pressed"); }
+    if (ev.which == 13 && ev.ctrlKey) { ansishow(); }
+    return false;
+  });
   // Create Remote management info (grid).
+  // Note: hosts unused (!)
   function rmgmt(hosts) { // hosts not used
     
     axios.get('/hostrmgmt')
     .then(function (response) {
-      
+      // SHared global for event handler... on_rmgmt_click
       rmgmt_data = response.data; // TODO: .data
       console.log("Remote Mgmt data: ", rmgmt_data);
       if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
       // Merge sets: index
       // var hidx = {}; hosts.forEach(function (it) {hidx[it.hname] = it; });
       showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
-      $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click);
+      // $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); // UI Setup
     })
     .catch(function (error) { console.log(error); });
   }
+  // Do network geared probing for DNS, ping, SSH
   function probeinfo() {
-    console.log("Launch Probe ...");
+    //console.log("Launch Probe ...");
     axios.get('/nettest')
     .then(function (response) {
       var pinfo = response.data.data;
-      console.log("Probe data: ", pinfo);
+      // console.log("Probe data: ", pinfo);
       if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
       showgrid("jsGrid_probe", pinfo, fldinfo.probe);
-      $("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
+      //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
     })
     .catch(function (error) { console.log(error); });
   }
   function sshkeys() {
-    console.log("Launch SSH KeyInfo ...");
+    // console.log("Launch SSH KeyInfo ...");
     axios.get('/ssh/keylist')
     .then(function (response) {
       var pinfo = response.data.data;
@@ -382,10 +420,54 @@ window.onload = function () {
     })
     .catch(function (error) { console.log(error); });
   }
+  // Experimental docker info
+  // works w. "localhost" (dockerd) on localhost Browser
+  // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
+  
 };
+/** Load dataset
+* 
+* data_load('/people', 'users'); // Store to datasets['users']
+* data_load('/people', 'users', {grid: "jsGrid_users", gridflds: gridflds});
+*/
+function data_load(url, id, array, opts) {
+  if (!url) { throw "data_load: No URL"; }
+  axios.get(url)
+  .then(function (response) {
+    var info = response.data;
+    
+    if (!Array.isArray(info) && info.data) { info = info.data; } // Heuristic assumption
+    if (!Array.isArray(info)) { console.log("Warning: final dataset is non-array ... not sure if this is okay (!) ..."); }
+    console.log("Dataset ('"+id+"'):", info);
+    if (!info || !info.length) { alert("No data from "+ url); return; }
+    if (id && datasets) { datasets[id] = info; }
+    //if (opts && opts.grid && opts.gridflds ) { showgrid(opts.grid, info, opts.gridflds); }
+    // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
+  })
+  .catch(function (error) { console.log(error); });
+}
+
+function dockerinfo(hname, gridsel, cb) {
+    hname = hname || "192.168.1.141";
+    axios.get('http://'+hname+':4243/v1.24/images/json')
+    .then(function (response) {
+      var pinfo = response.data; // NO: data.data
+      console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
+      if (!pinfo || !pinfo.length) { alert("No Docker data"); return; }
+      gridsel = gridsel || "jsGrid_dockerimg";
+      console.log("dockerinfo: Creating grid to: " + gridsel + " ... " + pinfo + "");
+      if (cb) { cb(pinfo); return; }
+      showgrid(gridsel, pinfo, fldinfo.dockerimg);
+      // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
+    })
+    .catch(function (error) { console.log(error); });
+  }
 
 // $("#jsGrid").jsGrid("sort", field);
 function showgrid (divid, griddata, fields) {
+  if (!Array.isArray(griddata)) { alert("No Grid data " + divid); return; }
+  if (!Array.isArray(fields)) { alert("No fields data " + divid); return; }
+  console.log("showgrid: Generating grid into div (id): " + divid + " w. "+griddata.length+" items.");
   $("#" + divid).jsGrid({ // "#jsGrid"
     // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
     width: "100%",
@@ -404,4 +486,6 @@ function showgrid (divid, griddata, fields) {
     // rowClick: function (evpara) { alert("Row Click !"); },
     fields: fields
   });
+  // Emit (done divid) !
+  ee.emit("on_"+divid+"_done", {msg: "Hello!", divid: divid});
 }
