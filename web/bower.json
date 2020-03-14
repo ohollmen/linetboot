@@ -20,12 +20,28 @@
     "tests"
   ],
   "dependencies": {
-    "jquery-ui": "1.12.1",
-    "jsgrid": "js-grid#1.5.3",
+    "async": "2.6.2",
     "axios": "0.18.0",
     "bootstrap": "3.3.5",
-    "mustache": "3.0.1",
     "chart.js": "2.7.3",
-    "async": "2.6.2"
+    "dom-parser": "^0.1.6",
+    "jquery": "3.3.1",
+    "jquery-ui-dist": "1.12.1",
+    "jsgrid": "1.5.3",
+    "mustache": "3.0.1",
+    "showdown": "~1.2.2",
+    "wolfy87-eventemitter": "5.2.9"
+  },
+  "devDependencies": {},
+  "oldDependencies": {
+    "jquery-ui": "1.12.1",
+    "yarn": "1.21.1",
+    "events": "3.1.0"
+  },
+  "scripts": {
+    "copydeps": "cp -p $PROJ_PATH/router666/Router666.js $PROJ_PATH/webview/webview.js ./jsx/; chmod a-w ./jsx/*; ls -al ./jsx"
+  },
+  "resolutions": {
+    "color-name": "1.1.3"
   }
 }
