@@ -2,13 +2,31 @@
 var fs = require("fs");
 var fact_path;
 var colls;
-/** 
+var debug = 0;
+/** Initialize host loader
+* - fact_path
 */
 function init(global, gcolls) {
   // TODO: Store whole global config.
   fact_path = global.fact_path;
   if (!fact_path) { console.log("No fact path given.");process.exit(1);}
-  colls = gcolls;
+  colls = gcolls || {hostcache: {}, hostarr: []};
+  debug = global.debug || 0;
+}
+
+function hostsfile_load(hfn) {
+  var hnames = [];
+  // Fatal or NOT ?!!!
+    if (!fs.existsSync(hfn)) { console.log("hostsfile given ("+hfn+"), but does not exist !"); }
+    // Keep else as above is not fatal for now. Parse hostsfile.
+    else {
+      // Refrain from doing too much hostsfile specific work here. Instead assume host lines in either
+      // source - line oriented text fire and json array have the same format (refine stuff in common section)
+      var hnames_f = fs.readFileSync(hfn, 'utf8').split("\n");
+      hnames_f = hnames_f.filter(function (it) { return it.match(/^\s*$/) ? false : true; }); // Weed out empties
+      if (Array.isArray(hnames_f)) { hnames = hnames_f; }
+    }
+  return hnames;
 }
 
 /** Find out the configured hostnames (from various possible places) and load host facts.
@@ -25,6 +43,17 @@ same rules as URL (%HH sequences or '+' for space) as parsing the line
 is whitespace delimiter based.
 
 Host loading is performed in *synchronous* manner.
+minimalistic loading of hosts for a generic app:
+
+     var hlr = require("hostloader");
+     hlr.init({ fact_path: "/path/to/facts" });
+     var cfg = { hostsfile: "/path/to/hosts" };
+     hostarr = hlr.hosts_load(cfg);
+     // Access loaded things
+     console.log("Host items:", hostarr);
+     // (For now) hostparams are found in cfg Object passsed to hlr.hosts_load(cfg)
+     console.log("Host params:", cfg.hostparams);
+     
 
 * TODO: throw on errors
 */
@@ -32,59 +61,66 @@ function hosts_load(global) {
   var hnames = global.hostnames;
   var hfn = global.hostsfile;
   // Line oriented text file
-  if (hfn) {
-    hnames = [];
-    // Fatal or NOT ?!!!
-    if (!fs.existsSync(hfn)) { console.log("hostsfile given ("+hfn+"), but does not exist !"); }
-    // Keep else as above is not fatal for now. Parse hostsfile.
-    else {
-      // Refrain from doing too much hostsfile specific work here. Instead assume host lines in either
-      // source - line oriented text fire and json array have the same format (refine stuff in common section)
-      hnames_f = fs.readFileSync(hfn, 'utf8').split("\n");
-      hnames_f = hnames_f.filter(function (it) { return it.match(/^\s*$/) ? false : true; }); // Weed out empties
-      if (Array.isArray(hnames_f)) { hnames = hnames_f; }
-    }
-  }
-  if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source"); process.exit(1);}
-  console.error("Hosts:", hnames);
+  if (hfn) { hnames = hostsfile_load(hfn); }
+  if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
+  debug && console.error("Hosts:", hnames); // global.debug && ...
   // Allow easy commenting-out as JSON itself does not have comments.
   hnames = hnames.filter(function (hn) { return ! hn.match(/^(#|\[)/); });
   if (!hnames) { console.error("No hosts remain after filtering"); process.exit(1); }
   
-  // NEW: Parse inverntory-style free-form params here
+  // NEW: Parse inventory-style free-form params here
   global.hostparams = {};
   var i = 0;
   hnames.forEach(function (hnline) {
+    
+    var p  = hline_parse(hnames, i, hnline);
+    var hn = hnames[i];
+    global.hostparams[hn] = p;
+    //else {global.hostparams[hnline] = {}; return;};
+    
+    i++;
+  });
+  global.hostnames = hnames;
+  debug && console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
+  hnames.forEach(function (hn) { facts_load(hn); });
+  debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
+  // NEW: Return for third party app (with no real global conf)
+  return colls.hostarr;
+}
+
+
+/** Parse single hostline.
+@param hnames {array} - An array of hostnames
+@param i {integer} - Index of current item (in hnames array)
+@param hline {string} - Current hostline to parse (from text file as-is)
+@return Key-value object of host parameters
+*/
+function hline_parse(hnames, i, hnline) {
+    var p = {}; // Host params
     if (hnline.match(/\s+/)) {
       var rec = hnline.split(/\s+/);
       var hn = hnames[i] = rec.shift();
       // Parse rec
-      console.log(rec);
-      global.hostparams[hn] = {}; // Init params !
+      debug && console.log(rec);
+      // OLD(global): global.hostparams[hn] = {}; // Init params !
       rec.forEach(function (pair) {
         
         var kv = pair.split(/=/, 2);
 	kv[1] = kv[1].replace('+', ' ');
-	global.hostparams[hn][kv[0]] = decodeURI(kv[1]); // Unescape
+	// global.hostparams[hn][kv[0]] = decodeURI(kv[1]); // Unescape
+	p[kv[0]] = decodeURI(kv[1]); // Unescape
       });
-      console.log("Pairs found ("+hn+"): ", global.hostparams[hn]);
+      debug && console.log("Pairs found (hn:"+hn+"): ", p); // global.hostparams[hn]
+      //OLD: global.hostparams[hn] = p;
     }
-    
-    //else {global.hostparams[hnline] = {}; return;};
-    i++;
-  });
-  global.hostnames = hnames;
-  //console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
-  hnames.forEach(function (hn) { facts_load(hn); });
-  //console.log("Cached: " + Object.keys(hostcache).join(','));
+    return p;
 }
-
 
 /** Load Ansible facts for a single host from facts directory.
 * This is to be done during init phase.
 * Cache facts into global facts cache by both (fqdn) hostname and ip address.
 * @param hn - Hostname
-* @return None
+* @return Host facts object for named host (OLD:None)
 */
 function facts_load(hn) { // ipaddr
   var absname = fact_path + "/" + hn;
@@ -96,8 +132,16 @@ function facts_load(hn) { // ipaddr
     var cont = fs.readFileSync(absname, 'utf8');
     
     facts = JSON.parse(cont);
-    facts = facts.ansible_facts; // Simplify !
-    if (!facts) { console.error("No ansible_facts branch for host '" + hn + "'"); return; }
+    if (!facts) { } // Check Object
+    var facts0 = facts.ansible_facts; // Simplify !
+    if (!facts0) {
+      console.error("No ansible_facts branch for host '" + hn + "'");
+      // Sample a known property to "recover" a file
+      var ipv4 = facts.ansible_all_ipv4_addresses;
+      if (!ipv4) { return; }
+      facts0 =  facts; // Facts *DIRECTLY*
+    }
+    facts = facts0;
     // test keys
     //var keys = Object.keys(facts); // ansible_facts,changed
     //console.log("Found keys:" + keys.join(","));
@@ -123,10 +167,72 @@ function facts_load(hn) { // ipaddr
   // NEW: Also index by ethernet address. In facts it is lower case !!!
   if (maca) { colls.hostcache[maca] = facts; }
   colls.hostarr.push(facts);
+  return facts; // NEW
+}
+/** Create dynamic groups by group definitions and hostarr.
+* 
+* @param global {object} - Linetboot config (with "groups")
+* @param hostarr {array} - Array of (ansible) host fact objects
+*/
+function groups_create(global, hostarr) {
+  
+}
+
+/** Resolve file by name from ':' -separated path
+*/
+function file_path_resolve(fname, path) {
+  if (typeof fname != 'string') { throw "Filename is not a string"; }
+  if (typeof path != 'string')  { throw "Path is not a string"; }
+  var patharr = path.split(":");
+  console.log("file_path_resolve: Filename: ", fname);
+  console.log("file_path_resolve: Path for resolving files: ", patharr);
+  // Try fname as-is (from current dir)
+  if (fs.existsSync(fname)) { return 1; }
+  pathmatch = patharr.filter(function (path) {
+    var fullfn = path + '/' + fname;
+    if (fs.existsSync(fullfn)) { return 1; }
+    console.log("No match for(path+fname): " + fullfn);
+    return 0;
+  });
+  if (!pathmatch.length) { return ""; }
+  return pathmatch[0] + "/" + fname;
+}
+/** Derive dynamic members for the groups py regexp patterns.
+* @param groups {array} - Groups array
+* @param hostarr {array} - Array of hosts to reger to during member resolution
+*/
+function group_mems_setup(groups, hostarr) {
+    if (!Array.isArray(groups)) { console.log("Configured Groups not in array !"); return null; }
+    var isgrouped = {}; // Flags (counts ?) for hosts joined to any group.
+    var grp_other = [];
+    // TODO: Make more generic and allow matching on any attribute (not just hostname)
+    groups.forEach(function (it) {
+      
+      if (it.patt) {
+        var re = new RegExp(it.patt);
+	// it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
+	it.hostnames = hostarr.reduce(function (oarr, h) {
+	  if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
+	  return oarr;
+	}, []);
+      }
+      if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
+      if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
+    });
+    // Second pass for non-grouped
+    // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
+    var othernames = hostarr.reduce(function (oarr, h) {
+      if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); }
+      return oarr;
+    }, []);
+    grp_other.forEach(function (g) { g.hostnames = othernames; });
+      return 1; // No need: isgrouped / grp_other
 }
 
 module.exports = {
   init: init,
   hosts_load: hosts_load,
-  facts_load: facts_load
+  facts_load: facts_load,
+  file_path_resolve: file_path_resolve,
+  group_mems_setup: group_mems_setup
 };
