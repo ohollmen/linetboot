@@ -1,12 +1,14 @@
 {
   "httpserver": "192.168.1.141:3000",
+  "nfsserver" : "192.168.1.141",
   "userconfig": "initialuser.json",
+  "debug": 1,
   "tmplfiles": {
     "preseed": "./tmpl/preseed.cfg.mustache",
     "ks":      "./tmpl/ks.cfg.mustache",
     "netif":   "./tmpl/interfaces.mustache",
-    "netw_rh": "./tmpl/sysconfig_network.mustache"
-    
+    "netw_rh": "./tmpl/sysconfig_network.mustache",
+    "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache"
   },
   "fact_path":  "/home/ohollmen/hostinfo",
   "rmgmt_path": "/home/ohollmen/hostrmgmt",
@@ -41,10 +43,14 @@
   "maindocroot": "/var/www/html/",
   "targetos": "/ubuntu14",
   "useurlmapping": false,
+  "remote": {
+    "fspath": "/home/someuser/linetremote",
+    "url" : "http://{{ hostname }}:3000/"
+  },
   "mirrorhost": "192.168.1.141:3000",
   "mirrors": [
     {
-      "hostname":"192.168.1.141",
+      "hostname":"192.168.1.141:3000",
       "proxy": "",
       "directory": "/ubuntu14",
       "docroot": "/isomnt/ubuntu14"
@@ -73,5 +79,22 @@
       "directory": "/gparted",
       "docroot": "/isomnt/gparted"
     }
-  ]
+  ],
+  "ansible" : {
+    "pbpath":"./playbooks",
+    "sudopass": "overrdide_w_env_ANSIBLE_PASS",
+    "COMMENT" : "The inner objects need to have more info (runstyle, name)",
+    "pbprofs" : [
+      {
+        "name": "Dymmy Play test",
+        "lbl": "dummytest",
+        "playbooks": ["a.yaml", "b.yaml"]
+      },
+      {
+        "name":"SSH Copy ID & Key Arch",
+        "lbl":"sshkeys",
+        "playbooks": ["sshcopyid.yaml", "sshkeyarch.yaml"]
+      }
+    ]
+  }
 }
