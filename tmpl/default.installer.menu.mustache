@@ -32,14 +32,14 @@ timeout 100
 label local
 menu label  Boot From Local First Part. (First Disk, sda1)
 #kernel http://{{ httpserver }}/vmlinuz
-kernel http://{{ httpserver }}/boot/gparted/vmlinuz
-append initrd=http://{{ httpserver }}/boot/gparted/initrd.img root=/dev/sda1
+kernel http://{{ httpserver }}/gparted/live/vmlinuz
+append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda1
 
 # Same as first menu iten, but second partition
 label local2
 menu label  Boot From Local Second Part. (First Disk, sda2)
-kernel http://{{ httpserver }}/boot/gparted/vmlinuz
-append initrd=http://{{ httpserver }}/boot/gparted/initrd.img root=/dev/sda2
+kernel http://{{ httpserver }}/gparted/live/vmlinuz
+append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda2
 
 
 # There are 3 memtest binaries in /boot/: memtest86+.bin  memtest86+.elf and memtest86+_multiboot.bin
@@ -67,8 +67,8 @@ kernel http://{{ httpserver }}/gparted/live/memtest
 # This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support. Works always with Dell servers.
 label gparted
 menu label GpartEd Live (Ramdisk Netboot)
-kernel http://{{ httpserver }}/boot/gparted/vmlinuz
-append initrd=http://{{ httpserver }}/boot/gparted/initrd.img boot=live config components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs
+kernel http://{{ httpserver }}/gparted/live/vmlinuz
+append initrd=http://{{ httpserver }}/gparted/live/initrd.img boot=live config components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs
 
 
 # Clonezilla Live PXE
@@ -78,33 +78,79 @@ append initrd=http://{{ httpserver }}/boot/gparted/initrd.img boot=live config c
 label clonezilla
 menu label Clonezilla Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/clzilla/live/vmlinuz
-append initrd=http://{{ httpserver }}/clzilla/live/initrd.img boot=live username=user union=overlay config components quiet noswap edd=on nomodeset nodmraid locales= keyboard-layouts= ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+# nolocales
+append initrd=http://{{ httpserver }}/clzilla/live/initrd.img boot=live username=user union=overlay config components quiet noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+
+# Ubuntu 18 Desktop
+# https://askubuntu.com/questions/1069907/why-is-it-not-possible-to-pxe-boot-ubuntu-desktop-editions
+# https://askubuntu.com/questions/1029017/pxe-boot-of-18-04-iso
+# https://www.tecmint.com/install-ubuntu-via-pxe-server-using-local-dvd-sources/ - How to Install Ubuntu via PXE Server Using Local DVD Sources (THE Solution for booting Ubu 18 DT with PXE)
+# See also (ISO image): boot/grub/loopback.cfg
+# https://www.vercot.com/~serva/an/NonWindowsPXE3.html
+# https://askubuntu.com/questions/1029017/pxe-boot-of-18-04-iso - Hints on NFS based boot
+# https://help.ubuntu.com/community/DisklessUbuntuHowto - No info on HTTP
+# https://askubuntu.com/questions/1125792/how-do-i-set-up-pxe-boot-to-use-preseed - Hint on using live-installer/net-image directly on kernel CL
+# - https://jphein.com/editing-the-pxe-boot-menu-using-ubuntu-18-04-ltsp/ - Preseed suggestions
+# https://netboot.xyz/booting/tftp/
+# https://www.linuxquestions.org/questions/slackware-14/initramfs-unable-to-find-a-medium-containing-a-live-file-system-4175595144/ - Misc discussion
+# https://github.com/benhylau/pi-pxe-server/issues/1
+# https://www.golinuxcloud.com/extract-initramfs-cpio-premature-end-archive/ - Diging into CPIO archives
+# https://bugs.launchpad.net/ubuntu/+source/cloud-initramfs-tools/+bug/1761573 Boot problems
+# https://www.kernel.org/doc/html/latest/admin-guide/initrd.html - Initrd mechanics
+# https://www.cyberciti.biz/tips/10-boot-time-parameters-you-should-know-about-the-linux-kernel.html
+label ubuntu18dt
+menu label Ubuntu 18 Desktop (32bit) Live (No Auto-Install)
+kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
+# fetch=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs toram 
+# url=http://{{ httpserver }}/ubuntu18dt/preseed/ubuntu-mate.seed
+# 1) Working config for NFS dependent setup (Mounts NFS server:/ubu/inst/root under /cdrom)
+# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
+# 2) HTTP Only (Use preseed: /preseed.desktop.cfg which contains a "redirect url"
+# (d-i live-installer/net-image installer directive) for FS image casper/filesystem.squashfs)
+# - ip: Recommended: ip=dhcp (Also: ip=append, ip=frommedia)
+# - boot=casper seems to be needed (Although this causes: stdin: Not a typewriter and "unable to find medium containing a live file system")
+# - Use http://{{ httpserver }} or relative-only ?
+# - Other suggested vga=788 . vga=normal ? auto=true ? drop boot=casper (after initrd). 
+# - Consider stripping "toram" (after ip=dhcp) for memory usage reasons (for NFS-way noram works, but filesystem.squashfs is missing from process). To ram may also be form (w. live-media-path for Slackware): live-media-path toram=filesystem.squashfs
+# - Additional suggested: ipv6.disable=1 systemd.mask=tmp.mount (Simply:) ro.
+# - Addl (1125792 above): ramdisk_size=16432 root=/dev/rd/0 (Note: some of these failed w. Q author)
+# - Eliminate indirection by:
+#   - Remove preseed URL: url=...   url=http://{{ httpserver }}/preseed.desktop.cfg
+#   - Add: live-installer/net-image=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs
+#   - May need to be added: ramdisk_size=16432 root=/dev/rd/0 rw
+# 
+# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-installer/net-image=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs ip=dhcp toram ipv6.disable=1
+# 3) Live media path OR toram=...
+# /casper or /casper/filesystem.squashfs (or permutations with http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs
+# Causes: run-init: current directory on the same filesystem as the root: error 0
+# Try possibly similar to: root=squash:http://192.168.9.10:5248/images/ubuntu/amd64/ga-18.04/bionic/daily/squashfs
+append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
 
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
 # menu label Installer Boot - Kickstart (First Disk ignored)
 # kernel http://{{ httpserver }}/linux
 # #kernel ubuntu-installer/amd64/linux
-# # TODO: Add: auto=true
+# # TODO: Add: auto=true 
 # append initrd=http://{{ httpserver }}/initrd.gz -- ks=http://192.168.1.141/ks.cfg
 # #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
 label localinst_ps18
 menu label Install Ubuntu 18.04 Server (Full Automated)
-kernel http://{{ httpserver }}/boot/ubuntu18/linux
+kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux
 #kernel ubuntu-installer/amd64/linux
 # Must have: "auto=true" (Not only "auto", which may be sufficient for older distros)
 # --
 # priority=critical (works alternate to hostname...,domain... below) Another: debconf/priority=high
 # hostname=unassigned-hostname domain=unassigned-domain
-append initrd=http://{{ httpserver }}/boot/ubuntu18/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
 
 label localinst_ps14
 menu label Install Ubuntu 14.04 Server (Full Automated)
-kernel http://{{ httpserver }}/boot/ubuntu14/linux
+kernel http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/linux
 #kernel ubuntu-installer/amd64/linux
 # Must have: auto=true 
 # --
@@ -112,7 +158,7 @@ kernel http://{{ httpserver }}/boot/ubuntu14/linux
 # hostname=unassigned-hostname domain=unassigned-domain
 # Seems Ubu14 should use live-installer/net-image (https://ubuntuforums.org/showthread.php?t=2228972)
 # 
-append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
+append initrd=http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -120,18 +166,135 @@ append initrd=http://{{ httpserver }}/boot/ubuntu14/initrd.gz priority=critical 
 # Mirror: http://mirrors.sonic.net/centos/6.10/os/x86_64/ http://mirror.centos.org/centos/6.10/os/x86_64/
 label localinst_centos6
 menu label Install CentOS 6 (Full Automated)
-kernel http://{{ httpserver }}/boot/centos6/vmlinuz
+kernel http://{{ httpserver }}/centos6/images/pxeboot/vmlinuz
 # devfs=nomount
 # method=http://{{ httpserver }}/centos6
 # Note: Is auto=true hampering this
-append initrd=http://{{ httpserver }}/boot/centos6/initrd.img auto=true devfs=nomount ks=http://{{ httpserver }}/ks.cfg?osid=centos6
+append initrd=http://{{ httpserver }}/centos6/images/pxeboot/initrd.img auto=true devfs=nomount ks=http://{{ httpserver }}/ks.cfg?osid=centos6
 
 # Centos 7
 # See: https://www.tecmint.com/install-pxe-network-boot-server-in-centos-7/
+# https://projects.theforeman.org/issues/4506 .. on  ksdevice=bootif network kssendmac
+# http://forum.ipxe.org/showthread.php?tid=5445
+# https://docs.oracle.com/cd/E92593_01/E64608/html/ol-bootcfg-file.html - Info about UEFI Based PXE clients menu format
 label localinst_centos7
 menu label Install CentOS 7 (Full Automated)
 # method=http://mirror.centos.org/centos/7/os/x86_64/
 # Note: Centos 7 says: 'method=' is deprecated. Using 'repo=http://...' instead. --noipv6 should be supported.
 # RH 6 supports param "text" (?)
-kernel http://{{ httpserver }}/boot/centos7/vmlinuz
-append initrd=http://{{ httpserver }}/boot/centos7/initrd.img auto=true devfs=nomount repo=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+kernel http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz
+# Change "repo=..." => "method=..."
+append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+
+# Dell Update CD (R630)
+# Aka DTK = Dell Deployment Toolkit
+# Lot of info on kernel options in ISO image: isolinux/isolinux.cfg
+# See: https://www.dell.com/support/article/us/en/04/sln296511/update-poweredge-servers-with-platform-specific-bootable-iso?lang=en#1
+# https://dl.dell.com/FOLDER05876647M/1/PER630_BOOTABLE_19.10.00.99.iso
+# https://www.dell.com/community/Dell-OpenManage-Essentials/Cross-Post-PXE-Boot-into-OME/td-p/4736261
+# https://www.dell.com/community/Systems-Management-General/Can-Linux-DTK-6-10-be-made-to-uEFI-PXE-boot/td-p/6067295
+# http://lists.us.dell.com/pipermail/linux-poweredge/2010-March/041629.html
+# https://www.aglt2.org/wiki/bin/view/AGLT2/Dell/DellDeploymentToolkit
+# https://forums.fogproject.org/topic/9974/booting-iso-issue-mount-dev-cdrom/14
+# Google: "dell update ramdisk_size share_type share_location"
+# https://www.mail-archive.com/search?l=linux-poweredge@dell.com&q=subject:%22Re%5C%3A+Dell+DTK+bootable+iso+or+pxe+images+with+Cobbler%22&o=newest&f=1
+# https://fedorahosted.org/cobbler/wiki/HowToPxeAnyLiveCd
+label dellupdate_r630
+menu label Dell R630 Update
+kernel http://{{ httpserver }}/dellupdate/isolinux/SA.1
+# DEBUG=0 quiet ... Also: loglevel=1
+# Share types seen/used: cdrom,nfs,tftp,smbfs (Also http is made to be supported by SA.2(initrd file): bin/start-stage3.sh with addition)
+append initrd=http://{{ httpserver }}/dellupdate/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/dellupdate/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
+
+# OpenSuse ISO Install (and autoinst.xml, also called AutoYaST control files (control-files/) ?
+# There's also linuxrc key-value based text (non-XML) format
+# that can be either separate file or embedded into XML (In a <![CDATA[ ... ]]> section).
+# In linuxrc kw param autoyast=http://.../profiles/ tells the location of XML file(s))
+# https://lizards.opensuse.org/2014/01/29/network-boot-live-iso/
+# https://doc.opensuse.org/projects/YaST/SLES11/autoinstall/invoking_autoinst.html
+# https://doc.opensuse.org/projects/autoyast/
+# https://en.opensuse.org/SDB:PXE_boot_installation
+# http://mirror.sfo12.us.leaseweb.net/opensuse/tumbleweed/iso/openSUSE-Tumbleweed-NET-x86_64-Snapshot20191221-Media.iso
+label opensuse_tw_64
+menu label OpenSUSE 64 bit
+kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
+# EXAMPLE: append initrd=boot/initrd-life64 isofrom_device=nfs:10.0.0.254:/srv/nfs/ isofrom_system=/openSUSE-Edu-li-f-e.x86_64-42.1.1.iso
+# ALT:  http://download.opensuse.org/tumbleweed/repo/oss/
+append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts install=http://download.opensuse.org/factory/repo/oss/
+
+# FreeBSD (12) bootonly.iso (Network installer)
+# One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
+# NOTAVAIL: http://www.locolomo.org/howto/pxeboot/article.html
+# https://wiki.syslinux.org/wiki/index.php?title=MEMDISK - Explanation of memdisk module
+# Note: (Ubuntu) memdisk
+# - is a linux kernel
+# - is located in /usr/lib/syslinux/memdisk
+# - comes from "syslinux-common" (dpkg -S /usr/lib/syslinux/memdisk)
+# Note: pc-sysinstall is a BSD installer with possible config (-c). Alternative: bsdinstall
+# https://github.com/trueos/pc-sysinstall/blob/master/examples/README
+# https://www.trueos.org/handbook/advanced.html
+# http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
+label freebsd12net
+menu label FreeBSD 12 Net Install
+linux memdisk
+#TODO: initrd http://{{ httpserver }}/freebsd12net/freebsd-install/bootonly.iso
+initrd http://{{ httpserver }}/bootonly.iso
+# Original example from BSD discussion board has BOTH "iso raw". In https://wiki.syslinux.org/wiki/index.php?title=MEMDISK
+# these are given as exclusive
+# ORIG: append iso raw
+append iso
+
+# FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot, Starting the BTX loader)
+label freebsd12
+menu label FreeBSD 12 Net Install 2
+# kw "pxe" is specific to NBP. "kernel" leads to loading ok, but "Booting kernel/failed: Invalid argument", "boot" - nothing (!).
+# linux memdisk; initrd http://.../pxeboot; append raw; starts boot but freezes
+linux memdisk
+initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
+append raw
+
+# Arch Linux
+# archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)
+# https://wiki.archlinux.org/index.php/PXE
+# https://www.archlinux.org/download/
+label arch2019
+menu label Arch Linux 2019-12
+kernel http://{{ httpserver }}/arch2019/arch/boot/x86_64/vmlinuz
+# INITRD also allowed instead of append initrd=. Allows multiple vals per https://wiki.archlinux.org/index.php/PXE
+initrd http://{{ httpserver }}/arch2019/arch/boot/intel_ucode.img,http://{{ httpserver }}/arch2019/arch/boot/amd_ucode.img,http://{{ httpserver }}/arch2019/arch/boot/x86_64/archiso.img
+# initrd=http://{{ httpserver }}/arch2019/arch/boot/x86_64/archiso.img
+append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/arch2019/
+sysappend 3
+
+# FreeDOS
+# http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/
+#   - 1.1/fd11src.iso
+#   - 1.2/FD12CD.iso
+label freedos1
+menu label FreeDOS 1.0
+kernel memdisk
+append initrd=http://{{ httpserver }}/freedos1/fdboot.img
+
+# Diskless client
+# https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
+# - Google: ubuntu 18 diskless client
+# https://help.ubuntu.com/community/DisklessUbuntuHowto
+# https://unix.stackexchange.com/questions/238999/how-do-you-add-a-virtual-network-ip-address-from-the-kernel-command-line
+# https://github.com/torvalds/linux/blob/master/net/ipv4/ipconfig.c#L1614
+# https://www.cleanwinner.com/2019/10/19/setting-up-a-server-for-diskless-clients-using-ubutnu-18-04lts-server/
+# https://www.hiroom2.com/2017/07/02/ubuntu-1604-pxeboot-thin-client-nfs-en/
+# TODO (rsync support hard-links ?):
+# - Root-Part:
+#   - Hard-linked (h.l farms): /bin,/boot,/dev, /etc (DHCP), /lib, /lib32, /lib64, /libx32/, /run, /sbin
+#   - Empty-single-dir Stubs: /cdrom, /home, lost+found, /media/, /mnt, /opt, /proc, /srv, /sys, /tmp, /usr,
+#     (Different content may be mounted by diffwerent clients ?)
+#   - Empty-dirtree: /var
+# - Mount existing: /usr from sample w-s read-only, /home from homedir server (autofs), 
+# - Actual final (?) kernel+initrd on NFS will be vmlinuz and /initrd.img
+# - Modify: /etc/kernel/postinst.d/zz-update-grub, remove exec update-grub
+# - Test Kernel CL ip=bootp or rarp
+# - Possibly use: mkinitramfs (as advised in DisklessUbuntuHowto)
+#label diskless
+#menu label Diskless Ubuntu18 Client
+#kernel vmlinuz
+#append initrd=/initrd.img root=/dev/nfs nfsroot={{ nfsserver }}:/nfsroot/client-01 ip=dhcp rw
