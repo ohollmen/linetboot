@@ -4,13 +4,17 @@
  Author Copyright: Olli Hollmen 2018
  
  # Generate content w. mustache CL utility
+ 
  cat initialuser.json | ./node_modules/mustache/bin/mustache - ./tmpl/preseed.cfg.mustache
  
- # Testing
+ # Testing Static content (e.g. OS Image) delivery
+ 
  cd /tmp
  md5sum /boot/memtest86+.bin
  wget http://localhost:3000/memtest86+.bin
  md5sum memtest86+.bin
+ 
+ 
 */
 "use strict;";
 // 'esversion: 6';
@@ -21,22 +25,29 @@ var express = require('express');
 var yaml    = require('js-yaml');
 var cproc   = require('child_process');
 var async   = require('async');
+var bodyParser = require('body-parser');
+
 // Configurations
 // var nb      = require("./netboot.json"); // Not used.
 var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || "./global.conf.json";
 var global   = require(globalconf);
 var userconf = process.env["LINETBOOT_USER_CONF"] || global.userconfig || "./initialuser.json";
 var user     = require(userconf);
+var hlr      = require("./hostloader.js");
+var netprobe = require("./netprobe.js");
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
 // from their DNS static IP address (and name). This only gets loaded by request via Env.variable
 var iptrans = {};
-var app = express();
+var app = express(); // Also: var server = ...
+// var io = require('socket.io')(app);
 var port = 3000; // TODO: Config
 var fact_path;
 var hostcache = {};
 var hostarr = [];
+
+app.use(bodyParser.json({limit: '1mb'}));
 
 /** Initialize Application / Module with settings from global conf.
 * @param cfg {object} - Global linetboot configuration
@@ -61,6 +72,7 @@ function app_init(global) {
   var staticconf = {"setHeaders": logger };
   // Note this URL mapping *can* be done by establishing symlinks from
   // global.maindocroot
+  /*
   if (global.useurlmapping) {
   console.log("URL Mappings (url => path):");
   global.mirrors.forEach(function (mirror) {
@@ -78,19 +90,28 @@ function app_init(global) {
       // url.replace();
     });
   }
+  */
   
   // For kernel and initrd (/linux, /initrd.gz) respectively
   // Installer Kernel and Initrd from mirror area (CD/DVD)
   // global.mirror.docroot
   // For local disk boot (recent) kernels and network install as well
+  //global.maindocroot = "/isomnt/";
   if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot does not exist"); process.exit(1); }
   app.use(express.static(global.maindocroot));
-  // Generated preseed and kickstart shared handler
+  app.use(express.static("/isoimages")); // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO)
+  app.use('/web', express.static('web')); // Host Inventory
+  ///////////// Generated preseed and kickstart shared handler //////////////
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
+  app.get('/preseed.desktop.cfg', preseed_gen);
+  // BSD (by doc '/boot/pc-autoinstall.conf' will be looked up from "install medium")
+  app.get('/boot/pc-autoinstall.conf', preseed_gen);
+  app.get('/cust-install.cfg', preseed_gen);
   // Network configs (still same handler)
   app.get('/sysconfig_network', preseed_gen);
   app.get('/interfaces', preseed_gen);
+  ////////////////////
   // Install event logger (evtype is start/done)
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   // Netplan (custom YAML based handler)
@@ -102,7 +123,7 @@ function app_init(global) {
   app.get('/scripts/:filename', script_send);
   
   // SSH Key delivery
-  app.get('/ssh/keylist', ssh_keys_list);
+  app.get('/ssh/keylist', ssh_keys_list); // Must be first !
   app.get('/ssh/:item', ssh_key);
   
   // Host Info Viewer
@@ -118,11 +139,12 @@ function app_init(global) {
   // rmgmt_list
   app.get('/hostrmgmt', rmgmt_list);
   app.get('/nettest', nettest);
+  // Ansible
+  app.post('/ansrun', ansible_run_serv);
+  app.get('/anslist/play', ansible_plays_list);
+  app.get('/anslist/prof', ansible_plays_list);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
-  //global.tmpls.preseed = fs.readFileSync(global.tmplfiles.preseed, 'utf8');
-  //global.tmpls.ks      = fs.readFileSync(global.tmplfiles.ks, 'utf8');
-  //if (!global.tmpls.preseed || !global.tmpls.ks) { console.error("Templates missing (see global config)"); process.exit(1); }
   tkeys.forEach(function (k) {
     // TODO: try/catch
     global.tmpls[k] = fs.readFileSync(global.tmplfiles[k], 'utf8');
@@ -135,35 +157,20 @@ function app_init(global) {
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
   global.fact_path = fact_path; // Store final in config
   ///////////// Hosts and Groups ////////////////////
-  var hlr = require("./hostloader.js");
+  
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
   //////////////// Groups /////////////////
+  // If lineboot config has dynamic "groups" rules defined, collect group members into
   // TODO: Move to hostloader
   var groups = global.groups;
-  var isgrouped = {}; // Flags (counts ?) for hosts joined to any group.
-  if (global.groups && Array.isArray(global.groups)) {
-    var grp_other = [];
-    // TODO: Make more generic and allow matching on any attribute (not just hostname)
-    groups.forEach(function (it) {
-      
-      if (it.patt) {
-        var re = new RegExp(it.patt);
-	// it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
-	it.hostnames = hostarr.reduce(function (oarr, h) {
-	  if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
-	  return oarr;
-	}, []);
-      }
-      if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
-      if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
-    });
-    // Second pass for non-grouped
-    // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
-    var othernames = hostarr.reduce(function (oarr, h) { if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); } return oarr; }, []);
-    grp_other.forEach(function (g) { g.hostnames = othernames; });
-    
+  
+  if (groups && Array.isArray(groups)) {
+    var gok = hlr.group_mems_setup(groups, hostarr);
+    if (!gok) { console.error("Problems in resolving dynamic group members"); }
   }
+  
+  
   // console.log(groups); // DEBUG
   /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
   var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
@@ -171,22 +178,55 @@ function app_init(global) {
     iptrans = require(mfn); // TODO: try/catch ?
     console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
   }
-  
+  var os = require('os');
+  var ifs = os.networkInterfaces();
+  // ifs.keys().filter(function (k) {});
+  console.log(ifs);
+  // Ansible
+  global.ansible = global.ansible || {};
+  if (process.env["ANSIBLE_PASS"]) { global.ansible.sudopass = process.env["ANSIBLE_PASS"]; }
+  // Websockets
+  /*
+  io.on('connection', function (socket) {
+    //socket.emit('news', { hello: 'world' });
+    socket.on('ansplaycompl', function (data) { // NOT this dir !
+      console.log("linet-main: ", data);
+    });
+  });
+  */
 }
+// https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
+//app.all('/', function(req, res, next) {
+//  console.log("Setting CORS ...");
+//  res.header("Access-Control-Allow-Origin", "*");
+//  res.header("Access-Control-Allow-Headers", "X-Requested-With");
+//  next();
+//});
 
-// Simple logging for ALL HTTP requests.
+// Simple logging for select (Install package related) HTTP requests.
+// See also app.all()
 app.use(function (req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
   var s; // Stats
+  console.log("app.use: URL:" + req.url);
+  // 
   if (req.url.match("^(/ubuntu1|/centos|/gparted|/boot)")) {
     // Stat the file
     var msg;
     try { s = fs.statSync("/isomnt" + req.url); }
     catch (ex) { msg = "404 - FAIL";  } // console.log("URL/File: " + req.url + " ");
     if (!msg && s) { msg = s.size; }
-    console.log("URL/File: " + req.url + " " + msg); 
+    console.log("URL/StaticFile: " + req.url + " " + msg); 
   }
+  // If one of the boot/install actions ... do ARP
+  //var bootact = {"/preseed.cfg":1, "/ks.cfg":1, }; // "":1, "":1, "":1,
+  // var ip = ipaddr_v4(req);
+  // if (bootact[req.url]) {arp.getMAC(ipaddr, function(err, mac) { req.mac = mac; next(); }); } // ARP !
+  
+  //console.log("Setting CORS ...");
+  //res.header("Access-Control-Allow-Origin", "*");
+  //res.header("Access-Control-Allow-Headers", "X-Requested-With");
   
   next();
 });
@@ -212,14 +252,36 @@ function ipaddr_v4(req) {
   if (ip.substr(0, 7) == "::ffff:") { ip = ip.substr(7); }
   // We now have the actual client address. See if mapping / translation is needed
   var newip = iptrans[ip];
-  if (newip) { return newip; }
+  if (newip) {
+    // Inform at every use of translation
+    // console.log();
+    console.log("Overriding ip: " + ip + " => " + xip); ip = xip;
+    return newip;
+  }
   return ip;
+}
+/** Get Host facts for requesting host (for activities during boot and install, etc).
+ * Use following logic:
+ * - ...
+ * @param req {object} - Node.js http server request
+ */
+function host_for_request(req, cb) {
+  var ip = ipaddr_v4(req);
+  return hostcache[ip]; // cb(null, hostcache[ip]);
+  // Check also ARP result ? Use await to turn this to syncronous op ?
+  //var arp = require('node-arp');
+  //arp.getMAC(ipaddr, function(err, mac) {
+  //  if (err) { return cb(null, hostcache[ip]); }
+  //  re.something = mac; // In case handler wants to DIY (!?)
+  //  // Hosts should be 
+  //  cb(null, hostcache[mac]);
+  //});
 }
 
 /** Generate Preseed or KS file based on global settings and host facts.
 * Additionally Information for initial user to create is extracted from local
 * config file (given by setting global.userconfig).
-* Two URL:s are supported by this handler:
+* Multiple URL:s are supported by this handler (e.g.) based on URL mappings for this module:
 * - /preseed.cfg
 * - /ks.cfg
 * Derives the format needed from URL and outputs the Install configuration in
@@ -242,7 +304,7 @@ function ipaddr_v4(req) {
 *     'user-agent': 'anaconda/13.21.229'
 *     'x-anaconda-architecture': 'x86_64',
 *     'x-anaconda-system-release': 'CentOS'
-*
+* # TODO: Create separate mechanisms for global params templating and hostinfo templating.
 */
 function preseed_gen(req, res) {
   // OLD: Translate ip to name to use for facts file name
@@ -252,34 +314,49 @@ function preseed_gen(req, res) {
   var osid = req.query["osid"] || global.targetos || "ubuntu18";
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
-  if (!f) {
-    res.end("# No IP Address "+ip+" found in host DB\n"); // ${ip}
-    console.log("# No IP Address "+ip+" found in host DB\nRun: nslookup ${ip} for further info on host."); // ${ip}
-    return; }
+  
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
-  console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")");
-  
-  var tmplmap = {"/preseed.cfg":"preseed", "/ks.cfg":"ks", "/partition.cfg":"part",
-     "interfaces" : "netif", "/sysconfig_network": "netw_rh", "/interfaces" : "netif"};
+  console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")"); // osid=
+  // Map URL to symbolic template name needed.
+  var tmplmap = {
+     "/preseed.cfg": "preseed", "/ks.cfg":"ks", "/partition.cfg": "part",
+     "interfaces" : "netif", "/sysconfig_network": "netw_rh", "/interfaces" : "netif",
+     "/preseed.desktop.cfg": "preseed_dt"
+  };
+  // TODO: Move to proper entries (and respective prop skip) in future templating AoO
+  var skip_host_params = {"/preseed.desktop.cfg": 1};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
   //var ctype = tmplmap[req.url]; // Do not use - contains parameters
   var ctype = tmplmap[req.route.path];
   if (!ctype) { res.end("# Config type (ks/preseed) could not be derived\n"); return;}
-  console.log("Concluded type: " + ctype);
+  console.log("Concluded type: " + ctype + " for url ");
   // Acquire all params and blend them together for templating.
-  
-  var d = host_params(f, global, ip, ctype, osid);
-  if (!d) { res.end("# Parameters could not be fully derived / decided on\n"); return; }
-  patch_params(d, osid); // Tweaks to params, appending additional lines
+  var d;
+  var skip = skip_host_params[req.route.path];
+  if (!skip) {
+    d = host_params(f, global, ip, ctype, osid);
+    if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
+    patch_params(d, osid); // Tweaks to params, appending additional lines
+  }
+  else { d = {httpserver: global.httpserver }; } // At minimum have a valid object (w. global params ?)
+  // Postpone this check to see if facts (f) are needed at all !
+  if (!f && !skip) {
+    var msg = "# No IP Address "+ip+" found in host DB (for url: "+req.route.path+", skip="+skip+", f="+f+")\n";
+    res.end(msg); // ${ip}
+    console.log(msg); // ${ip}
+    // "Run: nslookup ${ip} for further info on host."
+    //return;
+  }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
+  console.log("Starting template expansion ...");
   var output = Mustache.render(global.tmpls[ctype], d);
   // Post-process (weed comments and empty lines out )
   var line_ok = function (line) { return !line.match(/^#/) && !line.match(/^\s*$/); };
   var oklines = output.split(/\n/).filter(line_ok);
   oklines.push("# " + oklines.length + " config lines in filterd output");
-  console.log("Produced: " + oklines.length + " config directives ("+req.route.path+")");
+  console.log("Produced: " + oklines.length + " config directive lines ("+req.route.path+")");
   //console.log(oklines.join("\n"));
   //res.end(oklines.join("\n"));
   res.end(output);
@@ -326,7 +403,12 @@ function patch_params(d, osid) {
 function host_params(f, global, ip, ctype, osid) {
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
-  if (anet.address != ip) { res.end("# Hostinfo IP and detected ip not in agreement\n"); return null; }
+  if (anet.address != ip) {
+    var msg = "# Hostinfo IP and detected ip not in agreement\n";
+    res.end(msg);
+    console.log(msg);
+    return null;
+  }
   net.ipaddress = ip;
   ////////////////////////// NET /////////////////////////////////////
   // TODO: Take from host facts (f) f.ansible_dns if available !!!
@@ -392,6 +474,7 @@ function host_params(f, global, ip, ctype, osid) {
     return disk;
   }
   /** Compute size of a disk from its partitions (within facts)
+  * Lower level task called by disk_params()
   * @param sda {object} - Disk Object (containing partitions ...)
   * @return size of the disk.
   */
@@ -416,6 +499,7 @@ function host_params(f, global, ip, ctype, osid) {
     }
     return disktot;
   }
+  console.error("Calling disk_params (by:" + f + ")");
   var disk = disk_params(f);
   
   // Account for KS needing nameservers comma-separated
@@ -454,7 +538,7 @@ function host_params(f, global, ip, ctype, osid) {
 */
 function oninstallevent(req,res) {
   var ip = ipaddr_v4(req);
-  var p = req.params;
+  var p = req.params;  // :evtype
   var now = new Date();
   console.log("IP:" + ip + ", event: " + p.evtype + " time:" + now.toISOString());
   res.json({msg: "Thanks", ip: ip, "event":  p.evtype, time: now.toISOString()});
@@ -544,19 +628,23 @@ function gen_allhost_output(req, res) {
       return  "ansible-playbook -i ~/.linetboot/hosts  build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
     }},
     // SSH Key archiving
-    {"lbl": "sshkeyarch", name: "SSH Key archiving", "cb": function (info, f) {
-      return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
+    {"lbl": "sshkeyarch", name: "SSH Key archiving",
+      // "ssh -t {{ info.hname }} 'sudo rsync /etc/ssh/ssh_host_* {{username}}@{{ currhname }}:"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'"
+      "cb": function (info, f) {
+      return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
     }}
   ];
-  genopts.forEach(function (it) { genopts_idx[it.lbl] = it; });
+  genopts.forEach(function (it) { genopts_idx[it.lbl] = it; }); // Once ONLY (at init) !
   if (!req.params) { return res.end("# URL routing params missing completely.\n"); }
   var lbl = req.params.lbl;
+  // With no label send the structure w/o cb.
+  if (!lbl) { var genopts2 = dclone(genopts); genopts2.forEach(function (it) { delete(it.cb); }); res.json(genopts2); return; }
   var cont = "";
   var op = genopts_idx[lbl];
   if (!op) { return res.end("# "+lbl+" - No such op.\n"); }
   // See also (e.g.): ansible_pkg_mgr: "yum"
   var os_pkg_cmd = {
-    "RedHat": "yum list installed", // rpm -qa, repoquery -a --installed, dnf list installed
+    "RedHat": "yum list -q installed", // rpm -qa, repoquery -a --installed, dnf list installed
     "Debian": "dpkg --get-selections", // apt list --installed (cluttered output), dpkg -l (long, does not start w. pkg)
     // Suse, Slackware,
     // "Arch???": "pacman -Q",
@@ -579,8 +667,15 @@ function gen_allhost_output(req, res) {
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
-    var info = {hname: f.ansible_fqdn, username: username, userhome: process.env["HOME"],
-      pkglistcmd: plcmd, paths: paths, ipaddr: f.ansible_default_ipv4.address};
+    var info = {
+      hname: f.ansible_fqdn, ipaddr: f.ansible_default_ipv4.address, // Host (in iteration)
+      currhname: process.env['HOSTNAME'], // Current Linetboot local host
+      username: username, userhome: process.env["HOME"], // User
+      pkglistcmd: plcmd, paths: paths
+      
+    };
+    var cmdcont;
+    // if (op.tmpl) { cmdcont = Mustache.render(op.tmpl, info); }
     //if (f.ansible_os_family) {}
     var cmd = op.cb(info, f);
     /*
@@ -589,7 +684,7 @@ function gen_allhost_output(req, res) {
     if (req.query.barename) { cmd = genopts[0].cb(info, f); }
     if (req.query.maclink)  { cmd = genopts[1].cb(info, f); }
     */
-    cont += cmd + "\n";
+    cont += cmd + "\n"; // TODO: cmdarr.push(cmd), later join
   });
   res.end(cont);
 }
@@ -799,12 +894,17 @@ function hostinfolist (req, res) {
   // Note: Do NOT overwrite (now global) hostarr on (future) map() or filter() or sort()
   var arr = [];
   //res.type("application/json"); // Redundant
-  var viewtype = req.params["viewtype"] || "";
+  var viewtype = req.params["viewtype"] || ""; // Even "" has (default) handler !
   var datafillcb = cbs[viewtype]; // Callback to populate data
   if (!datafillcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
+  // Fill-in custom props / params from inventory (TODO: treat as normal datafillcb ?)
   function hostparainfo(hpara, h) {
-    h.use = hpara.use || "";
-    h.loc = hpara.loc || "";
+    //h.use = hpara.use || "";
+    //h.loc = hpara.loc || "";
+    //h.dock = hpara.dock || "";
+    // NEW: Map all custom w/o hard-assuming particular custom fields
+    // TODO: Check for reserved keys (reskeys = {'hname' => 1, ...};)
+    Object.keys(hpara).forEach(function (k) { h[k] = hpara[k] || ""; });
   }
   var hps = global.hostparams || {};
   // Use array here (f = Host facts).
@@ -813,8 +913,8 @@ function hostinfolist (req, res) {
     datafillcb(f, h);
     // Temp solution, hard-wired add
     var hpara = hps[h.hname] || {};
-    console.log("HPARA:", hpara);
-    hostparainfo(hpara, h);
+    //console.log("HPARA:", hpara);
+    hostparainfo(hpara, h); // Custom attrs / params
     arr.push(h);
   });
   res.json(arr);
@@ -932,7 +1032,7 @@ function rmgmt_list(req, res) {
   }
   
   hostarr.forEach(function (f) { rmgmt_load(f); }); // Sync
-  // Resolve names
+  // Resolve names (if resolve=true)
   if (resolve) {
     async.map(arr, ipmi.lan_hostname, function(err, results) {
       if (err) { jr.msg += " "+err; return res.json(jr); }
@@ -942,10 +1042,10 @@ function rmgmt_list(req, res) {
   }
   res.json(arr);
 }
-/** Perform set of network tests (DNS, Ping)
+/** Perform set of network probe tests (DNS, Ping,SSH)
 */
 function nettest(req, res) {
-  var netprobe = require("./netprobe.js");
+  
   netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   netprobe.probe_all(hostarr, function (results) {
@@ -958,30 +1058,82 @@ function nettest(req, res) {
   });
 }
 
-/** Mockup: Run set of ansible playbooks on set of hosts (POST).
-* Main paremeters are playbooks and hosts:
+/** Mockup: Run set of ansible playbooks on set of hosts (POST /ansrun).
+* Main paremetars are playbooks and hosts:
 * 
-* - Set of ansible playbooks should be given by a profile
+* - **playbooks** - Set of ansible playbook should be given by a profile
 * (Or passing playbook names for maximum flexibility).
-* - Hosts could be given as individual hosts or group (as defined by
+* - **hostnames**: Hosts could be given as individual hosts
+* - **hostgroup** as defined by
 * lineboot host groups).
 * 
+* Depends on lineboot config members:
+* - Playbook path
+* - playbook profiles
+
+* ## profile format in config
+* 
+* profiles look like (Under "ansible" section):
+* 
+*     "pbprofs": {
+*       "ossetup": ["pkg_install.yaml", "nis_setup.yaml", "user_setup.yaml"],
+*       "ssllim": ["ssh_lims.yaml"],
+*       "": []
+*     } 
 */
-function ansible_run(req, res) {
+function ansible_run_serv(req, res) {
+  
+  var ans = require("./ansiblerun.js");
+  
   var jr = {status: "err", msg: "Not running Ansible. "};
-  if (req.method != "POST") { jr.msg += "Send request as POST"; return; }
+  if (!global.ansible) { jr.msg += "No ansible section in config !"; return res.json(jr); }
+  var acfg = global.ansible;
+  if (typeof acfg != 'object') {  jr.msg += "Ansible config is not an object !"; return res.json(jr); }
+  if (req.method != "POST") { jr.msg += "Send request as POST"; return res.json(jr); }
+  var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
+  if (!pbpath) { jr.msg += "Playbook path not given (in env or config) !"; return res.json(jr); }
+  acfg.pbpath = pbpath; // Override (at init ?)
+  // Define the policy of manding hosts to be listed in hostsfile / known to linetboot
+  if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in config !"; return res.json(jr); }
   var p = req.body;
-  // Ansible command template
-  var anscmd = "";
-  // TODO: *real* Object
-  if (typeof p != 'object') { jr.msg += "Send POST body as Object"; return; }
-  console.log(JSON.stringify(p, null, 2));
-  // Validate hostnames against which ones we know through facts (hostcache).
-  var hostnames = p.hostnames; // hnames ?
-  var playbooks = p.playbooks; // Individual Playbooks (complete name ?)
-  var playprofile = p.playprofile;
-  // For now do not allow both
-  if (playbooks && playprofile) { jr.msg += "playbooks vs playprofile is ambiguos. Only send one."; return; }
-  // Lookup list of individual playbooks (from where ?)
-  if (playprofile) {}
+  // Test ONLY (Comment out for real run)
+  // if (!p || !Object.keys(p).length) {
+  //  p = ans.testpara; // TEST/DEBUG
+  //}
+  acfg.pbprofs = acfg.pbprofs || [];
+  console.log("ansible_run_serv: Ansible run parameters:", p);
+  if (typeof p != 'object') { jr.msg += "Send POST body as Object"; return res.json(jr); }
+  p = new ans.Runner(p, acfg);
+  if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
+  var err = ans.playbooks_resolve(acfg, p);
+  if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
+  // p.hostnames = ["nuc5","nuc7"]; // DEBUG/TEST
+  // p.style = 'series';
+  //console.log(p);
+  p.ansible_run(); // OLD: ans.ansible_run(p);
+  res.json({event: "ansstart", time: Math.floor(new Date() / 1000), msg: "Running Async in background"});
+}
+
+/** List ansible profiles or playbooks (GET: /anslist/play /anslist/prof).
+*/
+function ansible_plays_list(req, res) {
+  
+  var ans = require("./ansiblerun.js");
+  
+  var jr = {"status": "err", "msg": "Failed to list Ansible artifacts"};
+  var urls = {"/anslist/play": "play", "/anslist/prof": "prof"};
+  var url = req.url;
+  var aotype = urls[url];
+  if (!aotype) { res.json(jr); return; }
+  var acfg = global.ansible;
+  var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
+  console.log("List "+url+" playbook paths: " + pbpath);
+  var list = [];
+  if (aotype == 'play') {
+    list = ans.ansible_play_list(acfg, pbpath);
+  }
+  else if (aotype == 'prof') {
+    list = ans.ansible_prof_list(acfg);
+  }
+  res.json(list);
 }
