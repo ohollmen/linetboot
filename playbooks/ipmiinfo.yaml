@@ -1,0 +1,30 @@
+- name: Extract Remote Management (IPMI) Info
+  hosts: {{ host }}
+  vars:
+    homedir: '{{ lookup("env","HOME") }}'
+  become: yes
+  tasks:
+    # Depends on ipmitool
+    - name: Extract iDRAC network Info
+      shell: ipmitool lan print 1
+      register: laninfo
+      ignore_errors: True
+      #output: json
+    - name: Extract User info
+      shell: ipmitool user list 1
+      register: userinfo
+    - debug: msg="Info {{ laninfo }} "
+    # delegate_facts: True
+    # Note: Luckily these seem to save only if the content.length > 0
+    - name: localhost delegated copy
+      copy:
+        content: '{{ laninfo.stdout }}'
+        dest: '{{ homedir }}/hostrmgmt/{{ ansible_fqdn }}.lan.txt'
+      delegate_to: localhost
+      become: no
+    - name: localhost delegated copy
+      copy:
+        content: '{{ userinfo.stdout }}'
+        dest: '{{ homedir }}/hostrmgmt/{{ ansible_fqdn }}.users.txt'
+      delegate_to: localhost
+      become: no

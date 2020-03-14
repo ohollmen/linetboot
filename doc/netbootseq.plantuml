@@ -1,5 +1,5 @@
 @startuml
-
+skinparam roundcorner 10
 title PXE+DHCP+PXELinux+linetboot Boot and Installation Sequence
 
 ' order 10 - only supported in later plantuml. Unnecessary if you keep below in order.

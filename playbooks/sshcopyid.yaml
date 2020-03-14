@@ -1,0 +1,48 @@
+# # Copy remote host SSH user key to central Ansible machine
+# Do effective (reverse) ssh-copy-id, except deal with faw files
+# and text content to avoid password promting interactivity
+# during automation.
+# Refs:
+# - https://docs.ansible.com/ansible/latest/modules/synchronize_module.html
+- name: Copy remote keys to ansible machine
+  become: yes
+  hosts: '{{ host }}'
+  vars:
+    remotesshdir: /root/.ssh
+    userhome: '{{ lookup("env","HOME") }}'
+    #keyfile: /tmp/foo
+    keyfile: /root/.ssh/id_rsa
+    ahfile: .ssh/authorized_keys
+  tasks:
+    - name: Check keys presence
+      stat:
+        path: '{{ keyfile }}'
+      register: keystat
+    # TODO: generate key if does not exist (-P old, use -N)
+    # See -y: print public key to stdout
+    - name: Gen Keys (ssh-keygen)
+      shell: ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+      when: keystat.stat.exists == False
+    #- name: Gen Keys (Ansible:openssh_keypair, > 2.8)
+    #  openssh_keypair:
+    #    path: /root/.ssh/id_rsa
+    #    state: present
+    #    type: rsa
+    #    size: 4096
+    #    force: no
+    - name: Extract public key
+      shell: cat ~/.ssh/id_rsa.pub
+      register: pubkey
+    - debug: msg="Pubkey {{ pubkey.stdout }}"
+    - name: Copy Key to Ansible Host
+      lineinfile:
+        #content: '{{ pubkey.stdout }}'
+        line: '{{ pubkey.stdout }}'
+        path: '{{ userhome }}/{{ ahfile }}'
+        state: present
+        # TODO: Substring(s) from start and end ?
+        # NOTE: Even w/o this re ansible will not insert identical line (!)
+        # However if string is even one char off it will.
+        #regexp: '^{{ pubkey.stdout }}'
+        insertafter: EOF
+      delegate_to: localhost

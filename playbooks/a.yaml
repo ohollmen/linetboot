@@ -1,0 +1,11 @@
+# Ansible
+- name: Test
+  hosts: '{{ host }}'
+  vars:
+    foo: 1
+  become: yes
+  tasks:
+    - name: List
+      shell: ls -al /root
+      register: rootlist
+    - debug: msg='Root listing {{ rootlist.stdout }}'

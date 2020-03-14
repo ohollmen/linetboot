@@ -1,0 +1,51 @@
+# Note: {{ ansible_user_id }} with become is root (except > 2.8.3)
+# Use lookup("env","USER")
+# Refs:
+# https://stackoverflow.com/questions/38143647/set-fact-with-dynamic-key-name-in-ansible
+- name: Archive Host Keys
+  hosts: '{{ host }}'
+  #serial: 1
+  become: yes
+  gather_facts: no
+  vars:
+    sshdir: /etc/ssh
+    keyarchpath: /tmp/hostkeys
+    keyuser: '{{ lookup("env","USER") }}'
+    # Should work in Debian distros
+    keygroup: '{{ lookup("env","USER") }}'
+    #thishost: '{{ lookup("env","HOSTNAME") }}'
+    thishost: 'nuc7'
+    thisuser: '{{ lookup("env","USER") }}'
+  tasks:
+    #- name: Make sure file is there
+    #  file:
+    #    dest: '{{ keyarchpath }}/{{ inventory_hostname }}'
+    #    state: touch
+    #  delegate_to: localhost
+    # Note: Some dirs (ones other than ansible host) do not get created
+    - name: Create key dir for host
+      file:
+        path: '{{ keyarchpath}}/{{ inventory_hostname }}'
+        state: directory
+        owner: '{{ keyuser }}'
+        group: '{{ keygroup }}'
+      delegate_to: localhost
+    - name: run cmd
+      #shell: echo "{{ inventory_hostname }}"
+      shell: cat /etc/ssh/ssh_host_rsa_key
+      register: 'sshkey'
+    # Then (after) use: with_items: "{{ keylist.stdout_lines }}"
+    - name: list keys
+      shell: 'ls {{ sshdir }}/ssh_host*'
+      register: keylist
+    - name: Store Locally
+      copy:
+        dest: '{{ keyarchpath }}/{{ inventory_hostname }}/ssh_host_rsa_key'
+        content: "{{ sshkey.stdout }}"
+        owner: '{{ keyuser }}'
+        group: '{{ keygroup }}'
+        mode: 0600
+      delegate_to: localhost
+      #when: 0
+    - name: Sync Keys
+      shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ thishost }}:{{ keyarchpath}}/{{ inventory_hostname }}'
