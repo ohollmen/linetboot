@@ -11,7 +11,6 @@
     "mustache": "3.0.1",
     "node-ssh": "5.1.2",
     "ping": "0.2.2",
-    "node-arp": "1.0.6",
     "body-parser": "1.18.3"
   },
   "devDependencies": {
@@ -21,10 +20,11 @@
   },
   "optionalDependencies": {
     "morgan": "1.9.1",
-    "serve-static": "1.13.2"
+    "serve-static": "1.13.2",
+    "node-arp": "1.0.6",
   },
   "scripts": {
-    "": ""
+    "deps": "yarn install --no-save"
   },
   "keywords": [
     "pxe",

@@ -1,6 +1,8 @@
 var dns = require("dns");
 var ping = require('ping');
-var arp = require('node-arp'); // pref. over arpjs (dep on libpcap)
+// Disable 'node-arp' because of pkg manager level (dependency) incompat with node-ssh (Causes mutual
+// uninstall between node-ssh and node-arp, yet manual install (on remote dir) allows linetboot to run fine)
+// var arp = require('node-arp'); // pref. over arpjs (dep on libpcap)
 // var snmp = require ("net-snmp");
 var node_ssh = require('node-ssh');
 var fs    = require('fs');
@@ -59,9 +61,9 @@ function resolve(hnode, cb) {
 	if (domains[0] == hn) { prec.nameok = 1;}
         console.log("Reverse result: " + JSON.stringify(domains));
 	// Note: Lineboot host itself does not resolve. Implement self-check differentiation !
-	arp.getMAC(ipaddr, function(err, mac) {
-	  if (err) { console.log("No ARP response for "+ ipaddr); return cb(null, prec); }
-	  prec.macok = 1; // mac; // mac rdundant
+	//arp.getMAC(ipaddr, function(err, mac) {
+	//  if (err) { console.log("No ARP response for "+ ipaddr); return cb(null, prec); }
+	//  prec.macok = 1; // mac; // mac rdundant
 	//  
 	ping.sys.probe(ipaddr, function (isok) {
 	  prec.ping = isok;
@@ -85,7 +87,7 @@ function resolve(hnode, cb) {
 	  
 	}, pingcfg); // ping
 	  // return cb(null, prec); // NOT: ret arp Error: Callback was already called.
-	}); // arp
+	// }); // arp
       });
     });
   });

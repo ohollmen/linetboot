@@ -121,7 +121,7 @@
      {name: "addrs",  title: "DNS Addresses", type: "text", width: 170, itemTemplate: dnsentcell},
      {name: "ipok",   title: "IP Ok",   type: "number", width: 40, itemTemplate: probeokcell},
      {name: "nameok", title: "Hostname Ok", type: "number", width: 40, itemTemplate: probeokcell},
-     {name: "macok",  title: "MAC Ok",  type: "number", width: 40, itemTemplate: probeokcell},
+     // {name: "macok",  title: "MAC Ok",  type: "number", width: 40, itemTemplate: probeokcell},
      {name: "ping",   title: "Ping Ok", type: "number", width: 40, itemTemplate: probeokcell},
      {name: "sshconn",title: "SSH Ok",  type: "number", width: 40, itemTemplate: probeokcell},
    ];
