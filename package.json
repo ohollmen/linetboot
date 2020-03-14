@@ -11,7 +11,8 @@
     "mustache": "3.0.1",
     "node-ssh": "5.1.2",
     "ping": "0.2.2",
-    "node-arp": "1.0.6"
+    "node-arp": "1.0.6",
+    "body-parser": "1.18.3"
   },
   "devDependencies": {
     "jshint": "2.9.7",
@@ -20,7 +21,7 @@
   },
   "optionalDependencies": {
     "morgan": "1.9.1",
-    "serve-static": "*"
+    "serve-static": "1.13.2"
   },
   "scripts": {
     "": ""
