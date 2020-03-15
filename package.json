@@ -21,7 +21,7 @@
   "optionalDependencies": {
     "morgan": "1.9.1",
     "serve-static": "1.13.2",
-    "node-arp": "1.0.6",
+    "node-arp": "1.0.6"
   },
   "scripts": {
     "deps": "yarn install --no-save"
