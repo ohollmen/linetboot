@@ -8,7 +8,8 @@
     "ks":      "./tmpl/ks.cfg.mustache",
     "netif":   "./tmpl/interfaces.mustache",
     "netw_rh": "./tmpl/sysconfig_network.mustache",
-    "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache"
+    "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
+    "preseed_mini": "./tmpl/preseed_mini.cfg.mustache"
   },
   "fact_path":  "/home/ohollmen/hostinfo",
   "rmgmt_path": "/home/ohollmen/hostrmgmt",
@@ -96,5 +97,6 @@
         "playbooks": ["sshcopyid.yaml", "sshkeyarch.yaml"]
       }
     ]
-  }
+  },
+  "lboot_setup_module": "./custom.setup.js"
 }
