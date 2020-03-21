@@ -1,3 +1,8 @@
+/** @file
+* This linetboot module implements:
+* - Hosts list loading (similar to ansible hosts inventory)
+* - JSON host Facts loading from ansible collected hosts files.
+*/
 "use strict;";
 var fs = require("fs");
 var fact_path;
@@ -30,17 +35,22 @@ function hostsfile_load(hfn) {
 }
 
 /** Find out the configured hostnames (from various possible places) and load host facts.
-Hosts can come from:
+
+Hosts list can come from:
 - A Inventory style text file given in `global.hostsfile`
 - A JSON array given in global.hostnames
 
 In either case the (string) entries are in the same format, String:
 - Starts with hostname
-- Optional key value pairs follow in key=my+value
+- Contains Optional key value pairs follow in key=my+value
 
 As shown in sample key-value pair above, the spaces must be escaped with
 same rules as URL (%HH sequences or '+' for space) as parsing the line
 is whitespace delimiter based.
+
+In general the format has a lot of similarities (basically is a subset) to Ansible hosts file format.
+The format does not support (non-exlusive list, e.g.) host groups (and their nestedness), grup variables.
+However individual variable format is close to same (Note URL escaping stule for lineboot though).
 
 Host loading is performed in *synchronous* manner.
 minimalistic loading of hosts for a generic app:
@@ -55,7 +65,7 @@ minimalistic loading of hosts for a generic app:
      console.log("Host params:", cfg.hostparams);
      
 
-* TODO: throw on errors
+* TODO: throw on errors, strip out any process.exit().
 */
 function hosts_load(global) {
   var hnames = global.hostnames;
@@ -90,6 +100,7 @@ function hosts_load(global) {
 
 
 /** Parse single hostline.
+Internal function to be used by hosts_load().
 @param hnames {array} - An array of hostnames
 @param i {integer} - Index of current item (in hnames array)
 @param hline {string} - Current hostline to parse (from text file as-is)
@@ -229,10 +240,31 @@ function group_mems_setup(groups, hostarr) {
       return 1; // No need: isgrouped / grp_other
 }
 
+/** Filter hosts (array) by regexp pattern in "ansible_fqdn" (or other given property).
+* @param hostarr {array} - Array of host facts
+* @param patt {string} - valid regular expression string pattern to match in hostname (or other property)
+* @param propname {string} - Optional *alternative* property name besides the fefault `ansible_fqdn` from which to look for match.
+*    Note: This value of this property must be a string to work with regexp matching. 
+* @return filtered array of hosts facts
+*/
+function hosts_filter(hostarr, patt, propname) {
+  var re = new RegExp(patt); // catch ?
+  if (!re) { console.error("Error: hosts_filter could not compile RE !"); return []; }
+  propname = propname || 'ansible_fqdn';
+  var ha2 = hostarr.filter(function (it) {
+    if (!it[propname]) { return 0; } // False value prop - not going to go in ...
+    // Check string
+    if (typeof it[propname] != 'string') { return 0; }
+    return it[propname].match(re);
+  });
+  return ha2;
+}
+
 module.exports = {
   init: init,
   hosts_load: hosts_load,
   facts_load: facts_load,
   file_path_resolve: file_path_resolve,
-  group_mems_setup: group_mems_setup
+  group_mems_setup: group_mems_setup,
+  hosts_filter: hosts_filter
 };
