@@ -460,7 +460,8 @@ function host_params_dummy(global, osid) {
   var net = dclone(global.net);
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
-  // Make up
+  // Make up hostname ???
+  // We could also lookup the hostname by ip (if passed), by async. Use await here ?
   net.hostname = "MYHOST-001";
   var gw = net.gateway;
   var iparr = gw.split(/\./);
@@ -786,11 +787,25 @@ function gen_allhost_output(req, res) {
 * 
 * - ip - Overriden IP for content generation (Instead of current - e.g. DHCP originated - ip)
 * 
+* #### Downloading Netplan
+* 
+* Download a new corrected / machine generated netplan and set into use:
+* 
+*      cd /etc/netplan
+*      sudo mv 01-netcfg.yaml 01-netcfg.yaml.org
+*      sudo wget -O 01-netcfg.yaml http://ash-test-ccx-01.ash.broadcom.net:3000/netplan.yaml?ip=10.75.159.27
+*      sudo netplan apply
+* 
 * @todo Convert netmask to CIDR notation.
+* See also: https://netplan.io/examples
 */
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
   res.type("text/plain");
+  //res.set('Content-Type', 'text/html');
+  // Content-Disposition: ... Would pop up save-as
+  //var fn = "01-netcfg.yaml";
+  // res.set('Content-Disposition', "attachment; filename=\""+fn+"\"");
   var xip = req.query["ip"];
   var ip = ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
@@ -808,9 +823,13 @@ function netplan_yaml(req, res) {
   var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
   //if (!iface_a) { res.end("No ansible_default_ipv4 network info for ip = "+ip+"\n"); }
   var ifname = iface_a["alias"] || "eno1"; // TODO: global["ifdefault"]
-  // Interface Info.  TODO: Create /dec mask for "addresses" out of "netmask"
+  // Interface Info.  TODO: Create /dec CIDR mask for "addresses" out of "netmask"
+  var address = (iface_a["address"] ? iface_a["address"] : ip);
+  var netmask = iface_a["netmask"] || global.net.netmask;
+  var dec = netmask2CIDR(netmask); // netmask2cidr(netmask);
+  if (dec) { address += "/"+dec}
   var iface = {
-    "addresses": [ (iface_a["address"] ? iface_a["address"] : ip) ],
+    "addresses": [ address ],
     "gateway4": (iface_a["gateway"] ? iface_a["gateway"] : global.net["gateway"]) // # Netplan interface
     
   };
@@ -848,6 +867,27 @@ function netplan_yaml(req, res) {
   
   res.send(ycont);
   //res.send(f);
+  // https://www.ultratools.com/tools/netMask
+  // https://gist.github.com/jppommet/5708697
+  // https://stackoverflow.com/questions/19532210/javascript-netmask-and-cidr-conversion
+  function ip2int(ip) {
+    return ip.split('.').reduce(function(ipInt, octet) { return (ipInt<<8) + parseInt(octet, 10); }, 0) >>> 0;
+  }
+  // E.g. 255.255.224.0, CIDR = 19
+  function netmask2cidr(netmask) {
+    // var uint = ip2int(netmask);
+    return 24;
+  }
+  function countCharOccurences(string , char) { return string.split(char).length - 1; }
+  function decimalToBinary(dec) { return (dec >>> 0).toString(2); }
+  function getNetMaskParts(nmask) { return nmask.split('.').map(Number); }
+  // Main resolver
+  function netmask2CIDR(netmask) {
+     return countCharOccurences(
+       getNetMaskParts(netmask)
+        // .map(part => decimalToBinary(part)).join(''),'1');
+        .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
+  }
 }
 /** Send a shell script / commands (or any text content) using HTTP GET.
 * TODO: Make this pull content from some add-on / misc directory (probably other than tmpl, rename to )
