@@ -1,0 +1,103 @@
+
+d-i auto-install/enable boolean true
+
+d-i debian-installer/quiet  boolean false
+d-i debian-installer/splash boolean false
+
+d-i preseed/interactive boolean true
+
+d-i debian-installer/locale string en_US
+d-i console-setup/ask_detect boolean false
+d-i keyboard-configuration/layoutcode string us
+
+d-i netcfg/get_hostname string {{ net.hostname }}
+d-i netcfg/get_domain string {{ net.domain }}
+d-i netcfg/choose_interface select auto
+d-i netcfg/link_wait_timeout string 10
+d-i netcfg/dhcp_failed note
+d-i netcfg/dhcp_options select Configure network manually
+d-i netcfg/disable_dhcp boolean true
+d-i netcfg/use_autoconfig boolean false
+d-i netcfg/disable_autoconfig boolean true
+
+d-i netcfg/get_ipaddress string {{ net.ipaddress }}
+d-i netcfg/get_netmask string {{ net.netmask }}
+d-i netcfg/get_gateway string {{ net.gateway }}
+d-i netcfg/get_nameservers string {{ net.nameservers }}
+d-i netcfg/confirm_static boolean true
+
+
+d-i netcfg/disable_autoconfig boolean true
+
+d-i clock-setup/utc boolean true
+d-i clock-setup/utc-auto boolean true
+
+d-i time/zone string {{{ time_zone }}}
+d-i clock-setup/ntp boolean true
+
+d-i mirror/protocol string http
+d-i mirror/country string manual
+d-i mirror/http/hostname string {{ mirror.hostname }}
+d-i mirror/http/directory string {{{ mirror.directory }}}
+d-i mirror/http/proxy string
+d-i mirror/http/mirror select {{ mirror.hostname }}
+
+
+popularity-contest popularity-contest/participate boolean false
+d-i apt-setup/universe        boolean true
+d-i apt-setup/universe/source boolean false
+d-i apt-setup/multiverse      boolean true
+d-i apt-setup/multiverse/source boolean false
+d-i apt-setup/contrib         boolean true
+d-i apt-setup/restricted     boolean true
+d-i pkgsel/language-pack-patterns   string
+d-i pkgsel/install-language-support boolean false
+tasksel tasksel/first multiselect server
+d-i pkgsel/update-policy select none
+d-i pkgsel/upgrade select none
+d-i pkgsel/updatedb boolean false
+
+
+d-i base-installer/install-recommends boolean {{ install_recommends }}
+d-i pkgsel/include string openssh-server python
+
+# d-i partman-auto/init_automatically_partition select biggest_free
+# d-i partman-auto/disk string /dev/sda
+# d-i partman-auto/purge_lvm_from_device boolean true
+
+d-i partman/default_filesystem string ext4
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+d-i partman/mount_style select uuid
+d-i partman/unmount_active boolean true
+
+
+
+d-i passwd/make-user boolean true
+d-i passwd/user-fullname string {{ user.fullname }}
+d-i passwd/username string {{ user.username }}
+d-i passwd/user-password password {{ user.password }}
+d-i passwd/user-password-again password {{ user.password }}
+d-i passwd/user-default-groups string {{ user.groups }}
+
+d-i user-setup/allow-password-weak boolean true
+d-i user-setup/encrypt-home boolean false
+
+d-i passwd/root-login boolean false
+
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/with_other_os boolean true
+
+
+d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` /dev/null || true
+
+d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
+  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}"; in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}}
+
+d-i preseed/run string scripts/preseed_net_restart.sh
+
+d-i debian-installer/main-menu-title LiNetBoot Install
+d-i finish-install/reboot_in_progress note
+d-i debian-installer/exit/poweroff boolean true
+
+{{{ appendcont }}}
