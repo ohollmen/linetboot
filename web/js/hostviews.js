@@ -114,22 +114,32 @@ function on_rmgmt_click(ev) {
   
 //}
 
+/** Create dialog for view described in event elem.
+*/
 function on_docker_info(ev) {
-  var hname = '';
-  var tmplsel = "#dockerimg";
-  //var tmpl = $(tmplsel).html(); // Not needed
-  var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
-  var gridsel = "jsGrid_dockerimg_d";
-  // Launch 
-  //$( "#dialog" ).html(output);
-  
-  var cb = function (pinfo) {
-    console.log("Call dialog CB ..." + "#dockerimg");
-    showgrid(gridsel, pinfo, fldinfo.dockerimg);
-    
-    $( "#dockerimg" ).dialog(dopts_grid);
+  var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
+    if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
+    console.log("dialogcb: called (#-sel)" + dialogsel);
+    // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
+    var id = $("#"+ dialogsel + " .fwgrid").attr("id");
+    console.log("jsGrid elem id: "+id);
+    // 
+    if (!fldinfo[dialogsel]) { alert("No grid info for '"+ dialogsel+"' "); return; }
+    showgrid(id, pinfo, fldinfo[dialogsel]); // OLD(1st)gridsel ... "dockerimg"
+    console.log("Call showgrid dialog CB ... #" + dialogsel);
+    if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
+    $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
   }
-  dockerinfo(hname, gridsel, cb);
+  
+  //console.log("ARG[0]:"+ev);
+  // Note: also the 
+  var hn = ev.target.getAttribute("data-hname"); // Generic
+  var tgt = ev.target.getAttribute("data-tgt");
+  //console.log("DHNAME:"+hn+", data-tgt: " + tgt);
+  // hn - from ev element
+  // gridsel - grid selector (id) ... replace w. dialog
+  if (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
+  else if (tgt == "nfsinfo") { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
@@ -284,13 +294,13 @@ window.onload = function () {
     rmgmt(); // Unused: response.data
     probeinfo(); // Launches HTTP
     sshkeys(); // Launches HTTP (NO UI setup)
-    // dockerinfo(); // NOT HERE
     // Dialog options (moved to bigger scope)
     
     // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
     $(".hostcell").click(on_host_click);
-    
+    $(".drinfo").click(on_docker_info);
+    $(".nfsinfo").click(on_docker_info);
     
     
   })
@@ -337,7 +347,8 @@ window.onload = function () {
     };
     /** Generate cdata.datasets[0].data into cdata.
     * @param pkginfo {array} - Package info (AoO) for all hosts
-    * @param cdata - Chart Data (structure) to populate with values and colors
+    * @param cdata {object} - Chart Data (structure) to populate with values and colors
+    * @param cmap {object} - Color mapping object
     * Accesses outer scope Color map (cmap)
     */
     function chartdata(pkginfo, cdata, cmap) {
@@ -346,7 +357,7 @@ window.onload = function () {
       // Lookup BG color for each bar
       cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
     }
-    var ctx = document.getElementById('canvas').getContext('2d');
+    var ctx = document.getElementById('canvas_pkg').getContext('2d');
     chartdata(pkginfo, cdata, cmap);
     // console.log(JSON.stringify(cdata, null, 2));
     
@@ -446,22 +457,40 @@ function data_load(url, id, array, opts) {
   })
   .catch(function (error) { console.log(error); });
 }
+/** fetch docker info and pass tu UI-geared callback.
+* @param hname {string} - Hostname
+* @param gridsel {string} - Selector (id, "#...") for grid (TODO: dialogsel)
+*/
+function dockerinfo(hname, dialogsel, cb) { // gridsel
+  var port = 4243;
+  if (!hname) { console.error("No hostname (from ui) for docker info"); return; }
+  if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
+  console.log("Calling docker ...");
+  axios.get('http://'+hname+':'+port+'/v1.24/images/json')
+  .then(function (response) {
+    var pinfo = response.data; // NO: data.data
+    //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
+    if (!pinfo || !pinfo.length) { alert("No data from " + hname); return; }
+    console.log("dockerinfo: Creating grid to: '" + dialogsel + "' ... " + pinfo + ""); // gridsel
+    cb(pinfo, dialogsel); // if (cb) { cb(pinfo, dialogsel); return; }
+    //else { alert("No dialog callback ..."); }
+    
+    // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
+  })
+  .catch(function (error) { console.log(error); alert("No Docker info, "+ error); });
+}
 
-function dockerinfo(hname, gridsel, cb) {
-    hname = hname || "192.168.1.141";
-    axios.get('http://'+hname+':4243/v1.24/images/json')
-    .then(function (response) {
-      var pinfo = response.data; // NO: data.data
-      console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
-      if (!pinfo || !pinfo.length) { alert("No Docker data"); return; }
-      gridsel = gridsel || "jsGrid_dockerimg";
-      console.log("dockerinfo: Creating grid to: " + gridsel + " ... " + pinfo + "");
-      if (cb) { cb(pinfo); return; }
-      showgrid(gridsel, pinfo, fldinfo.dockerimg);
-      // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
-    })
-    .catch(function (error) { console.log(error); });
-  }
+function nfsinfo(hname, dialogsel, cb) {
+  // Load data
+  // MOCKUP: return cb([], dialogsel);
+  axios.get("/showmounts/" + hname)
+  .then(function (response) {
+    var pinfo = response.data;
+    // console.log(pinfo);
+    cb(pinfo, dialogsel); return;
+  })
+  .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
+}
 
 // $("#jsGrid").jsGrid("sort", field);
 function showgrid (divid, griddata, fields) {

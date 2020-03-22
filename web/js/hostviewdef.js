@@ -51,9 +51,16 @@
      {name: "dns", title: "DNS Server(s)", type: "text", width: 160},
    ];
    function hasdockcell(value, item) {
-     return value ? "<span onclick=\"on_docker_info();\">Docker Info</span>" : "";
+     var n = item.hname;
+     // onclick=\"on_docker_info();\"
+     return value ? "<span class=\"drinfo\" data-tgt=\"dockerimg\" data-hname=\""+n+"\">Docker Info</span>" : "";
    }
-   // TODO: Populate dynamic fields separately (at server)
+   function hasnfscell(value, item) {
+     var n = item.hname;
+     // onclick=\"on_docker_info();\"
+     return value ? "<span class=\"nfsinfo\" data-tgt=\"nfsinfo\" data-hname=\""+n+"\">NFS</span>" : "";
+   }
+   // TODO: Populate dynamic fields separately (at server or client ?)
    var fldinfo_dist = [
      hostfld,
      // Distro
@@ -61,10 +68,11 @@
      {name: "distname",  title: "Distro", type: "text", width: 80, itemTemplate: distrocell }, // css: "osicon"
      {name: "distver",   title: "Ver", type: "number", width: 50},
      {name: "kernelver", title: "Kernel", type: "text", width: 150},
-     // Dynamic
+     // Dynamic (visible: false)
      {name: "use", title: "Usage", type: "text", width: 80},
      {name: "loc", title: "Location", type: "text", width: 80},
      {name: "dock", title: "Docker", type: "text", width: 40, itemTemplate: hasdockcell},
+     {name: "nfs", title: "NFS", type: "text", width: 40, itemTemplate: hasnfscell}, // , visible: false
      // https://codepen.io/shunty/pen/Njywpz
      //
      //{name: "", title: "", type: "control", editButton: false, deleteButton: false}
@@ -167,8 +175,12 @@
      {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
      {name: "Size",     title: "Size (MB)",  type: "text", width: 100, itemTemplate: function (value, item) { return value /1000000; }},
    ];
+   var fldinfo_nfs = [
+     {name: "path",     title: "Exported Path",  type: "text", width: 200, }, // itemTemplate: docktags
+     {name: "iface",     title: "Interface",  type: "text", width: 150, }, // itemTemplate: dockver
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
-      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg
+      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs
    };
    
