@@ -35,6 +35,7 @@ var userconf = process.env["LINETBOOT_USER_CONF"] || global.userconfig || "./ini
 var user     = require(userconf);
 var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
+var ans      = require("./ansiblerun.js");
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -98,13 +99,17 @@ function app_init(global) {
   // For local disk boot (recent) kernels and network install as well
   //global.maindocroot = "/isomnt/";
   if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot does not exist"); process.exit(1); }
-  app.use(express.static(global.maindocroot));
-  app.use(express.static("/isoimages")); // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO)
+  // Main docroot
+  app.use(express.static(global.maindocroot)); // e.g. /var/www/html/
+  // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distors that need bare ISO image (non-mounted).
+  app.use(express.static("/isoimages"));
   app.use('/web', express.static('web')); // Host Inventory
-  ///////////// Generated preseed and kickstart shared handler //////////////
+  ///////////// Dynamic content URL:s (w. handlers) //////////////
+  // preseed_gen - Generated preseed and kickstart shared handler
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
   app.get('/preseed.desktop.cfg', preseed_gen);
+  app.get('/preseed_mini.cfg', preseed_gen);
   // BSD (by doc '/boot/pc-autoinstall.conf' will be looked up from "install medium")
   app.get('/boot/pc-autoinstall.conf', preseed_gen);
   app.get('/cust-install.cfg', preseed_gen);
@@ -143,11 +148,17 @@ function app_init(global) {
   app.post('/ansrun', ansible_run_serv);
   app.get('/anslist/play', ansible_plays_list);
   app.get('/anslist/prof', ansible_plays_list);
+  // NFS/Shownounts
+  
+  app.get('/showmounts/:hname', showmounts);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
     // TODO: try/catch
-    global.tmpls[k] = fs.readFileSync(global.tmplfiles[k], 'utf8');
+    var fn = global.tmplfiles[k];
+    if (!fn) { return; }
+    if (!fs.existsSync(fn)) { return; }
+    global.tmpls[k] = fs.readFileSync(fn, 'utf8');
     
   });
   console.error("loaded " + tkeys.length + " templates.");
@@ -156,7 +167,7 @@ function app_init(global) {
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1);}
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
   global.fact_path = fact_path; // Store final in config
-  ///////////// Hosts and Groups ////////////////////
+  ///////////// Hosts and Groups (hostloader.js) ////////////////////
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
@@ -194,6 +205,19 @@ function app_init(global) {
     });
   });
   */
+  /* Run customization setup plugin */
+  var modfn = global.lboot_setup_module;
+  // TODO: Later eliminate and let normal module path resolution take place?
+  if (!fs.existsSync(modfn))   { console.error("Warning: setup module does not exists as: "+ modfn); return; }
+  var mod = require(modfn);
+  
+  if (!mod || !mod.run || typeof mod.run != 'function') {
+    console.error("Error: module either 1) Not present 2) Does not have run() member 3) run member is not a callable");
+    return;
+  }
+  console.log("Loaded: "+ modfn);
+  // Call for local customization
+  mod.run(global, app, hostarr);
 }
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
 //app.all('/', function(req, res, next) {
@@ -278,14 +302,37 @@ function host_for_request(req, cb) {
   //});
 }
 
-/** Generate Preseed or KS file based on global settings and host facts.
+/** Generate Preseed or KS installation file based on global settings and host facts.
 * Additionally Information for initial user to create is extracted from local
-* config file (given by setting global.userconfig).
+* config file (given by JSON filename in setting global.userconfig, e.g. "userconfig": "initialuser.json",).
 * Multiple URL:s are supported by this handler (e.g.) based on URL mappings for this module:
+* 
 * - /preseed.cfg
 * - /ks.cfg
-* Derives the format needed from URL and outputs the Install configuration in
+* - ... See module for complete list of examples
+* 
+* Each of the URL:s can be associated with a template (multiple URL variants may also share a template).
+* 
+* Derives the format needed from URL path and outputs the Install configuration in
 * valid Preseed or Kickstart format.
+* The URL called for each install is driven by network bootloader (e.g. pxelinux) menu originated
+* kernel command line parameters (e.g. for debian/ubuntu:  url=http://mylineboot:3000/preseed.cfg)
+* 
+* ## GET Query Parameters supported
+* 
+* - osid - Hint on (e.g. `osid=ubuntu18`)
+* - ip - Overriden IP address (wanted for content generation)
+* - trim - Clean ouput, no comment lines (for debugging)
+* 
+* ## URL-to-conftype-to-template Mapping
+* 
+*      Request URL (e.g. /preseed.cfg)
+*             | (in code)
+*             V
+*      Conftype (e.g. "preseed")
+*             | (global-conf)
+*             V
+*      Template (e.g. ./tmpl/preseed.cfg.mustache)
 * 
 * #### Request Headers from installers
 *
@@ -304,7 +351,10 @@ function host_for_request(req, cb) {
 *     'user-agent': 'anaconda/13.21.229'
 *     'x-anaconda-architecture': 'x86_64',
 *     'x-anaconda-system-release': 'CentOS'
-* # TODO: Create separate mechanisms for global params templating and hostinfo templating.
+* 
+* # TODO
+* 
+* Create separate mechanisms for global params templating and hostinfo templating.
 */
 function preseed_gen(req, res) {
   // OLD: Translate ip to name to use for facts file name
@@ -313,39 +363,50 @@ function preseed_gen(req, res) {
   var ip = ipaddr_v4(req);
   var osid = req.query["osid"] || global.targetos || "ubuntu18";
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
-  var f = hostcache[ip];
+  var f = hostcache[ip]; // Get facts
   
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")"); // osid=
   // Map URL to symbolic template name needed.
   var tmplmap = {
-     "/preseed.cfg": "preseed", "/ks.cfg":"ks", "/partition.cfg": "part",
-     "interfaces" : "netif", "/sysconfig_network": "netw_rh", "/interfaces" : "netif",
-     "/preseed.desktop.cfg": "preseed_dt"
+     "/preseed.cfg": "preseed",
+     "/ks.cfg":      "ks",
+     "/partition.cfg": "part",
+     "interfaces" :  "netif",
+     "/sysconfig_network": "netw_rh",
+     "/interfaces" : "netif",
+     "/preseed.desktop.cfg": "preseed_dt",
+     "/preseed_mini.cfg": "preseed_mini"
   };
-  // TODO: Move to proper entries (and respective prop skip) in future templating AoO
-  var skip_host_params = {"/preseed.desktop.cfg": 1};
+  // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
+  var skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
   //console.log(req); // _parsedUrl.pathname OR req.route.path
   // if (req.url.indexOf('?')) { }
-  //var ctype = tmplmap[req.url]; // Do not use - contains parameters
-  var ctype = tmplmap[req.route.path];
+  //var ctype = tmplmap[req.url]; // Do not use - contains query parameters
+  var ctype = tmplmap[req.route.path]; // config type
   if (!ctype) { res.end("# Config type (ks/preseed) could not be derived\n"); return;}
   console.log("Concluded type: " + ctype + " for url ");
   // Acquire all params and blend them together for templating.
-  var d;
+  var d; // Final template params
   var skip = skip_host_params[req.route.path];
-  if (!skip) {
+  // Generate params, but only if not asked to be skipped
+  if (!skip && f) { // Added && f because we depend on facts here
     d = host_params(f, global, ip, ctype, osid);
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
     patch_params(d, osid); // Tweaks to params, appending additional lines
   }
-  else { d = {httpserver: global.httpserver }; } // At minimum have a valid object (w. global params ?)
+  // Dummy params - At minimum have a valid object (w. global params)
+  else {
+    //d = {httpserver: global.httpserver };
+    // NOT ip ?
+    d = host_params_dummy(global, osid); // NEW
+  }
   // Postpone this check to see if facts (f) are needed at all !
   if (!f && !skip) {
-    var msg = "# No IP Address "+ip+" found in host DB (for url: "+req.route.path+", skip="+skip+", f="+f+")\n";
-    res.end(msg); // ${ip}
-    console.log(msg); // ${ip}
+    var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+req.route.path+", skip="+skip+", f="+f+")\n";
+    res.end(msg2); // ${ip}
+    console.log(msg2); // ${ip}
     // "Run: nslookup ${ip} for further info on host."
     //return;
   }
@@ -357,6 +418,7 @@ function preseed_gen(req, res) {
   var oklines = output.split(/\n/).filter(line_ok);
   oklines.push("# " + oklines.length + " config lines in filterd output");
   console.log("Produced: " + oklines.length + " config directive lines ("+req.route.path+")");
+  if (req.query["trim"]) { return res.end(oklines.join("\n")); }
   //console.log(oklines.join("\n"));
   //res.end(oklines.join("\n"));
   res.end(output);
@@ -389,14 +451,38 @@ function patch_params(d, osid) {
     net.dev = "em" + net.ifnum;
   }
 }
+/** Create dummy params (minimal subset) that ONLY depend on global config.
+ * 
+ */
+function host_params_dummy(global, osid) {
+  var net = dclone(global.net);
+  var d = dclone(global); // { user: dclone(user), net: net};
+  d.net = net;
+  // Make up
+  net.hostname = "MYHOST-001";
+  var gw = net.gateway;
+  var iparr = gw.split(/\./);
+  iparr[3] = 111;
+  net.ipaddress = iparr.join('.'); // Get/Derive from net.gateway ?
+  
+  net.nameservers = net.nameservers.join(" ");
+  d.user = user; // global
+  // NOTE: user.groups Array somehow turns (correctly) to space separated string. Feature of Mustache ?
+  //NOT:d.disk = disk;
+  /////////////////////////// Mirror - Copy-paste or simplify 
+  d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
+  
+  return d;
+}
 /** Generate host parameters for OS installation.
 * Parameters are based on global linetboot settings and host
 * specific (facts) settings.
 * The final params returned will be directly used to fill the template.
 * @param f - Host Facts parameters (from Ansible)
-* @param global - Global parameters (e.g. network info)
+* @param global - Global config parameters (e.g. network info)
 * @param ip - Requesting host's IP Address
-* @param ctype - Configuration type (ks or preseed)
+* @param ctype - Configuration type (e.g. ks or preseed, see elswhere for complete list)
+* @param osid - OS id (, e.g. "ubuntu18", affects mirror choice)
 * @return Parameters (structure, somewhat nested, w. sub-sections net, user) for generating the preseed or ks output.
 * TODO: Passing osid may imply ctype (and vice versa)
 */
@@ -409,7 +495,7 @@ function host_params(f, global, ip, ctype, osid) {
     console.log(msg);
     return null;
   }
-  net.ipaddress = ip;
+  net.ipaddress = ip; // Move to net processing (if (ip) {}
   ////////////////////////// NET /////////////////////////////////////
   // TODO: Take from host facts (f) f.ansible_dns if available !!!
   // Create netconfig as a blend of information from global network config
@@ -444,7 +530,34 @@ function host_params(f, global, ip, ctype, osid) {
   //}
   // netconfig(net, f);
   ///////////////////////// DISK /////////////////////////////////
-  /** Generate Disk parameters for super simple disk layout: root+swap (and optional boot).
+  // Disk logic was embedded here
+  console.error("Calling disk_params (by:" + f + ")");
+  var disk = disk_params(f);
+  
+  // Account for KS needing nameservers comma-separated
+  if (ctype == 'ks') { net.nameservers = net.nameservers.replace(' ', ','); }
+  // console.log(net);
+  var d = dclone(global); // { user: dclone(user), net: net};
+  d.net = net;
+  d.user = user; // global
+  d.disk = disk;
+  // Comment function
+  d.comm = function (v)   { return v ? "" : "# "; };
+  d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
+  //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
+  //////////////// Choose mirror (Use find() ?) //////////////////
+  var choose_mirror = function (m) {
+    return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
+  };
+  var mirror = global.mirrors.filter(choose_mirror)[0];
+  if (!mirror) { return null; } // NOT Found ! Hope we did not match many either.
+  mirror = dclone(mirror); // NOTE: This should already be a copy ?
+  if (global.mirrorhost) { mirror.hostname = global.mirrorhost; } // Override with global
+  d.mirror = mirror;
+  return d;
+}
+
+/** Generate Disk parameters for super simple disk layout: root+swap (and optional boot).
   * Calculate disk params based on the facts
   * The unit on numbers is MBytes (e.g. 32000 = 32 GB)
   * See facts sections: ansible_device_links ansible_devices ansible_memory_mb
@@ -452,7 +565,7 @@ function host_params(f, global, ip, ctype, osid) {
   */
   function disk_params (f) {
     var disk = {rootsize: 40000, swapsize: 8000, bootsize: 500}; // Safe undersized defaults in case we return early (should not happen)
-    
+    if (!f) { return disk; }
     var ddevs = f.ansible_devices;
     var mem = f.ansible_memory_mb;
     if (!ddevs) { return disk; }
@@ -492,39 +605,14 @@ function host_params(f, global, ip, ctype, osid) {
       console.log(marr + " len:" + (marr ? marr.length: "None"));
       if (marr && (marr.length == 3)) {
         var sf = parseFloat(marr[1]);
-	var uf = unitfactor[marr[2]];
-	if (!uf) { console.error("Weird unit: " + marr[2]); continue; }
-	disktot += (sf * uf);
+        var uf = unitfactor[marr[2]];
+        if (!uf) { console.error("Weird unit: " + marr[2]); continue; }
+        disktot += (sf * uf);
       }
     }
     return disktot;
   }
-  console.error("Calling disk_params (by:" + f + ")");
-  var disk = disk_params(f);
-  
-  // Account for KS needing nameservers comma-separated
-  if (ctype == 'ks') { net.nameservers = net.nameservers.replace(' ', ','); }
-  // console.log(net);
-  var d = dclone(global); // { user: dclone(user), net: net};
-  d.net = net;
-  d.user = user;
-  d.disk = disk;
-  // Comment function
-  d.comm = function (v)   { return v ? "" : "# "; };
-  d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
-  //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
-  //////////////// Choose mirror (Use find() ?) //////////////////
-  var choose_mirror = function (m) {
-    return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
-  };
-  var mirror = global.mirrors.filter(choose_mirror)[0];
-  if (!mirror) { return null; } // NOT Found ! Hope we did not match many either.
-  mirror = dclone(mirror); // NOTE: This should already be a copy ?
-  if (global.mirrorhost) { mirror.hostname = global.mirrorhost; } // Override with global
-  d.mirror = mirror;
-  return d;
-}
-  
+
 /** Receive an install "milestone" event from client host to be installed.
 * Currently events start/done are received.
 * Register this via parametric URL with param ":evtype", e.g
@@ -688,41 +776,60 @@ function gen_allhost_output(req, res) {
   });
   res.end(cont);
 }
-/** Generate Ubuntu 18 Netplan (via HTTP get).
+/** Generate Ubuntu 18 Netplan (via HTTP get /netplan.yaml).
 * Extract network config essentials from Facts.
 * Respond with netplan YAML content.
+* 
+* #### URL Params
+* 
+* - ip - Overriden IP for content generation (Instead of current - e.g. DHCP originated - ip)
+* 
 * @todo Convert netmask to CIDR notation.
 */
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
+  res.type("text/plain");
   var xip = req.query["ip"];
   var ip = ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
-  if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
-  var d = f;
-  
+  // if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
+  // Dummy facts with all set to false (for fallback to global)
+  var f_dummy = {"ansible_default_ipv4": {}, "ansible_dns": null};
+  var d = f || f_dummy;
+  // Base netplan stub (to fill out)
   var np = {"version": 2, "renderer": "networkd", "ethernets": {} };
   //# See also "ansible_em1" based on lookup to:
   //# iface.alias
   //# See: "ansible_fqdn" => hostname
+  // iface has: alias, address, gateway
   var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
-  var ifname = iface_a["alias"];
-  //# TODO: Create /dec mask out of "netmask"
-  var iface = { "addresses": [iface_a["address"]], "gateway4": iface_a["gateway"] // # Netplan ingerface
+  //if (!iface_a) { res.end("No ansible_default_ipv4 network info for ip = "+ip+"\n"); }
+  var ifname = iface_a["alias"] || "eno1"; // TODO: global["ifdefault"]
+  // Interface Info.  TODO: Create /dec mask for "addresses" out of "netmask"
+  var iface = {
+    "addresses": [ (iface_a["address"] ? iface_a["address"] : ip) ],
+    "gateway4": (iface_a["gateway"] ? iface_a["gateway"] : global.net["gateway"]) // # Netplan interface
     
   };
-  var dns_a = d["ansible_dns"];
-  var ns = {"search": dns_a["search"], "addresses": dns_a["nameservers"]};
+  // Add /dec mask here based on "netmask"
+  var dns_a = d["ansible_dns"]; // global["namesearch"] // NEW: Fallback to global
+  // Namesearch Info.
+  var ns = {
+    "search":    (dns_a ? dns_a["search"] : global.net["namesearch"]),
+    "addresses": (dns_a ? dns_a["nameservers"] : global.net["nameservers"]) };
   iface["nameservers"] = ns;
-  np["ethernets"][ifname] = iface;
+  np["ethernets"][ifname] = iface; // Assemble (ethernets branch) !
   //# Unofficial, but helpful (at netplan root)
-  np["hostname_fqdn"] = d["ansible_fqdn"]; // # Leave at: ansible_hostname ?
-  np["domain"]        = d["ansible_domain"];
-  np["macaddress"] = iface_a["macaddress"];
+  var custom = 0; // Custom props (for debugging, etc)
+  if (custom) {
+  //np["hostname_fqdn"] = d["ansible_fqdn"]; // # Leave at: ansible_hostname ?
+  //np["domain"]        = d["ansible_domain"];
+  //np["macaddress"] = iface_a["macaddress"];
   //# NOTE: We add the old-style "netmask" to the netplan even if it is not a standard member of it
-  iface["netmask"] = iface_a["netmask"];
-  var nproot = {"network": np}; //# Netplan - Complete
+  //iface["netmask"] = iface_a["netmask"];
+  }
+  var nproot = {"network": np}; // Netplan (root) - Complete
   // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8')); // From
   // To YAML
   var ycfg = {
@@ -731,11 +838,12 @@ function netplan_yaml(req, res) {
   };
   // YAMLException: unacceptable kind of an object to dump [object Undefined]
   // Known workaround: JSON.parse(JSON.stringify(obj)) https://github.com/nodeca/js-yaml/issues/76
+  // NEW: var nproot2 = dlcone(nproot);
   var ycont = yaml.safeDump(JSON.parse(JSON.stringify(nproot)), ycfg);
   // JSON dumps fine (!!!???)
   //var ycont = JSON.stringify(nproot, null, 2);
   // var ycont = yaml.safeDump(f, ycfg);
-  res.type("text/plain");
+  
   res.send(ycont);
   //res.send(f);
 }
@@ -1082,9 +1190,6 @@ function nettest(req, res) {
 *     } 
 */
 function ansible_run_serv(req, res) {
-  
-  var ans = require("./ansiblerun.js");
-  
   var jr = {status: "err", msg: "Not running Ansible. "};
   if (!global.ansible) { jr.msg += "No ansible section in config !"; return res.json(jr); }
   var acfg = global.ansible;
@@ -1107,8 +1212,7 @@ function ansible_run_serv(req, res) {
   if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
   var err = ans.playbooks_resolve(acfg, p);
   if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
-  // p.hostnames = ["nuc5","nuc7"]; // DEBUG/TEST
-  // p.style = 'series';
+
   //console.log(p);
   p.ansible_run(); // OLD: ans.ansible_run(p);
   res.json({event: "ansstart", time: Math.floor(new Date() / 1000), msg: "Running Async in background"});
@@ -1117,9 +1221,6 @@ function ansible_run_serv(req, res) {
 /** List ansible profiles or playbooks (GET: /anslist/play /anslist/prof).
 */
 function ansible_plays_list(req, res) {
-  
-  var ans = require("./ansiblerun.js");
-  
   var jr = {"status": "err", "msg": "Failed to list Ansible artifacts"};
   var urls = {"/anslist/play": "play", "/anslist/prof": "prof"};
   var url = req.url;
@@ -1136,4 +1237,43 @@ function ansible_plays_list(req, res) {
     list = ans.ansible_prof_list(acfg);
   }
   res.json(list);
+}
+/** Show mounts on particular host (/showmounts/:hname)
+* Extend this later to generic info fetcher
+* - cb to resolve host param.
+* - profile id to give command to run (and it's respective parser)
+* - 
+*/
+function showmounts(req, res) {
+  var jr = {status: "err", msg: "Could not run command. "};
+  //var hn = req.query["hname"];
+  var hn = req.params.hname;
+  console.log("Run op on: "+hn);
+  function parse_exp(out) {
+    var lines = out.split("\n");
+    // Should have(e.g.): Export list for localhost:
+    lines.shift();
+    lines = lines.filter(function (l) {return l.match(/^\s*$/) ? 0 : 1; }); // Just pop() ?
+    var exp = [];
+    // The rest: /home              192.168.1.0/24
+    exp = lines.map(function (line) { var arr = line.split(/\s+/); return { path: arr[0], iface: arr[1] }; });
+    return exp;
+  }
+  var cmd_parse = [
+    {id: "showmounts", cmd: "showmount -e {{{ hn }}}", parser: parse_exp}
+    // 
+  ];
+  var p = {hn: hn};
+  var nd = cmd_parse[0];
+  // var nd = cmd_parse.filter(function (it) { it.id == cmdid; })[0];
+  // if (!nd) { jr.msg += "Command or op not registered."; return res.json(jr); }
+  var cmd = nd.cmd;
+  // var cmd = Mustache.render(nd.cmd, p);
+  // 'ssh  ' + hname + " showmount -e localhost"
+  cproc.exec("showmount -e "+ hn, function (error, stdout, stderr) {
+    if (error) { jr.msg += error; return res.json(jr); }
+    console.log("RAW: "+ stdout);
+    var data = parse_exp(stdout);
+    res.json(data);
+  });
 }
