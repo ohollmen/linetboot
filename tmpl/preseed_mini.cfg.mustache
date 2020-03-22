@@ -94,7 +94,7 @@ d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installe
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
   in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}"; in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}}
 
-d-i preseed/run string scripts/preseed_net_restart.sh
+# d-i preseed/run string scripts/preseed_net_restart.sh
 
 d-i debian-installer/main-menu-title LiNetBoot Install
 d-i finish-install/reboot_in_progress note
