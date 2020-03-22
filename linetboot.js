@@ -411,8 +411,10 @@ function preseed_gen(req, res) {
     //return;
   }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
-  console.log("Starting template expansion ...");
-  var output = Mustache.render(global.tmpls[ctype], d);
+  var tmplcont = global.tmpls[ctype];
+  if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
+  console.log("Starting template expansion for ctype = '"+ctype+"', ..."); // tmplfname = '"+tmplfname+"'
+  var output = Mustache.render(tmplcont, d);
   // Post-process (weed comments and empty lines out )
   var line_ok = function (line) { return !line.match(/^#/) && !line.match(/^\s*$/); };
   var oklines = output.split(/\n/).filter(line_ok);
