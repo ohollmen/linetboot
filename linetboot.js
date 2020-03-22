@@ -473,7 +473,7 @@ function host_params_dummy(global, osid) {
   //NOT:d.disk = disk;
   /////////////////////////// Mirror - Copy-paste or simplify 
   d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
-  
+  d.postscript = global.postscript; // TODO: Can we batch copy bunch of props
   return d;
 }
 /** Generate host parameters for OS installation.
