@@ -822,7 +822,7 @@ function netplan_yaml(req, res) {
   // iface has: alias, address, gateway
   var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
   //if (!iface_a) { res.end("No ansible_default_ipv4 network info for ip = "+ip+"\n"); }
-  var ifname = iface_a["alias"] || "eno1"; // TODO: global["ifdefault"]
+  var ifname = iface_a["alias"] || global.net["ifdefault"] || "eno1"; // TODO: global["ifdefault"]
   // Interface Info.  TODO: Create /dec CIDR mask for "addresses" out of "netmask"
   var address = (iface_a["address"] ? iface_a["address"] : ip);
   var netmask = iface_a["netmask"] || global.net.netmask;
