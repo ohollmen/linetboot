@@ -403,7 +403,7 @@ function preseed_gen(req, res) {
     d = host_params_dummy(global, osid); // NEW
   }
   // Postpone this check to see if facts (f) are needed at all !
-  if (!f && !skip) {
+  if (!d && !skip) {
     var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+req.route.path+", skip="+skip+", f="+f+")\n";
     res.end(msg2); // ${ip}
     console.log(msg2); // ${ip}
