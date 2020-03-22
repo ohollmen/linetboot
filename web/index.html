@@ -40,7 +40,7 @@
   <script type="text/javascript" src="node_modules/wolfy87-eventemitter/EventEmitter.js"></script>
   <script type="text/javascript" src="js/hostviewdef.js"></script>
   <script type="text/javascript" src="js/hostviews.js"></script>
-  <!-- <script type="text/javascript" src="hostinfo.js"></script> -->
+  <script type="text/javascript" src="jsx/Router666.js"></script>
 
 <style>
   /* App specific styles (overrides, etc.) to be loaded last */
@@ -92,7 +92,7 @@
   nav a { font-size: 12px; Xheight: 15px;  padding-right: 15px; }
   
   Xnav Xli { float: left;  }
-  
+  /* ans */
   label { vertical-align: middle; font-weight: bold; }
   select { vertical-align: middle; }
   </style>
@@ -136,13 +136,13 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="tabs-3"><div id="jsGrid_dist"></div></div>
   <div id="tabs-4">
     <div id="jsGrid_pkg"></div>
-     <canvas id="canvas"></canvas>
+     <canvas id="canvas_pkg"></canvas>
   </div>
   <div id="tabs-5"></div>
   <div id="tabs-6"><div id="jsGrid_rmgmt">No Remote management being used.</div></div>
   <div id="tabs-63"><h3>Host Net probe</h3>
   <!-- glyphicon-refresh / glyphicon-hourglass -->
-    <input type="button" id="proberun" value="Reload">
+    <!--<input type="button" id="proberun" value="Reload">-->
     
     <button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>
     <div id="jsGrid_probe"></div>
@@ -152,10 +152,6 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   
   </div>
   <div id="tabs-67"><div id="jsGrid_sshkeys"></div></div>
-  <!--
-  <div id="tabs-68">
-    <input type="button" value="Show Image info" onclick="on_docker_info()">
-    <div id="jsGrid_dockerimg"></div></div> -->
   <div id="tabs-7">
 <h4>Linetboot Hosts Inventory</h4>
 <p>Web GUI evolved as an add-on around the (Ansible) <a href="#">linetboot</a> host facts.</p>
@@ -199,9 +195,14 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>DNS Servers: {{ dns }}</li>
 </ul>
 </script>
-<div id="dockerimg" typeXX="text/template" title="Docker Images">
-  <div id="jsGrid_dockerimg_d"></div>
-</script>
+<div id="dockerimg" title="Docker Images" todo="for {{ hn }}">
+  <div id="jsGrid_dockerimg_d" class="fwgrid"></div>
+</div>
+
+<div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}">
+  <div id="jsGrid_nfs" class="fwgrid"></div>
+</div>
+
 <script id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
 <ul>
