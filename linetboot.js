@@ -171,6 +171,7 @@ function app_init(global) {
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
+  if (global.customhosts) { hlr.customhost_load(global.customhosts, global); }
   //////////////// Groups /////////////////
   // If lineboot config has dynamic "groups" rules defined, collect group members into
   // TODO: Move to hostloader
@@ -467,14 +468,15 @@ function host_params_dummy(global, osid) {
   var iparr = gw.split(/\./);
   iparr[3] = 111;
   net.ipaddress = iparr.join('.'); // Get/Derive from net.gateway ?
-  
+  //net.domain 
   net.nameservers = net.nameservers.join(" ");
   d.user = user; // global
   // NOTE: user.groups Array somehow turns (correctly) to space separated string. Feature of Mustache ?
   //NOT:d.disk = disk;
   /////////////////////////// Mirror - Copy-paste or simplify 
   d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
-  d.postscript = global.postscript; // TODO: Can we batch copy bunch of props
+  d.postscript = global.postscript; // TODO: Can we batch copy bunch of props collectively
+  
   return d;
 }
 /** Generate host parameters for OS installation.
@@ -793,7 +795,10 @@ function gen_allhost_output(req, res) {
 * 
 *      cd /etc/netplan
 *      sudo mv 01-netcfg.yaml 01-netcfg.yaml.org
+*      # By ip address
 *      sudo wget -O 01-netcfg.yaml http://ash-test-ccx-01.ash.broadcom.net:3000/netplan.yaml?ip=10.75.159.27
+*      # By mac address (e.g. when current ip on-hot is wrong)
+*      sudo wget -O 01-netcfg.yaml http://ash-test-ccx-01.ash.broadcom.net:3000/netplan.yaml?mac=02:07:07:00:c7:9c
 *      sudo netplan apply
 * 
 * @todo Convert netmask to CIDR notation.
@@ -809,7 +814,7 @@ function netplan_yaml(req, res) {
   var xip = req.query["ip"];
   var ip = ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
-  var f = hostcache[ip];
+  var f = hostcache[req.query["mac"] || ip];
   // if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
   // Dummy facts with all set to false (for fallback to global)
   var f_dummy = {"ansible_default_ipv4": {}, "ansible_dns": null};
@@ -827,7 +832,7 @@ function netplan_yaml(req, res) {
   var address = (iface_a["address"] ? iface_a["address"] : ip);
   var netmask = iface_a["netmask"] || global.net.netmask;
   var dec = netmask2CIDR(netmask); // netmask2cidr(netmask);
-  if (dec) { address += "/"+dec}
+  if (dec) { address += "/"+dec; }
   var iface = {
     "addresses": [ address ],
     "gateway4": (iface_a["gateway"] ? iface_a["gateway"] : global.net["gateway"]) // # Netplan interface
@@ -873,10 +878,19 @@ function netplan_yaml(req, res) {
   function ip2int(ip) {
     return ip.split('.').reduce(function(ipInt, octet) { return (ipInt<<8) + parseInt(octet, 10); }, 0) >>> 0;
   }
-  // E.g. 255.255.224.0, CIDR = 19
+  function cidr_calc(uint) {
+  var cnt = 0;
+  for (var i = 31;i >= 0; i--, cnt++) {
+    var posval = (uint & (1 << i)) ? 1 : 0;
+    if (!posval) { break; }
+  }
+  return cnt;
+  }
+  // E.g. 255.255.224.0 =>  cidr = 19
   function netmask2cidr(netmask) {
-    // var uint = ip2int(netmask);
-    return 24;
+    var uint = ip2int(netmask);
+    var cidr = cidr_calc(uint);
+    return cidr || 24;
   }
   function countCharOccurences(string , char) { return string.split(char).length - 1; }
   function decimalToBinary(dec) { return (dec >>> 0).toString(2); }

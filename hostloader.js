@@ -168,18 +168,26 @@ function facts_load(hn) { // ipaddr
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
   // TODO: return facts; // Do caching outside ?
+  host_add(facts);
+  return facts; // NEW
+}
+/** Add a host to appropriate array and index collections (by various props).
+ * 
+ */
+function host_add(facts) {
   var ifinfo = facts.ansible_default_ipv4;
   if (!ifinfo) { console.error("No Net Interface info in facts."); return; }
   var ip = ifinfo.address;
   var maca = ifinfo.macaddress;
+  var hn = facts.ansible_fqdn;
   // Brute force cache by name and ip addr to same cache / hash table
   colls.hostcache[hn] = facts;
   colls.hostcache[ip] = facts;
   // NEW: Also index by ethernet address. In facts it is lower case !!!
   if (maca) { colls.hostcache[maca] = facts; }
   colls.hostarr.push(facts);
-  return facts; // NEW
 }
+
 /** Create dynamic groups by group definitions and hostarr.
 * 
 * @param global {object} - Linetboot config (with "groups")
@@ -221,11 +229,11 @@ function group_mems_setup(groups, hostarr) {
       
       if (it.patt) {
         var re = new RegExp(it.patt);
-	// it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
-	it.hostnames = hostarr.reduce(function (oarr, h) {
-	  if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
-	  return oarr;
-	}, []);
+        // it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
+        it.hostnames = hostarr.reduce(function (oarr, h) {
+          if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
+          return oarr;
+        }, []);
       }
       if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
       if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
@@ -259,6 +267,59 @@ function hosts_filter(hostarr, patt, propname) {
   });
   return ha2;
 }
+/** Convert minimal host record (hname,macaddr,ipaddr) to minimal "fake-facts".
+ * The props to allow indexing should be present.
+ * Extracts good default values from global (esp. global.net) config.
+ * 
+ * 
+ */
+function host2facts(h, global) {
+  var f = {ansible_default_ipv4: {}, ansible_dns: {nameservers: [] } };
+  var anet = f.ansible_default_ipv4;
+  var adns = f.ansible_dns;
+  var net = global.net || {};
+  anet.alias = anet.interface = net.ifdefault || 'eno1';
+  anet.address = h.ipaddr;
+  anet.macaddress = h.macaddr;
+  anet.netmask = net.netmask;
+  anet.gateway = net.gateway;
+  // anet.network // e.g. 192.168.1.0
+  // DNS
+  adns.nameservers = net.nameservers;
+  // Other, important
+  f.ansible_domain = net.domain;
+  f.ansible_fqdn = h.hname;
+  ///////// Secondary
+  f.ansible_all_ipv4_addresses = [h.ipaddr];
+  f.ansible_distribution = "Unknown";
+  f.ansible_distribution_version = "???";
+  return f;
+}
+/** Load special hosts from CSV file (TODO: json, sqlite).
+ */
+function customhost_load(fname, global) {
+  // TODO: Analyze hostname, detect format.
+  if (!fs.existsSync(fname)) { return; }
+  var cont = fs.readFileSync(fname, 'utf8');
+  var lines = cont.split("\n");
+  var hdr = lines.shift().split(',');
+  console.log("Headers: ", hdr);
+  var arr = []; // Final Array-of-Objects (AoO) from CSV
+  lines.forEach(function (l) {
+    var rec = {};
+    var lrec = l.split(','); // Max as many fields as hdr ? 
+    if (hdr.length != lrec.length) { console.log("Flawed rec. - field counts not matching ("+hdr.length+" vs "+lrec.length+")"); return; }
+    for (var i =0;i<lrec.length;i++) { rec[hdr[i]] = lrec[i]; }
+    arr.push(rec);
+  });
+  console.log(arr);
+  // return arr; // AoO from CSV
+  // TODO: Do earlier parsing and this host conversion separately
+  arr.forEach(function (it) {
+    var f = host2facts(it, global);
+    host_add(f);
+  });
+}
 
 module.exports = {
   init: init,
@@ -266,5 +327,6 @@ module.exports = {
   facts_load: facts_load,
   file_path_resolve: file_path_resolve,
   group_mems_setup: group_mems_setup,
-  hosts_filter: hosts_filter
+  hosts_filter: hosts_filter,
+  customhost_load: customhost_load
 };
