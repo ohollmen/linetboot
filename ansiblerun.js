@@ -206,8 +206,9 @@ function ansible_play_list(acfg, pbpath) { // dirname
       //path.basename(); // Already basenames
       var relname = dirname + "/" + fname;
       var node = { basename: fname, relname: relname };
-      
-      var yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8'));
+      // TODO: Catch exception an bypass faulty yaml
+      var yf;
+      try { yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8')); } catch (ex) {};
       if (!yf) { return; }
       //console.log(JSON.stringify(yf, null, 2));
       // TODO: Checks here !
