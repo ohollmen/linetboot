@@ -71,6 +71,8 @@ function app_init(global) {
     console.log(stat); // Stat Object
   };
   var staticconf = {"setHeaders": logger };
+  // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
+  // app.set('trust proxy', true); // relates to req.header('x-forwarded-for') ?
   // Note this URL mapping *can* be done by establishing symlinks from
   // global.maindocroot
   /*
@@ -136,6 +138,7 @@ function app_init(global) {
   app.get('/list/:viewtype', hostinfolist);
   // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
   app.get('/hostpkgcounts', pkg_counts);
+  app.get('/hostcpucounts', hostp_prop_stat);
   // Group lists
   app.get('/groups', grouplist);
   // Commands to list pkgs
@@ -144,6 +147,7 @@ function app_init(global) {
   // rmgmt_list
   app.get('/hostrmgmt', rmgmt_list);
   app.get('/nettest', nettest);
+  app.get('/proctest', proctest);
   // Ansible
   app.post('/ansrun', ansible_run_serv);
   app.get('/anslist/play', ansible_plays_list);
@@ -193,7 +197,7 @@ function app_init(global) {
   var os = require('os');
   var ifs = os.networkInterfaces();
   // ifs.keys().filter(function (k) {});
-  console.log(ifs);
+  //console.log(ifs); // DEBUG
   // Ansible
   global.ansible = global.ansible || {};
   if (process.env["ANSIBLE_PASS"]) { global.ansible.sudopass = process.env["ANSIBLE_PASS"]; }
@@ -634,6 +638,11 @@ function oninstallevent(req,res) {
   var p = req.params;  // :evtype
   var now = new Date();
   console.log("IP:" + ip + ", event: " + p.evtype + " time:" + now.toISOString());
+  var sq = "INSERT INTO hostinstall () VALUES (?)";
+  // sq = "UPDATE hostinstall SET ... WHERE ipadd = ?"
+  // conn.exec(sq, params, function (err, result) {
+  //  
+  //});
   res.json({msg: "Thanks", ip: ip, "event":  p.evtype, time: now.toISOString()});
 }
 
@@ -658,7 +667,7 @@ function pkg_counts (req, res) {
     var stat = {hname: hn, pkgcnt: 0, "distname": (f ? f.ansible_distribution: "???")};
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
     var err;
-    if (!fs.existsSync(path))   { err = "No pkg file for host: " + hn;      console.log(err); return cb(null, stat); }
+    if (!fs.existsSync(path))   { err = "No pkg file for host: " + hn; console.log(err); return cb(null, stat); }
     if (path.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
     cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
@@ -677,7 +686,7 @@ function pkg_counts (req, res) {
   });
   
 }
-/** Generate output for all hosts (/allhostgen)
+/** Generate commands output for all hosts (/allhostgen or /allhostgen/:outfmt)
 * Output can be (for example):
 *
 * - Certain well known file format for an application / OS subsystem
@@ -727,14 +736,19 @@ function gen_allhost_output(req, res) {
       return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
     }}
   ];
+  // Account for case: empty params
+  if (!req.params || !Object.keys(req.params).length) {
+    // OLD: return res.end("# URL routing params missing completely.\n");
+    var arr = genopts.map(function (it) { return { lbl: it.lbl, name: it.name }; });
+    return res.json(arr);
+  }
   genopts.forEach(function (it) { genopts_idx[it.lbl] = it; }); // Once ONLY (at init) !
-  if (!req.params) { return res.end("# URL routing params missing completely.\n"); }
   var lbl = req.params.lbl;
-  // With no label send the structure w/o cb.
-  if (!lbl) { var genopts2 = dclone(genopts); genopts2.forEach(function (it) { delete(it.cb); }); res.json(genopts2); return; }
+  // With no label send the structure w/o cb. See new version w/o delete above
+  // if (!lbl) { var genopts2 = dclone(genopts); genopts2.forEach(function (it) { delete(it.cb); }); res.json(genopts2); return; }
   var cont = "";
   var op = genopts_idx[lbl];
-  if (!op) { return res.end("# "+lbl+" - No such op.\n"); }
+  if (!op) { return res.end("# '"+lbl+"' - No such op.\n"); }
   // See also (e.g.): ansible_pkg_mgr: "yum"
   var os_pkg_cmd = {
     "RedHat": "yum list -q installed", // rpm -qa, repoquery -a --installed, dnf list installed
@@ -771,12 +785,6 @@ function gen_allhost_output(req, res) {
     // if (op.tmpl) { cmdcont = Mustache.render(op.tmpl, info); }
     //if (f.ansible_os_family) {}
     var cmd = op.cb(info, f);
-    /*
-    var cmd = genopts[3].cb(info, f);
-    if (req.query.setup)    { cmd = genopts[2].cb(info, f); }
-    if (req.query.barename) { cmd = genopts[0].cb(info, f); }
-    if (req.query.maclink)  { cmd = genopts[1].cb(info, f); }
-    */
     cont += cmd + "\n"; // TODO: cmdarr.push(cmd), later join
   });
   res.end(cont);
@@ -879,12 +887,12 @@ function netplan_yaml(req, res) {
     return ip.split('.').reduce(function(ipInt, octet) { return (ipInt<<8) + parseInt(octet, 10); }, 0) >>> 0;
   }
   function cidr_calc(uint) {
-  var cnt = 0;
-  for (var i = 31;i >= 0; i--, cnt++) {
-    var posval = (uint & (1 << i)) ? 1 : 0;
-    if (!posval) { break; }
-  }
-  return cnt;
+    var cnt = 0;
+    for (var i = 31;i >= 0; i--, cnt++) {
+      var posval = (uint & (1 << i)) ? 1 : 0;
+      if (!posval) { break; }
+    }
+    return cnt;
   }
   // E.g. 255.255.224.0 =>  cidr = 19
   function netmask2cidr(netmask) {
@@ -940,11 +948,15 @@ function script_send(req, res) {
   if (cont) { res.send(cont); return; }
   res.send("# Hmmm ... Unknown file.\n");
 }
-/** Detect if file needs template processing by special tagging left in file.
+/** Detect if file needs template processing by special tagging placed in file.
 * The tagging also indicates what kind of template parameter context is needed.
+* Example tagging:
+* 
+*      TEMPLATE_WITH: hosts
+* 
 * @param {string} content - Template (file) content as string.
 * @return Templating context, which will also be true value for "needs template processing" and false
-* (no templating context) for no templating needed.
+* (no templating context) for no templating needed. In the example above "hosts" would be returned.
 */
 function needs_template(cont) {
   if (!cont) { return null; }
@@ -1046,7 +1058,7 @@ var cbs = {
   "": function (f, h) { netinfo(f, h); osinfo(f, h); hwinfo(f, h); }
 };
 
-/** Create a listing of host info.
+/** Create a listing of host info (GET /list).
 * Important facts contained resources here are:
 * - ansible_fqdn, ansible_hostname
 * - ansible_default_ipv4 - Network Info
@@ -1104,7 +1116,7 @@ function grouplist(req, res) {
   res.json(groups);
 }
 
-/* All callbacks below convert anything from host facts to a recod to display on list view. */
+/* All callbacks below convert anything from host facts to a record to display on list view. */
   function netinfo(f, h) {
     var anet = f.ansible_default_ipv4;
     h.dev = anet.interface; // netdev
@@ -1206,18 +1218,31 @@ function rmgmt_list(req, res) {
   }
   res.json(arr);
 }
-/** Perform set of network probe tests (DNS, Ping,SSH)
+/** Perform set of network probe tests by DNS, Ping, SSH ()
+ * Send results as JSON AoO in member "data".
+ * @todo Add err param.
 */
 function nettest(req, res) {
-  
+  var jr = {"status": "err", "msg": "Net Probing failed. "}
   netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
-  netprobe.probe_all(hostarr, function (results) {
+  netprobe.probe_all(hostarr, "net", function (err, results) {
+    if (err) { jr.msg += err; return res.json(jr); }
     // Note: There seems to be null (non-Object) entries in the results Array.
     // These seem to be due to resolveAny() failing and cb params missing.
     // Could weed these out by:
     // results = results.filter(function (it) { return it; });
     // ... but adding proper cb() params seems to eliminate need.
+    res.json({data: results});
+  });
+}
+/** Perform process-geared probing on host (numproc, load, uptime)
+ */
+function proctest(req, res) {
+  var jr = {"status": "err", "msg": "Process Probing failed. "}
+  netprobe.init();
+  netprobe.probe_all(hostarr, "proc", function (err, results) {
+    if (err) { jr.msg += err; return res.json(jr); }
     res.json({data: results});
   });
 }
@@ -1287,6 +1312,7 @@ function ansible_plays_list(req, res) {
   console.log("List "+url+" playbook paths: " + pbpath);
   var list = [];
   if (aotype == 'play') {
+    console.log("Anslist:Play");
     list = ans.ansible_play_list(acfg, pbpath);
   }
   else if (aotype == 'prof') {
@@ -1299,12 +1325,14 @@ function ansible_plays_list(req, res) {
 * - cb to resolve host param.
 * - profile id to give command to run (and it's respective parser)
 * - 
+* @todo Unify CSV-style parsing (w. opt explicit headers).
 */
 function showmounts(req, res) {
   var jr = {status: "err", msg: "Could not run command. "};
   //var hn = req.query["hname"];
   var hn = req.params.hname;
   console.log("Run op on: "+hn);
+  // Parse exports.
   function parse_exp(out) {
     var lines = out.split("\n");
     // Should have(e.g.): Export list for localhost:
@@ -1332,4 +1360,19 @@ function showmounts(req, res) {
     var data = parse_exp(stdout);
     res.json(data);
   });
+}
+
+/** Display host stats on particular property.
+ * TODO: Give out stats as trad. AoO or Charting ready structure ?
+ * *TODO: provide aggregated / grouped stats (counts of $prop) ?
+ * Example props: ansible_memtotal_mb, ansible_processor_cores, ansible_processor_vcpus, ansible_swaptotal_mb
+ */
+function hostp_prop_stat(req, res) {
+  var jr = {"status": "err", "msg":"Could not extract data to display. "};
+  var prop = "ansible_processor_vcpus";
+  var arr = [];
+  hostarr.forEach(function (f) {
+    arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
+  });
+  res.json({status:"ok", data: arr});
 }
