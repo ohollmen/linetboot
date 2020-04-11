@@ -133,6 +133,13 @@
      {name: "ping",   title: "Ping Ok", type: "number", width: 40, itemTemplate: probeokcell},
      {name: "sshconn",title: "SSH Ok",  type: "number", width: 40, itemTemplate: probeokcell},
    ];
+   var fldinfo_proc = [
+     hostfld, // Need hn ?
+     {name: "pcnt",     title: "# Processes", type: "number", width: 50},
+     {name: "uptime",   title: "Uptime and Users", type: "text", width: 50},
+     {name: "loads",    title: "Load Avg", type: "text", width: 50},
+     {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 50}, // 
+   ];
    function hkeycell(value, item) {
      // 
      return value ? "OK" : "-";
@@ -181,6 +188,7 @@
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
-      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs
+      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "proc": fldinfo_proc,
+      "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs
    };
    

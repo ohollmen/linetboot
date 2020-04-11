@@ -5,6 +5,7 @@
    // Visibility: visible (ui-grid,vue-table)
    // Value transform: callback(vue-table), cellTemplate (ui-grid) itemTemplate(cb in js-grid)
    // Sortability: sortField(vue-table, must set), All(ui-grid: sort: {direction(asc/desc), priority}, sortingAlgorithm: cb)
+   // https://blog.logrocket.com/how-to-make-http-requests-like-a-pro-with-axios/ (Making simultaneous requests)
    
 /**   # TODO
  
@@ -14,6 +15,7 @@
 
    // All-hosts output types (Share betw. Serv and Client)
    // TODO: Use http://localhost:3000/allhostgen/
+   /*
    var outtypes = [
      {"lbl": "barename", name: "Bare Host Names"},
      {"lbl": "addrname", name: "IP-Address, Hostname pairs"},
@@ -23,6 +25,7 @@
      {"lbl": "rmgmtcoll", name: "Remote management info Extraction"},
      {"lbl": "sshkeyarch", name: "SSH Key archiving"}
    ];
+   */
    // Need to be inside some buildGrid
     var ActionButtonField = function(config) {
         //jsGrid.Field.call(this, config);
@@ -48,18 +51,18 @@
        var arr = myarr.filter(function (item) { // db[this.datakey]
          //console.log("Host: ", item);
          //return {"hname": "foo"};
-	 var fk; var keep = 1;
-	 for (var i = 0;fk = fkeys[i];i++) {
-	   var fval = filter[fk];
-	   // console.log(fk +"="+fval);
-	   // console.log("No Filter for " + fk);
-	   if (!filter[fk]) {  continue; } // Filter is always string
-	   var re = new RegExp(fval);
-	   if (item[fk].match(re)) { debug && console.log("Match in val  " + item[fk]); continue; }
-	   return 0;
-	   //keep = 0; // NA
-	 }
-	 return 1;
+          var fk; var keep = 1;
+          for (var i = 0;fk = fkeys[i];i++) {
+            var fval = filter[fk];
+            // console.log(fk +"="+fval);
+            // console.log("No Filter for " + fk);
+            if (!filter[fk]) {  continue; } // Filter is always string
+            var re = new RegExp(fval);
+            if (item[fk].match(re)) { debug && console.log("Match in val  " + item[fk]); continue; }
+            return 0;
+            //keep = 0; // NA
+          }
+         return 1;
        });
        if (debug) { console.log("After filter:" + arr.length + " items"); }
        return arr;
@@ -143,17 +146,16 @@ function on_docker_info(ev) {
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
-/** Shared click handler for host click.
+/** Display host details (Shared click handler for hostname click)
 */
 function on_host_click(ev, barinfo) {
-  
-  
   // console.log("Ev:", ev, " Val:"); //  // , "td"
-  var hname;
-  hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
-  // Try
-  if (!hname && barinfo) { hname = barinfo[0]._model.label; }
   var tmplsel = "#singlehost";
+  var hname; // Get some other way than just html
+  hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
+  // Try treating this as Chart.js event (w. barinfo Array)
+  if (!hname && barinfo && Array.isArray(barinfo)) { hname = barinfo[0]._model.label; }
+  
   
   var tmpl = $(tmplsel).html();
   if (!hname) { alert("No hostname !"); return; }
@@ -165,7 +167,7 @@ function on_host_click(ev, barinfo) {
 }
 
 
-// From UI ...
+// From UI vals ...
   function form_obj_fd (sel) {
     var fe = document.querySelector(sel); // "#ansform"
     var formData = new FormData(fe);
@@ -181,7 +183,7 @@ function on_host_click(ev, barinfo) {
   }
   //console.log("Got UI FormData params:", fdp);
   
-  
+  // Form vals using serializeArray
   function form_obj(sel, arrattr) {
     var ismulti = {};
     arrattr = arrattr || [];
@@ -195,12 +197,12 @@ function on_host_click(ev, barinfo) {
       // Not in yet
       if (!obj[k]) {
         if (multi) { obj[k] = [it.value]; return; }
-	obj[k] = it.value; // Assume scalar
+        obj[k] = it.value; // Assume scalar
       }
       // In already (not unique)
       else {
         if (multi || Array.isArray(obj[k])) { obj[k].push(it.value); return; }
-	obj[k] = [obj[k]]; obj[k].push(it.value);  // Convert old scalar to array and push
+        obj[k] = [obj[k]]; obj[k].push(it.value);  // Convert old scalar to array and push
       }
     });
     return obj;
@@ -223,8 +225,8 @@ function ansishow(ev) {
   $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
 }
 /** Get values from UI and run ansible POST request.
-// - ansrunhosts, ansrungroups
-// - ..
+* - ansrunhosts, ansrungroups
+* - ..
 * https://stackoverflow.com/questions/1857781/best-way-to-unselect-a-select-in-jquery
 */
 function ansirun(ev) {
@@ -245,15 +247,41 @@ function ansirun(ev) {
   });
   
 }
+var tabloadacts = [
+  {"title": "Packages",    "elsel": "#tabs-4", "tsel":"", cb: pkg_stats},
+  {"title": "Groups",      "elsel": "#tabs-5", "tsel":"", cb: hostgroups},
+  {"title": "Remote Mgmt", "elsel": "#tabs-6", "tsel":"", cb: rmgmt},
+  {"title": "NetProbe",    "elsel": "#tabs-63", "tsel":"", cb: probeinfo},
+  {"title": "LoadProbe",   "elsel": "#tabs-64", "tsel":"", cb: loadprobeinfo},
+  {"title": "Output Fmts", "elsel": "#tabs-65", "tsel":"", cb: outfmts},
+  {"title": "Hostkeys",    "elsel": "#tabs-67", "tsel":"", cb: sshkeys},
+  {"title": "About ...",   "elsel": "#tabs-7", "tsel":"", cb: function () {}},
+  //{"title": "", "elsel": "", "tsel":""},
+];
+var tabloadacts_idx = {};
+tabloadacts.forEach(function (it) { tabloadacts_idx[it.elsel] = it; });
 var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
 // MUST have separate custom opts (wide grid)
 // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
-    		    
+
 window.onload = function () {
   // Setup Tabs
   $( "#tabs" ).tabs();
+  $( "#tabs" ).tabs({
+    // ui has: newTab, newPanel, oldTab, oldPanel
+    activate: function( event, ui ) {
+      //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
+      var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
+      console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
+      // Do event forwarding ?
+      var an = tabloadacts_idx["#"+tgt];
+      if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
+      console.log(an);
+      an.cb();
+    }
+  });
   //var dataurls = ["/list", "/groups", "/hostpkgcounts", "/hostrmgmt", "/nettest", "/ssh/keylist"];
   // Also 2nd {params: {}}
   data_load('/anslist/play', 'aplays');
@@ -262,7 +290,7 @@ window.onload = function () {
   .then(function (response) {
     //console.log(response);
     db.hosts = response.data;
-    pkg_stats(); // Only now trigger fetch of pkg stats
+    
     // Immediate grids
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
     ee.on("on_jsGrid_dist_done", function (d) {  });
@@ -290,10 +318,15 @@ window.onload = function () {
     showgrid("jsGrid_net", response.data, fldinfo.net);
     showgrid("jsGrid_dist", response.data, fldinfo.dist);
     showgrid("jsGrid_hw", response.data, fldinfo.hw);
-    // 
-    rmgmt(); // Unused: response.data
-    probeinfo(); // Launches HTTP
-    sshkeys(); // Launches HTTP (NO UI setup)
+    toastr.info("Grids loaded");
+    // Tab populating handlers
+    //pkg_stats(); // #tabs-4 Only now trigger fetch of pkg stats
+    //hostgroups();// #tabs-5
+    //rmgmt();     // #tabs-6  Was Unused: response.data
+    //probeinfo(); // #tabs-63 Launches HTTP
+    //outfmts();   // #tabs-65
+    //sshkeys();   // #tabs-67 Launches HTTP (NO UI setup)
+    //tabloadacts.forEach(function (it) { it.cb(); });
     // Dialog options (moved to bigger scope)
     
     // Hook Only after grid(s) created
@@ -305,82 +338,8 @@ window.onload = function () {
     
   })
   .catch(function (error) { console.log(error); });
-  ////////////////////// Groups ///////////
-  axios.get('/groups')
-  .then(function (response) {
-    grps = response.data; // AoOoAoO...
-    //console.log(JSON.stringify(grps, null, 2));
-    grps.forEach(function (g) {
-      var harr = g.hosts;
-      $('#tabs-5').append("<h2>"+g.name+" ("+ harr.length +")</h2>\n");
-      $('#tabs-5').append("<div id=\"grp_"+ g.id +"\"></div>\n");
-      showgrid("grp_"+g.id, harr, fldinfo_hw); // newt, hw,
-    });
-  })
-  .catch(function (error) { console.log(error); });
-  // Output Gen
-  var otmpl = document.getElementById("outputs").innerHTML;
-  var olistout = Mustache.render(otmpl, {outtypes: outtypes});
-  document.getElementById("tabs-65").innerHTML = olistout;
-  /////// Packages //////////////
-  // load and Chart package statistics
-  function pkg_stats() {
-  axios.get('/hostpkgcounts')
-  .then(function (response) {
-    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    var pkginfo = response.data.data;
-    // console.log(response.data.data);
-    var idx = {};
-    pkginfo.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
-    db.hosts.forEach(function (it) { it.pkgcnt = idx[it.hname]; });
-    //console.log(db.hosts); console.log(idx);
-    var color = Chart.helpers.color;
-    var cdata = {labels: [], datasets: [{label: "Packages", borderWidth: 1, data: []}]};
-    // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
-    // Transform AoO to Chart data
-    var cmap = {
-      // "Ubuntu":color('rgb(246, 223, 12)').alpha(0.5).rgbString(), // Yellow
-      "Ubuntu": color('rgb(237, 52, 23)').alpha(0.8).rgbString(), // #DD4814
-      "Debian": color('rgb(255, 99, 132)').alpha(0.5).rgbString(),
-      "RedHat": color('rgb(180, 36, 36)').alpha(0.5).rgbString(),
-      "CentOS": color('rgb(30, 130, 25)').alpha(0.5).rgbString()
-    };
-    /** Generate cdata.datasets[0].data into cdata.
-    * @param pkginfo {array} - Package info (AoO) for all hosts
-    * @param cdata {object} - Chart Data (structure) to populate with values and colors
-    * @param cmap {object} - Color mapping object
-    * Accesses outer scope Color map (cmap)
-    */
-    function chartdata(pkginfo, cdata, cmap) {
-      cdata.labels = pkginfo.map(function (it) { return it.hname; });
-      cdata.datasets[0].data = pkginfo.map(function (it) { return it.pkgcnt; });
-      // Lookup BG color for each bar
-      cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
-    }
-    var ctx = document.getElementById('canvas_pkg').getContext('2d');
-    chartdata(pkginfo, cdata, cmap);
-    // console.log(JSON.stringify(cdata, null, 2));
-    
-    // OLD: showgrid("jsGrid_pkg", db.hosts, fldinfo.pkg);
-    // Position for 'label' of each dataset. 'top' / 'bottom'
-    //title: {display: true,text: 'Chart.js Bar Chart'}
-    // https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
-    // Chart Click (detects particular bar)
-    // 
-    function onCC(ev, ent) {
-      //alert(p1 + p2 + p3);
-      console.log(ent);
-      var hn = ent[0]._model.label;
-      //console.log("Hostname: "+hn);
-      //console.log(JSON.stringify(ent[0]._model, null, 2));
-      //console.log(JSON.stringify(p2)); // Cyclic
-    } // 
-    var copts = { responsive: true, legend: {position: 'top'}, scales: scales, onClick: on_host_click}; // onCC
-    window.myBar = new Chart(ctx, { type: 'bar', data: cdata, options: copts });
-  })
-  .catch(function (error) { console.log(error); });
   
-  } // pkg_stats
+  
   $(document).on('keypress', function(ev){
     console.log(ev.originalEvent); // Dump
     // shiftKey, metaKey, ctrlKey
@@ -389,15 +348,112 @@ window.onload = function () {
     if (ev.which == 13 && ev.ctrlKey) { ansishow(); }
     return false;
   });
+  
+  
+  // Experimental docker info
+  // works w. "localhost" (dockerd) on localhost Browser
+  // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
+  
+};
+
+/////// Packages //////////////
+var color = Chart.helpers.color;
+var cmap = {
+      // "Ubuntu":color('rgb(246, 223, 12)').alpha(0.5).rgbString(), // Yellow
+      "Ubuntu": color('rgb(237, 52, 23)').alpha(0.8).rgbString(), // #DD4814
+      "Debian": color('rgb(255, 99, 132)').alpha(0.5).rgbString(),
+      "RedHat": color('rgb(180, 36, 36)').alpha(0.5).rgbString(),
+      "CentOS": color('rgb(30, 130, 25)').alpha(0.5).rgbString()
+    };
+/** Transform AoO to Chart data
+     * Generate cdata.datasets[0].data and shared cdata.labels into cdata.
+    * @param pkginfo {array} - Package info (AoO) for all hosts
+    * @param cdata {object} - Chart Data (structure) to populate with values and colors
+    * @param cmap {object} - Option color mapping object (to signify distro by "distname")
+    * Accesses outer scope Color map (cmap)
+    */
+    function chartdata(pkginfo, cdata, prop, cmap) {
+      // var prop = "pkgcnt";
+      cdata.labels = pkginfo.map(function (it) { return it.hname; });
+      cdata.datasets[0].data = pkginfo.map(function (it) { return it[prop]; });
+      // Lookup BG color for each bar
+      if (cmap) {
+        cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
+      }
+    }
+    // Debug Chart Click (detects particular bar)
+    function onCC(ev, ent) {
+      //alert(p1 + p2 + p3);
+      console.log(ent);
+      var hn = ent[0]._model.label;
+      //console.log("Hostname: "+hn);
+      //console.log(JSON.stringify(ent[0]._model, null, 2));
+      //console.log(JSON.stringify(p2)); // Cyclic
+    } // onCC
+  /* load and Chart package statistics
+   * https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
+   */
+  function pkg_stats() {
+  // Param: prop (for stat), label/name, scaling, canvas sel.
+  var gscale = 1000;
+  axios.get('/hostpkgcounts').then(function (response) {
+    createchart(response, "Packages", "pkgcnt", 'canvas_pkg');
+  } )
+  .catch(function (error) { console.log(error); });
+  
+  gscale = 10;
+  axios.get('/hostcpucounts').then(function (response) {
+    createchart(response, "CPU:s", "numcpus", 'canvas_cpu');
+  } )
+  .catch(function (error) { console.log(error); });
+  
+  function createchart(response, label, prop, canvasid) {
+    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
+    function dclone(d) { return JSON.parse(JSON.stringify(d)); }
+    var pkginfo = response.data.data; // console.log(response.data.data);
+    
+    // label: null displays as :"null" (). See legend: { display: false} below.
+    var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
+    // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
+    var ctx = document.getElementById(canvasid).getContext('2d'); // 'canvas_pkg'
+    chartdata(pkginfo, cdata, prop, cmap);
+    // console.log(JSON.stringify(cdata, null, 2));
+    // Position for 'label' of each dataset. 'top' / 'bottom'
+    //title: {display: true,text: 'Chart.js Bar Chart'}
+    // display: false - Important !!
+    var scales2 = dclone(scales);
+    if (gscale) { scales2.yAxes[0].ticks.suggestedMax = gscale; }
+    var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
+    //window.myBar =
+    new Chart(ctx, { type: 'bar', data: cdata, options: copts });
+  };
+  } // pkg_stats
+//var idx = {};
+    //pkginfo.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
+    //db.hosts.forEach(function (it) { it.pkgcnt = idx[it.hname]; });
+    //console.log(db.hosts); console.log(idx);
+////////////////////// Groups ///////////
+  function hostgroups() {
+    axios.get('/groups').then(function (response) {
+      grps = response.data; // AoOoAoO...
+      //console.log(JSON.stringify(grps, null, 2));
+      grps.forEach(function (g) {
+        var harr = g.hosts;
+        $('#tabs-5').append("<h2>"+g.name+" ("+ harr.length +")</h2>\n");
+        $('#tabs-5').append("<div id=\"grp_"+ g.id +"\"></div>\n");
+        showgrid("grp_"+g.id, harr, fldinfo_hw); // newt, hw,
+      });
+    })
+    .catch(function (error) { console.log(error); });
+  }
   // Create Remote management info (grid).
   // Note: hosts unused (!)
-  function rmgmt(hosts) { // hosts not used
+  function rmgmt() { // (hosts) ... was not used
     
-    axios.get('/hostrmgmt')
-    .then(function (response) {
+    axios.get('/hostrmgmt').then(function (response) {
       // SHared global for event handler... on_rmgmt_click
       rmgmt_data = response.data; // TODO: .data
-      console.log("Remote Mgmt data: ", rmgmt_data);
+      // console.log("Remote Mgmt data: ", rmgmt_data);
       if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
       // Merge sets: index
       // var hidx = {}; hosts.forEach(function (it) {hidx[it.hname] = it; });
@@ -409,8 +465,7 @@ window.onload = function () {
   // Do network geared probing for DNS, ping, SSH
   function probeinfo() {
     //console.log("Launch Probe ...");
-    axios.get('/nettest')
-    .then(function (response) {
+    axios.get('/nettest').then(function (response) {
       var pinfo = response.data.data;
       // console.log("Probe data: ", pinfo);
       if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
@@ -419,23 +474,50 @@ window.onload = function () {
     })
     .catch(function (error) { console.log(error); });
   }
+  
+  function loadprobeinfo() {
+    //console.log("Launch Probe ...");
+    axios.get('/proctest').then(function (response) {
+      var pinfo = response.data.data;
+      // console.log("Probe data: ", pinfo);
+      if (!pinfo || !pinfo.length) { alert("No Load Probe data"); return; }
+      showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
+      //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
+    })
+    .catch(function (error) { console.log(error); });
+  }
+  
   function sshkeys() {
     // console.log("Launch SSH KeyInfo ...");
-    axios.get('/ssh/keylist')
-    .then(function (response) {
+    axios.get('/ssh/keylist').then(function (response) {
       var pinfo = response.data.data;
-      console.log("SSH Key data: ", pinfo);
+      //console.log("SSH Key data: ", pinfo);
       if (!pinfo || !pinfo.length) { alert("No SSH Key data"); return; }
       showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
       // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
     })
     .catch(function (error) { console.log(error); });
   }
-  // Experimental docker info
-  // works w. "localhost" (dockerd) on localhost Browser
-  // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
+  // Output Gen
+  function outfmts() {
+    axios.get('/allhostgen').then(function (response) {
+      var outtypes = response.data || [];
+      var otmpl = document.getElementById("outputs").innerHTML;
+      var olistout = Mustache.render(otmpl, {outtypes: outtypes});
+      olistout += '<iframe id="cmdoutput" src="" width="640" height="500"></iframe>';
+      document.getElementById("tabs-65").innerHTML = olistout;
+      $('.outitem').click(function (ev) {
+        var frame = document.getElementById("cmdoutput");
+        console.log(ev.target);
+        frame.src = ev.target.href;
+        return false;
+      });
+    })
+    .catch(function (error) { console.log(error); });
+  }
   
-};
+
+
 /** Load dataset
 * 
 * data_load('/people', 'users'); // Store to datasets['users']
@@ -501,7 +583,7 @@ function showgrid (divid, griddata, fields) {
     // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
     width: "100%",
     //height: "400px",
-    pageSize: 100,
+    pageSize: 120,
     //inserting: true,
     //editing: true,
     sorting: true,

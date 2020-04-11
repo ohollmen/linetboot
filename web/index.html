@@ -24,6 +24,8 @@
   <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
   -->
   <link rel="stylesheet" id="sparkling-fonts-css" href="//fonts.googleapis.com/css?family=Open+Sans%3A400italic%2C400%2C600%2C700%7CRoboto+Slab%3A400%2C300%2C700&amp;ver=4.9.8" type="text/css" media="all">
+  
+  <link type="text/css" rel="stylesheet" href="node_modules/toastr/build/toastr.css"  />
   <!-- TODO: <link type="text/css" rel="stylesheet" href="hostviews.css"  /> -->
   
   <script type="text/javascript" src="node_modules/jquery/dist/jquery.js"></script>
@@ -38,6 +40,7 @@
   <!--<script type="text/javascript" src="node_modules/events/events.js"></script>-->
   
   <script type="text/javascript" src="node_modules/wolfy87-eventemitter/EventEmitter.js"></script>
+  <script type="text/javascript" src="node_modules/toastr/toastr.js"></script>
   <script type="text/javascript" src="js/hostviewdef.js"></script>
   <script type="text/javascript" src="js/hostviews.js"></script>
   <script type="text/javascript" src="jsx/Router666.js"></script>
@@ -124,7 +127,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-4">Packgages</a></li>
     <li><a href="#tabs-5">Groups</a></li>
     <li><a href="#tabs-6">Remote Mgmt</a></li>
-    <li><a href="#tabs-63">Probe</a></li>
+    <li><a href="#tabs-63">NetProbe</a></li>
+    <li><a href="#tabs-64">LoadProbe</a></li>
     <li><a href="#tabs-65">Output Fmts</a></li>
     <li><a href="#tabs-67">Hostkeys</a></li>
     <!-- <li><a href="#tabs-68">Docker</a></li> -->
@@ -135,8 +139,11 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="tabs-2"><div id="jsGrid_hw"></div></div>
   <div id="tabs-3"><div id="jsGrid_dist"></div></div>
   <div id="tabs-4">
-    <div id="jsGrid_pkg"></div>
+    <!--<div id="jsGrid_pkg"></div>-->
+    <h2>Packages</h2>
      <canvas id="canvas_pkg"></canvas>
+     <h2>CPU Cores</h2>
+     <canvas id="canvas_cpu"></canvas>
   </div>
   <div id="tabs-5"></div>
   <div id="tabs-6"><div id="jsGrid_rmgmt">No Remote management being used.</div></div>
@@ -147,6 +154,15 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>
     <div id="jsGrid_probe"></div>
   </div>
+  
+  <div id="tabs-64"><h3>Host Load probe</h3>
+  <!-- glyphicon-refresh / glyphicon-hourglass -->
+    <!--<input type="button" id="proberun" value="Reload">-->
+    
+    <!--<button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>-->
+    <div id="jsGrid_loadprobe"></div>
+  </div>
+  
   <div id="tabs-65">
   <h3>Collective (all hosts) Outputs</h3>
   
@@ -216,7 +232,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <h3>All-hosts Collective Output Generation</h3>
 <ul>
 {{#outtypes}}
-<li><a href="/allhostgen/{{ lbl }}">{{ name }}</a></li>
+<li><a class="outitem" href="/allhostgen/{{ lbl }}">{{ name }}</a></li>
 {{/outtypes}}
 </ul>
 </script>
