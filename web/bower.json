@@ -30,7 +30,8 @@
     "jsgrid": "1.5.3",
     "mustache": "3.0.1",
     "showdown": "~1.2.2",
-    "wolfy87-eventemitter": "5.2.9"
+    "wolfy87-eventemitter": "5.2.9",
+    "toastr":"2.1.4"
   },
   "devDependencies": {},
   "oldDependencies": {
