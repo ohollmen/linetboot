@@ -58,11 +58,11 @@ function hosts_rmgmt_info(hlist, sshpara) {
       // with stream: 'stdout' ... result is directly stdout
       ssh.execCommand(cmd, execopts).then(function (result) {
         var lan = lan_parse(result); // result.stdout
-	cb(lan);
+        cb(lan);
       }); // .catch(function (err) {})
     });
   }
-  async.map(hlist, host_rm_info, function (results) {
+  async.map(hlist, host_rm_info, function (err, results) {
     console.log(JSON.stringify(results, null, 2));
   });
 }
