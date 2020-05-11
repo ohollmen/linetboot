@@ -36,6 +36,7 @@ var user     = require(userconf);
 var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
 var ans      = require("./ansiblerun.js");
+var ospkgs   = require("./ospackages.js");
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -107,6 +108,7 @@ function app_init(global) {
   app.use(express.static("/isoimages"));
   app.use('/web', express.static('web')); // Host Inventory
   ///////////// Dynamic content URL:s (w. handlers) //////////////
+  ////////////////////// Installer ///////////////////////////////////
   // preseed_gen - Generated preseed and kickstart shared handler
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
@@ -128,17 +130,18 @@ function app_init(global) {
   //app.get('/sources.list', script_send);
   // New generic any-script handler
   app.get('/scripts/:filename', script_send);
-  
+  ////////////////////////////// SSH/Other ///////////////////////////
   // SSH Key delivery
   app.get('/ssh/keylist', ssh_keys_list); // Must be first !
   app.get('/ssh/:item', ssh_key);
   
-  // Host Info Viewer
+  ////////////////// Host Info Viewer (/web) /////////////////////////
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
   // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
   app.get('/hostpkgcounts', pkg_counts);
   app.get('/hostcpucounts', hostp_prop_stat);
+  app.get('/hostpkgstats', host_pkg_stats);
   // Group lists
   app.get('/groups', grouplist);
   // Commands to list pkgs
@@ -152,7 +155,7 @@ function app_init(global) {
   app.post('/ansrun', ansible_run_serv);
   app.get('/anslist/play', ansible_plays_list);
   app.get('/anslist/prof', ansible_plays_list);
-  // NFS/Shownounts
+  // NFS/Showmounts
   
   app.get('/showmounts/:hname', showmounts);
   //////////////// Load Templates ////////////////
@@ -382,7 +385,11 @@ function preseed_gen(req, res) {
      "/sysconfig_network": "netw_rh",
      "/interfaces" : "netif",
      "/preseed.desktop.cfg": "preseed_dt",
-     "/preseed_mini.cfg": "preseed_mini"
+     "/preseed_mini.cfg": "preseed_mini",
+     // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls
+     // https://github.com/CanonicalLtd/subiquity/tree/master/examples
+     // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls/QuickStart
+     // "":"", // Ubuntu 20.04 YAML
   };
   // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
   var skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
@@ -1377,4 +1384,42 @@ function hostp_prop_stat(req, res) {
     arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
   });
   res.json({status:"ok", data: arr});
+}
+
+/** Present pkg stats (yes/no) for set of pkgs.
+ * Send both js-grid grid def and AoO data.
+ * See also: ospackages.js: pkgset() and pkg_counts()
+ */
+function host_pkg_stats(req, res) {
+  // Sample-only array
+  var pkgs = ["wget","x11-common","python2.7","patch", "xauth", "build-essential"];
+  if (req.query && req.query.pkgs) {
+    req.query.pkgs.split(/,\s*/);
+  }
+  console.log("Start /hostpkgstats");
+  // Add hname here or on client ?
+  var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
+  // Note: must mangle "." to "_" to avoid dot-notation problems with jsgrid.
+  var gdef = pkgs.map(function (pn) {
+    var pnn = pn.match(/\./) ? pn.replace(/\./g, "_") : pn;
+    return {name: pnn,  title: pn, type: "text", width: 50,};
+  });
+  gdef.unshift(hostfld);
+  var root = process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
+  var arr = [];
+  hostarr.forEach(function (f) { // map ?
+    var hn = f.ansible_fqdn;
+    var path = root + "/" + hn;
+    //arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
+    var pidx = ospkgs.pkgset('', hn, path, {idx: 1});
+    //console.log(pidx);
+    var ent = {hname: hn};
+    pkgs.forEach(function (pn) {
+      //if (pkg == "python2.7" && pidx[pkg]) { console.log("Got python w. dot on " + hn + " ... :" + pidx[pkg]); }
+      var pnn = pn.match(/\./) ? pn.replace(/\./g, "_") : pn;
+      ent[pnn] = (pidx[pn] ? pn: 0); // Use pnn as field name
+    });
+    arr.push(ent);
+  });
+  res.json({status:"ok", data: arr, grid: gdef});
 }
