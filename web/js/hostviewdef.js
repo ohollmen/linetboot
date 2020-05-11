@@ -173,6 +173,14 @@
      var cntstr = value.length > 1 ? "("+value.length+")" : "";
      return value[0] + cntstr;
    }
+   /**/
+   function haspackagecell(value, item) {
+     if (value) { // item[value] . Does not work with dot-not.
+       //return value;
+       return "<span title=\""+value+"\">"+"X"+"</span>";
+    } 
+     return "";
+   }
    var fldinfo_dockerimg = [
      {name: "RepoTags",     title: "Tag(s)",  type: "text", width: 100, itemTemplate: docktags},
      {name: "Labels",     title: "Version",  type: "text", width: 50, itemTemplate: dockver},
@@ -184,7 +192,7 @@
    ];
    var fldinfo_nfs = [
      {name: "path",     title: "Exported Path",  type: "text", width: 200, }, // itemTemplate: docktags
-     {name: "iface",     title: "Interface",  type: "text", width: 150, }, // itemTemplate: dockver
+     {name: "iface",     title: "For Clients (by IP,mask, name, etc.)",  type: "text", width: 150, }, // itemTemplate: dockver
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

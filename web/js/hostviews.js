@@ -248,14 +248,15 @@ function ansirun(ev) {
   
 }
 var tabloadacts = [
-  {"title": "Packages",    "elsel": "#tabs-4", "tsel":"", cb: pkg_stats},
-  {"title": "Groups",      "elsel": "#tabs-5", "tsel":"", cb: hostgroups},
-  {"title": "Remote Mgmt", "elsel": "#tabs-6", "tsel":"", cb: rmgmt},
-  {"title": "NetProbe",    "elsel": "#tabs-63", "tsel":"", cb: probeinfo},
-  {"title": "LoadProbe",   "elsel": "#tabs-64", "tsel":"", cb: loadprobeinfo},
-  {"title": "Output Fmts", "elsel": "#tabs-65", "tsel":"", cb: outfmts},
-  {"title": "Hostkeys",    "elsel": "#tabs-67", "tsel":"", cb: sshkeys},
-  {"title": "About ...",   "elsel": "#tabs-7", "tsel":"", cb: function () {}},
+  {"title": "Packages",    "elsel": "#tabs-4", "tsel":"", cb: pkg_stats, "url": "/hostpkgcounts"},
+  {"title": "Groups",      "elsel": "#tabs-5", "tsel":"", cb: hostgroups, "url": "/groups"},
+  {"title": "Remote Mgmt", "elsel": "#tabs-6", "tsel":"", cb: rmgmt, "url": "/hostrmgmt"},
+  {"title": "NetProbe",    "elsel": "#tabs-63", "tsel":"", cb: probeinfo, "url": "/nettest"},
+  {"title": "LoadProbe",   "elsel": "#tabs-64", "tsel":"", cb: loadprobeinfo, "url": "/proctest"},
+  {"title": "Output Fmts", "elsel": "#tabs-65", "tsel":"", cb: outfmts, "url": "/allhostgen"},
+  {"title": "Hostkeys",    "elsel": "#tabs-67", "tsel":"", cb: sshkeys, "url": "/ssh/keylist"},
+  {"title": "PkgStat",     "elsel": "#tabs-68", "tsel":"", cb: pkgstat, "url":"/hostpkgstats"},
+  {"title": "About ...",   "elsel": "#tabs-7", "tsel":"", cb: function () {}, "url": ""},
   //{"title": "", "elsel": "", "tsel":""},
 ];
 var tabloadacts_idx = {};
@@ -498,6 +499,26 @@ var cmap = {
     })
     .catch(function (error) { console.log(error); });
   }
+  /* Note: dot (".") i field name (here: package name, jsgrid: "name") causes a problem in grid
+   * because of jsgrid dot-notation support.
+  */
+  function pkgstat() {
+    // console.log("Launch Pkg stat ...");
+    axios.get('/hostpkgstats').then(function (response) {
+      var pinfo = response.data.data;
+      var gdef = response.data.grid;
+      console.log("Pkg data: ", pinfo);
+      if (!pinfo || !pinfo.length) { alert("No SSH Key data"); return; }
+      gdef.forEach(function (it) {
+        if (it.name == 'hname') { return; }
+        it.itemTemplate = haspackagecell;
+      });
+      showgrid("jsGrid_pkgstat", pinfo, gdef);
+      
+    })
+    .catch(function (error) { console.log(error); });
+  }
+  
   // Output Gen
   function outfmts() {
     axios.get('/allhostgen').then(function (response) {
@@ -552,7 +573,8 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   .then(function (response) {
     var pinfo = response.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
-    if (!pinfo || !pinfo.length) { alert("No data from " + hname); return; }
+    if (!pinfo ) { alert("No data from " + hname); return; }
+    if (!pinfo.length) { alert("No images found on " + hname); return; }
     console.log("dockerinfo: Creating grid to: '" + dialogsel + "' ... " + pinfo + ""); // gridsel
     cb(pinfo, dialogsel); // if (cb) { cb(pinfo, dialogsel); return; }
     //else { alert("No dialog callback ..."); }
