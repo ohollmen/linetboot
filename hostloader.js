@@ -18,7 +18,7 @@ function init(global, gcolls) {
   // TODO: Store whole global config.
   fact_path = global.fact_path;
   if (!fact_path) { console.log("No fact path given.");process.exit(1);}
-  colls = gcolls || {hostcache: {}, hostarr: []};
+  colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [] };
   debug = global.debug || 0;
 }
 /** Create filtered (non-empty) set of lines from hosts file.
@@ -90,8 +90,10 @@ function hosts_load(global) {
   var groups = {}; // TODO: record groups
   var curr_g = '';
   var re_g = /^\[([^\]]+)\]/;
+  var hnames2 = [];
   hnames.forEach(function (hnline) {
     var g;
+    // Group (mark as curr_g)
     if (g = hnline.match(re_g)) {
       console.log("Got group: '" + g[1] + "'");
       curr_g = g[1];
@@ -99,23 +101,34 @@ function hosts_load(global) {
       
       return;
     }
-    var p  = hline_parse(hnames, i, hnline);
-    var hn = hnames[i];
-    global.hostparams[hn] = p;
+    //var p  = hline_parse(hnames, i, hnline);
+    //var hn = hnames[i];
+    //global.hostparams[hn] = p;
+    // NEW:
+    var hent  = hline_parse(hnames, i, hnline);
+    var hn = hent.hn;
+    global.hostparams[hn] = hent.p;
+    console.log("HN:" + hn);
     if (curr_g) { groups[curr_g].push(hn); }
     //else {global.hostparams[hnline] = {}; return;};
-    
+    hnames2.push(hn);
     i++;
   });
-  global.hostnames = hnames;
+  global.hostnames = hnames2; // NEW (OLD: hnames)
+  colls.hostnames = hnames2;
   debug && console.log("Hostnames NOW: " + JSON.stringify(global.hostnames, null, 2)); // hnames
-  hnames.forEach(function (hn) { facts_load(hn); });
-  debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
+  
+  
   debug && console.log("Groups: ", groups);
   // NEW: Return for third party app (with no real global conf)
-  return colls.hostarr;
+  return colls.hostnames;
 }
-
+function facts_load_all() {
+  if (!colls) { throw "No colls (module level) object !"; }
+  if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
+  colls.hostnames.forEach(function (hn) { var f = facts_load(hn); host_add(f); });
+  debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
+}
 
 /** Parse single hostline.
 Internal function to be used by hosts_load().
@@ -127,8 +140,11 @@ Internal function to be used by hosts_load().
 function hline_parse(hnames, i, hnline) {
   var p = {}; // Host params
   if (hnline.match(/\s+/)) {
+    
     var rec = hnline.split(/\s+/);
-    var hn = hnames[i] = rec.shift();
+    console.log("Has space: '"+hnline+"' Rec: ", rec);
+    //var hn = hnames[i] = rec.shift(); // OLD (Going by index gets out-of-sync)
+    var hn = rec.shift(); // NEW
     // Parse rec
     debug && console.log(rec);
     // OLD(global): global.hostparams[hn] = {}; // Init params !
@@ -139,10 +155,12 @@ function hline_parse(hnames, i, hnline) {
       // global.hostparams[hn][kv[0]] = decodeURI(kv[1]); // Unescape
       p[kv[0]] = decodeURI(kv[1]); // Unescape
     });
-    debug && console.log("Pairs found (hn:"+hn+"): ", p); // global.hostparams[hn]
+    // +"/"+hnames[i]
+    debug && console.log("Pairs found (for hn:"+hn+"): ", p); // global.hostparams[hn]
     //OLD: global.hostparams[hn] = p;
   }
-  return p;
+  //return p;
+  return {hn: hn, p: p}; // NEW
 }
 
 /** Load Ansible facts for a single host from facts directory.
@@ -156,7 +174,7 @@ function facts_load(hn) { // ipaddr
   var facts;
   try {
     //facts = require(absname);
-    if (!fs.existsSync(absname)) { console.error("No ansible_facts file ("+absname+") for host '" + hn + "'"); return; }
+    if (!fs.existsSync(absname)) { console.error("No ansible_facts file ("+absname+") for host '" + hn + "'"); return null; }
     // For some reason this works for ansible host files as require() does not.
     var cont = fs.readFileSync(absname, 'utf8');
     
@@ -186,11 +204,14 @@ function facts_load(hn) { // ipaddr
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
   // TODO: return facts; // Do caching outside ?
-  host_add(facts);
+  // host_add(facts);
   return facts; // NEW
 }
 /** Add a host to appropriate array and index collections (by various props).
- * 
+ * Collections that single host facts are added to:
+ * - colls.hostcache (index object): Index by hostname, ip-address, mac address
+ * - colls.hostarr (array): Append
+ * @param facts {object} - Single host facts
  */
 function host_add(facts) {
   var ifinfo = facts.ansible_default_ipv4;
@@ -346,5 +367,6 @@ module.exports = {
   file_path_resolve: file_path_resolve,
   group_mems_setup: group_mems_setup,
   hosts_filter: hosts_filter,
-  customhost_load: customhost_load
+  customhost_load: customhost_load,
+  facts_load_all: facts_load_all
 };
