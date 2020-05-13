@@ -1,0 +1,73 @@
+# subiquity
+version: 1
+#reporting:
+#    hook:
+#        type: webhook
+#        endpoint: http://example.com/endpoint/path
+locale: en_US
+keyboard:
+    layout: us
+network:
+    version: 2
+    network:
+        ethernets:
+	    # Can use all-eth here ?
+            {{ ifname }}:
+               dhcp4: yes
+            enp3s0:
+            enp4s0:
+        bonds:
+            bond0:
+                dhcp4: yes
+                interfaces:
+                    - enp3s0
+                    - enp4s0
+                parameters:
+            mode: active-backup
+            primary: enp3s0
+proxy: ""
+# Should be mirror (mirror.mirror) ?
+apt:
+    primary:
+        - arches: [default]
+	# Needs /ubuntu at end ?
+        - uri: "http://archive.ubuntu.com/ubuntu"
+    #sources:
+    #    my-ppa.list:
+    #        source: "deb http://ppa.launchpad.net/curtin-dev/test-archive/ubuntu $RELEASE main"
+    #        #keyid: B59D 5F15 97A5 04B7 E230  6DCA 0620 BBCF 0368 3F77
+storage:
+    layout:
+        name: direct
+identity:
+    hostname: {{ net.hostname }}
+    username: {{ user.username }}
+    realname: {{ user.fullname }}
+    password: $crypted_pass
+user-data:
+    disable_root: false
+    users:
+      - username: {{ user.username }}
+        password: $crypted_pass
+ssh:
+    install-server: yes
+    #authorized-keys:
+    #  - $key
+    allow-pw: yes
+snaps:
+#    - name: go
+#      channel: 1.14/stable
+#      classic: true
+#debconf-selections: |
+#  bind9      bind9/run-resolvconf    boolean false
+packages:
+  - python
+  #- dns-server^
+early-commands:
+  - echo 'Early'
+late-commands:
+  - echo 'Late'
+error-commands:
+  - tar c /var/log/installer | nc 192.168.0.1 1000
+InstallProgress:
+  reboot: yes
