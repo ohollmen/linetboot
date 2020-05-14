@@ -25,7 +25,7 @@
     "bootstrap": "3.3.5",
     "chart.js": "2.7.3",
     "dom-parser": "^0.1.6",
-    "jquery": "3.3.1",
+    "jquery": "3.5.1",
     "jquery-ui-dist": "1.12.1",
     "jsgrid": "1.5.3",
     "mustache": "3.0.1",
