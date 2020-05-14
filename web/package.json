@@ -22,7 +22,7 @@
   "dependencies": {
     "async": "2.6.2",
     "axios": "0.18.0",
-    "bootstrap": "3.3.5",
+    "bootstrap": "3.4.1",
     "chart.js": "2.7.3",
     "dom-parser": "^0.1.6",
     "jquery": "3.3.1",
