@@ -126,7 +126,11 @@ function hosts_load(global) {
 function facts_load_all() {
   if (!colls) { throw "No colls (module level) object !"; }
   if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
-  colls.hostnames.forEach(function (hn) { var f = facts_load(hn); host_add(f); });
+  colls.hostnames.forEach(function (hn) {
+    var f = facts_load(hn);
+    if (!f) { console.log("facts_load_all: No facts for: "+hn); return; }
+    host_add(f);
+  });
   debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
 }
 
@@ -139,12 +143,13 @@ Internal function to be used by hosts_load().
 */
 function hline_parse(hnames, i, hnline) {
   var p = {}; // Host params
+  var hn = hnline;
   if (hnline.match(/\s+/)) {
     
     var rec = hnline.split(/\s+/);
     console.log("Has space: '"+hnline+"' Rec: ", rec);
     //var hn = hnames[i] = rec.shift(); // OLD (Going by index gets out-of-sync)
-    var hn = rec.shift(); // NEW
+    hn = rec.shift(); // NEW
     // Parse rec
     debug && console.log(rec);
     // OLD(global): global.hostparams[hn] = {}; // Init params !
@@ -204,7 +209,7 @@ function facts_load(hn) { // ipaddr
   //if (ip.length > 1) { throw "Ambiguity for simple logic - "+hn+" has multiple interfaces:" + ip.join(","); }
   //ip = ip[0];
   // TODO: return facts; // Do caching outside ?
-  // host_add(facts);
+  // host_add(facts); // Do NOT add here
   return facts; // NEW
 }
 /** Add a host to appropriate array and index collections (by various props).
@@ -214,6 +219,7 @@ function facts_load(hn) { // ipaddr
  * @param facts {object} - Single host facts
  */
 function host_add(facts) {
+  if (!facts) { console.log("host_add: Got non-facts: '"+facts+"'"); return; }
   var ifinfo = facts.ansible_default_ipv4;
   if (!ifinfo) { console.error("No Net Interface info in facts."); return; }
   var ip = ifinfo.address;
@@ -307,6 +313,7 @@ function hosts_filter(hostarr, patt, propname) {
   return ha2;
 }
 /** Convert minimal host record (hname,macaddr,ipaddr) to minimal "fake-facts".
+ * Fake-facts are greated based on global config (network geared) defaults.
  * The props to allow indexing should be present.
  * Extracts good default values from global (esp. global.net) config.
  * 
@@ -338,7 +345,7 @@ function host2facts(h, global) {
  */
 function customhost_load(fname, global) {
   // TODO: Analyze hostname, detect format.
-  if (!fs.existsSync(fname)) { return; }
+  if (!fs.existsSync(fname)) { console.log("No customost file "+ fname);return; }
   var cont = fs.readFileSync(fname, 'utf8');
   var lines = cont.split("\n");
   var hdr = lines.shift().split(',');
@@ -351,11 +358,12 @@ function customhost_load(fname, global) {
     for (var i =0;i<lrec.length;i++) { rec[hdr[i]] = lrec[i]; }
     arr.push(rec);
   });
-  console.log(arr);
+  console.log("Custohost (parsed):", arr);
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
   arr.forEach(function (it) {
     var f = host2facts(it, global);
+    if (!f) { console.log("host2facts() made none for "+it.hname); return; }
     host_add(f);
   });
 }
