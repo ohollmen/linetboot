@@ -178,6 +178,7 @@ function app_init(global) {
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
+  hlr.facts_load_all();
   if (global.customhosts) { hlr.customhost_load(global.customhosts, global); }
   //////////////// Groups /////////////////
   // If lineboot config has dynamic "groups" rules defined, collect group members into
@@ -703,6 +704,8 @@ function pkg_counts (req, res) {
 * - setup
 * - barename
 * - maclink
+* TODO: Turn into a module, elim. req (req.query.para)
+* TODO: Support templating + params (as opposed to cb generated output)
 */
 function gen_allhost_output(req, res) {
   var genopts_idx = {};
@@ -744,6 +747,7 @@ function gen_allhost_output(req, res) {
     }}
   ];
   // Account for case: empty params
+  // TODO: Eliminate req from pure module context
   if (!req.params || !Object.keys(req.params).length) {
     // OLD: return res.end("# URL routing params missing completely.\n");
     var arr = genopts.map(function (it) { return { lbl: it.lbl, name: it.name }; });
@@ -764,6 +768,7 @@ function gen_allhost_output(req, res) {
     // "Arch???": "pacman -Q",
     //"SUSE???": "zypper se --installed-only",
   };
+  // 
   var username = process.env['USER'] || user.username || "root";
   var paths = {
     pkglist: "~/hostpkginfo",
@@ -797,12 +802,16 @@ function gen_allhost_output(req, res) {
   res.end(cont);
 }
 /** Generate Ubuntu 18 Netplan (via HTTP get /netplan.yaml).
-* Extract network config essentials from Facts.
-* Respond with netplan YAML content.
+* Extract network config essentials from following sources:
+* - Existing Hosts: Facts (Uses info from facts branches **ansible_default_ipv4** and **ansible_dns**)
+* - New Hosts: Use dummy facts stub (f_dummy)
+* 
+* Respond with netplan YAML content (with network.ethernets[$IFNAME]).
 * 
 * #### URL Params
 * 
 * - ip - Overriden IP for content generation (Instead of current - e.g. DHCP originated - ip)
+* - mac - mac address
 * 
 * #### Downloading Netplan
 * 
@@ -830,7 +839,10 @@ function netplan_yaml(req, res) {
   var ip = ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[req.query["mac"] || ip];
-  // if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
+  if (!f) { console.log("# No Facts found for IP Address '"+ip+"' (or maybe mac ?).\n");  } // ${ip} return;
+  // Validate gotten cache artifact (TODO: Move into respective wrapper)
+  if (f && !f.ansible_architecture) { console.log("WARNING: Facts gotten from cache, but no expected props present"); }
+  if (f) { console.log("Using cached facts ..."); }
   // Dummy facts with all set to false (for fallback to global)
   var f_dummy = {"ansible_default_ipv4": {}, "ansible_dns": null};
   var d = f || f_dummy;
@@ -841,6 +853,7 @@ function netplan_yaml(req, res) {
   //# See: "ansible_fqdn" => hostname
   // iface has: alias, address, gateway
   var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
+  console.log("iface_a: "+JSON.stringify(iface_a, null, 2));
   //if (!iface_a) { res.end("No ansible_default_ipv4 network info for ip = "+ip+"\n"); }
   var ifname = iface_a["alias"] || global.net["ifdefault"] || "eno1"; // TODO: global["ifdefault"]
   // Interface Info.  TODO: Create /dec CIDR mask for "addresses" out of "netmask"
@@ -848,17 +861,26 @@ function netplan_yaml(req, res) {
   var netmask = iface_a["netmask"] || global.net.netmask;
   var dec = netmask2CIDR(netmask); // netmask2cidr(netmask);
   if (dec) { address += "/"+dec; }
-  var iface = {
-    "addresses": [ address ],
+  var iface = { // Netplan
+    "addresses": [ address ], // Assume single
     "gateway4": (iface_a["gateway"] ? iface_a["gateway"] : global.net["gateway"]) // # Netplan interface
     
   };
   // Add /dec mask here based on "netmask"
   var dns_a = d["ansible_dns"]; // global["namesearch"] // NEW: Fallback to global
-  // Namesearch Info.
+  //console.log("dns_a: "+JSON.stringify(dns_a, null, 2));
+  //console.log("global.net: "+JSON.stringify(global.net, null, 2));
+  // console.log("Found Ansible DNS Info: "+dns_a);
+  // Namesearch Info (servers, search suffixes).
+  //var ns = {};
+  //var ns_search = ns.search = ;
+  //var ns_addresses = ns.addresses = ;
+  
   var ns = {
-    "search":    (dns_a ? dns_a["search"] : global.net["namesearch"]),
-    "addresses": (dns_a ? dns_a["nameservers"] : global.net["nameservers"]) };
+    "search":    (dns_a && dns_a["search"] ? dns_a["search"] : global.net.namesearch),
+    "addresses": (dns_a && dns_a["nameservers"] ? dns_a["nameservers"] : global.net.nameservers)
+  };
+  //console.log("ns as JSON: "+JSON.stringify(ns));
   iface["nameservers"] = ns;
   np["ethernets"][ifname] = iface; // Assemble (ethernets branch) !
   //# Unofficial, but helpful (at netplan root)
@@ -1181,7 +1203,7 @@ function rmgmt_list(req, res) {
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt";
   var ipmi = require("./ipmi.js");
   var arr = [];
-  var resolve = 1;
+  var resolve = 1; // Resolve DNS Names
   var jr = {"status": "err", msg: "Error Processing Remote interfaces."};
   function dummy_add(dum) { arr.push(dum); } // Dummy entry w/o rm info.
   function rmgmt_load(f, cb) {
@@ -1230,7 +1252,7 @@ function rmgmt_list(req, res) {
  * @todo Add err param.
 */
 function nettest(req, res) {
-  var jr = {"status": "err", "msg": "Net Probing failed. "}
+  var jr = {"status": "err", "msg": "Net Probing failed. "};
   netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   // TODO: Timing ! var t1 = 
@@ -1248,7 +1270,7 @@ function nettest(req, res) {
 /** Perform process-geared probing on host (numproc, load, uptime)
  */
 function proctest(req, res) {
-  var jr = {"status": "err", "msg": "Process Probing failed. "}
+  var jr = {"status": "err", "msg": "Process Probing failed. "};
   netprobe.init();
   netprobe.probe_all(hostarr, "proc", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
