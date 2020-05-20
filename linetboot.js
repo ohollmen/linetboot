@@ -831,7 +831,6 @@ function gen_allhost_output(req, res) {
 function netplan_yaml(req, res) {
   // np = {"version": 2, "renderer": "networkd", "ethernets": {} }
   res.type("text/plain");
-  //res.set('Content-Type', 'text/html');
   // Content-Disposition: ... Would pop up save-as
   //var fn = "01-netcfg.yaml";
   // res.set('Content-Disposition', "attachment; filename=\""+fn+"\"");
@@ -880,6 +879,8 @@ function netplan_yaml(req, res) {
     "search":    (dns_a && dns_a["search"] ? dns_a["search"] : global.net.namesearch),
     "addresses": (dns_a && dns_a["nameservers"] ? dns_a["nameservers"] : global.net.nameservers)
   };
+  // Exception for misleading systemd DNS server "127.0.0.53"
+  if (ns.search[0] == '127.0.0.53') { ns.search = global.net.nameservers; }
   //console.log("ns as JSON: "+JSON.stringify(ns));
   iface["nameservers"] = ns;
   np["ethernets"][ifname] = iface; // Assemble (ethernets branch) !
