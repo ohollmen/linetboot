@@ -880,7 +880,7 @@ function netplan_yaml(req, res) {
     "addresses": (dns_a && dns_a["nameservers"] ? dns_a["nameservers"] : global.net.nameservers)
   };
   // Exception for misleading systemd DNS server "127.0.0.53"
-  if (ns.search[0] == '127.0.0.53') { ns.search = global.net.nameservers; }
+  if (ns.addresses[0] == '127.0.0.53') { ns.addresses = global.net.nameservers; }
   //console.log("ns as JSON: "+JSON.stringify(ns));
   iface["nameservers"] = ns;
   np["ethernets"][ifname] = iface; // Assemble (ethernets branch) !
