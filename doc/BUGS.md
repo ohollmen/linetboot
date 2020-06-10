@@ -128,6 +128,7 @@ Solution:
 DO NOT leak value auto that is valid on preseed (as a substitute for concrete device name) to Kickstart. This is parameter of "network" command, where --device=auto creates a problem.
 
 # Ubuntu Installer doing fast install
+
 Registerd as of git state 2019-01-05 (evening):
 - Normal install wi. root+swap partitions on disk, filling the disk
 - Takes 4.5 mins, stops at partitioning and forces to manually choose install to esiting partitioning.
@@ -147,4 +148,14 @@ d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 d-i partman/mount_style select uuid
 d-i partman/unmount_active boolean true
+
+# Network global config
+NOTE: There are slightly overlapping members in global.net
+- dev - Network device, allowing value "auto" for preseed
+  (netcfg/choose_interface)
+- ifdefault - Default network device name for Netplan YAML (which whould
+  not allow value "auto")
+
+Try to document (better) or disambiguate these (in implementation).
+
 
