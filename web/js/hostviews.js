@@ -525,7 +525,7 @@ var cmap = {
       var outtypes = response.data || [];
       var otmpl = document.getElementById("outputs").innerHTML;
       var olistout = Mustache.render(otmpl, {outtypes: outtypes});
-      olistout += '<iframe id="cmdoutput" src="" width="640" height="500"></iframe>';
+      olistout += '<iframe id="cmdoutput" src="" width="800" height="500"></iframe>';
       document.getElementById("tabs-65").innerHTML = olistout;
       $('.outitem').click(function (ev) {
         var frame = document.getElementById("cmdoutput");
