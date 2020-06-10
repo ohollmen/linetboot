@@ -341,29 +341,41 @@ function host2facts(h, global) {
   f.ansible_distribution_version = "???";
   return f;
 }
-/** Load special hosts from CSV file (TODO: json, sqlite).
+/** Lightweight poor-mans (naive) CSV parser.
+ * @return array of object formulated per first / header line.
  */
-function customhost_load(fname, global) {
-  // TODO: Analyze hostname, detect format.
-  if (!fs.existsSync(fname)) { console.log("No customost file "+ fname);return; }
+function csv_parse(fname) {
+  if (!fs.existsSync(fname)) { console.log("No CSV file "+ fname);return null; }
   var cont = fs.readFileSync(fname, 'utf8');
   var lines = cont.split("\n");
   var hdr = lines.shift().split(',');
+  // Validate header names as symbol names ?
   console.log("Headers: ", hdr);
   var arr = []; // Final Array-of-Objects (AoO) from CSV
   lines.forEach(function (l) {
     var rec = {};
-    var lrec = l.split(','); // Max as many fields as hdr ? 
+    var lrec = l.split(','); // Max as many fields as hdr ?
+    if (!l) { return; } // Empty !
     if (hdr.length != lrec.length) { console.log("Flawed rec. - field counts not matching ("+hdr.length+" vs "+lrec.length+")"); return; }
     for (var i =0;i<lrec.length;i++) { rec[hdr[i]] = lrec[i]; }
     arr.push(rec);
   });
-  console.log("Custohost (parsed):", arr);
+  return arr; // CSV parser
+}
+
+/** Load special hosts from CSV file (TODO: json, sqlite).
+ */
+function customhost_load(fname, global, iptrans) {
+  // TODO: Analyze hostname, detect format.
+  if (!fs.existsSync(fname)) { console.log("No customhost file "+ fname);return; }
+  var arr = csv_parse(fname);
+  console.log("Customhost (parsed):", arr);
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
   arr.forEach(function (it) {
     var f = host2facts(it, global);
     if (!f) { console.log("host2facts() made none for "+it.hname); return; }
+    if (iptrans && it.tempipaddr) { iptrans[it.tempipaddr] = it.ipaddr; }
     host_add(f);
   });
 }
@@ -376,5 +388,6 @@ module.exports = {
   group_mems_setup: group_mems_setup,
   hosts_filter: hosts_filter,
   customhost_load: customhost_load,
-  facts_load_all: facts_load_all
+  facts_load_all: facts_load_all,
+  csv_parse: csv_parse
 };
