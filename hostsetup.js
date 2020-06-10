@@ -15,7 +15,7 @@ var cfg = {
   debug: 0,
   hostcache: {}, hostarr: [] // 
 };
-var em = {
+var em = { // Error Messages
   "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
 };
 if (!fs.existsSync(cfg.hostsfile)) { console.error("No Hosts file found in:"+cfg.hostsfile+". "+em.crhosts); process.exit(1); }

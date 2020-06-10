@@ -190,10 +190,10 @@ function parse_pcnt(str, o) {
   o.pcnt = parseInt(str);
 }
 /** ssh2 based version.
- * Notes: conn-ready does not receive params (would benefir out of conn).
+ * Notes: conn-ready does not receive params (would benefit out of conn).
  */
 function stats_proc(hnode, cb) {
-  var cmd = "/bin/ps -ef | /usr/bin/wc -l";
+  // var cmd = "/bin/ps -ef | /usr/bin/wc -l";
   var hn = hnode.ansible_fqdn;
   var prec = {"hname": hn, "pcnt": -1};
   var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
