@@ -179,7 +179,17 @@ function app_init(global) {
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
   hlr.facts_load_all();
-  if (global.customhosts) { hlr.customhost_load(global.customhosts, global); }
+  
+  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
+  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
+  if (mfn && fs.existsSync(mfn)) {
+    iptrans = require(mfn); // TODO: try/catch ?
+    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
+  }
+  
+  if (global.customhosts) {
+    hlr.customhost_load(global.customhosts, global, iptrans);
+  }
   //////////////// Groups /////////////////
   // If lineboot config has dynamic "groups" rules defined, collect group members into
   // TODO: Move to hostloader
@@ -192,12 +202,7 @@ function app_init(global) {
   
   
   // console.log(groups); // DEBUG
-  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
-  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
-  if (mfn && fs.existsSync(mfn)) {
-    iptrans = require(mfn); // TODO: try/catch ?
-    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
-  }
+  
   var os = require('os');
   var ifs = os.networkInterfaces();
   // ifs.keys().filter(function (k) {});
@@ -288,7 +293,7 @@ function ipaddr_v4(req) {
   if (newip) {
     // Inform at every use of translation
     // console.log();
-    console.log("Overriding ip: " + ip + " => " + xip); ip = xip;
+    console.log("Overriding ip: " + ip + " => " + newip); ip = newip;
     return newip;
   }
   return ip;
@@ -708,44 +713,14 @@ function pkg_counts (req, res) {
 * TODO: Support templating + params (as opposed to cb generated output)
 */
 function gen_allhost_output(req, res) {
+  var jr = {"status":"err", "msg":"Failed to generate hostcommand output."};
   var genopts_idx = {};
-  var genopts = [
-    {"lbl": "barename", name: "Bare Host Names Listing (w. optional params by para=p1,p2,p3)", "cb": function (info, f) {
-      var ps = req.query.para; // Comma sep.
-      var cmd = info.hname;
-      if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
-      return cmd;
-    }},
-    {"lbl": "addrname", name: "IP Address, Hostname Pairs", "cb": function (info, f) {
-      var ps = req.query.para; // Comma sep.
-      var cmd = info.hname;
-      if (!info.hname) { return ""; }
-      var padsize = 16-info.ipaddr.length; // Max IP: 15, 
-      return info.ipaddr + " ".repeat(padsize) + info.hname;
-    }},
-    {"lbl": "maclink", name: "MAC Address Symlinks", "cb": function (info, f) {
-      var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
-      if (!mac) { return; }
-      mac = mac.replace(/:/g, "-");
-      mac = mac.toLowerCase();
-      return "ln -s default " + "01-" + mac; // Prefix: "01"
-    }},
-    {"lbl": "setup",   name: "Facts Gathering", "cb": function (info, f) {
-      return  "ansible -i ~/.linetboot/hosts "+info.hname+" -b -m setup --tree "+info.paths.hostinfo+" --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS\"";
-    }},
-    {"lbl": "pkgcoll", name: "Package List Extraction", "cb": function (info, f) {
-      return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
-    }},
-    {"lbl": "rmgmtcoll", name: "Remote management info Extraction", "cb": function (info, f) {
-      return  "ansible-playbook -i ~/.linetboot/hosts  build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
-    }},
-    // SSH Key archiving
-    {"lbl": "sshkeyarch", name: "SSH Key archiving",
-      // "ssh -t {{ info.hname }} 'sudo rsync /etc/ssh/ssh_host_* {{username}}@{{ currhname }}:"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'"
-      "cb": function (info, f) {
-      return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
-    }}
-  ];
+  var hc = require("./hostcommands.js");
+  hc.init();
+  var genopts = hc.genopts;
+  if (!genopts || !Array.isArray(genopts)) { jr.msg += " No genopts avail or not an array"; console.log(jr.msg); return res.end(jr.msg); }
+  var getopts_idx = hc.genopts_idx;
+  // console.log(getopts_idx); // OK
   // Account for case: empty params
   // TODO: Eliminate req from pure module context
   if (!req.params || !Object.keys(req.params).length) {
@@ -753,53 +728,21 @@ function gen_allhost_output(req, res) {
     var arr = genopts.map(function (it) { return { lbl: it.lbl, name: it.name }; });
     return res.json(arr);
   }
-  genopts.forEach(function (it) { genopts_idx[it.lbl] = it; }); // Once ONLY (at init) !
+  
   var lbl = req.params.lbl;
+  if (!lbl) { jr.msg += " No op label !"; return res.end(jr.msg); }
   // With no label send the structure w/o cb. See new version w/o delete above
   // if (!lbl) { var genopts2 = dclone(genopts); genopts2.forEach(function (it) { delete(it.cb); }); res.json(genopts2); return; }
-  var cont = "";
-  var op = genopts_idx[lbl];
-  if (!op) { return res.end("# '"+lbl+"' - No such op.\n"); }
-  // See also (e.g.): ansible_pkg_mgr: "yum"
-  var os_pkg_cmd = {
-    "RedHat": "yum list -q installed", // rpm -qa, repoquery -a --installed, dnf list installed
-    "Debian": "dpkg --get-selections", // apt list --installed (cluttered output), dpkg -l (long, does not start w. pkg)
-    // Suse, Slackware,
-    // "Arch???": "pacman -Q",
-    //"SUSE???": "zypper se --installed-only",
-  };
-  // 
-  var username = process.env['USER'] || user.username || "root";
-  var paths = {
-    pkglist: "~/hostpkginfo",
-    hostinfo: "~/hostinfo",
-  };
-  function pstr_gen(ps) {
-    if (!ps) { return ""; }
-    //console.log("Got to barename, have params");
-    ps = ps.split(/,/);
-    var pstr = ps.map(function (p) {return p+"=";}).join(" ");
-    // console.log(pstr);
-    return pstr;
-  }
+  // var cont = "";
+  //var op = genopts_idx[lbl];
+  var op = hc.genopts_idx[lbl]; // NOTE: hc.genopts_idx[] works, but not genopts_idx[] !!
+  //console.log("op:", op);
+  //console.log(getopts_idx[lbl]);
+  //console.log(getopts_idx[lbl]);
   
-  hostarr.forEach(function (f) {
-    var plcmd = os_pkg_cmd[f.ansible_os_family];
-    if (!plcmd) { cont += "# No package list command for os\n"; return; }
-    var info = {
-      hname: f.ansible_fqdn, ipaddr: f.ansible_default_ipv4.address, // Host (in iteration)
-      currhname: process.env['HOSTNAME'], // Current Linetboot local host
-      username: username, userhome: process.env["HOME"], // User
-      pkglistcmd: plcmd, paths: paths
-      
-    };
-    var cmdcont;
-    // if (op.tmpl) { cmdcont = Mustache.render(op.tmpl, info); }
-    //if (f.ansible_os_family) {}
-    var cmd = op.cb(info, f);
-    cont += cmd + "\n"; // TODO: cmdarr.push(cmd), later join
-  });
-  res.end(cont);
+  if (!op) { return res.end("# '"+lbl+"' - No such op. in "+genopts_idx+"\n"); }
+  var cmds = hc.commands_gen(op, hostarr, req.query.para);
+  res.end(cmds.join("\n"));
 }
 /** Generate Ubuntu 18 Netplan (via HTTP get /netplan.yaml).
 * Extract network config essentials from following sources:
@@ -998,7 +941,7 @@ function needs_template(cont) {
   var tcs = arr.map(function (l) { return (marr = l.match(/.+TEMPLATE_WITH:\s+(\w+)/)) ? marr[1] : false; })
     .filter(function ( it ) { return it; });
   if (!tcs.length) { return null; }
-  if (tcs.length > 1) { console.error("Ambiguous ...."); return null; }
+  if (tcs.length > 1) { console.error("Ambiguous TEMPLATE_WITH tagging ...."); return null; }
   return tcs[0];
 }
 /** Deliver SSH key / keys for the old host for placing them onto new installation.
