@@ -29,9 +29,18 @@ wget "$TEST_URL/ssh/ecdsa.pub?ip=$FAKE_IP" -O ssh_host_ecdsa_key.pub
 wget "$TEST_URL/ssh/ed25519.pub?ip=$FAKE_IP" -O ssh_host_ed25519_key.pub
 # View
 wget "$TEST_URL/list" -O hostview.json
+wget "$TEST_URL/web" -O web_index.html
+# ISO Mounts (Small sample file)
+wget "$TEST_URL/ubuntu18dt/md5sum.txt" -O md5sum.txt
+# Ubuntu 18 desktop indirection file
+wget "$TEST_URL/preseed.desktop.cfg" -O preseed.desktop.cfg
+# Hard-Install w/o facts
+wget "$TEST_URL/preseed_mini.cfg" -O preseed_mini.cfg
+
 cp /etc/passwd .
 echo "Results in $TEST_PATH (pushd $TEST_PATH ... to inspect)"
 ls -al $TEST_PATH/*
+exit 0
 # Addl test for replace
 TESTUSER=$USER
 NEW_HOME_PATH=/home_install
