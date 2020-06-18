@@ -85,57 +85,34 @@ For further info see documents for:
 
 - [Installation Pre-requisites](doc/README.prereq.md "Installation Pre-requisites for all related SW")
 - [Configuring Linetboot and related systems](doc/README.configure.md "Configuring Linetboot and all related SW")
+- [Administering Boot media (ISO images)](doc/README.bootmedia.md "ISO Bootmedia")
+- [Authoring and configuring Bootmenu](doc/README.bootmenu.md "Configuring Boot menu")
 - [Troubleshooting](doc/README.troubleshoot.md "Troubleshooting the whole Linetboot system functionality")
 - [Linetboot FAQ - Frequently Asked Questions](doc/README.faq.md "Frequently Asked Questions")
+
 -------------------------------------------------------------------------------------------------
-
-## Pre-configured Boot Options in pxelinux.cfg/default
-
-Planned / Pre-configured boot options on the menu:
-
-- Boot from local disk, first partition
-- Boot from local disk, second partition
-- Run Gparted Live to tweak, fix or diagnose the system
-- Run memory test
-- TODO: Install on first existing (big enough ?) partition
-- Install automatically and completely repartition the drive
-
-Notes:
-- The topmost items in menu are "less dangerous" and more "read-only" to your system. In case you nervously fat finger with your arrow down, you have ~4 menu items before the "extreme makeover" items
-- Currently the automated installation "recipe" will/may wipe out your disk. Please review the preseed and kickstart templates before using them to avoid data loss.
-
-# Using CDROM Content as preseed mirror
-
-Reverse engineered:
-- The Ubuntu top level / root of CDROM has subdir path "pool/main/" under it.
-  - Has "aphabet dirs" (hashed ?) under it with package named dirs under it.
-- The Ubuntu mirror site http://us.archive.ubuntu.com/ has subdir (for bionic)
-  - ubuntu/dists/bionic/ with main,multiverse,restricted,universe ... but content differs between mirror and CD/DVD.
-
-## Using apt-mirror (from pkg apt-mirror)
-
-- Install sudo apt-get install apt-mirror
-- See config: /etc/apt/mirror.list
-- Must configure: set base_path           /var/spool/apt-mirror
-- Downloads whole remote SW repository, e.g. 45GB of SW packages
 
 # Using raw ISO CD/DVD
 
-Download and mount CD/DVD Images (*.iso) as aloopback mount under /mnt by sequence:
+Create an ISO images "repo" directory:
 
-    # Create central iso repo (Use better name like os_iso as needed)
-    cd /usr/local
-    sudo mkdir iso
-    #sudo chown myacct:myacct iso
-    cd iso
-    # Download from http://cdimage.ubuntu.com/releases/14.04.5/release/ and http://cdimage.ubuntu.com/releases/18.04.1/release/
+    
+
+Download ISO Images
+
+    # (e.g. from from http://cdimage.ubuntu.com/releases/14.04.5/release/ and http://cdimage.ubuntu.com/releases/18.04.1/release/)
     wget http://releases.ubuntu.com/14.04/ubuntu-14.04.5-server-amd64.iso
     #wget http://cdimage.ubuntu.com/releases/14.04.5/release/ubuntu-14.04.5-server-amd64+mac.iso
     wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
     wget https://osdn.net/frs/redir.php?m=constant&f=clonezilla%2F71563%2Fclonezilla-live-2.6.3-7-amd64.iso
-    # Create mountpoints and mount
+
+Create loop-back mountpoints
+
     sudo mkdir -p /isomnt/ubuntu14 /isomnt/ubuntu18 /isomnt/centos6 /isomnt/centos7 /isomnt/gparted
     ls -al /isomnt/
+
+mount CD/DVD Images (*.iso) as aloopback mount under /isomnt by sequence:
+
     sudo mount -o loop ubuntu-14.04.5-server-amd64.iso /isomnt/ubuntu14
     sudo mount -o loop ubuntu-18.04.1-server-amd64.iso /isomnt/ubuntu18
     sudo mount -o loop CentOS-6.10-x86_64-minimal.iso  /isomnt/centos6
@@ -150,7 +127,10 @@ Download and mount CD/DVD Images (*.iso) as aloopback mount under /mnt by sequen
     # http://repos.lax.quadranet.com/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso (Minimal, ~970MB)
     # http://isoredirect.centos.org/centos/6/isos/x86_64/
     # http://repos.lax.quadranet.com/centos/6.10/isos/x86_64/CentOS-6.10-x86_64-minimal.iso (Minimal, ~425MB)
-    
+
+
+Downloading and mounting ISO images (in addition to some other things) can be handled by menuinit.js script.
+
 Referring to CD/DVD content, add symlinks for installer boot kernels and ramdisks.
 We'll add everything under /var/www/html/ (Seems to exist in both Debian/RH based distros).
 
@@ -160,28 +140,6 @@ We'll add everything under /var/www/html/ (Seems to exist in both Debian/RH base
     sudo mkdir -p ubuntu14/ ubuntu18/ centos6/ centos7/ gparted/
     ls -al /var/www/html/boot
 
-Find kernel and initrd by example:
-    # Kernel
-    find  /isomnt/ubuntu18 -type f -name linux
-    # Initramdisk
-    find  /isomnt/ubuntu18 -type f -name initrd.gz
-   
-    sudo ln -s /isomnt/ubuntu18/install/netboot/ubuntu-installer/amd64/linux /var/www/html/boot/ubuntu18/linux
-    sudo ln -s /isomnt/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz /var/www/html/boot/ubuntu18/initrd.gz
-    # ... Repeat searches for ubuntu14 and create symlinks
-   sudo ln -s /isomnt/ubuntu14/install/netboot/ubuntu-installer/amd64/linux /var/www/html/boot/ubuntu14/linux
-    sudo ln -s /isomnt/ubuntu14/install/netboot/ubuntu-installer/amd64/initrd.gz /var/www/html/boot/ubuntu14/initrd.gz
-    # Centos 6 (Network boot installer kernel and initrd under $MEDIAROOT/images/pxeboot/)
-    sudo ln -s /isomnt/centos6/images/pxeboot/vmlinuz /var/www/html/boot/centos6/vmlinuz
-    sudo ln -s /isomnt/centos6/images/pxeboot/initrd.img /var/www/html/boot/centos6/initrd.img
-    # Centos 7 ... same
-   
-    # Gparted Live
-    sudo ln -s /isomnt/gparted/live/vmlinuz /var/www/html/boot/gparted/vmlinuz
-    sudo ln -s /isomnt/gparted/live/initrd.img /var/www/html/boot/gparted/initrd.img
-    # test for correct symlinking
-    cd /var/www/html/boot
-    md5sum ubuntu14/linux ubuntu18/linux ubuntu14/initrd.gz ubuntu18/initrd.gz gparted/vmlinuz gparted/initrd.img
 
 To serve mirror content with Apache/NginX, or to just avoid url mapping with linetboot, create a symlink to CDROM image root from Ubuntu/Debian default www document root:
 

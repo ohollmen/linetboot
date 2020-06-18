@@ -14,18 +14,28 @@
     - storage.log - Info about disk controlled, disk devices, partitions (partitioning flow has python log messages)
     - journal.log - Full Log (like dmesg/syslo/message, includeing DHCP traffic, Starting Anaconda)
     - syslog, anaconda.log, program.log,ks-script-*.log
+- After (failed) boot, check /proc/cmdline (Linux kernel commandline) for match with menu ("default") specified command line (sanity check) -
+    if there is a mismatch, you possibly forgot to copy/sync the latest menu changes to TFTP server.
 
-## Testing DHCP
+## Testing DHCP Client
 
 - Real (ISC) DHCP Client: /sbin/dhclient (-v = verbose, -x Stop the running DHCP client without releasing the current lease.)
 - dhcping - Not sure how this works sudo dhcping -s 192.168.1.107 reponds: "no answer"
 - sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
+
+## Testing DHCP Server
+
+To run dnsmasq on the forground and see very detailed and verbose DHCP request details (fields request and returned, their values, etc.), use `dnsmasq -d`.
+
+See man pages on other DHCP servers to see equivalent debugging methods.
 
 ## TFTP Server
 
 Follow TFTP Server log for filenames. Many TFTP servers log into OS syslog file (Debian: /var/log/syslog, RH: /var/log/messages)
 
 Problem: `tftpd: read: Connection refused` - after request for a valid file the network seems to blocked by firewall (?). This seems to happen when there is a rapid progression of trying different (non-existing) pxelinux menu files from server. Solution is to create a symlink by ethernet address (with correct convention) to the menu file "default" in subdir "pxelinux.cfg".
+
+TODO: Find out how to increase tftp server message verbosity.
 
 ## Web server file delivery
 
@@ -48,10 +58,10 @@ The problem with PXE Boot error messages are that they remain on screen for a ve
 Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address (with one digit dropped from tail at the time)
   - Place boot menu file by name pxelinux.cfg/default in correct format on the TFTP server.
 
-- PSE-E51: No DHCP or Proxy Offers were received. PXE-M0F ...
+- PXE-E51: No DHCP or Proxy Offers were received. PXE-M0F ...
 - ... Media Test failure, check cable Your PXE ROM Configuration likely asks to PXE boot from wrong Network Interface port, which has not cable connected. 
 - PXE-T01: File not nound PXE-E3B: TFTP Error - File Not found PXE-M0F Exiting ... Your PXE Implementation already tried to load a file by name which it does not display to you to challenge your debugging skills. Got to the log of your TFTP server and see what filename was tried. Example real life case: file requested was pxelinux.0, should be lpxelinux.0.
-
+- PXE-E16: No offer received (AMI Bios machine on ...)
 - PXELinux: Unable to locate configuration file
   - Check TFTP server log to see which file was tried to be loaded.
   - Usually many files are tried by various names (See pxelinux config file
@@ -59,3 +69,12 @@ Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address 
   - RedHat firewall heuristics may refuse tftp traffic after too may rapid tries
   - Solution: Create symlink by one of the first tried filenames (e.g. MAC address with octets dash-separated).
 
+## PXELinux errors
+
+Errors are recognizable by *not* having the `PXE-E...` prefix.
+- Unable to locate configuration file: pxelinux.0 or syslinux.efi was loaded, but the menu file was not there.
+- No DEFAULT or UI configuration directive found: Config was found but
+- ...failed: No such file or directory (After selecting menu item) - Likely means you are using non-http capable pxelinux or syslinux and filename was given as HTTP URL. This error message is very misleading and there will be no trace of
+failed load in either TFTP or HTTP logs.
+
+ 

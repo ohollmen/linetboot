@@ -19,3 +19,8 @@ A: In the name off KISS priciple, current behaviour is Garbage in, garbage out. 
 Q: Is linetboot limited to installing server installations ? can I install desktop Linux with ?
 A: lineboot does not have any built in limitations installing Desktop linux. It seems Ubuntu/Canonical wrote a variant of Debian installer called Ubiquity, which may use a variant of Debian-Installer directives or behave differently. Testing current preseed (and creating necessay parametrizations) or creating variation of preseed template for Ubiquity install would be needed.
 
+Q: Instead of pxelinux menu I'm getting black screen with text "boot:". What do I do ?
+
+This happens < 5% of the time for reasons unknown to me.
+Press tab character to get pxelinux boot option labels ("label ..." property in menu file) and type one that you want hoping that menu labels were made descriptive enough to meaningfully choose from.
+If you get to know why this prompt-mode triggers instead of full arrow-key driven visual menu, let me know too.
