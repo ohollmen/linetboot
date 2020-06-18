@@ -89,6 +89,8 @@ For further info see documents for:
 - [Authoring and configuring Bootmenu](doc/README.bootmenu.md "Configuring Boot menu")
 - [Troubleshooting](doc/README.troubleshoot.md "Troubleshooting the whole Linetboot system functionality")
 - [Linetboot FAQ - Frequently Asked Questions](doc/README.faq.md "Frequently Asked Questions")
+- [Boot media (ISO:s)](doc/README.bootmedia.md "Boot media and Bootable ISO Images")
+- [Boot menu](doc/README.bootmenu.md "Configuring PXELinux Boot Menu Items")
 
 -------------------------------------------------------------------------------------------------
 
