@@ -25,7 +25,7 @@ window.onload = function () {
     app_setup(data); // Something that must be done before allowing user to navigate meaningfully
     // Only now enable routing (navigating around the app)
     router.start();
-    toaster.clear(); /// ... or close spinner
+    toastr.clear(); /// ... or close spinner
   });
   // Distract user with popup during above data loading
   toastr.info('Welcome to THE App !'); // ... or start spinner
@@ -65,7 +65,8 @@ where the parameters are:
 
 ###  Imperative routing
 
-Not available at this time as router.route(ev) works by events.
+Not available via API at this time as router.route(ev) works by hashchange events.
+Use browser-native construct (e.g.) `location.hash = '#deals';`
 TODO: router.route_to("/path") with simulated (or modded) event.
 
 ## Author
@@ -108,6 +109,8 @@ Router666.VERSION = "0.0.1";
 /** Add route path and handler to router routing table.
 * Can alternatively accept a set of actions describing routes.
 * Create regexp and pre-cache it in action for fastest possible routing.
+* Whether action is added as-is or deep copied to not alter original action
+* depends on option "noactcopy" in construction options.
 * 
 * @param path - Route path as RegExp string or fixed path
 * @param hdlr - Route handler callback
@@ -119,7 +122,7 @@ Router666.prototype.add = function (path, hdlr, name) {
     this.debug && console.log("add: Got Array to add (" + path.length + " items)");
     // var self = this; // Not needed
     path.forEach(function (it) {
-      // if (this.noactcopy) { this.addact(it); }
+      if (this.noactcopy) { this.addact(it); return; }
       this.add(it[this.pathattr], it[this.hdlrattr], it[this.nameattr]);
     }, this);
     debug && console.log("add(batch): ", this.routesarr);
@@ -130,12 +133,21 @@ Router666.prototype.add = function (path, hdlr, name) {
   var act = { path: path, hdlr: hdlr }; // name: (name ? name : "Route for " + path)
   if (name) { act.name = name; }
   debug && console.log("add: Action node created: ", act);
-  ////////////// TODO: Separate this to another method ... ///////////////
-  // this.addact(act);
-  // Router666.prototype.addact = function (act) {
-  // var debug = this.debug;
-  // if (typeof act !== 'object') { throw "Action is not an object !"; }
-  // if (typeof act.hdlr !== 'function') { throw "Action handler is not an callable function !"; }
+  ////////////// TODO: Extracted addact() to separate method ... ///////////////
+  this.addact(act);
+  
+};
+
+
+/** Add ready-to-go action (or action set) to router.
+* Stores path-match Regexp to action node ("pathre" member)
+* Updates Router path index (with non-parametric route paths)
+* @param act {object} - Routable action object with path, handler callback and optional name.
+*/
+Router666.prototype.addact = function (act) {
+  var debug = this.debug;
+  if (typeof act !== 'object') { throw "Action is not an object !"; }
+  if (typeof act.hdlr !== 'function') { throw "Action handler is not an callable function !"; }
   if (act.path.match(/\^/)) { throw "Do not include caret (^) in path"; }
   if (act.path.match(/\$/)) { throw "Do not include sigil ($) in path"; }
   // TODO: Replace parameter notation
@@ -151,30 +163,24 @@ Router666.prototype.add = function (path, hdlr, name) {
 	act.pnames.push(p2);
         return '([^\/]+)';
       });
-      debug && console.log("add: Converted orig path to: " + path);
+      debug && console.log("add: Converted orig path to parametric: " + path);
     }
+    // Treat even static paths as RE-matchable (?). This makes dispatching simplier.
     act.pathre = new RegExp("^"+path+"$");
-    debug && console.log("add: Created and added path RegExp: " + act.pathre);
+    debug && console.log("add: Created and added static path RegExp (pathre): " + act.pathre);
   } catch (ex) { console.log(ex.message + " in " + path); }
   // Add path to routes table
   if (this.routes[act.path]) { console.error("Routing for path '"+act.path+"' already exists, not adding "); return; }
   this.routes[act.path] = act; // OLD: hdlr, NEW: act
   this.routesarr.push(act);
-  // }; // addact
-  
-};
-// Add ready-to-go action (or action set) to router.
-// Whether action is added as-is or deep copied to not alter original action
-// depends on option "noactcopy" in construction options.
-// @param 
-Router666.prototype.addact = function (act) {
-  
-};
+}; // addact
+
 /** Handle dispatch routing event.
  * As the nature of event is "hashchange" on browser URL line, the target
  * of event is (always?) Window, which is not useful info. Unfortunately,
  * the element that (... dictated the routing is often not meaningful as ...)
  * @todo Call handler in a try/catch block ?
+ * @todo Use path-action-index and divide path matching to 2 parts: lookup in static path index and RE-match for parametric routes ?
  */
 Router666.prototype.route =  function (ev) { // ev
   //console.error("Route ev:", ev);
@@ -199,6 +205,7 @@ Router666.prototype.route =  function (ev) { // ev
   //}
   var act;
   var marr;
+  // 
   for (var i =0; i < routesarr.length; i++) {
     act = routesarr[i];
     //(debug > 1) && console.log("route: Try match: " + act.pathre);

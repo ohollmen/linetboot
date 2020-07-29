@@ -41,6 +41,8 @@ var console;
  * - thcl - Table heading class to embed into th elements.
  * - tabcl - Table style class (default: webview_list)
  * 
+ * Note: To have table header (th) elements left aligned: Use style: `th { text-align: left; }`
+ * (this is likely what you want as browsers still default to having th text center-aligned).
  */
 function listview (result, attrs, opts) { // als, plugs, ctx in opts ?
   // Do not check inner Objects in result - act in good faith
@@ -106,6 +108,9 @@ function listview (result, attrs, opts) { // als, plugs, ctx in opts ?
  * - entry - Entry Object for single view (passed as e)
  * - propname - propery name for current property (for reuse of plugins between properties)
  * - ctx - Additional "user data" Object (or any other data) for processing of attribute plugin.
+ *
+ * Note: For first 2 params plugins are compatible with jsgrid plugins.
+ *
  * ### Example
  *
  * 
@@ -154,6 +159,14 @@ function seview (e, attrs, opts) {
 * - rowcl - Row class
 * - tabcl - Table class
 * - ctx - Contextual custom "user data" to pass cell callback (see cellcb) and 2nd parameter
+* Cell Callback parameters / Signature:
+*     
+*     cellcb(arr_entry, context)
+*     
+* Where parameters have meaning:
+* - arr_entry - Single Object in array
+* - context - Additional context (typically object, but not limited to being object) passed as opts.ctx
+*   (see above)
 */
 function matrix(arr, cellcb, opts) {
   if (!cellcb) {throw "No Cell callback";}
@@ -218,7 +231,7 @@ function tojgcmodel(attrs, als, opts) {
 * - akw - action keyword (default: "act")
 * - divid - element ID for an outer div to create and wrap the ul list with
 * - OLD: hrefcb - callback to generate link (href) URL 
-* - licb - callback to generate "li" element content with
+* - licb - callback to generate "li" element content with signature licb(action_item)
 * 
 * @return HTML (unordered list) Content for the menu.
 */
@@ -234,8 +247,8 @@ function navimenu (acts, opts) {
   var menu = "";
   var akw = opts.akw || "act"; // NOT req.app.akw (tight coupling)
   if (opts.divid) {menu += "<div id=\"" + opts.divid + "\">";}
-  // var hrefcb = function (it) {return "?" + akw + "=" + it.id;};
-  //if (opts.hrefcb) {hrefcb = opts.hrefcb;} // Check hrefcb is function !
+  var hrefcb = function (it) {return "?" + akw + "=" + it.id;};
+  if (opts.hrefcb) { hrefcb = opts.hrefcb; } // Check hrefcb is function !
   var licb = function (it) {
     return "<a href=\"" + hrefcb(it) + "\" data-actid=\"" + it.actid + "\" >" + it.name + "</a>";};
   if (opts.licb) {licb = opts.licb;}
@@ -504,7 +517,7 @@ function multilist(arr, opts) {
   function makeattrs (ats) {
     var acont = "";
     if (!ats || (typeof ats != 'object')) { return ""; }
-    for (k in ats) { acont += " "+k+"=\"" + ats[k] + "\" "; }
+    for (var k in ats) { acont += " "+k+"=\"" + ats[k] + "\" "; }
     return acont;
   }
   // Always wrapped / contained by div
@@ -526,6 +539,29 @@ function multilist(arr, opts) {
   cont += "</div>\n";
   return cont;
 }
+/** Create JQuery tabs compliant HTML skeleton for tab-items passed.
+* TODO: nodiv (e.g. generate inside existing div)
+*/
+function tabs(arr, divid, opts) {
+  opts = opts || {};
+  var nodiv = opts.nodiv || !divid || 0;
+  var cont = nodiv ? "" : "<div id=\"#"+ divid +"\" >\n";
+  var cgen = opts.cgen || null;
+  cont += "<ul>\n";
+  arr.forEach(function (it) {
+    cont += "  <li><a href=\"#"+it.id+"\">"+it.name+"</a></li>\n";
+  });
+  cont += "</ul>\n";
+  arr.forEach(function (it) {
+    cont += "  <div id=\""+it.id+"\">\n";
+    // Fill-up Callback ?
+    if (it.cont) { cont += it.cont; }
+    else if (cgen) { cont += cgen(it, opts); }
+    cont += "  </div>\n";
+  });
+  cont += nodiv ? "" : "</div>";
+  return cont;
+}
 
 var webview = {
   listview : listview,
@@ -537,7 +573,8 @@ var webview = {
   addoptions : addoptions,
   matrix : matrix,
   list: list,
-  multilist: multilist
+  multilist: multilist,
+  tabs: tabs
 };
 //var exports;
 //var module;
