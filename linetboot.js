@@ -14,7 +14,11 @@
  wget http://localhost:3000/memtest86+.bin
  md5sum memtest86+.bin
  
- 
+ # Allow use as component
+ Need to set headers (Taken from Docker sent headers):
+ Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, X-Registry-Auth
+ Access-Control-Allow-Methods: HEAD, GET, POST, DELETE, PUT, OPTIONS
+ Access-Control-Allow-Origin: *
 */
 "use strict;";
 // 'esversion: 6';
@@ -263,7 +267,7 @@ app.use(function (req, res, next) {
   // if (bootact[req.url]) {arp.getMAC(ipaddr, function(err, mac) { req.mac = mac; next(); }); } // ARP !
   
   //console.log("Setting CORS ...");
-  //res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Origin", "*"); // Access-Control-Allow-Origin
   //res.header("Access-Control-Allow-Headers", "X-Requested-With");
   
   next();
@@ -1043,6 +1047,7 @@ function hostinfolist (req, res) {
   // Note: Do NOT overwrite (now global) hostarr on (future) map() or filter() or sort()
   var arr = [];
   //res.type("application/json"); // Redundant
+  //res.header("Access-Control-Allow-Origin", "*");
   var viewtype = req.params["viewtype"] || ""; // Even "" has (default) handler !
   var datafillcb = cbs[viewtype]; // Callback to populate data
   if (!datafillcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
