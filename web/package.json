@@ -31,7 +31,8 @@
     "mustache": "3.0.1",
     "showdown": "~1.2.2",
     "wolfy87-eventemitter": "5.2.9",
-    "toastr":"2.1.4"
+    "toastr":"2.1.4",
+    "router66":"1.0.1"
   },
   "devDependencies": {},
   "oldDependencies": {
