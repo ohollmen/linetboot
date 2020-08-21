@@ -24,15 +24,16 @@
     "axios": "0.18.0",
     "bootstrap": "3.3.5",
     "chart.js": "2.7.3",
+    "docindex": "0.0.4",
     "dom-parser": "^0.1.6",
     "jquery": "3.3.1",
     "jquery-ui-dist": "1.12.1",
     "jsgrid": "1.5.3",
     "mustache": "3.0.1",
-    "showdown": "~1.2.2",
-    "wolfy87-eventemitter": "5.2.9",
-    "toastr":"2.1.4",
-    "router66":"1.0.1"
+    "router66": "1.0.2",
+    "showdown": "1.2.2",
+    "toastr": "2.1.4",
+    "wolfy87-eventemitter": "5.2.9"
   },
   "devDependencies": {},
   "oldDependencies": {
@@ -41,7 +42,8 @@
     "events": "3.1.0"
   },
   "scripts": {
-    "copydeps": "cp -p $PROJ_PATH/router666/Router666.js $PROJ_PATH/webview/webview.js ./jsx/; chmod a-w ./jsx/*; ls -al ./jsx"
+    "copydeps": "cp -p $PROJ_PATH/router666/Router666.js $PROJ_PATH/webview/webview.js ./jsx/; chmod a-w ./jsx/*; ls -al ./jsx",
+    "modinstall": "../node_modules/yarn/bin/yarn install"
   },
   "resolutions": {
     "color-name": "1.1.3"
