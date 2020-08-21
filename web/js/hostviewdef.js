@@ -177,7 +177,8 @@
    function haspackagecell(value, item) {
      if (value) { // item[value] . Does not work with dot-not.
        //return value;
-       return "<span title=\""+value+"\">"+"X"+"</span>";
+       // return "<span title=\""+value+"\">"+"X"+"</span>";
+       return "<i class=\"glyphicon glyphicon-check\"></i>";
     } 
      return "";
    }
