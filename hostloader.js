@@ -44,18 +44,18 @@ function hostsfile_load(hfn) {
 
 Hosts list can come from:
 - An Inventory style text file given in `global.hostsfile`
-- A JSON array given in global.hostnames
+- A JSON array given (directly) in main config `global.hostnames` (Array)
 
 In either case the (string) entries are in the same format, String:
 - Starts with hostname
-- Contains Optional key value pairs follow in key=my+value
+- Contains Optional key value pairs follow in `key=my+value`
 
 As shown in sample key-value pair above, the spaces must be escaped with
 same rules as URL (%HH sequences or '+' for space) as parsing the line
 is whitespace delimiter based.
 
 In general the format has a lot of similarities (basically is a subset) to Ansible hosts file format.
-The format does not support (non-exlusive list, e.g.) host groups (and their nestedness), grup variables.
+The format does not support (non-exlusive list, e.g.) host groups (and their nestedness) or group variables.
 However individual variable format is close to same (Note URL escaping stule for lineboot though).
 
 Host loading is performed in *synchronous* manner.
@@ -89,7 +89,7 @@ function hosts_load(global) {
   var i = 0;
   var groups = {}; // TODO: record groups
   var curr_g = '';
-  var re_g = /^\[([^\]]+)\]/;
+  var re_g = /^\[([^\]]+)\]/; // Group RE
   var hnames2 = [];
   hnames.forEach(function (hnline) {
     var g;
@@ -123,6 +123,10 @@ function hosts_load(global) {
   // NEW: Return for third party app (with no real global conf)
   return colls.hostnames;
 }
+/** Load Facts for all hosts.
+ * Uses `facts_load(hn)` to load individual host facts.
+ * @return None
+ */
 function facts_load_all() {
   if (!colls) { throw "No colls (module level) object !"; }
   if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
