@@ -1,0 +1,56 @@
+{
+  "title" : "Linetboot Docs",
+  "groups": {
+    "gen":"General",
+    "ins":"Lineboot Installation",
+    "osi":"OS Installlation"
+  },
+  "docs" : [
+    {
+      "title" : "DocIndex README.md",
+      "urlpath" : "README.md",
+      "grp":"gen"
+    },
+    {
+      "title" : "Frequently asked Question",
+      "urlpath" : "doc/README.faq.md",
+      "grp":"gen"
+    },
+    {
+      "title" : "Prerequisites",
+      "urlpath" : "doc/README.prereq.md",
+      "grp":"ins"
+    },
+    
+    {
+      "title" : "Configuration",
+      "urlpath" : "doc/README.configure.md",
+      "grp":"ins"
+    },
+    {
+      "title" : "Boot Media",
+      "urlpath" : "doc/README.bootmedia.md",
+      "grp":"ins"
+    },
+    {
+      "title" : "PXELinux Boot Menu",
+      "urlpath" : "doc/README.bootmenu.md",
+      "grp":"ins"
+    },
+    {
+      "title" : "Disks and Disk Partitioning",
+      "urlpath" : "doc/README.disk.md",
+      "grp":"osi"
+    },
+    {
+      "title" : "OS Package Mirrors",
+      "urlpath" : "doc/README.mirrors.md",
+      "grp":"osi"
+    },
+    {
+      "title" : "Troubleshooting",
+      "urlpath" : "doc/README.troubleshoot.md",
+      "grp":"osi"
+    }
+  ]
+}
