@@ -43,7 +43,7 @@
        if (!this.datakey) { throw "Data key not defined for filtering";  } // return;
        if (!this[this.datakey]) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
        var myarr = this[this.datakey];
-       if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") does not exist in controler"; } // return;
+       if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
        var fkeys = Object.keys(filter);
        var debug = this.filterdebug || 0;
        if (debug) { console.log("Filter keys:" + JSON.stringify(fkeys)); }
@@ -161,6 +161,7 @@ function on_host_click(ev, barinfo) {
   if (!hname) { alert("No hostname !"); return; }
   // Lookup host
   var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+  if (!ent) { return alert("No host by "+ hname); }
   var output = Mustache.render(tmpl, ent); // {hname: hname}
   $( "#dialog" ).html(output);
   $( "#dialog" ).dialog(dopts);
@@ -220,9 +221,13 @@ function ansishow(ev) {
   var dopts = {modal: true, width: 650, // See min,max versions
                     height: 600}
   $( "#dialog_ans" ).dialog(dopts);
+  
   // Hook select-reset listeners
-  $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
-  $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
+  function ansui_setup() {
+    $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
+    $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
+  }
+  ansui_setup();
 }
 /** Get values from UI and run ansible POST request.
 * - ansrunhosts, ansrungroups
@@ -247,18 +252,45 @@ function ansirun(ev) {
   });
   
 }
+// TODO: Make these more action-like ? title => name
+// Note: template might be of early (at tab creation) or late (at data load) type.
+// For now late templated should have tmpl: .. to false val and do templating themselves.
 var tabloadacts = [
-  {"title": "Packages",    "elsel": "#tabs-4", "tsel":"", cb: pkg_stats, "url": "/hostpkgcounts"},
-  {"title": "Groups",      "elsel": "#tabs-5", "tsel":"", cb: hostgroups, "url": "/groups"},
-  {"title": "Remote Mgmt", "elsel": "#tabs-6", "tsel":"", cb: rmgmt, "url": "/hostrmgmt"},
-  {"title": "NetProbe",    "elsel": "#tabs-63", "tsel":"", cb: probeinfo, "url": "/nettest"},
-  {"title": "LoadProbe",   "elsel": "#tabs-64", "tsel":"", cb: loadprobeinfo, "url": "/proctest"},
-  {"title": "Output Fmts", "elsel": "#tabs-65", "tsel":"", cb: outfmts, "url": "/allhostgen"},
-  {"title": "Hostkeys",    "elsel": "#tabs-67", "tsel":"", cb: sshkeys, "url": "/ssh/keylist"},
-  {"title": "PkgStat",     "elsel": "#tabs-68", "tsel":"", cb: pkgstat, "url":"/hostpkgstats"},
-  {"title": "About ...",   "elsel": "#tabs-7", "tsel":"", cb: function () {}, "url": ""},
-  //{"title": "", "elsel": "", "tsel":""},
+  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net"}, // url: "/list" (All 3)
+  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw"},
+  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist"}, // Last could have hdlr ?
+  {"name": "Packages",    "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null},
+  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null},
+  {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt"},
+  {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
+  {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe"},
+  {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,           hdlr: outfmts, "url": "/allhostgen", gridid: null},
+  {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys"},
+  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat"},
+  {"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about", hdlr: function () {}, "url": "", gridid: null},
+  {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs", hdlr: showdocindex, url: "/web/docindex.json"},
 ];
+
+function showdocindex (ev, act) {
+  //document.getElementById('content').innerHTML = contbytemplate(act.tmpl, act);
+  //$('#vtitle').html(act.name);
+  //if (!docIndex) { return alert("No docIndex module loaded"); }
+  // Mimick flow from docindex_main.js
+  var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1, acc: 0});
+  docIndex.ondocchange = function (docurl) { console.log("DOC-CHANGE: "+docurl); location.hash = '#nop'; };
+  var url = act.idxurl || act.url || "/docindex.json";
+  //if () {}
+  console.log("Staring load: "+ url);
+  $.getJSON(url).done(function (d) {
+    console.log("Completed load: "+ url);
+    console.log(d);
+    cfg.initdocs(d);
+  })
+  .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
+  ;
+
+};
+
 var tabloadacts_idx = {};
 tabloadacts.forEach(function (it) { tabloadacts_idx[it.elsel] = it; });
 var dopts = {modal: true, width: 600, // See min,max versions
@@ -268,8 +300,21 @@ var dopts = {modal: true, width: 600, // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
 
 window.onload = function () {
+  // TODO: Navigation
+  // var acts_menu = acts.filter((it) => { return it.menu; });
+  //$('nav').html( webview.list(acts_menu, {titleattr: "name"}) );
   // Setup Tabs
-  $( "#tabs" ).tabs();
+  // $('#...').html( webview.tabs(tabloadacts, null, {}) );
+  // TODO: use disabled: [] as needed
+  $( "#tabs" ).tabs({active: 1}); //  ... active will NOT load if already def. tab by default (e.g. 0)
+  // Populate tab templated (or literal) content (run before .tabs() ?)
+  tabloadacts.forEach((titem) => {
+    if (titem.tsel) {
+      // rapp.templated(); // document.getElementById ?
+      document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl
+      
+    }
+  });
   $( "#tabs" ).tabs({
     // ui has: newTab, newPanel, oldTab, oldPanel
     activate: function( event, ui ) {
@@ -277,21 +322,33 @@ window.onload = function () {
       var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
       console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
       // Do event forwarding ?
-      var an = tabloadacts_idx["#"+tgt];
+      var an = tabloadacts_idx[tgt]; // "#"+
       if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
+      // Load template ?
+      if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
       console.log(an);
-      an.cb();
+      //console.log(event);
+      // TODO: Dispatch as an route handler
+      //an.cb();
+      if (an.hdlr) { an.hdlr(event, an); }
     }
   });
   //var dataurls = ["/list", "/groups", "/hostpkgcounts", "/hostrmgmt", "/nettest", "/ssh/keylist"];
   // Also 2nd {params: {}}
-  data_load('/anslist/play', 'aplays');
-  data_load('/anslist/prof', 'aprofs');
-  axios.get('/list')
-  .then(function (response) {
+  // {id: "docindex", url: "/docindex.json"}
+  var dnodes = [{id: "hostlist", url: "/list"}, {id: "plays", url: "/anslist/play"}, {id: "aprofs", url: "/anslist/prof"}];
+  // Outdated / Redundant
+  //data_load('/anslist/play', 'aplays');
+  //data_load('/anslist/prof', 'aprofs');
+  var dl = new DataLoader(dnodes, {dstore: datasets});
+  dl.load(initapp);
+  //axios.get('/list').then(initapp)
+  //.catch(function (error) { console.log(error); });
+  function initapp (response) {
     //console.log(response);
-    db.hosts = response.data;
-    
+    // db.hosts = response.data;
+    //datasets["hostlist"] = response.data;
+    db.hosts = datasets["hostlist"];
     // Immediate grids
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
     ee.on("on_jsGrid_dist_done", function (d) {  });
@@ -299,10 +356,10 @@ window.onload = function () {
     // Others
     ee.on("on_jsGrid_rmgmt_done", function (d) { $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); });
     //  // Reload. TODO: Wait ...
-    function on_probe_reload() {
+    function on_probe_reload(jev) {
       $("#jsGrid_probe").fadeOut();
       $("#reloadsym").removeClass().addClass("glyphicon glyphicon-hourglass");
-      probeinfo();
+      probeinfo(); // Run !
     }
     ee.on("on_jsGrid_probe_done", function (d) {
       $("#jsGrid_probe").fadeIn(2000);
@@ -315,30 +372,28 @@ window.onload = function () {
     ee.on("on_dockerimg_done", function (d) { $("#dockerimg").dialog(dopts_grid); });
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
     
-    // Shared data, different views
-    showgrid("jsGrid_net", response.data, fldinfo.net);
-    showgrid("jsGrid_dist", response.data, fldinfo.dist);
-    showgrid("jsGrid_hw", response.data, fldinfo.hw);
+    // Shared data (/list), different views
+    //$( "#tabs" ).tabs( "option", "event", "activate" ); // NA
+    
+    //$( "#tabs" ).tabs( "load", 1 );
+    // https://stackoverflow.com/questions/17967902/trigger-tab-activate-function-jquery-ui-tabs
+    $( "#tabs" ).tabs("option", "active", 0 ); // Required trans. Does not trigger if 0, but does with 1 (!)
+    //showgrid("jsGrid_net",  datasets["hostlist"], fldinfo.net); // Initial show. Could trigger tab change
+    //showgrid("jsGrid_dist", datasets["hostlist"], fldinfo.dist);
+    //showgrid("jsGrid_hw",   datasets["hostlist"], fldinfo.hw);
     toastr.info("Grids loaded");
-    // Tab populating handlers
-    //pkg_stats(); // #tabs-4 Only now trigger fetch of pkg stats
-    //hostgroups();// #tabs-5
-    //rmgmt();     // #tabs-6  Was Unused: response.data
-    //probeinfo(); // #tabs-63 Launches HTTP
-    //outfmts();   // #tabs-65
-    //sshkeys();   // #tabs-67 Launches HTTP (NO UI setup)
-    //tabloadacts.forEach(function (it) { it.cb(); });
-    // Dialog options (moved to bigger scope)
+    
     
     // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
     $(".hostcell").click(on_host_click);
+    // OS/Version view ? 
     $(".drinfo").click(on_docker_info);
     $(".nfsinfo").click(on_docker_info);
     
     
-  })
-  .catch(function (error) { console.log(error); });
+  } // )
+  
   
   
   $(document).on('keypress', function(ev){
@@ -356,6 +411,25 @@ window.onload = function () {
   // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
   
 };
+/** Create Simple grid from pre-loaded (cached) data.
+ * 
+ */
+function simplegrid_cd(ev, an) {
+  document.getElementById(an.elsel).innerHTML = contbytemplate(an.tmpl, an);
+  // Extract fldinfo label from 
+  var m = an.gridid.match(/^jsGrid_(\w+)/);
+  if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
+  showgrid(an.gridid,  datasets["hostlist"], fldinfo[m[1]]);
+}
+// OLD: Tab populating handlers
+    //pkg_stats(); // #tabs-4 Only now trigger fetch of pkg stats
+    //hostgroups();// #tabs-5
+    //rmgmt();     // #tabs-6  Was Unused: response.data
+    //probeinfo(); // #tabs-63 Launches HTTP
+    //outfmts();   // #tabs-65
+    //sshkeys();   // #tabs-67 Launches HTTP (NO UI setup)
+    //tabloadacts.forEach(function (it) { it.cb(); });
+    // Dialog options (moved to bigger scope)
 
 /////// Packages //////////////
 var color = Chart.helpers.color;
@@ -410,7 +484,7 @@ var cmap = {
   
   function createchart(response, label, prop, canvasid) {
     if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    function dclone(d) { return JSON.parse(JSON.stringify(d)); }
+    //function dclone(d) { return JSON.parse(JSON.stringify(d)); }
     var pkginfo = response.data.data; // console.log(response.data.data);
     
     // label: null displays as :"null" (). See legend: { display: false} below.
@@ -422,7 +496,7 @@ var cmap = {
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // display: false - Important !!
-    var scales2 = dclone(scales);
+    var scales2 = rapp.dclone(scales);
     if (gscale) { scales2.yAxes[0].ticks.suggestedMax = gscale; }
     var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
     //window.myBar =
@@ -546,8 +620,7 @@ var cmap = {
 */
 function data_load(url, id, array, opts) {
   if (!url) { throw "data_load: No URL"; }
-  axios.get(url)
-  .then(function (response) {
+  axios.get(url).then(function (response) {
     var info = response.data;
     
     if (!Array.isArray(info) && info.data) { info = info.data; } // Heuristic assumption
@@ -583,7 +656,10 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   })
   .catch(function (error) { console.log(error); alert("No Docker info, "+ error); });
 }
-
+/** Display NFS exports from an NFS server.
+ * @param hname {string} - Hostname
+ * @param dialogsel {string} - 
+ */
 function nfsinfo(hname, dialogsel, cb) {
   // Load data
   // MOCKUP: return cb([], dialogsel);
