@@ -1381,6 +1381,7 @@ function host_pkg_stats(req, res) {
   hostarr.forEach(function (f) { // map ?
     var hn = f.ansible_fqdn;
     var path = root + "/" + hn;
+    if (!fs.existsSync(path)) { return; }
     //arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
     var pidx = ospkgs.pkgset('', hn, path, {idx: 1});
     //console.log(pidx);
