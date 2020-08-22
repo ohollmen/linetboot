@@ -126,6 +126,12 @@ kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
 # Try possibly similar to: root=squash:http://192.168.9.10:5248/images/ubuntu/amd64/ga-18.04/bionic/daily/squashfs
 append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
 
+# MATE 20.04 Conservative config, mimick 18.X Working NFS install
+label ubuntu20dt
+menu label Ubuntu MATE 20 Desktop (64bit) Live (No Auto-Install)
+kernel http://{{ httpserver }}/ubuntu20dt/casper/vmlinuz
+append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
+
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
 # menu label Installer Boot - Kickstart (First Disk ignored)
@@ -134,6 +140,12 @@ append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-
 # # TODO: Add: auto=true 
 # append initrd=http://{{ httpserver }}/initrd.gz -- ks=http://192.168.1.141/ks.cfg
 # #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
+
+# Ubuntu Server 20.04
+#label localinst_ps20
+#menu label Install Ubuntu 20.04 Server (TODO: Automated)
+#kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
+# append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 
 label localinst_ps18
 menu label Install Ubuntu 18.04 Server (Full Automated)
