@@ -21,7 +21,11 @@
       "urlpath" : "doc/README.prereq.md",
       "grp":"ins"
     },
-    
+    {
+      "title" : "Installation (Quick Guide)",
+      "urlpath" : "doc/README.install.md",
+      "grp":"ins"
+    },
     {
       "title" : "Configuration",
       "urlpath" : "doc/README.configure.md",
