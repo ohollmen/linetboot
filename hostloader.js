@@ -56,7 +56,8 @@ is whitespace delimiter based.
 
 In general the format has a lot of similarities (basically is a subset) to Ansible hosts file format.
 The format does not support (non-exlusive list, e.g.) host groups (and their nestedness) or group variables.
-However individual variable format is close to same (Note URL escaping stule for lineboot though).
+However individual variable format is close to same (Note URL escaping
+style for linetboot though).
 
 Host loading is performed in *synchronous* manner.
 minimalistic loading of hosts for a generic app:
