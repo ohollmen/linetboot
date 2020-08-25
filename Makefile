@@ -10,8 +10,12 @@ HTTP_ROOT=/var/www/html
 # https://stackoverflow.com/questions/3860137/how-to-get-pid-of-my-make-command-in-the-makefile
 # Also $$PPID of a command here would give make process id.
 PXETEMPDIR := $(shell mktemp -u)
+# PXELINUX
 PXEMODPATH=/usr/lib/syslinux/modules/bios
 PXEMODULES=ldlinux.c32 libutil.c32 menu.c32 vesamenu.c32 libcom32.c32
+# IPXE Binaries (/usr/lib/ipxe/ipxe.iso needed ?)
+IPXEBINS=/usr/lib/ipxe/ipxe.efi /usr/lib/ipxe/ipxe.lkrn /usr/lib/ipxe/ipxe.pxe /usr/lib/ipxe/undionly.kkpxe /usr/lib/ipxe/undionly.kpxe
+# 
 UBU18_IMAGE_URL=http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
 UEFI_B_PATH=/usr/lib/SYSLINUX.EFI/efi64
 MEMDISK_PATH=/usr/lib/syslinux/memdisk
@@ -91,7 +95,10 @@ pxelinux_install:
 	#touch $(PXETEMPDIR)/pxelinux.cfg/default
 	# Copy to TFTP Server (contents of)
 	rsync -av $(PXETEMPDIR)/ $(TFTP_HOST):$(TFTP_PATH)/
-	
+ipxe_install:
+	mkdir $(PXETEMPDIR)
+	cp -p $(IPXEBINS) $(PXETEMPDIR)
+	rsync -av $(PXETEMPDIR)/ $(TFTP_HOST):$(TFTP_PATH)/
 dia:
 	# In Debian/Ubuntu /usr/bin/plantuml is a nice wrapper
 	# to avoid starting by java -jar plantuml.jar ...
@@ -113,9 +120,9 @@ dotlinetboot:
 	@[ ! -f "~/.linetboot/user.conf.json" ] && cp ./initialuser.json ~/.linetboot/user.conf.json
 	@echo "Set following env variables in your ~/.bashrc (or equivalent shell config)"
 	@echo "(Note: Change /home/ to /Users/ on Mac!)"
-	@echo "export LINETBOOT_GLOBAL_CONF=/home/$USER/.linetboot/global.conf.json"
-	@echo "export LINETBOOT_IPTRANS_MAP=/home/$USER/.linetboot/iptrans.json"
-	@echo "export LINETBOOT_USER_CONF=/home/$USER/.linetboot/user.conf.json"
+	@echo "export LINETBOOT_GLOBAL_CONF=/home/$(USER)/.linetboot/global.conf.json"
+	@echo "export LINETBOOT_IPTRANS_MAP=/home/$(USER)/.linetboot/iptrans.json"
+	@echo "export LINETBOOT_USER_CONF=/home/$(USER)/.linetboot/user.conf.json"
 	@ls -al ~/.linetboot
 	
 jsdoc: FORCE
