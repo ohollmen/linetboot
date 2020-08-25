@@ -43,7 +43,7 @@ Express static files delivery module "static" is not great about allowing interc
 Enable Apache static file delivery (assuming typical Apache port 80) by changing original "httpserver" value  `"192.168.1.141:3000"`
 to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will still be delivered by net boot install system.
 
-## PXE Client and PXE Linux Error messages
+## PXE Client Error messages (Non-PXE Linux)
 
 The problem with PXE Boot error messages are that they remain on screen for a very short time.
 
@@ -68,6 +68,8 @@ Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address 
     name rules)
   - RedHat firewall heuristics may refuse tftp traffic after too may rapid tries
   - Solution: Create symlink by one of the first tried filenames (e.g. MAC address with octets dash-separated).
+- PXE-E11 - ARP Timeout (Lenovo Z580 Laptop, on-n-off). Serverfault.com suggests bad network switch as origin of problem. It could also be single bad port on switch.
+- PXE-E18 Server Response Timeout
 
 ## PXELinux errors
 

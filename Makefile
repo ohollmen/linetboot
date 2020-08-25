@@ -123,6 +123,7 @@ dotlinetboot:
 	@echo "export LINETBOOT_GLOBAL_CONF=/home/$(USER)/.linetboot/global.conf.json"
 	@echo "export LINETBOOT_IPTRANS_MAP=/home/$(USER)/.linetboot/iptrans.json"
 	@echo "export LINETBOOT_USER_CONF=/home/$(USER)/.linetboot/user.conf.json"
+	@echo "export FACT_PATH=/home/$(USER)/hostinfo"
 	@ls -al ~/.linetboot
 	
 jsdoc: FORCE

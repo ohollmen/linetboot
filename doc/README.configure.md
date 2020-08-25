@@ -61,7 +61,7 @@ Other good info on configring dnsmasq:
 - https://autostatic.com/setting-up-a-pxe-server-with-dnsmasq/
 - https://serverfault.com/questions/986773/force-client-to-send-dhcp-options-to-next-server
 - https://github.com/chan-sccp/chan-sccp/wiki/setup-dhcp-service
-- [Sonicwall table of DHCOP Option codes](http://help.sonicwall.com/help/sw/eng/6800/26/2/3/content/Network_DHCP_Server.042.12.htm)
+- [Sonicwall table of DHCP Option codes](http://help.sonicwall.com/help/sw/eng/6800/26/2/3/content/Network_DHCP_Server.042.12.htm)
 - [Dealing with Option 93 / vendor-class-identifier](https://www.syslinux.org/archives/2014-October/022683.html)
 - https://forums.fogproject.org/topic/8726/advanced-dnsmasq-techniques
 Reload server config by `sudo kill -HUP $DNSMASQ_PID` (Use ps -ef | grep dnsmasq to find out pid).
@@ -81,11 +81,18 @@ for the launch of dnsmasq in `/etc/default/dnsmasq`:
 
 Infoblox is a commercial DHCP/DNS Server with Web Admin GUI, see: [Configuring IPv4 BOOTP and PXE Properties](https://docs.infoblox.com/display/NAG8/Configuring+IPv4+BOOTP+and+PXE+Properties)
 
-Based on above link the following need to be set (in the UI):
+The PXE Boot settings are often (exclusively) a property of a network (Not host). Infobox allows
+finding out the network by searching by "IP Address" or "DNS Name", from search results, choose
+the network (w. CIDR mask), e.g. "10.75.128.0/19" and click Edit (to view or edit).
 
-- Boot File: name of the boot file the client must download
-- Next Server: Enter the IP address or hostname of the boot file server where the boot file is stored (Normal PXE clients)
-- Boot Server: Same as above (but always hostname), but for clients which do not request IP Address lease, but only Boot Server name
+After getting to IPv4 network view (You may need to "Toggle Advanced Mode" to see BOOTP/PXE related details) navigate to tab (i.e. click) **IPv4 BOOTP/PXE** to enter (in section "BOOTP Settings"):
+
+- **Boot File**: name of the boot file the client must download (Enter "lpxelinux.0")
+- **Next Server**: Enter the IP address or hostname of the boot file server where the boot file is stored (Normal PXE clients, enter IP Address of your TFTP Server)
+- **Boot Server**: Same as above, but for clients which do not request IP Address lease, but only Boot Server name (This is supposed to be hostname, but is sometimes filled with IP address).
+
+The Next Server and Boot Server are often redundantly set to same value.
+Do not set (checkbox) "Deny BOOTP Requests".
 
 ## Notes on PXE related DHCP options
 
@@ -147,18 +154,46 @@ Lineboot Configuration is best started by creating the initial "hosts" file
 
 ## Main Configuration
 
-Configuration in the main config file `global.conf.json`
+Configuration in the main config file `global.conf.json` (Currently items with "main." reside on top level):
 
-- httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation). Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
-- userconfig - OS Install initial user info (See also how env. LINETBOOT_USER_CONF overrides this)
+- main.httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
+  Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
+  This setting is important (and mainly used on) templates (e.g. bootmenu).
+- main.nfsserver - NFS server for special installations that cannot cope with HTTP (E.g. Ubuntu
+  18.04 Desktop seems to be crippled with HTTP)
+- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this). This external file should have members:
+  - fullname - full firstname, lastname of user
+  - username - login username for user
+  - password - login password for user (in clear text for now)
+  - groups - The OS groups user should be member of
+  - homedir - Home directory for user
 - tmplfiles (obj) - Object with keys "preseed", "ks" to refer to (Mustache template toolkit) template files to be used for Debian Preseed and RedHat Kickstart configoutput respectively. Tweak only if you need to customize the templates.
 - fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be enabled for install.
-- maindocroot (str) - The dcocument root of linetboot (Express) static file delivery
-- useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
-- hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
-- hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config
-  (array valued) key for hostnames.
-- Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now): locale, keymap, time_zone, install_recommends (D-I only), ntpserver, net (Object with global network base settings)
+- main.maindocroot (str) - The dcocument root of linetboot (Express) static file delivery
+- main.useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
+- main.hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
+- main.hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config 
+  (array valued) key for hostnames (Default: Current users ~/.linetboot/hosts).
+- net - Install time (and general) Network settings
+  - netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
+  - gateway - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
+  - namesearch - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
+  - nameservers - DNS nameservers in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
+  - domain - Domainname suffix for local network (E.g. "veryclose.net").
+  - dev - The default network interface name for the OS being installed (E.g. "eno1")
+  - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above).
+
+### Installation 
+
+Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now) that are used on preseed/kickstart templates:
+- locale - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
+- keymap - Keyboard map / layout (E.g. "us")
+- time_zone - Timezone of hosts (E.g. "")
+- install_recommends - Debain Installer (D-I only) setting for installing recommended dependencies (true/false)
+- ntpserver - Network Time Server
+- postscript - Script to launch at the end of installation
+
+See "net" section above for install network settings (Object with global network base settings).
 
 ## Linetboot Environment Variables
 
@@ -206,5 +241,5 @@ Enable in "NIC Configuration" (Only important/meaningful ones shown):
 
 - Legacy Boot Protocol: PXE
 - Boot Strap Type: Auto Detect
-- Surprisingly setting "Retries" to more than one (e.g. even 2-3) may help.
+- Setting "Retries" to more than one (e.g. even 2-3) often helps.
 

@@ -75,7 +75,7 @@ Run facts gathering:
      ansible -b -u admuser -K -i linux1, all -m setup --tree ~/hostinfo
 
 Make sure your SSH key is copied to host(s) with ssh-copy-id.
-If you have problems getting ansible running on lineboot machine, the hostinfo DB can be easily rsynced from another host (that is more capable running ansible):
+If you have problems getting ansible running on linetboot machine, the hostinfo DB can be easily rsynced from another host (that is more capable running ansible):
 
     rsync ~/hostinfo admuser@boothost:/home/admuser/hostinfo
 

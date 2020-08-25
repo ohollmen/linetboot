@@ -126,7 +126,7 @@ If you are running a fairly recent distro (Ubuntu >= 16.04, Centos/RHEL >= 7) it
 Node.js and Node package manager from distro sources:
 
     # Debian/Ubuntu - available directly in default repos
-    sudo apt-get install nodejs npm
+    sudo apt-get install nodejs npm --no-install-recommends
     # Centos (and RHEL)
     # Add NodeSource yum repository (Includes npm automatically)
     curl -sL https://rpm.nodesource.com/setup_10.x | sudo bash -
