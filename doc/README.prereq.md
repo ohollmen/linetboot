@@ -6,7 +6,7 @@ List of prerequisites for a functional lineboot system:
 - syslinux-efi - Network bootloader for UEFI
 - Tftp server - to store PXE Linux and menus on (Debian/Ubuntu: tftpd, tftpd-hpa, dnsmasq or atftpd, Redhat/CentOS: tftp-server)
 - nodejs and npm - to run the preseed generation (and optionally mirror server for static file content (packages))
-- ansible - to record host facts
+- ansible - to extract and record host facts form inventoried machines
 
 Additionally you need download CD/DVD ISO Images, e.g:
 - Ubuntu: [archive.ubuntu.com](http://archive.ubuntu.com/ubuntu/dists/).
@@ -85,7 +85,7 @@ Debian/Ubuntu (Default TFTP Server data/content root: **/srv/tftp**).
     # However this TFTP server does not support TFTP "options" (See RFC 2347).
     # Some X86_64 UEFI BIOSes require options for PXE Boot TFTP phase.
     sudo apt-get install tftp tftpd
-    # For options support install tftpd-hpa
+    # For TFTP protocol "options" support (RFC 2347,2349) install tftpd-hpa
     sudo apt-get install tftpd-hpa
 
 In Debian/Ubuntu follow log `/var/log/syslog` for TFTP daemon messages.
@@ -116,7 +116,11 @@ Test and Verify:
 
 in Centos follow the system log file `/var/log/messages` for TFTP daemon messages.
 
-## Installing Node.js
+## Installing Node.js and NPM
+
+Node.js runs the lineboot server. Linetboot depends on a bunch of NPM (Node package manager)
+packages from NPM internet repos, so you will need a npm (or npm compatible) package manager
+to handle installation of these.
 
 If you are running a fairly recent distro (Ubuntu >= 16.04, Centos/RHEL >= 7) it is suggested you install
 Node.js and Node package manager from distro sources:
@@ -146,4 +150,16 @@ Alternative rsync install (directly) under /usr/local/:
     # re-cache executables in $PATH
     hash -r
 
-The generic Node install from nodejs.org may become handy with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way.
+The generic Node install from nodejs.org may become handy with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way. It is also very viable way of installing Node on MacOSX.
+
+## Installing Ansible
+
+Ansible is used to extract "host facts" from invetoried hosts (e.g. ones being booted using linetboot).
+Installing the distro bundled ansible is recomended:
+
+    # Debian/Ubuntu - available directly in default repos
+    sudo apt-get install ansible --no-install-recommends
+    # Centos (and RHEL)
+    sudo yum install ansible
+    # MacOSX (brew likes to run non-superuser)
+    brew install ansible
