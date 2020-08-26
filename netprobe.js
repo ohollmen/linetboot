@@ -20,6 +20,7 @@ var ssh = new node_ssh();
 //NOT HERE: var ssh2Client = ssh2.client();
 var pkey;
 var selfmac; // Discover own mac (for better report, where self would have mac error)
+var tout;
 /**
 */
 function init(opts) {
@@ -32,10 +33,10 @@ function init(opts) {
   servers = opts.dns ? opts.dns : dns.getServers();
   //resolver.setServers([]);
   // require('os').networkInterfaces() // [{mac: ...},{mac:...},...]
-  
+  if (opts.tout) { tout = opts.tout; }
 }
 /** Probe Network connectivity and setup on single host (DNS, Ping SSH).
-* @todo Convert to async.series
+* @todo Convert to async.series, call netresolve or netprobe
 */
 function resolve(hnode, cb) {
   cb = cb || function () {};
@@ -64,7 +65,7 @@ function resolve(hnode, cb) {
         if (err) { console.log("Reverse Resolution error: " + err); return cb(null, prec); }
         if (domains[0] == hn) { prec.nameok = 1;}
         console.log("Reverse result: " + JSON.stringify(domains));
-        // Note: Lineboot host itself does not resolve. Implement self-check differentiation !
+        // Note: Linetboot host itself does not resolve. Implement self-check differentiation !
         //arp.getMAC(ipaddr, function(err, mac) {
         //  if (err) { console.log("No ARP response for "+ ipaddr); return cb(null, prec); }
         //  prec.macok = 1; // mac; // mac rdundant
@@ -196,7 +197,9 @@ function stats_proc(hnode, cb) {
   // var cmd = "/bin/ps -ef | /usr/bin/wc -l";
   var hn = hnode.ansible_fqdn;
   var prec = {"hname": hn, "pcnt": -1};
+  // readyTimeout
   var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
+  if (tout) { sshcfg.readyTimeout =  tout; }
   if (!pkey) { console.log("No pkey !"); prec.ssherr = "No pkey"; return cb(null, prec); }
   console.log("Starting to connect to: " + hn);
   var oparams = [

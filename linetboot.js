@@ -60,7 +60,9 @@ app.use(bodyParser.json({limit: '1mb'}));
 * @todo Perform sanity checks in mirror docroot.
 */
 function app_init(global) {
+  /** Modules */
   app.set('json spaces', 2);
+  netprobe.init({tout: (global.probe ? global.probe.tout : 0)});
   //app.use(express.static('pkgcache'));
   // Express static path mapping
   // Consider: npm install serve-static
@@ -105,9 +107,9 @@ function app_init(global) {
   // global.mirror.docroot
   // For local disk boot (recent) kernels and network install as well
   //global.maindocroot = "/isomnt/";
-  if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot does not exist"); process.exit(1); }
+  if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot '"+global.maindocroot+"' does not exist"); process.exit(1); }
   // Main docroot
-  app.use(express.static(global.maindocroot)); // e.g. /var/www/html/
+  app.use(express.static(global.maindocroot)); // e.g. /var/www/html/ or /isomnt/
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distors that need bare ISO image (non-mounted).
   app.use(express.static("/isoimages"));
   app.use('/web', express.static('web')); // Host Inventory
@@ -162,6 +164,8 @@ function app_init(global) {
   // NFS/Showmounts
   
   app.get('/showmounts/:hname', showmounts);
+  // WIP: Reboot
+  app.get('/reboot/:hname', host_reboot);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -386,7 +390,7 @@ function preseed_gen(req, res) {
   // parser._headers // Array
   console.log("req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full) URL: " + req.url + "(ip:"+ip+")"); // osid=
-  // Map URL to symbolic template name needed.
+  // Map URL to symbolic template name needed. template names get mapped by global.tmplfiles (Object-map, See main config)
   var tmplmap = {
      "/preseed.cfg": "preseed",
      "/ks.cfg":      "ks",
@@ -400,6 +404,10 @@ function preseed_gen(req, res) {
      // https://github.com/CanonicalLtd/subiquity/tree/master/examples
      // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls/QuickStart
      // "":"", // Ubuntu 20.04 YAML
+     // Windows autounattend.xml
+     // https://www.packer.io/guides/automatic-operating-system-installs/autounattend_windows
+     // https://github.com/StefanScherer/packer-windows
+     // "/autounattend.xml": ""
   };
   // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
   var skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
@@ -557,7 +565,8 @@ function host_params(f, global, ip, ctype, osid) {
   // netconfig(net, f);
   ///////////////////////// DISK /////////////////////////////////
   // Disk logic was embedded here
-  console.error("Calling disk_params (by:" + f + ")");
+  console.error("Calling disk_params(f) (by:" + f + ")");
+  // var hdisk = require("./hostdisk.js");
   var disk = disk_params(f);
   
   // Account for KS needing nameservers comma-separated
@@ -566,7 +575,7 @@ function host_params(f, global, ip, ctype, osid) {
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
   d.user = user; // global
-  d.disk = disk;
+  d.disk = disk; // Gets put to data structure here, but template decides to use or not.
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
@@ -584,10 +593,16 @@ function host_params(f, global, ip, ctype, osid) {
 }
 
 /** Generate Disk parameters for super simple disk layout: root+swap (and optional boot).
-  * Calculate disk params based on the facts
+  * Calculate disk params based on the facts.
   * The unit on numbers is MBytes (e.g. 32000 = 32 GB)
   * See facts sections: ansible_device_links ansible_devices ansible_memory_mb
-  * @param facts 
+  * @param f {object} - Ansible facts (w. ansible_devices, ansible_memory_mb, ... on top level).
+  * @return Disk Object
+  * 
+  * @todo Allow output generation in various unattended install recipe formats
+  * - Debian/Ubuntu
+  * - RH kickstart
+  * - Windows Autounattend.xml (XML Section DiskConfiguration)
   */
   function disk_params (f) {
     var disk = {rootsize: 40000, swapsize: 8000, bootsize: 500}; // Safe undersized defaults in case we return early (should not happen)
@@ -1216,7 +1231,7 @@ function nettest(req, res) {
     res.json({status: "ok", data: results}); // dtms: dt
   });
 }
-/** Perform process-geared probing on host (numproc, load, uptime)
+/** Perform process-geared probing on host (numproc, load, uptime) /proctest
  */
 function proctest(req, res) {
   var jr = {"status": "err", "msg": "Process Probing failed. "};
@@ -1394,4 +1409,64 @@ function host_pkg_stats(req, res) {
     arr.push(ent);
   });
   res.json({status:"ok", data: arr, grid: gdef});
+}
+/** TODO: Reboot host using BMI by RedFish or IPMI.
+ * Require PIN ?
+ * Always validate host and its identity from facts.
+ * TODO: Consider interrogating ".../Systems/" and choosing resp.Members[0]["@odata.id"]
+ * Params: id
+ * Could first query "PowerState" by GET
+ * Refs:
+ * https://www.dell.com/community/Systems-Management-General/Power-Cycle-System-Cold-Boot-via-rest-api/td-p/5081009
+ * https://github.com/dell/iDRAC-Redfish-Scripting/blob/master/Redfish%20Python/SetNextOneTimeBootDeviceREDFISH.py
+ * https://stackoverflow.com/questions/63402788/how-to-reboot-a-system-using-the-redfish-api
+ * https://docs.oracle.com/cd/E19273-01/html/821-0243/gixvt.html
+ * https://redfishforum.com/thread/261/host-warm-reboots
+ * https://eehpcwg.llnl.gov/assets/121015_intro_to_redfish.pdf - 2015 overview of RedFish with good JSON message examples
+ */
+function host_reboot(req, res) {
+  var jr = {"status": "err", msg: "Failed to reboot."};
+  var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
+  var rq = req.query;
+  var p = req.params;
+  
+  if (!p || !Object.keys(p).length) { jr.msg += " No URL path params."; return res.json(jr); }
+  if (!p.hname) { jr.msg += " No Host."; return res.json(jr); }
+  var ipmiconf = global.ipmi;
+  if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
+  
+  if (rq && rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; }
+  var f = hostcache[p.hname];
+  // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
+  function basicauth(obj) {
+    let buff = new Buffer(obj.user + ":" + obj.pass); // , 'ascii'
+    return buff.toString('base64');
+  }
+  var bauth = basicauth(ipmiconf);
+  // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi"
+  // failed: Unsupported Reset Type:ColdBoot"
+  // HP wants: “ResetType”: “ColdBoot”
+  // Get IPMI / iDRAC URL. All URL:s https.
+  // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
+  var sysid = "1";
+  if (f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
+  var rebooturl = {
+    "base": "/redfish/v1/",
+  // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
+  // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
+  };
+  var rfurl = rebooturl.base + "Systems/" + sysid;
+  // hdrs = {"content-type": "application/json"}
+  // hdrs[""]
+  // Expect HTTP: 204 (!)
+  // request.post();
+  /////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
+  // No possibility to boot PXE on next boot ?
+  // https://ma.ttwagner.com/ipmi-trick-set-the-boot-device/ (IBM)
+  // https://www.dell.com/community/PowerEdge-Hardware-General/Set-up-boot-method-using-IPMI/td-p/3775936 - Dell
+  // https://community.pivotal.io/s/article/How-to-work-on-IPMI-and-IPMITOOL?language=en_US
+  //var ipmicmd = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} power {{ powopt }}";
+  // " chassis bootdev pxe" // For the next boot (only, unless options=persistent option given) IBM
+  // "chassis bootparam set bootflag pxe" - Dell ?
+  res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
 }
