@@ -28,12 +28,12 @@ Example download:
 
     # Download by wget or curl
     wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
-    #  For good habit, check MD5 (or SHA...) against download site given
+    #  For good habit, check MD5 (or SHA...) against checksum given at download site.
     md5sum ubuntu-18.04.1-server-amd64.iso
 
 ## Creating ISO Image mount dirs
 
-Because of non-modified aspect, all the images used by linetboot can be mounted
+All the images used by linetboot can be mounted
 with linux loop-mount method where image looks like file tree under the
 mountpoint.
 
@@ -45,6 +45,7 @@ these same names may be refleced in the pxelinux boot menu "menu label ..." line
       centos7/  (mount -o loop ...) -> /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso
       gparted/  (mount -o loop ...) -> /usr/local/iso/gparted-live-0.31.0-1-amd64.iso
 
+You can make these mounts permanent in /etc/fstab as needed (to re-establish them after reboot).
 
 The linetboot example setup uses a single top mount directory /isomnt/. Creating it and the
 individual distro directories will be one of the rare root user operations needed:
@@ -77,16 +78,16 @@ via HTTP for the http server configured as "httpserver" in lineboot main config.
 ## HTTP delivery
 
 Note that with linetboot all boot and package files (from mounted ISO images) are fetched via HTTP, **not** TFTP.
-Setup your linetboot server to 
+Setup your linetboot server "maindocroot" to refer to the ISO mount path (e.g. "/isomnt/")
 
 ## Hints on boot name labels
 
 Boot label names lenght and complexity is up to your usage. If you only install servers (or only desktops)
-and you have standardized on OS 32/64 bitness (e.g. never 32 bit again), shor labels, such
+and you have standardized on OS 32/64 bitness (e.g. never 32 bit again), short labels, such
 as "ubuntu18", "centos7" may suffice.
 
 If on the other hand you allow booting different bitnesses (32/64) plus server and desktop versions
-of your (example) ubuntu variants, your naming convention needs to grow in length and detail:
+of your (example) ubuntu variants, your naming convention needs to grow in length and detail (e.g.):
 
     ubuntu-18-i386-serv  # 32 bit Server
     ubuntu-18-amd64-serv # 64 bit Server

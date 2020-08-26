@@ -10,11 +10,11 @@ Minimum install must-haves (See doc/README.prereq.md for more details):
 
 - Linux or Mac Operating system to install Linetboot onto
 - SSH Client and git on linetboot machine
-- Ansible on lineboot machine
+- Ansible on linetboot machine
   - SSH Server on and python on remote machines
 - Full Node.js environment with NPM (Node package manager).
 
-## Getting Lineboot Sourcecode
+## Getting Linetboot Sourcecode
 
 Clone Linetboot code
 ```
@@ -24,12 +24,14 @@ cd ~
 mkdir ~/.linetboot
 # Create host facts directory
 mkdir ~/hostinfo
+# Create OS packages list directory
+mkdir ~/hostpkginfo
 # Clone
 git clone https://github.com/ohollmen/linetboot.git
-# Change to lineboot to copy configs
+# Change to linetboot to copy configs
 cd linetboot
 # Copy configs as "template" for your personal env config
-# in "~/.lineboot". See Makefile, target dotlinetboot for all
+# in "~/.linetboot". See Makefile, target dotlinetboot for all
 # that is copied here. Add requested env variables to ~/.bashrc
 # (or to a file sourced from there).
 make dotlinetboot
@@ -46,11 +48,11 @@ cd ..
 
 ## Populate Hostnames
 
-Even small linetboot environment has a requirement for lineboot host knowing
+Even small linetboot environment has a requirement for linetboot host knowing
 the hosts by names. Use either /etc/hosts as a "wannabe" hostname resolution
-mechanism, or settle for a "real" DNS, where open source package "dnsmasq" would be a good lightweight DNS solution. If you are installing lineboot in a company environment, you likely already have a DNS and do not need to do anything.
+mechanism, or settle for a "real" DNS, where open source package "dnsmasq" would be a good lightweight DNS solution. If you are installing linetboot in a company environment, you likely already have a DNS and do not need to do anything.
 
-Add all inventoried hosts into file `~/.lineboot/hosts` (A stub for this should already exist after `make dotlineboot`, see above). Example contents:
+Add all inventoried hosts into file `~/.linetboot/hosts` (A stub for this should already exist after `make dotlinetboot`, see above). Example contents:
 
 ```
 ws-001.comp.com
@@ -99,16 +101,16 @@ Example of manual package extraction commands (for DEB and RPM based distros):
 
 NOTE: There should be a supporting ansible playbook for doing this.
 
-# Misc config adjustments
+# Misc. Config Adjustments
 
 Main configuration (global.conf.json).
 - Change `maindocroot` to an existing directory or create `/var/www/html/` (The
   maindocroot must be an existing directory).
 - Change `hostsfile` to name your hostsfile (e.g. /home/mrsmith/.linetboot/hosts)
 
-# Start Linetboot Server
+# Starting Linetboot Server
 
-Lineboot runs as non-root user:
+Linetboot runs as non-root user:
 
     # Start purely by node
     $ node linetboot.js
