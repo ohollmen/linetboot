@@ -1222,14 +1222,14 @@ function nettest(req, res) {
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   // TODO: Timing ! var t1 = 
   // Filter out ones with err
-  /*
+  
   var hostarr2 = hostarr.filter((h) => {
     var p = global.hostparams[h.ansible_fqdn];
-    if (p && p.err) { return 1; }
+    if (p && p.nossh) { return 1; }
     return 0;
   });
-  */
-  netprobe.probe_all(hostarr, "net", function (err, results) {
+  
+  netprobe.probe_all(hostarr2, "net", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     // Note: There seems to be null (non-Object) entries in the results Array.
     // These seem to be due to resolveAny() failing and cb params missing.
