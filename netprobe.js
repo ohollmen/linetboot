@@ -137,7 +137,14 @@ function probe_all(harr, usecase, cb) {
   if (usecase == "proc") { callable = stats_proc; }
   debugarr = [];
   // Only on debug:
-  opts.debug && setTimeout(function () { console.log("Dump "+debugarr.length+" hosts:\n"+JSON.stringify(debugarr, null, 2)); }, 30000);
+  opts.debug && setTimeout(function () {
+    console.log("Dump "+debugarr.length+" hosts:\n"+JSON.stringify(debugarr, null, 2));
+    var idx = {};
+    debugarr.map((it) => { idx[it.hname] = it; });
+    console.log("Missing (if any):"); let i = 0;
+    harr.forEach((it) => { if (!idx[it.ansible_fqdn]) { console.log(it.ansible_fqdn); $i++; } });
+    console.log("Done reporting Missing ("+i+")");
+  }, 30000);
   console.log("Probe Load on "+harr.length+" hosts");
   async.map(harr, callable, function(err, results) {
     if (err) { return cb("Error probing hosts: " + err, null); }

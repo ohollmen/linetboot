@@ -1221,6 +1221,14 @@ function nettest(req, res) {
   //netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   // TODO: Timing ! var t1 = 
+  // Filter out ones with err
+  /*
+  var hostarr2 = hostarr.filter((h) => {
+    var p = global.hostparams[h.ansible_fqdn];
+    if (p && p.err) { return 1; }
+    return 0;
+  });
+  */
   netprobe.probe_all(hostarr, "net", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     // Note: There seems to be null (non-Object) entries in the results Array.
