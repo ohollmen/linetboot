@@ -21,6 +21,7 @@ var ssh = new node_ssh();
 var pkey;
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
+var opts = {tout: 0, debug: 0};
 /**
 */
 function init(opts) {
@@ -201,7 +202,7 @@ function stats_proc(hnode, cb) {
   var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
   if (tout) { sshcfg.readyTimeout =  tout; }
   if (!pkey) { console.log("No pkey !"); prec.ssherr = "No pkey"; return cb(null, prec); }
-  console.log("Starting to connect to: " + hn);
+  //console.log("Starting to connect to: " + hn);
   var oparams = [
     {id: "upt", cmd: "uptime", pcb: parse_w}, // uptime or w
     {id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
@@ -216,18 +217,21 @@ function stats_proc(hnode, cb) {
   // 
   function runprobecmd(cfg, cb) {
     var conn = new ssh2.Client();
-    conn.on('ready', function() {
+    conn.on('ready', function() { // After succesful auth
       console.log('conn-ready on ' + hn + "(" +cfg.id+ ")");
       conn.exec(cfg.cmd, function(err, stream) {
         if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, prec); }
         stream.on('close', function(code, signal) {
-          console.log('stream-close: code=' + code + ', signal=' + signal + ', tout=' +tout+ '('+hn+')');
-          conn.end();
-        }).on('data', function on_data_uptime(data) {
-          console.log('STDOUT('+cfg.id+'): ' + data); // Buffer
-          //prec[cfg.prop] = data.toString(); // parseInt(data);
+          // signal seems to be ~always undefined ', signal=' + signal +
+          console.log('stream-close: code=' + code +  ', tout=' +tout+ ' ('+hn+')');
+          //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
+        })
+        .on('end', function () { conn.end(); return cb(null, prec); }) // NEW (move conn.end() here)
+        .on('data', function on_data_uptime(data) {
+          //console.log('stream-data('+cfg.id+'): ' + data); // Buffer
+          //OLD: prec[cfg.prop] = data.toString(); // parseInt(data);
           cfg.pcb(data.toString(), prec);
-          return cb(null, prec);
+          //return cb(null, prec); // Long time loc
         }); // .stderr.on('data', function(data) { console.log('STDERR: ' + data); });
       });
     });
@@ -236,8 +240,13 @@ function stats_proc(hnode, cb) {
     conn.on('error', function on_conn_error(err) {
       prec.ssherr = "conn-error ("+hn+"): " + err.toString();
       console.log(prec.ssherr);
-      // HERE ? conn.end(); // or does close event still take place ?
-      return cb(null, prec);
+      // HERE ?
+      conn.end(); // or does close/end event still take place ?
+      return cb(null, prec); // long time loc
+    });
+    conn.on('end', function () {
+      console.log("conn-end: "+hn+'('+cfg.id+')');
+      //return cb(null, prec); // Recent try (jam)
     });
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
     conn.connect(sshcfg);
