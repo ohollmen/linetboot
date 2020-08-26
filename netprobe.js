@@ -207,8 +207,9 @@ function stats_proc(hnode, cb) {
     {id: "upt", cmd: "uptime", pcb: parse_w}, // uptime or w
     {id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
   ];
+  //var debugarr = []; // Like async results
   async.map(oparams, runprobecmd, function(err, results) {
-    if (err) { console.log("Error completing async.map: " + err); }
+    if (err) { var cerr = "Error completing async.map: " + err; console.log(cerr); return cb(cerr); }
     return cb(null, prec);
   }); 
   //runprobecmd(oparams[0], cb);
