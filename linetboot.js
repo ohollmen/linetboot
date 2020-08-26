@@ -1217,7 +1217,7 @@ function rmgmt_list(req, res) {
 */
 function nettest(req, res) {
   var jr = {"status": "err", "msg": "Net Probing failed. "};
-  netprobe.init();
+  //netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   // TODO: Timing ! var t1 = 
   netprobe.probe_all(hostarr, "net", function (err, results) {
@@ -1235,7 +1235,7 @@ function nettest(req, res) {
  */
 function proctest(req, res) {
   var jr = {"status": "err", "msg": "Process Probing failed. "};
-  netprobe.init();
+  //netprobe.init();
   netprobe.probe_all(hostarr, "proc", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     res.json({status: "ok", data: results});

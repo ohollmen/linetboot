@@ -221,7 +221,7 @@ function stats_proc(hnode, cb) {
       conn.exec(cfg.cmd, function(err, stream) {
         if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, prec); }
         stream.on('close', function(code, signal) {
-          console.log('stream-close: code=' + code + ', signal=' + signal);
+          console.log('stream-close: code=' + code + ', signal=' + signal + ', tout=' +tout+ '('+hn+')');
           conn.end();
         }).on('data', function on_data_uptime(data) {
           console.log('STDOUT('+cfg.id+'): ' + data); // Buffer
@@ -236,6 +236,7 @@ function stats_proc(hnode, cb) {
     conn.on('error', function on_conn_error(err) {
       prec.ssherr = "conn-error ("+hn+"): " + err.toString();
       console.log(prec.ssherr);
+      // HERE ? conn.end(); // or does close event still take place ?
       return cb(null, prec);
     });
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
