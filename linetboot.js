@@ -62,7 +62,8 @@ app.use(bodyParser.json({limit: '1mb'}));
 function app_init(global) {
   /** Modules */
   app.set('json spaces', 2);
-  netprobe.init({tout: (global.probe ? global.probe.tout : 0)});
+  // {tout: (global.probe ? global.probe.tout : 0)}
+  netprobe.init(global.probe);
   //app.use(express.static('pkgcache'));
   // Express static path mapping
   // Consider: npm install serve-static

@@ -22,19 +22,21 @@ var pkey;
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
 var opts = {tout: 0, debug: 0};
+var debugarr = []; // Like async results
 /**
 */
-function init(opts) {
+function init(popts) {
   if (inited) { return; }
   inited++;
-  opts = opts || {};
+  popts = popts || {};
   // MUST read in utf8 (to not get a binary buffer)
   pkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
   // pkey = process.env['HOME']+'/.ssh/id_rsa';
-  servers = opts.dns ? opts.dns : dns.getServers();
+  servers = popts.dns ? popts.dns : dns.getServers();
   //resolver.setServers([]);
   // require('os').networkInterfaces() // [{mac: ...},{mac:...},...]
-  if (opts.tout) { tout = opts.tout; }
+  if (popts.tout) { tout = opts.tout = popts.tout; }
+  if (popts.debug) { opts.debug = popts.debug; }
 }
 /** Probe Network connectivity and setup on single host (DNS, Ping SSH).
 * @todo Convert to async.series, call netresolve or netprobe
@@ -133,6 +135,9 @@ function probe_all(harr, usecase, cb) {
   // callable = cbc[usecase];
   // if (!callable) { return cb("Processing not found for "+usecase, null); }
   if (usecase == "proc") { callable = stats_proc; }
+  debugarr = [];
+  // Only on debug:
+  opts.debug && setTimeout(function () { console.log(JSON.stringify(debugarr, null, 2)); }, 30000);
   async.map(harr, callable, function(err, results) {
     if (err) { return cb("Error probing hosts: " + err, null); }
     //console.log(JSON.stringify(results)); /// Dump !
@@ -205,13 +210,14 @@ function stats_proc(hnode, cb) {
   //console.log("Starting to connect to: " + hn);
   var oparams = [
     {id: "upt", cmd: "uptime", pcb: parse_w}, // uptime or w
-    {id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
+    //{id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
   ];
-  //var debugarr = []; // Like async results
+  
+  function additem(prec) { debugarr.push(prec); return prec; }
   async.map(oparams, runprobecmd, function(err, results) {
     if (err) { var cerr = "Error completing async.map: " + err; console.log(cerr); return cb(cerr); }
     return cb(null, prec);
-  }); 
+  });
   //runprobecmd(oparams[0], cb);
   // Function context constants: hn, prec
   // Props to pass (as objs): id: "", cmd: "", prop: "", pcb: (str, obj) => {}
@@ -221,13 +227,13 @@ function stats_proc(hnode, cb) {
     conn.on('ready', function() { // After succesful auth
       console.log('conn-ready on ' + hn + "(" +cfg.id+ ")");
       conn.exec(cfg.cmd, function(err, stream) {
-        if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, prec); }
+        if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, additem(prec)); }
         stream.on('close', function(code, signal) {
           // signal seems to be ~always undefined ', signal=' + signal +
-          console.log('stream-close: code=' + code +  ', tout=' +tout+ ' ('+hn+')');
+          console.log('stream-close: ' +hn+ ' (code=' + code +  ', tout=' +tout+')');
           //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
         })
-        .on('end', function () { conn.end(); return cb(null, prec); }) // NEW (move conn.end() here)
+        .on('end', function () { conn.end(); return cb(null, additem(prec)); }) // NEW (move conn.end() here)
         .on('data', function on_data_uptime(data) {
           //console.log('stream-data('+cfg.id+'): ' + data); // Buffer
           //OLD: prec[cfg.prop] = data.toString(); // parseInt(data);
@@ -239,14 +245,14 @@ function stats_proc(hnode, cb) {
     // Note: this cb cannot be placed to outer scope (and call cb, cause that would be outer scopes cb)
     // ... w/o getting Error: Callback was already called.
     conn.on('error', function on_conn_error(err) {
-      prec.ssherr = "conn-error ("+hn+"): " + err.toString();
+      prec.ssherr = "conn-error: "+hn+": " + err.toString();
       console.log(prec.ssherr);
       // HERE ?
       conn.end(); // or does close/end event still take place ?
-      return cb(null, prec); // long time loc
+      return cb(null, additem(prec)); // long time loc
     });
     conn.on('end', function () {
-      console.log("conn-end: "+hn+'('+cfg.id+')');
+      console.log("conn-end:   "+hn+'('+cfg.id+')');
       //return cb(null, prec); // Recent try (jam)
     });
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
