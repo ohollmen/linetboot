@@ -218,7 +218,7 @@ function stats_proc(hnode, cb) {
   //console.log("Starting to connect to: " + hn);
   var oparams = [
     {id: "upt", cmd: "uptime", pcb: parse_w}, // uptime or w
-    //{id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
+    {id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
   ];
   
   function additem(prec) { debugarr.push(prec); return prec; }
