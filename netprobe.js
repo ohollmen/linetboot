@@ -137,7 +137,8 @@ function probe_all(harr, usecase, cb) {
   if (usecase == "proc") { callable = stats_proc; }
   debugarr = [];
   // Only on debug:
-  opts.debug && setTimeout(function () { console.log(JSON.stringify(debugarr, null, 2)); }, 30000);
+  opts.debug && setTimeout(function () { console.log("Dump "+debugarr.length+" hosts:\n"+JSON.stringify(debugarr, null, 2)); }, 30000);
+  console.log("Probe Load on "+harr.length+" hosts");
   async.map(harr, callable, function(err, results) {
     if (err) { return cb("Error probing hosts: " + err, null); }
     //console.log(JSON.stringify(results)); /// Dump !
