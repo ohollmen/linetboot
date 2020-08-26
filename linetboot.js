@@ -1223,13 +1223,9 @@ function nettest(req, res) {
   // TODO: Timing ! var t1 = 
   // Filter out ones with err
   
-  var hostarr2 = hostarr.filter((h) => {
-    var p = global.hostparams[h.ansible_fqdn];
-    if (p && p.nossh) { return 1; }
-    return 0;
-  });
   
-  netprobe.probe_all(hostarr2, "net", function (err, results) {
+  
+  netprobe.probe_all(hostarr, "net", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     // Note: There seems to be null (non-Object) entries in the results Array.
     // These seem to be due to resolveAny() failing and cb params missing.
@@ -1245,7 +1241,13 @@ function nettest(req, res) {
 function proctest(req, res) {
   var jr = {"status": "err", "msg": "Process Probing failed. "};
   //netprobe.init();
-  netprobe.probe_all(hostarr, "proc", function (err, results) {
+  var hostarr2 = hostarr.filter(function (h) {
+    var p = global.hostparams[h.ansible_fqdn];
+    console.log("Para:", p);
+    if (p && p.nossh) { return 0; }
+    return 1;
+  });
+  netprobe.probe_all(hostarr2, "proc", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     res.json({status: "ok", data: results});
   });
