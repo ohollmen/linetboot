@@ -195,10 +195,11 @@ function parse_w(str, o) {
   //o.uptime = str; // Simple Processing
   // w: var lines = str.split("\n");
   //if (m = str.match(/(\d+)\s+users?/)) { o.numusers = parseInt(m[1]); }
-  var arr = str.split(/load average:\s+/);
+  var arr = str.split(/,\s+load average:\s+/);
   o.uptime = arr[0];
   o.loads = arr[1];
-  if (o.uptime) { o.uptime = o.uptime.replace(/^\s+\d{2}:\d{2}:\d{2}/, ""); }
+  if (o.uptime) { o.uptime = o.uptime.replace(/^\s+\d{2}:\d{2}:\d{2}\s+up/, ""); }
+  o.loadsarr = o.loads.split(/,/);
 }
 // Parse output of ps -ef | wc -l - Basically simple integer.
 function parse_pcnt(str, o) {

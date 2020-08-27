@@ -88,7 +88,7 @@
      var markers = [
        {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
        {sty:"color: #1A7A0C;", txt:"OK"}];
-     return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>"
+     return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>";
    }
    var fldinfo_hw = [
      hostfld,
@@ -133,12 +133,61 @@
      {name: "ping",   title: "Ping Ok", type: "number", width: 40, itemTemplate: probeokcell},
      {name: "sshconn",title: "SSH Ok",  type: "number", width: 40, itemTemplate: probeokcell},
    ];
+   // https://stackoverflow.com/questions/14224535/scaling-between-two-number-ranges
+   function loads_cell(val, item_dummy) {
+     if (!val) { return "-"; }
+     // TODO: Calc proper color (by load. logarithmic ? light load = light color, high load = dark color)
+     // load-to-Color rgb(143, 230, 22) // 0..255
+     // Logarithmic
+     function l2c(load) {
+       // .log() result should be capped at ...
+       let cap = 9.7;
+       var log = Math.log(load) + 5;
+       if (log > cap) { log = cap; }
+       //console.log(load + " => " + log); // DEBUG
+       var v = 10 - log;
+       //console.log("  - " + v);
+       var dec =  (v/10) * 255;
+       //console.log("  - " + dec);
+       var h = decimalToHex(Math.floor(dec));
+       var fc = dec > 140 ? "#222222" : "#EEEEEE"; // Not: 127
+       return {bg: "#"+h+h+h, text: fc}; // generated Color !
+     }
+     // https://stackoverflow.com/questions/57803/how-to-convert-decimal-to-hexadecimal-in-javascript
+     function decimalToHex(d, padding) {
+       var hex = Number(d).toString(16);
+       padding = padding || 2; // typeof (padding) === "undefined" || padding === null ? padding = 2 : padding;
+       while (hex.length < padding) { hex = "0" + hex; }
+       return hex;
+     }
+     function l2c_ifhack(v2) {
+         var col = '#EFEFEF';
+         if (v2 > 0.4) { col = "#CCCCCC"; }
+         if (v2 > 0.6) { col = "#BBBBBB"; }
+         if (v2 > 1.5) { col = "#AAAAAA"; }
+         if (v2 > 2)   { col = "#888888"; }
+         return col;
+     }
+     //console.log("Custom 50: => "+l2c(50));
+     //console.log("Custom 100: => "+l2c(100));
+     return val.map(function (v) {
+       var col = '#EFEFEF';
+       var v2 = parseFloat(v);
+       //col = l2c_ifhack(v2);
+       //var refvals = [0.4, 0.6, 1.5, 2];
+       //var cols = ["#CCCCCC", "#BBBBBB", "#BBBBBB"];
+       col = l2c(v2);
+       //console.log(col);
+       return "<span class=\"load\" style=\"background-color: "+col.bg+"; color: "+col.text+"\">"+v+"</span>";
+     }).join(" ");
+   }
    var fldinfo_proc = [
      hostfld, // Need hn ?
-     {name: "pcnt",     title: "# Processes", type: "number", width: 50},
-     {name: "uptime",   title: "Uptime and Users", type: "text", width: 50},
-     {name: "loads",    title: "Load Avg", type: "text", width: 50},
-     {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 50}, // 
+     {name: "pcnt",     title: "# Procs", type: "number", width: 30},
+     {name: "uptime",   title: "Uptime and Users", type: "text", width: 70},
+     {name: "loads",    title: "Load Avg", type: "text", width: 50, visible: false},
+     {name: "loadsarr",    title: "Load Avg", type: "text", width: 50, itemTemplate: loads_cell},
+     {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 100}, // 
    ];
    function hkeycell(value, item) {
      // 
