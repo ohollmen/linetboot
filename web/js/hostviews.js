@@ -695,7 +695,7 @@ function rfinfo(hname, dialogsel, cb) {
   axios.get("/rf/info/" + hname)
   .then(function (response) {
     var rd = response.data;
-    if (rd.status == 'error') { return alert(""+rd.msg); }
+    if (rd.status == 'err') { return alert(""+rd.msg); }
     console.log("RFDATA", rd);
     var d = rd.data;
     if (!d) { return alert("No Data"); }

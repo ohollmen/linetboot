@@ -168,7 +168,11 @@ function app_init(global) {
   app.get('/showmounts/:hname', showmounts);
   // Redfish Info or Reboot /rf/boot/, /rf/info
   app.get('/rf/:op/:hname', host_reboot);
-  app.post('/rf/boot/:hname', reboot_test); // For testing
+  // RF Test URL/handler
+  //app.post('/rf/boot/:hname', reboot_test); // For testing
+  
+  app.post('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
+  app.get('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1417,7 +1421,7 @@ function host_pkg_stats(req, res) {
  * https://eehpcwg.llnl.gov/assets/121015_intro_to_redfish.pdf - 2015 overview of RedFish with good JSON message examples
  */
 function host_reboot(req, res) {
-  var jr = {"status": "err", msg: "Failed to reboot."};
+  var jr = {"status": "err", msg: "Failed redfish (info/boot)."};
   var ops = {"boot": "post", "info": "get"};
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
@@ -1430,7 +1434,7 @@ function host_reboot(req, res) {
   if (!rq) {  jr.msg += " No Query params."; return res.json(jr); }
   var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
-  if (req.body) { console.log("Express-body: ",req.body); }
+  // if (req.body) { console.log("Express-body: ",req.body); } // Always {}
   if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; }
   if (rq.test) { return res.json(rfmsg); }
   var f = hostcache[p.hname];
@@ -1487,14 +1491,19 @@ function host_reboot(req, res) {
   function hdl_redfish_succ(resp) {
     var status = resp.status;
     var d = resp.data;
-    console.log("resp-hdr:"+resp.headers);
-    console.log(meth+ "-Success-response-data("+status+"): ",d);
+    console.log("resp-hdr:",resp.headers);
+    if (resp.headers && resp.headers["content-type"].match(/text\/html/)) {
+      jr.msg += " Got HTML response"; return res.json(jr);
+    }
+    console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
     res.json({"status":"ok", data: d});
   }
   // 400 (e.g. 404), 500 ?
+  // Error: Parse Error
   function hdl_redfish_err(err) {
     jr.msg += err.toString();
     console.log(err.response);
+    console.log(err);
     console.log(meth+" Error: "+err);
     res.json(jr);
   }
@@ -1508,11 +1517,12 @@ function host_reboot(req, res) {
   // "chassis bootparam set bootflag pxe" - Dell ?
   //res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
 }
-//POST
+// POST
 function reboot_test(req, res) {
-  console.log("TEST-BODY:", req.body);
+  console.log(req.method + "-TEST-BODY:", req.body);
   var p = req.params;
   var f = hostcache[p.hname];
   // TODO: Lookup facts and mimick redfish info from facts
-  res.json({status: "ok", test: "POST success", hname: req.params.hname, Model: "Just-a-Model", Id: new Date().getTime()});
+  // status: "ok", test: "POST success",
+  res.json({ hname: req.params.hname, Manufacturer: "HomeGrow", Model: "Just-a-Model", Id: new Date().getTime()});
 }
