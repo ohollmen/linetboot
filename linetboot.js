@@ -1418,7 +1418,7 @@ function host_pkg_stats(req, res) {
  */
 function host_reboot(req, res) {
   var jr = {"status": "err", msg: "Failed to reboot."};
-  var ops = {"boot": 1, "info": 1};
+  var ops = {"boot": "post", "info": "get"};
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
   var rq = req.query;
@@ -1441,6 +1441,8 @@ function host_reboot(req, res) {
   console.log("rq:",rq);
   // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
   function basicauth(obj) {
+    // [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues.
+    // Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
     let buff = new Buffer(obj.user + ":" + obj.pass); // , 'ascii'
     return buff.toString('base64');
   }
@@ -1466,22 +1468,31 @@ function host_reboot(req, res) {
   var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
   var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json" }; // 
-  console.log("Call(POST): "+rfurl + " with body: ", rfmsg, " headers: ", hdrs);
   
+  var meth = ops[p.op];
+  if (meth == 'get') { delete(hdrs["content-type"])}
+  console.log("Call("+meth+"): "+rfurl + " with body: ", rfmsg, " headers: ", hdrs);
   // Expect HTTP: 204 (!)
-  axios.post(rfurl, rfmsg, {headers: hdrs}) // params(URL), headers
-  .then(function (resp) {
+  // Error: self signed certificate
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  
+  //const https = require('https'); // import https from 'https';
+  //https.globalAgent.options.rejectUnauthorized = false;
+  //const agent = new https.Agent({ rejectUnauthorized: false });
+  var reqopts = {headers: hdrs, }; // httpsAgent: agent
+  axios[meth](rfurl, rfmsg, ).then(hdl_redfish_succ).catch(hdl_redfish_err);
+  function hdl_redfish_succ(resp) {
     var status = resp.status;
     var d = resp.data;
-    console.log("Success-POST-response-data("+status+"): ",d);
+    console.log(meth+ "-Success-response-data("+status+"): ",d);
     res.json({"status":"ok", data: d});
-  })
-  .catch(function (err) { // 400 (e.g. 404), 500 ?
-    
+  }
+  // 400 (e.g. 404), 500 ?
+  function hdl_redfish_err(err) {
     jr.msg += err.toString();
-    console.log("POST Error: "+jr.msg);
+    console.log(ops[p.op]+" Error: "+jr.msg);
     res.json(jr);
-  });
+  }
   /////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
   // No possibility to boot PXE on next boot ?
   // https://ma.ttwagner.com/ipmi-trick-set-the-boot-device/ (IBM)
