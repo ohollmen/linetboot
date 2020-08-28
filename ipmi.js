@@ -149,9 +149,41 @@ function users_parse(userliststr, opts) {
   return userlist;
 }
 
+function rmgmt_load(f, rmgmtpath) { // cb
+    var hn = f.ansible_fqdn;
+    var ent_dummy = { hname: f.ansible_fqdn, "ipaddr": "" }; // Dummy stub
+    var fn = rmgmtpath + "/" + hn + ".lan.txt";
+    if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
+    var cont = fs.readFileSync(fn, 'utf8');
+    if (!cont || !cont.length) { return (ent_dummy); } // dummy_add
+    fn = rmgmtpath + "/" + hn + ".users.txt";
+    if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
+    var cont2 = fs.readFileSync(fn, 'utf8');
+    if (!cont2 || !cont2.length) { return (ent_dummy); } // dummy_add
+    var lan   = ipmi.lan_parse(cont);
+    var users = ipmi.users_parse(cont2);
+    var ulist = "";
+    if (users && Array.isArray(users)) {
+      // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
+      //ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(',');
+      ulist = users.filter(function (it) {return it.Name;}).map(function (it) {return it.Name + "(" + it.ID + ")";}).join(',');
+    }
+    var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
+      ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
+      users: users,
+      ulist: ulist
+    };
+    //if (!cb) {
+    //arr.push(ent);
+    //}
+    //return cb(ent);
+    return ent;
+  }
+
 module.exports = {
   hosts_rmgmt_info: hosts_rmgmt_info,
   lan_parse: lan_parse,
   users_parse: users_parse,
-  lan_hostname: lan_hostname
+  lan_hostname: lan_hostname,
+  rmgmt_load: rmgmt_load
 };

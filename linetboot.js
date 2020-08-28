@@ -30,7 +30,7 @@ var yaml    = require('js-yaml');
 var cproc   = require('child_process');
 var async   = require('async');
 var bodyParser = require('body-parser');
-
+var axios   = require("axios");
 // Configurations
 // var nb      = require("./netboot.json"); // Not used.
 var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || "./global.conf.json";
@@ -41,6 +41,7 @@ var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
 var ans      = require("./ansiblerun.js");
 var ospkgs   = require("./ospackages.js");
+var ipmi = require("./ipmi.js");
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -165,8 +166,9 @@ function app_init(global) {
   // NFS/Showmounts
   
   app.get('/showmounts/:hname', showmounts);
-  // WIP: Reboot
-  app.get('/reboot/:hname', host_reboot);
+  // Redfish Info or Reboot /rf/boot/, /rf/info
+  app.get('/rf/:op/:hname', host_reboot);
+  app.post('/rf/boot/:hname', reboot_test); // For testing
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1166,42 +1168,13 @@ function grouplist(req, res) {
 */
 function rmgmt_list(req, res) {
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt";
-  var ipmi = require("./ipmi.js");
+  
   var arr = [];
   var resolve = 1; // Resolve DNS Names
   var jr = {"status": "err", msg: "Error Processing Remote interfaces."};
-  function dummy_add(dum) { arr.push(dum); } // Dummy entry w/o rm info.
-  function rmgmt_load(f, cb) {
-    var hn = f.ansible_fqdn;
-    var ent_dummy = { hname: f.ansible_fqdn, "ipaddr": "" }; // Dummy stub
-    var fn = rmgmtpath + "/" + hn + ".lan.txt";
-    if (!fs.existsSync(fn)) { return dummy_add(ent_dummy); }
-    var cont = fs.readFileSync(fn, 'utf8');
-    if (!cont || !cont.length) { return dummy_add(ent_dummy); }
-    fn = rmgmtpath + "/" + hn + ".users.txt";
-    if (!fs.existsSync(fn)) { return dummy_add(ent_dummy); }
-    var cont2 = fs.readFileSync(fn, 'utf8');
-    if (!cont2 || !cont2.length) { return dummy_add(ent_dummy); }
-    var lan   = ipmi.lan_parse(cont);
-    var users = ipmi.users_parse(cont2);
-    var ulist = "";
-    if (users && Array.isArray(users)) {
-      // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
-      //ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(',');
-      ulist = users.filter(function (it) {return it.Name;}).map(function (it) {return it.Name + "(" + it.ID + ")";}).join(',');
-    }
-    var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
-      ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
-      users: users,
-      ulist: ulist
-    };
-    //if (!cb) {
-    arr.push(ent);
-    //}
-    //return cb(ent);
-  }
-  
-  hostarr.forEach(function (f) { rmgmt_load(f); }); // Sync
+  // function dummy_add(dum) { arr.push(dum); } // Dummy entry w/o rm info.
+  // Sync Load
+  hostarr.forEach(function (f) { var ent = ipmi.rmgmt_load(f, rmgmtpath); arr.push(ent); });
   // Resolve names (if resolve=true)
   if (resolve) {
     async.map(arr, ipmi.lan_hostname, function(err, results) {
@@ -1221,10 +1194,6 @@ function nettest(req, res) {
   //netprobe.init();
   // var hnames = hostarr.map(function (h) {return h.ansible_fqdn; });
   // TODO: Timing ! var t1 = 
-  // Filter out ones with err
-  
-  
-  
   netprobe.probe_all(hostarr, "net", function (err, results) {
     if (err) { jr.msg += err; return res.json(jr); }
     // Note: There seems to be null (non-Object) entries in the results Array.
@@ -1241,6 +1210,7 @@ function nettest(req, res) {
 function proctest(req, res) {
   var jr = {"status": "err", "msg": "Process Probing failed. "};
   //netprobe.init();
+  // Filter out ones labeled with "nossh" (machines erroring in flaky way with SSH - rare, but happens)
   var hostarr2 = hostarr.filter(function (h) {
     var p = global.hostparams[h.ansible_fqdn];
     console.log("Para:", p);
@@ -1422,11 +1392,22 @@ function host_pkg_stats(req, res) {
   res.json({status:"ok", data: arr, grid: gdef});
 }
 /** TODO: Reboot host using BMI by RedFish or IPMI.
+ * Pass hostname to reboot. The IPMI/BMI address is figured out here.
  * Require PIN ?
  * Always validate host and its identity from facts.
  * TODO: Consider interrogating ".../Systems/" and choosing resp.Members[0]["@odata.id"]
- * Params: id
+ * URL Path params: ":hname", e.g. /reboot/bld-001.mycomp.com
+ * Query Params:
+ * - op - Operation: info, boot - MOVE TO URL !
+ * - test - test/debug only, returns early and returns a planned mock-up message without making chained HTTP request
+ * - pxe - Use PXE boot on next boot (Possibly an install, maintenance or memory test)
+ * - pin - pin authorization code for reboot
+ * Config "ipmi.testurl" - changes the url to a mock-up tese url
  * Could first query "PowerState" by GET
+ * Examples for URL call:
+ * 
+ * Info Only
+ * curl  -X GET https://foo.com/redfish/v1/Systems/System.Embedded.1/ -u admin:admin --insecure | python -m json.tool | less
  * Refs:
  * https://www.dell.com/community/Systems-Management-General/Power-Cycle-System-Cold-Boot-via-rest-api/td-p/5081009
  * https://github.com/dell/iDRAC-Redfish-Scripting/blob/master/Redfish%20Python/SetNextOneTimeBootDeviceREDFISH.py
@@ -1437,21 +1418,34 @@ function host_pkg_stats(req, res) {
  */
 function host_reboot(req, res) {
   var jr = {"status": "err", msg: "Failed to reboot."};
+  var ops = {"boot": 1, "info": 1};
+  var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
   var rq = req.query;
   var p = req.params;
   
   if (!p || !Object.keys(p).length) { jr.msg += " No URL path params."; return res.json(jr); }
   if (!p.hname) { jr.msg += " No Host."; return res.json(jr); }
-  var ipmiconf = global.ipmi;
+  if (!p.op || !ops[p.op]) { jr.msg += " Not a supported op (try: info,boot)."; return res.json(jr); }
+  if (!rq) {  jr.msg += " No Query params."; return res.json(jr); }
+  var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
-  
-  if (rq && rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; }
+  if (req.body) { console.log("Express-body: ",req.body); }
+  if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; }
+  if (rq.test) { return res.json(rfmsg); }
   var f = hostcache[p.hname];
+  if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
+  var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
+  console.log("RMGMT-info:",rmgmt);
+  if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
+  console.log("rq:",rq);
   // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
   function basicauth(obj) {
     let buff = new Buffer(obj.user + ":" + obj.pass); // , 'ascii'
     return buff.toString('base64');
+  }
+  function opurl(op, rmgmt, rebooturl, ipmiconf) {
+    
   }
   var bauth = basicauth(ipmiconf);
   // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi"
@@ -1460,17 +1454,34 @@ function host_reboot(req, res) {
   // Get IPMI / iDRAC URL. All URL:s https.
   // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
   var sysid = "1";
-  if (f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
+  if (f && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
   var rebooturl = {
     "base": "/redfish/v1/",
+    "info": "", // Add NONE
+    "boot": "/Actions/ComputerSystem.Reset",
   // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
   // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
   };
-  var rfurl = rebooturl.base + "Systems/" + sysid;
-  // hdrs = {"content-type": "application/json"}
-  // hdrs[""]
+  // use IP Address to NOT have to use DNS to resolve.
+  var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
+  if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
+  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json" }; // 
+  console.log("Call(POST): "+rfurl + " with body: ", rfmsg, " headers: ", hdrs);
+  
   // Expect HTTP: 204 (!)
-  // request.post();
+  axios.post(rfurl, rfmsg, {headers: hdrs}) // params(URL), headers
+  .then(function (resp) {
+    var status = resp.status;
+    var d = resp.data;
+    console.log("Success-POST-response-data("+status+"): ",d);
+    res.json({"status":"ok", data: d});
+  })
+  .catch(function (err) { // 400 (e.g. 404), 500 ?
+    
+    jr.msg += err.toString();
+    console.log("POST Error: "+jr.msg);
+    res.json(jr);
+  });
   /////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
   // No possibility to boot PXE on next boot ?
   // https://ma.ttwagner.com/ipmi-trick-set-the-boot-device/ (IBM)
@@ -1479,5 +1490,13 @@ function host_reboot(req, res) {
   //var ipmicmd = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} power {{ powopt }}";
   // " chassis bootdev pxe" // For the next boot (only, unless options=persistent option given) IBM
   // "chassis bootparam set bootflag pxe" - Dell ?
-  res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
+  //res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
+}
+//POST
+function reboot_test(req, res) {
+  console.log("TEST-BODY:", req.body);
+  var p = req.params;
+  var f = hostcache[p.hname];
+  // TODO: Lookup facts and mimick redfish info from facts
+  res.json({status: "ok", test: "POST success", hname: req.params.hname, Model: "Just-a-Model", Id: new Date().getTime()});
 }
