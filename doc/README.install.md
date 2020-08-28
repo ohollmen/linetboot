@@ -16,7 +16,7 @@ Minimum install must-haves (See doc/README.prereq.md for more details):
 
 ## Getting Linetboot Sourcecode
 
-Clone Linetboot code
+Clone Linetboot code and run other prep-steps:
 ```
 # Change to home directory
 cd ~
@@ -26,7 +26,7 @@ mkdir ~/.linetboot
 mkdir ~/hostinfo
 # Create OS packages list directory
 mkdir ~/hostpkginfo
-# Clone
+# Clone source code
 git clone https://github.com/ohollmen/linetboot.git
 # Change to linetboot to copy configs
 cd linetboot
@@ -66,8 +66,8 @@ reports.comp.com
 Hashmark ("`#`") is treated as comment. You can start with a small subset
 of hosts and expand the set later.
 If some of the hosts are Windows hosts, please read Ansible documentation
-on recording facts (ans using ansible more generally) with Windows hosts.
-Set full path of this file into `~/.linetboot/global.config.json`.
+on recording facts (and using ansible more generally) with Windows hosts.
+Set full path of this file into preoperty `hostsfile` in `~/.linetboot/global.config.json`.
 
 # Recording (Ansible collected) Host Facts
 
@@ -80,7 +80,7 @@ copied onto that remote account. Copying SSH keys can be accomplished by:
     
 Do this for all the machines (If you did not have SSH key to start with, generate it with `ssh-keygen -t rsa -b 4096`, use no passphrase).
 
-Record facts (for all hosts in sinle step) by running command:
+Record facts (for all hosts in single step) by running command:
 
     ansible -i ~/.linetboot/hosts  -b -m setup --tree ~/hostinfo \
        --extra-vars "ansible_sudo_pass=$ANSIBLE_PASS"
