@@ -12,7 +12,8 @@
     "mustache": "3.0.1",
     "node-ssh": "5.1.2",
     "ping": "0.2.2",
-    "ssh2": "^0.8.9"
+    "ssh2": "^0.8.9",
+    "axios":"0.20.0"
   },
   "devDependencies": {
     "jshint": "2.9.7",
