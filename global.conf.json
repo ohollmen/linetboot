@@ -11,9 +11,8 @@
     "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
     "preseed_mini": "./tmpl/preseed_mini.cfg.mustache"
   },
-  "fact_path":  "/home/ohollmen/hostinfo",
-  "rmgmt_path": "/home/ohollmen/hostrmgmt",
-  "rmgmt_ena": false,
+  
+
   
   "locale":"en_US.UTF-8",
   "keymap":"us",
@@ -22,7 +21,11 @@
   "install_recommends": true,
   "ntpserver": "ntp.example.com",
   "postscript": "mv_homedir_for_autofs.sh",
+  
+  "fact_path":  "/home/ohollmen/hostinfo",
   "hostsfile" : "/home/ohollmen/.linetboot/hosts",
+  "maindocroot_X": "/var/www/html/",
+  "maindocroot": "/isomnt/",
   "core": {
     "apiena": 1
   },
@@ -41,12 +44,14 @@
     "root_rh": "/var/lib/tftpboot/",
     "lintftp" : false
   },
+  "rmgmt_path": "/home/ohollmen/hostrmgmt",
+  "rmgmt_ena": false,
   "ipmi": {
     "user":"mickey",
     "pass":"mouse",
     "bootpin": "abc123",
     "debug":1,
-    "testurl": "http://localhost:3000/rf/boot/nuc5?test=1"
+    "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5"
   },
   "probe" : {
     "tout": 5000,
@@ -67,8 +72,7 @@
     "ifdefault": "eno1np0"
   },
   
-  "maindocroot_X": "/var/www/html/",
-  "maindocroot": "/isomnt/",
+  
   "targetos": "/ubuntu14",
   "useurlmapping": false,
   "remote": {
