@@ -23,6 +23,9 @@
   "ntpserver": "ntp.example.com",
   "postscript": "mv_homedir_for_autofs.sh",
   "hostsfile" : "/home/ohollmen/.linetboot/hosts",
+  "core": {
+    "apiena": 1
+  },
   "hostnamesX": [
     "banana1","cubox-i","odroid-db","odroid-32 k=v",
     "martta-1001PX","nuc5","nuc7","perlix2"
@@ -32,16 +35,40 @@
     {"id": "odroid", "name": "Odroid:s", "patt": "^odroid"},
     {"id": "other", "name": "Other Hosts", "policy": "nongrouped"}
   ],
+  "tftp": {
+    "host": "banana1",
+    "root":"/srv/git",
+    "root_rh": "/var/lib/tftpboot/",
+    "lintftp" : false
+  },
+  "ipmi": {
+    "user":"mickey",
+    "pass":"mouse",
+    "bootpin": "abc123",
+    "debug":1,
+    "testurl": "http://localhost:3000/rf/boot/nuc5?test=1"
+  },
+  "probe" : {
+    "tout": 5000,
+    "debug": 0
+  },
+  "docker": {
+    "port": "4243",
+    "config": "/home/ohollmen/docker.conf.json",
+    "catalog": "/home/ohollmen/dockercat.conf.json"
+  },
   "net": {
     "netmask": "255.255.240.0",
     "gateway": "192.168.1.1",
     "nameservers": ["192.168.1.107", "192.168.1.108"],
-    "namesearch" : null,
+    "namesearch" : ["home.net"],
     "domain": "",
-    "dev": "auto"
+    "dev": "auto",
+    "ifdefault": "eno1np0"
   },
   
-  "maindocroot": "/var/www/html/",
+  "maindocroot_X": "/var/www/html/",
+  "maindocroot": "/isomnt/",
   "targetos": "/ubuntu14",
   "useurlmapping": false,
   "remote": {
@@ -98,5 +125,6 @@
       }
     ]
   },
-  "lboot_setup_module": "./custom.setup.js"
+  "lboot_setup_module": "./custom.setup.js",
+  "customhostsX": "./newhosts.txt"
 }
