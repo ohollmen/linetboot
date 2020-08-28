@@ -1436,7 +1436,8 @@ function host_reboot(req, res) {
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
-  console.log("RMGMT-info:",rmgmt);
+  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += " No rmgmt host."; return res.json(jr); }
+  // console.log("RMGMT-info:",rmgmt);
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
   // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
@@ -1467,10 +1468,10 @@ function host_reboot(req, res) {
   // use IP Address to NOT have to use DNS to resolve.
   var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
-  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json" }; // 
+  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   
   var meth = ops[p.op];
-  if (meth == 'get') { delete(hdrs["content-type"])}
+  if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
   console.log("Call("+meth+"): "+rfurl + " with body: ", rfmsg, " headers: ", hdrs);
   // Expect HTTP: 204 (!)
   // Error: self signed certificate
@@ -1480,17 +1481,21 @@ function host_reboot(req, res) {
   //https.globalAgent.options.rejectUnauthorized = false;
   //const agent = new https.Agent({ rejectUnauthorized: false });
   var reqopts = {headers: hdrs, }; // httpsAgent: agent
-  axios[meth](rfurl, rfmsg, ).then(hdl_redfish_succ).catch(hdl_redfish_err);
+  if (meth == 'post') axios[meth](rfurl, rfmsg, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err);
+  if (meth == 'get') axios[meth](rfurl, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err);
+  // Advanced handling: https://github.com/axios/axios/issues/960
   function hdl_redfish_succ(resp) {
     var status = resp.status;
     var d = resp.data;
+    console.log("resp-hdr:"+resp.headers);
     console.log(meth+ "-Success-response-data("+status+"): ",d);
     res.json({"status":"ok", data: d});
   }
   // 400 (e.g. 404), 500 ?
   function hdl_redfish_err(err) {
     jr.msg += err.toString();
-    console.log(ops[p.op]+" Error: "+jr.msg);
+    console.log(err.response);
+    console.log(meth+" Error: "+err);
     res.json(jr);
   }
   /////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
