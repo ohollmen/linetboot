@@ -1493,8 +1493,8 @@ function host_reboot(req, res) {
   function hdl_redfish_succ(resp) {
     var status = resp.status;
     var d = resp.data;
-    console.log("resp-hdr:",resp.headers);
-    if (resp.headers && resp.headers["content-type"].match(/text\/html/)) {
+    if (resp.headers) { console.log("resp-hdr:",resp.headers); }
+    if (resp.headers && resp.headers["content-type"] && resp.headers["content-type"].match(/text\/html/)) {
       jr.msg += " Got HTML response"; return res.json(jr);
     }
     console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
@@ -1527,6 +1527,7 @@ function reboot_test(req, res) {
   console.log(req.method + "-TEST-BODY:", req.body);
   var p = req.params;
   var f = hostcache[p.hname];
+  console.log("RF-test-URL: "+req.url);
   // TODO: Lookup facts and mimick redfish info from facts
   // status: "ok", test: "POST success",
   // rf-props: IndicatorLED, HostName, UUID, SerialNumber, SKU (asset tag), PowerState, BiosVersion
