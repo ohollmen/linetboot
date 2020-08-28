@@ -704,10 +704,18 @@ function rfinfo(hname, dialogsel, cb) {
     $('#rfdialog').html(out);
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
     function uisetup() {
-      $('#bbut').click(function () {
-        axios.get("/rf/boot/"+hname).then((resp) => {
+      $('.bbut').click(function (jev, ui) {
+        console.log(jev); // JQuery.Event (has originalEvent)
+        console.log(jev.originalEvent.target); // Same as this
+        console.log("THIS:", this); // 2 elems ?
+        console.log($(this).data('pxe'));
+        var url = "/rf/boot/"+hname;
+        var btype = "";
+        if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
+        console.log("use URL: "+url);
+        axios.get(url).then((resp) => {
           console.log(resp.data);
-          toastr.info("Boot in Progress on "+hname);
+          toastr.info("Boot in Progress on "+hname+btype);
         }).catch((err) => { alert(err); });
       });
     }
