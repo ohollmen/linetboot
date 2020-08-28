@@ -160,8 +160,8 @@ function rmgmt_load(f, rmgmtpath) { // cb
     if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
     var cont2 = fs.readFileSync(fn, 'utf8');
     if (!cont2 || !cont2.length) { return (ent_dummy); } // dummy_add
-    var lan   = ipmi.lan_parse(cont);
-    var users = ipmi.users_parse(cont2);
+    var lan   = lan_parse(cont);
+    var users = users_parse(cont2);
     var ulist = "";
     if (users && Array.isArray(users)) {
       // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
