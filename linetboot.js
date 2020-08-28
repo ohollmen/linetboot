@@ -1424,7 +1424,8 @@ function host_reboot(req, res) {
   var jr = {"status": "err", msg: "Failed redfish (info/boot)."};
   var ops = {"boot": "post", "info": "get"};
   var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
-  var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
+  //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
+  var rfmsg = {"ResetType": "ForceRestart", };
   var rq = req.query;
   var p = req.params;
   
@@ -1472,6 +1473,7 @@ function host_reboot(req, res) {
   // use IP Address to NOT have to use DNS to resolve.
   var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
+  // "User-Agent": "curl/7.54.0"
   var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   
   var meth = ops[p.op];
@@ -1500,6 +1502,9 @@ function host_reboot(req, res) {
   }
   // 400 (e.g. 404), 500 ?
   // Error: Parse Error
+  // Error: Request failed with status code 400 ("Bad Request" on op: boot) statusText: 'Bad Request', server: 'Apache'
+  //     {"ResetType":"GracefulRestart"} <= GracefulRestart N/A on "BiosVersion": "2.2.11", only closes ForceRestart
+  //     - Need to probe and choose closest (from Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"] ?
   function hdl_redfish_err(err) {
     jr.msg += err.toString();
     console.log(err.response);
@@ -1524,5 +1529,6 @@ function reboot_test(req, res) {
   var f = hostcache[p.hname];
   // TODO: Lookup facts and mimick redfish info from facts
   // status: "ok", test: "POST success",
+  // rf-props: IndicatorLED, HostName, UUID, SerialNumber, SKU (asset tag), PowerState, BiosVersion
   res.json({ hname: req.params.hname, Manufacturer: "HomeGrow", Model: "Just-a-Model", Id: new Date().getTime()});
 }
