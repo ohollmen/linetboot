@@ -149,7 +149,7 @@
        //console.log("  - " + v);
        var dec =  (v/10) * 255;
        //console.log("  - " + dec);
-       var h = decimalToHex(Math.floor(dec));
+       var h = decimalToHex(Math.floor(dec));  // or "rgb("+dec+", "+dec+", "+dec+")";
        var fc = dec > 140 ? "#222222" : "#EEEEEE"; // Not: 127
        return {bg: "#"+h+h+h, text: fc}; // generated Color !
      }
@@ -181,6 +181,11 @@
        return "<span class=\"load\" style=\"background-color: "+col.bg+"; color: "+col.text+"\">"+v+"</span>";
      }).join(" ");
    }
+   function redfish_cell(val, item) {
+     return "<a class=\"rfop\" data-hname=\""+item.hname+"\" data-op='info' Xhref=\"/rf/info/"+item.hname+"\" data-tgt=\"rfdialog\">Info</a>" + '';
+            //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"?pxe\">PXE Boot</a>" +
+            //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"\">Reboot</a>";
+   }
    var fldinfo_proc = [
      hostfld, // Need hn ?
      {name: "pcnt",     title: "# Procs", type: "number", width: 30},
@@ -188,6 +193,7 @@
      {name: "loads",    title: "Load Avg", type: "text", width: 50, visible: false},
      {name: "loadsarr",    title: "Load Avg", type: "text", width: 50, itemTemplate: loads_cell},
      {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 100}, // 
+     {name: "rfop",    title: "RedFish", type: "text", width: 50, itemTemplate: redfish_cell}, // 
    ];
    function hkeycell(value, item) {
      // 

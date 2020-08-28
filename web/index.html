@@ -222,6 +222,10 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="jsGrid_nfs" class="fwgrid"></div>
 </div>
 
+<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject">
+  
+</div>
+
 <script id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
 <ul>
@@ -239,6 +243,19 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 {{/outtypes}}
 </ul>
 </script>
+
+<script id="redfish" type="text/template">
+<h3>RedFish Info on {{{ hname }}}</h3>
+<ul>
+<li>Model: {{{ Model }}}</li>
+<li>Bios Version: {{{ BiosVersion }}}</li>
+<li>System Id: {{{ Id }}}</li>
+<li>Powered State: {{{ PowerState }}}</li>
+<li>Processor Model: {{{ ProcessorSummary.Model }}}</li>
+</ul>
+<input id="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
+</script>
+
 
 <script id="ansrun"  type="text/template" title="Ansible Run">
 <!-- -->

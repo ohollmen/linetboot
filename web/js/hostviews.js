@@ -138,11 +138,14 @@ function on_docker_info(ev) {
   // Note: also the 
   var hn = ev.target.getAttribute("data-hname"); // Generic
   var tgt = ev.target.getAttribute("data-tgt");
-  //console.log("DHNAME:"+hn+", data-tgt: " + tgt);
+  console.log("DHNAME:"+hn+", data-tgt: " + tgt);
   // hn - from ev element
   // gridsel - grid selector (id) ... replace w. dialog
   if (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
   else if (tgt == "nfsinfo") { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
+  else if (tgt == "rfdialog") {
+    rfinfo(hn, "rfdialog", dialogcb); return;
+  }
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
@@ -258,12 +261,13 @@ function ansirun(ev) {
 var tabloadacts = [
   {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net"}, // url: "/list" (All 3)
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw"},
-  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist"}, // Last could have hdlr ?
+  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
   {"name": "Packages",    "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null},
   {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null},
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt"},
   {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
-  {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe"},
+  {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", 
+    uisetup: function () { $('.rfop').click(on_docker_info); } },
   {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,           hdlr: outfmts, "url": "/allhostgen", gridid: null},
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys"},
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat"},
@@ -387,12 +391,9 @@ window.onload = function () {
     // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
     $(".hostcell").click(on_host_click);
-    // OS/Version view ? 
-    $(".drinfo").click(on_docker_info);
-    $(".nfsinfo").click(on_docker_info);
     
     
-  } // )
+  } // initapp
   
   
   
@@ -411,6 +412,13 @@ window.onload = function () {
   // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
   
 };
+
+// OS/Version view ?
+function osview_guisetup() {
+  $(".drinfo").click(on_docker_info);
+  $(".nfsinfo").click(on_docker_info);
+}
+
 /** Create Simple grid from pre-loaded (cached) data.
  * 
  */
@@ -420,6 +428,7 @@ function simplegrid_cd(ev, an) {
   var m = an.gridid.match(/^jsGrid_(\w+)/);
   if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
   showgrid(an.gridid,  datasets["hostlist"], fldinfo[m[1]]);
+  if (an.uisetup) { an.uisetup(); } // TODO: Params ? (see rapp)
 }
 // OLD: Tab populating handlers
     //pkg_stats(); // #tabs-4 Only now trigger fetch of pkg stats
@@ -450,6 +459,7 @@ var cmap = {
     function chartdata(pkginfo, cdata, prop, cmap) {
       // var prop = "pkgcnt";
       cdata.labels = pkginfo.map(function (it) { return it.hname; });
+      // Add dataset
       cdata.datasets[0].data = pkginfo.map(function (it) { return it[prop]; });
       // Lookup BG color for each bar
       if (cmap) {
@@ -472,26 +482,32 @@ var cmap = {
   // Param: prop (for stat), label/name, scaling, canvas sel.
   var gscale = 1000;
   axios.get('/hostpkgcounts').then(function (response) {
-    createchart(response, "Packages", "pkgcnt", 'canvas_pkg');
+    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
+    var data = response.data.data;
+    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}]};
+    createchart(data, "Packages", "pkgcnt", 'canvas_pkg'); // response
   } )
   .catch(function (error) { console.log(error); });
   
   gscale = 10;
   axios.get('/hostcpucounts').then(function (response) {
-    createchart(response, "CPU:s", "numcpus", 'canvas_cpu');
+    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
+    var data = response.data.data;
+    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}]};
+    createchart(data, "CPU:s", "numcpus", 'canvas_cpu'); // response
   } )
   .catch(function (error) { console.log(error); });
-  
-  function createchart(response, label, prop, canvasid) {
-    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
+  // Uses global: cmap, global scales, outer: gscale
+  function createchart(data, label, prop, canvasid) { // response
+    //if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
     //function dclone(d) { return JSON.parse(JSON.stringify(d)); }
-    var pkginfo = response.data.data; // console.log(response.data.data);
+    //var data = response.data.data; // console.log(response.data.data);
     
     // label: null displays as :"null" (). See legend: { display: false} below.
     var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
     // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
     var ctx = document.getElementById(canvasid).getContext('2d'); // 'canvas_pkg'
-    chartdata(pkginfo, cdata, prop, cmap);
+    chartdata(data, cdata, prop, cmap);
     // console.log(JSON.stringify(cdata, null, 2));
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
@@ -501,7 +517,7 @@ var cmap = {
     var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
     //window.myBar =
     new Chart(ctx, { type: 'bar', data: cdata, options: copts });
-  };
+  }; // createchart
   } // pkg_stats
 //var idx = {};
     //pkginfo.forEach(function (it) { idx[it.hname] = it.pkgcnt; }); // || 0 ?
@@ -550,7 +566,7 @@ var cmap = {
     .catch(function (error) { console.log(error); });
   }
   
-  function loadprobeinfo() {
+  function loadprobeinfo(event, an) {
     //console.log("Launch Probe ...");
     axios.get('/proctest').then(function (response) {
       var pinfo = response.data.data;
@@ -558,6 +574,7 @@ var cmap = {
       if (!pinfo || !pinfo.length) { alert("No Load Probe data"); return; }
       showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
       //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
+      if (an.uisetup) { an.uisetup(); console.log("CALLED UISETUP"); }
     })
     .catch(function (error) { console.log(error); });
   }
@@ -670,6 +687,34 @@ function nfsinfo(hname, dialogsel, cb) {
     cb(pinfo, dialogsel); return;
   })
   .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
+}
+
+function rfinfo(hname, dialogsel, cb) {
+  var tc = $('#redfish').html();
+  if (!tc) { return alert("No template content"); }
+  axios.get("/rf/info/" + hname)
+  .then(function (response) {
+    var rd = response.data;
+    if (rd.status == 'error') { return alert(""+rd.msg); }
+    console.log("RFDATA", rd);
+    var d = rd.data;
+    if (!d) { return alert("No Data"); }
+    d.hname = hname; // hname - here or server ?
+    var out = Mustache.render(tc, d);
+    $('#rfdialog').html(out);
+    $("#"+ dialogsel ).dialog(dopts_grid); // ????
+    function uisetup() {
+      $('#bbut').click(function () {
+        axios.get("/rf/boot/"+hname).then((resp) => {
+          console.log(resp.data);
+          toastr.info("Boot in Progress on "+hname);
+        }).catch((err) => { alert(err); });
+      });
+    }
+    uisetup();
+    // No grid based dialog here
+  })
+  .catch(function (error) { console.log(error); alert("No RF info, "+ error); });
 }
 
 // $("#jsGrid").jsGrid("sort", field);
