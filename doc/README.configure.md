@@ -21,7 +21,18 @@ In a subnet block include (among other options)
     # NBP Filename (assumed to be at root dir of TFTP server)
     filename "lpxelinux.0";
 
-Restart server by `sudo service restart dhcpd`
+To make DHCP Server assign constant/fixed ip address ("pseudo-static") by MAC address create blocks similar to floowing for each PXE bootable host: 
+
+    # These could reside inside a wrapping subnet block
+    ...
+    host compute-001 {
+      hardware ethernet bc:30:d9:2a:c9:50;
+      fixed-address 192.168.0.152;
+    }
+    ...
+
+See ISC DHCP server documentation for advanced details.
+Restart server by `sudo service restart dhcpd`.
 
 ## Configuring dnsmasq Server
 
@@ -105,7 +116,8 @@ This is by no means a full manual to DHCP options, but these are core DHCP proto
 - 128 - TFTP server address (For IP Phone SW load)
 - 150 - TFTP Server address (IPv4 IP address, somewhat overlapping w. 66)
 
-Also a feature introduced later onto TFTP is "options".
+Also a feature introduced later onto TFTP is "options". These options
+may be required by some (BIOS) PXE implementations.
 
 For more on protocol, see [rfc2132 1997](https://tools.ietf.org/html/rfc2132),
 [RFC2939](https://www.iana.org/assignments/bootp-dhcp-parameters/bootp-dhcp-parameters.xhtml),
@@ -140,8 +152,7 @@ would be `/Users/johnsmith/Library/VirtualBox/TFTP/`. Per this path the setup of
     mkdir -p $VBOX_TFTP_ROOT/pxelinux.cfg
     cp /path/to/my_pxe_menu_file $VBOX_TFTP_ROOT/pxelinux.cfg/default
     
-The content can (and should) be identical to regular "real" TFTP server (i.e. you should still have the pxelinux *.c32
-modules in $VBOX_TFTP_ROOT/.
+The content can (and should) be identical to regular "real" TFTP server (i.e. you should still have the pxelinux *.c32 modules in $VBOX_TFTP_ROOT/.
 The booting can still happen via a live lineboot server via HTTP.
 Info Source: https://gerardnico.com/virtualbox/pxe.
 
@@ -183,13 +194,13 @@ Configuration in the main config file `global.conf.json` (Currently items with "
   - dev - The default network interface name for the OS being installed (E.g. "eno1")
   - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above).
 
-### Installation 
+### OS Installation
 
 Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now) that are used on preseed/kickstart templates:
 - locale - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
 - keymap - Keyboard map / layout (E.g. "us")
 - time_zone - Timezone of hosts (E.g. "")
-- install_recommends - Debain Installer (D-I only) setting for installing recommended dependencies (true/false)
+- install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
 - ntpserver - Network Time Server
 - postscript - Script to launch at the end of installation
 
