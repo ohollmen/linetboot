@@ -10,13 +10,16 @@
 var Mustache = require("mustache");
 
   var genopts = [
-    {"lbl": "barename", name: "Bare Host Names Listing (w. optional params by para=p1,p2,p3)", "cb": function (info, f, ps) {
-      // var ps = req.query.para; // Comma sep.
-      var cmd = info.hname;
-      if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
-      return cmd;
-    },
-      "tmpl":"TMPL:{{ hname }}"
+    // 
+    {"lbl": "barename", name: "Bare Host Names Listing",
+      "longname": "Bare Host Names Listing (w. optional params by para=p1,p2,p3)",
+      "cb": function (info, f, ps) {
+        // var ps = req.query.para; // Comma sep.
+        var cmd = info.hname;
+        if (ps) { var pstr = pstr_gen(ps); cmd += pstr ? (" " + pstr) : ""; }
+        return cmd;
+      },
+      "tmpl":"{{ hname }}"
     },
     {"lbl": "addrname", name: "IP Address, Hostname Pairs", "cb": function (info, f, ps) {
       //var ps = req.query.para; // Comma sep.
@@ -46,7 +49,8 @@ var Mustache = require("mustache");
       // "ssh -t {{ info.hname }} 'sudo rsync /etc/ssh/ssh_host_* {{username}}@{{ currhname }}:"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'"
       "cb": function (info, f) {
       return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
-    }}
+    }},
+    // 
   ];
 var genopts_idx;
 

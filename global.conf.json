@@ -14,8 +14,8 @@
   
 
   
-  "locale":"en_US.UTF-8",
-  "keymap":"us",
+  "locale": "en_US.UTF-8",
+  "keymap": "us",
   "time_zoneXX": "US/Pacific",
   "time_zone": "America/Los_Angeles",
   "install_recommends": true,
@@ -27,6 +27,7 @@
   "maindocroot_X": "/var/www/html/",
   "maindocroot": "/isomnt/",
   "core": {
+    "appname": "Hollmen Infomation Technology",
     "apiena": 1
   },
   "hostnamesX": [
@@ -45,8 +46,8 @@
     "lintftp" : false
   },
   "rmgmt_path": "/home/ohollmen/hostrmgmt",
-  "rmgmt_ena": false,
   "ipmi": {
+    "path": "/home/ohollmen/hostrmgmt",
     "user":"mickey",
     "pass":"mouse",
     "bootpin": "abc123",
@@ -60,7 +61,8 @@
   "docker": {
     "port": "4243",
     "config": "/home/ohollmen/docker.conf.json",
-    "catalog": "/home/ohollmen/dockercat.conf.json"
+    "catalog": "/home/ohollmen/dockercat.conf.json",
+    "hostgrp":"nuc"
   },
   "net": {
     "netmask": "255.255.240.0",

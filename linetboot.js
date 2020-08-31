@@ -173,6 +173,9 @@ function app_init(global) {
   
   app.post('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
   app.get('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
+  
+  app.get("/dockerenv", dockerenv_info);
+  app.get("/config", config_send);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1171,7 +1174,8 @@ function grouplist(req, res) {
 * Display on URL /hostrmgmt
 */
 function rmgmt_list(req, res) {
-  var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt";
+  var rmc = global.ipmi || {};
+  var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt";
   
   var arr = [];
   var resolve = 1; // Resolve DNS Names
@@ -1227,41 +1231,50 @@ function proctest(req, res) {
   });
 }
 
-/** Mockup: Run set of ansible playbooks on set of hosts (POST /ansrun).
-* Main paremetars are playbooks and hosts:
+/** Run set of ansible playbooks on set of hosts (POST /ansrun).
+* Main paremeters are playbooks and hosts:
 * 
 * - **playbooks** - Set of ansible playbook should be given by a profile
 * (Or passing playbook names for maximum flexibility).
 * - **hostnames**: Hosts could be given as individual hosts
-* - **hostgroup** as defined by
-* lineboot host groups).
+* - **hostgroups** as defined by lineboot host groups).
 * 
 * Depends on lineboot config members:
-* - Playbook path
-* - playbook profiles
+* - ansible.pbpath - Playbook path
+* - ansible.pbprofs - playbook profiles in Array-of-Objects (w. "lbl", "name", "playbooks")
 
 * ## profile format in config
 * 
 * profiles look like (Under "ansible" section):
 * 
-*     "pbprofs": {
-*       "ossetup": ["pkg_install.yaml", "nis_setup.yaml", "user_setup.yaml"],
-*       "ssllim": ["ssh_lims.yaml"],
-*       "": []
-*     } 
+*     "pbprofs": [
+*       {
+*         "lbl": "ossetup",
+*         "name": "OS Install & Setup",
+*         "playbooks": ["pkg_install.yaml", "nis_setup.yaml", "user_setup.yaml"]
+*       },
+*       {
+*         "lbl":"sshlim",
+*         "name": "Setup SSH limitations",
+*         "playbooks": ["ssh_lims.yaml"]
+*       },
+*       {
+*       ...
+*       }
+*     ]
 */
 function ansible_run_serv(req, res) {
   var jr = {status: "err", msg: "Not running Ansible. "};
   if (!global.ansible) { jr.msg += "No ansible section in config !"; return res.json(jr); }
   var acfg = global.ansible;
   if (typeof acfg != 'object') {  jr.msg += "Ansible config is not an object !"; return res.json(jr); }
-  if (req.method != "POST") { jr.msg += "Send request as POST"; return res.json(jr); }
+  if (req.method != "POST") { jr.msg += "Send request as POST"; return res.json(jr); } // POST !!!
   var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
   if (!pbpath) { jr.msg += "Playbook path not given (in env or config) !"; return res.json(jr); }
   acfg.pbpath = pbpath; // Override (at init ?)
   // Define the policy of manding hosts to be listed in hostsfile / known to linetboot
   if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in config !"; return res.json(jr); }
-  var p = req.body;
+  var p = req.body; // POST Params
   // Test ONLY (Comment out for real run)
   // if (!p || !Object.keys(p).length) {
   //  p = ans.testpara; // TEST/DEBUG
@@ -1269,14 +1282,26 @@ function ansible_run_serv(req, res) {
   acfg.pbprofs = acfg.pbprofs || [];
   console.log("ansible_run_serv: Ansible run parameters:", p);
   if (typeof p != 'object') { jr.msg += "Send POST body as Object"; return res.json(jr); }
-  p = new ans.Runner(p, acfg);
-  if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
-  var err = ans.playbooks_resolve(acfg, p);
-  if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
-
-  //console.log(p);
-  p.ansible_run(); // OLD: ans.ansible_run(p);
-  res.json({event: "ansstart", time: Math.floor(new Date() / 1000), msg: "Running Async in background"});
+  var step = "const";
+  try {
+    p = new ans.Runner(p, acfg);
+    // if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
+    step = "playbook_resolve";
+    //var err = ans.playbooks_resolve(acfg, p);
+    var err = p.playbooks_resolve(acfg);
+    if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
+    // Groups
+    step = "grp_resolve";
+    p.hostgrps_resolve(global.groups);
+    step = "run";
+    console.log("Instance state before run(): ", p);
+    p.ansible_run(); // OLD: ans.ansible_run(p);
+  } catch(ex) {
+    jr.msg += "Runner Construction failed (EX)"+ex;
+    console.log("Exception Step:"+step+", msg:"+ jr.msg);
+    return res.json(jr);
+  }
+  res.json({status: "ok", event: "ansstart", time: Math.floor(new Date() / 1000), msg: "Running Async in background"});
 }
 
 /** List ansible profiles or playbooks (GET: /anslist/play /anslist/prof).
@@ -1286,7 +1311,7 @@ function ansible_plays_list(req, res) {
   var urls = {"/anslist/play": "play", "/anslist/prof": "prof"};
   var url = req.url;
   var aotype = urls[url];
-  if (!aotype) { res.json(jr); return; }
+  if (!aotype) { jr.msg += "Not a playbook or profile URL !";res.json(jr); return; }
   var acfg = global.ansible;
   var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
   console.log("List "+url+" playbook paths: " + pbpath);
@@ -1419,11 +1444,14 @@ function host_pkg_stats(req, res) {
  * https://docs.oracle.com/cd/E19273-01/html/821-0243/gixvt.html
  * https://redfishforum.com/thread/261/host-warm-reboots
  * https://eehpcwg.llnl.gov/assets/121015_intro_to_redfish.pdf - 2015 overview of RedFish with good JSON message examples
+ * https://github.com/dell/iDRAC-Redfish-Scripting/issues/39 - racadm / python firmware update (non-RF)
+ * https://www.dandh.com/pdfs/Cloud-Axcient-idrac9-lifecycle-controller-v3212121_api-guide_en-us.pdf - Dell Redfish API Guide
  */
 function host_reboot(req, res) {
   var jr = {"status": "err", msg: "Failed redfish (info/boot)."};
   var ops = {"boot": "post", "info": "get"};
-  var rmgmtpath = process.env['RMGMT_PATH'] || global.rmgmt_path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
+  var rmc = global.ipmi || {};
+  var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
   var rfmsg = {"ResetType": "ForceRestart", };
   var rq = req.query;
@@ -1436,7 +1464,7 @@ function host_reboot(req, res) {
   var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
   // if (req.body) { console.log("Express-body: ",req.body); } // Always {}
-  if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; }
+  if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; } // PXE !
   if (rq.test) { return res.json(rfmsg); }
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
@@ -1469,6 +1497,7 @@ function host_reboot(req, res) {
     "boot": "/Actions/ComputerSystem.Reset",
   // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
   // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
+  // /redfish/v1/UpdateService/Actions/Oem/DellUpdateService.Install
   };
   // use IP Address to NOT have to use DNS to resolve.
   var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
@@ -1487,8 +1516,8 @@ function host_reboot(req, res) {
   //https.globalAgent.options.rejectUnauthorized = false;
   //const agent = new https.Agent({ rejectUnauthorized: false });
   var reqopts = {headers: hdrs, }; // httpsAgent: agent
-  if (meth == 'post') axios[meth](rfurl, rfmsg, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err);
-  if (meth == 'get') axios[meth](rfurl, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err);
+  if (meth == 'post') { axios[meth](rfurl, rfmsg, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
+  if (meth == 'get') { axios[meth](rfurl, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
   // Advanced handling: https://github.com/axios/axios/issues/960
   function hdl_redfish_succ(resp) {
     var status = resp.status;
@@ -1497,14 +1526,17 @@ function host_reboot(req, res) {
     if (resp.headers && resp.headers["content-type"] && resp.headers["content-type"].match(/text\/html/)) {
       jr.msg += " Got HTML response"; return res.json(jr);
     }
+    // Bott response does not have body (is empty string), but has 204 status
     console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
+    if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
     res.json({"status":"ok", data: d});
   }
   // 400 (e.g. 404), 500 ?
   // Error: Parse Error
   // Error: Request failed with status code 400 ("Bad Request" on op: boot) statusText: 'Bad Request', server: 'Apache'
-  //     {"ResetType":"GracefulRestart"} <= GracefulRestart N/A on "BiosVersion": "2.2.11", only closes ForceRestart
+  //     {"ResetType":"GracefulRestart"} <= GracefulRestart N/A on "BiosVersion": "2.2.11", only closest is ForceRestart
   //     - Need to probe and choose closest (from Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"] ?
+  //     - Secondary problem: Using valid "ForceRestart" + "Pxe" does normal boot, not PXE
   function hdl_redfish_err(err) {
     jr.msg += err.toString();
     console.log(err.response);
@@ -1531,5 +1563,37 @@ function reboot_test(req, res) {
   // TODO: Lookup facts and mimick redfish info from facts
   // status: "ok", test: "POST success",
   // rf-props: IndicatorLED, HostName, UUID, SerialNumber, SKU (asset tag), PowerState, BiosVersion
-  res.json({ hname: req.params.hname, Manufacturer: "HomeGrow", Model: "Just-a-Model", Id: new Date().getTime()});
+  res.json({ hname: req.params.hname, Manufacturer: "HomeGrow", Model: "Just-a-Model", Id: new Date().getTime(),
+    "@odata.id" : "/redfish/v1/Systems/System.Embedded.1"});
+}
+var docker_conf;
+function dockerenv_info(req, res) {
+  var jr = {"status": "err", msg: "Failed docker view creation."};
+  var dc = global.docker;
+  if (!dc) { jr.msg += "No docker lineboot config section"; return res.json(jr);}
+  if (!docker_conf) {
+    if (!dc.config) { jr.msg += "No docker env config (docker.conf.json)"; return res.json(jr); }
+    if (!dc.catalog) { jr.msg += "No docker catalog (dockercat.conf.json)"; return res.json(jr); }
+    try {
+      var d = require(dc.config);
+      d.catalog = require(dc.catalog);
+      docker_conf = d;
+    }
+    catch (ex) { jr.msg += "Loading of docker configs failed"; return res.json(jr); }
+  }
+  return res.json({status: "ok", data: docker_conf});
+}
+
+/** Send misc/select key-value pairs of config information to frontend.
+ * Config info is taken from global config structure.
+ */
+function config_send(req, res) {
+  var cfg = {docker: {}};
+  // Docker host group
+  var dock = global.docker;
+  var core = global.core;
+  if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
+  if (dock && dock.port)    { cfg.docker.port = dock.port; }
+  if (core && core.appname) { cfg.appname = core.appname; }
+  res.json(cfg);
 }

@@ -256,7 +256,7 @@ function file_path_resolve(fname, path) {
   console.log("file_path_resolve: Filename: ", fname);
   console.log("file_path_resolve: Path for resolving files: ", patharr);
   // Try fname as-is (from current dir)
-  if (fs.existsSync(fname)) { return 1; }
+  if (fs.existsSync(fname)) { return fname; }
   pathmatch = patharr.filter(function (path) {
     var fullfn = path + '/' + fname;
     if (fs.existsSync(fullfn)) { return 1; }
