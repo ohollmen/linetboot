@@ -1,0 +1,11 @@
+# To use this playbook, add running user to be part of
+# docker group on all
+- name: Pull Docker Image
+  hosts: "{{ host }}"
+  # Counter-productive ? Esp. if registry is authenticated
+  #become: yes
+  vars:
+    image: ""
+  tasks:
+    - name: Pull Image
+      shell: docker pull {{ image }}
