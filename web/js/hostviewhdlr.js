@@ -42,7 +42,7 @@ function rmgmt(ev, act) {
     // console.log("Remote Mgmt data: ", rmgmt_data);
     if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
     var hr = 0; // Has remote management
-    if (!rmgmt_data.filter((it) => {it.ipaddr}).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
+    if (!rmgmt_data.filter((it) => {return it.ipaddr}).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
     showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
     // $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); // UI Setup
   })
