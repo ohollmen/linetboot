@@ -44,10 +44,12 @@
   
   <script type="text/javascript" src="node_modules/router66/Router66.js"></script>
   <script type="text/javascript" src="node_modules/router66/lib/rapp.js"></script>
-   <script src="node_modules/showdown/dist/showdown.js" ></script>
+  <script type="text/javascript" src="jsx/webview.js"></script>
+  <script type="text/javascript" src="node_modules/showdown/dist/showdown.js" ></script>
    
   <script type="text/javascript" src="node_modules/docindex/docindex.js"></script>
   <script type="text/javascript" src="js/hostviewdef.js"></script>
+  <script type="text/javascript" src="js/hostviewhdlr.js"></script>
   <script type="text/javascript" src="js/hostviews.js"></script>
 <style>
   /* App specific styles (overrides, etc.) to be loaded last */
@@ -120,7 +122,8 @@
 #sidebar h3 { width: 360px; }
 
 #sidebar ul { border-radius: 5px; }
-
+/* Counteract bootstrap (?) not showing links (hover: #23527c) */
+a:link { color: #203090; }
   </style>
 </head>
 <!--
@@ -131,7 +134,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <body class="">
 <div id="header">
   <!-- glyphicon-home -->
-  <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span style="font-weight: bold;">Hosts Inventory</span></h1>
+  <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span style="font-weight: bold;">Linetboot Hosts Inventory</span></h1>
 </div>
 <nav>
 <ul style="display:none">
@@ -157,6 +160,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-68">PkgStat</a></li>
     <li><a href="#tabs-7">About ...</a></li>
     <li><a href="#tabs-8">Docs</a></li>
+    <li><a href="#tabs-9">Docker Env</a></li>
   </ul>
   <!-- -->
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
@@ -179,7 +183,12 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="tabs-68"><div id="jsGrid_pkgstat"></div></div>
   <div id="tabs-7"></div>
   <div id="tabs-8"></div>
-</div><!-- id="tabs" -->
+  <div id="tabs-9"></div>
+</div>
+<!-- END OF id="tabs" -->
+
+<div id="tabs2"></div>
+
 
 <div id="dialog" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
@@ -242,6 +251,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li><a class="outitem" href="/allhostgen/{{ lbl }}">{{ name }}</a></li>
 {{/outtypes}}
 </ul>
+
+<iframe id="cmdoutput" src="" width="800" height="500"></iframe>
 </script>
 
 <script id="redfish" type="text/template">
@@ -258,11 +269,21 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>UUID: {{{ UUID }}}</li>
 <li>Indicator LED: {{{ IndicatorLED }}}</li>
 <li>Health Status: {{{ Status.Health }}}</li>
+<!-- <li>ODATA ID:  [@odata.id] </li> -->
 </ul>
 <input class="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
 <input class="bbut" type="button" data-hname="{{{ hname }}}" data-pxe="1" value="Boot PXE">
 </script>
+<script id="dockercat" type="text/template">
+<h3>Docker System settings and Images</h3>
+<ul>
+<li>Run containers as: {{ asuser }}</li>
+<li>Add new user: {{ mergeuser }}</li>
+<li>Globally mounted volumes: {{{ vols }}}</li>
+</ul>
 
+<div id="jsGrid_dockercat">
+</script>
 
 <script id="ansrun"  type="text/template" title="Ansible Run">
 <!-- -->
@@ -313,7 +334,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <option value="series"  >Series</option>
 </select>
 </fieldset>
-<input type="button" value="Run" onclick="ansirun()">
+<input id="anssend" type="button" value="Run" >
 </form>
 
 </script>
@@ -343,6 +364,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <script id="about" type="text/template">
 <h3>Linetboot Hosts Inventory</h3>
 <p>Web GUI evolved as an add-on around the (Ansible) <a href="#">linetboot</a> host facts.</p>
+<p>Linetboot app is available at GitHub: <a href="https://github.com/ohollmen/linetboot/">ohollmen/lineboot</a></p>
 <p>(C): Olli Hollmen 2018-2020</p>
 </script>
 

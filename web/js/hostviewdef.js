@@ -250,9 +250,21 @@
      {name: "path",     title: "Exported Path",  type: "text", width: 200, }, // itemTemplate: docktags
      {name: "iface",     title: "For Clients (by IP,mask, name, etc.)",  type: "text", width: 150, }, // itemTemplate: dockver
    ];
+   function docker_sync(val, item) {
+     return "<a class=\"docksync\" href=\"#\" data-image=\""+item.dockerimg+"\">Sync</a>";
+   }
+   // 
+   var fldinfo_dockercat = [
+     {name: "dockerlbl",     title: "Label",  type: "text", width: 80, }, // itemTemplate: docktags
+     {name: "dockerimg",     title: "Image",  type: "text", width: 200, }, // itemTemplate: dockver
+     {name: "vols",     title: "Required mounts",  type: "text", width: 100, },
+     {name: "title",     title: "Description",  type: "text", width: 200, },
+     {name: "sync",     title: "Actions",  type: "text", width: 30, itemTemplate: docker_sync, visible: true},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "proc": fldinfo_proc,
-      "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs
+      "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
+      "dockercat": fldinfo_dockercat,
    };
    
