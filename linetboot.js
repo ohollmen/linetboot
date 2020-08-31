@@ -1490,7 +1490,7 @@ function host_reboot(req, res) {
   // Get IPMI / iDRAC URL. All URL:s https.
   // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
   var sysid = "1";
-  if (f && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
+  if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
   var rebooturl = {
     "base": "/redfish/v1/",
     "info": "", // Add NONE

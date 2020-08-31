@@ -41,7 +41,7 @@ var Mustache = require("mustache");
     {"lbl": "pkgcoll", name: "Package List Extraction", "cb": function (info, f) {
       return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     }},
-    {"lbl": "rmgmtcoll", name: "Remote management info Extraction", "cb": function (info, f) {
+    {"lbl": "rmgmtcoll", name: "Remote mgmt. info Extraction", "cb": function (info, f) {
       return  "ansible-playbook -i ~/.linetboot/hosts  build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
     }},
     // SSH Key archiving
