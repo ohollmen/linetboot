@@ -1651,7 +1651,7 @@ function installrequest(req, res) {
   var jr = {status: "error", "msg": "Could not register next boot/install request. "};
   var msgarr = [];
   console.log("Starting to process boot/install request");
-  
+  // Simple log-screen and log-to-message
   function log(msg) {
     console.log(msg);
     msgarr.push(msg);
@@ -1704,13 +1704,19 @@ function installrequest(req, res) {
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
   if (ipmi.rmgmt_exists(q.hname)) {
-    var pxecmd = "";
+    //var cmd = "";
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
     console.log("HAS-RMGMT:", ent);
-    // var pxecmd = ipmi.ipmi_cmd(f, "");
-    //cproc.exec(pxecmd, function () {})
+    // ipmitool lan print 1   ipmitool user list 1
+    var pxecmd = ipmi.ipmi_cmd(f, "lan print 1", global, {});
+    log("Formulated IPMI command: '"+pxecmd+"'");
+    //var run = cproc.exec(pxecmd, function (err, stdout, stderr) {
+    //  if (err) { jr.msg += "Problem with ipmitool run:" + ex; return res.json(jr); }
+    //  return res.json({status: "ok", data: {"msgarr": msgarr}});
+    //});
+    // run.on('exit', function (code) {});
     //return;
   }
-  return res.json({status: "ok", data: {"msgarr": msgarr}});
+  return res.json({status: "ok", data: {"msgarr": msgarr} });
 }
