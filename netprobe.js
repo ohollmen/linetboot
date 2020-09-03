@@ -10,6 +10,7 @@ var node_ssh = require('node-ssh');
 var ssh2  = require('ssh2'); // .Client;
 var fs    = require('fs');
 var async = require("async");
+var ipmi  = require("./ipmi.js"); // IPMI !!!!
 var servers;
 var resolver;
 //const resolver = new Resolver();
@@ -205,7 +206,9 @@ function parse_w(str, o) {
 function parse_pcnt(str, o) {
   o.pcnt = parseInt(str);
 }
-/** ssh2 based version.
+/** Detect load and uptime on the remote server (ssh2 based version).
+ * @param hnode {object} - Ansible facts (?) w. ansible_fqdn
+ * @param cb {function} - callback signal hook for using with async
  * Notes: conn-ready does not receive params (would benefit out of conn).
  */
 function stats_proc(hnode, cb) {
@@ -221,7 +224,8 @@ function stats_proc(hnode, cb) {
     {id: "upt", cmd: "uptime", pcb: parse_w}, // uptime or w
     {id: "pcnt", cmd: "ps -ef | wc -l", pcb: parse_pcnt},
   ];
-  
+  // Detect presence of rmgmt. TODO: Move out of ipmi.js ?
+  prec.hasrm = ipmi.rmgmt_exists(hnode.ansible_fqdn, process.env["RMGMT_PATH"]);
   function additem(prec) { debugarr.push(prec); return prec; }
   async.map(oparams, runprobecmd, function(err, results) {
     if (err) { var cerr = "Error completing async.map: " + err; console.log(cerr); return cb(cerr); }
