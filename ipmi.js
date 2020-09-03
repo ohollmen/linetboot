@@ -246,6 +246,7 @@ function rmgmt_load(f, rmgmtpath) { // cb
   // " chassis bootdev pxe" // For the next boot (only, unless options=persistent option given) IBM
   // "chassis bootparam set bootflag pxe" - Dell ?
 function ipmi_cmd(f, ipmicmd, global, opts) {
+  var Mustache = require("mustache");
   // load IPMI info
   var ent = rmgmt_load(f);
   var cmdtmpl = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} " + ipmicmd; // power {{ powopt }}
