@@ -33,6 +33,35 @@ if (process.argv[1].match(/\bipmi\b/)) {
   else if (act == 'user') { users_test(); }
   else { hosts_rmgmt_info(); }
 }
+
+var rmpath_ev = "RMGMT_PATH"; // TODO: Use below
+
+/** Work on global.ipmi.path and RMGMT_PATH.
+ * As a result of this initialization RMGMT_PATH should always be populated (for other modules to use).
+ */
+function init(global) {
+  if (!global || !global.ipmi) { return; }
+  var rmcfg = global.ipmi;
+  // Check that this is an actuaol object
+  // if (typeof rmcfg != 'object') { return; }
+  // If one indication of rmgmtpath found, set the other, forcing it to sync.
+  // Prioritize env variable
+  if (process.env["RMGMT_PATH"]) { rmcfg.path = process.env["RMGMT_PATH"]; }
+  else if (rmcfg.path) { process.env["RMGMT_PATH"] = rmcfg.path; }
+  // Check presence ? Wipe out both if not present ?
+  if (!fs.existsSync(rmcfg.path)) {
+    console.log("WARNING: Remote management path ('"+rmcfg.path+"') does not exist !!");
+    // Wipe out both ?
+    // rmcfg.path = "";
+    // process.env["RMGMT_PATH"] = "";
+  }
+  
+}
+
+function rmgmt_path () {
+  return process.env["RMGMT_PATH"];
+}
+
 /** Get remote management info for the hosts by SSH.
 * Hosts are listed by name as array of strings in hlist.
 * @param hlist {array} - list of hostnames
@@ -98,9 +127,11 @@ function lan_parse(lanstr, opts) {
 }
 /** Resolve IPMI LANInfo hostname from ip address.
 * Uses field "ipaddr" (Orig field 'IP Address') as IP address param to resolve.
-* Sets member "rmhname" (for remote management hostname) in the object passed to it.
-* @param ent {object) - Remote management Info object (with short attributes).
-* @param cb {function} - Callback to call (with original ent as param) after name resolution.
+* Sets member "rmhname" (for "remote management hostname") in the object passed to it.
+* Not errors in resolution are never signaled to cb as error, but the absence of "rmhname"
+* will indicate DNS resolution could not be made.
+* @param ent {object) - Remote management Info object (with short attributes: ...).
+* @param cb {function} - Callback to call (with original ent as param) after name resolution (err,data).
 */
 function lan_hostname(ent, cb) {
   
@@ -148,42 +179,84 @@ function users_parse(userliststr, opts) {
   for (var i = (userlist.length-1);!userlist[i].Name;i--) { userlist.pop(); }
   return userlist;
 }
-
+/** Check merely that remote management info exists.
+ * This does merely statting, no files are accessed for parsing.
+ * @param hn {string} - Host name
+ * @param rmgmtpath {string} - Path for IPMI files
+ */
+function rmgmt_exists(hn, rmgmtpath) {
+  if (!rmgmtpath) { rmgmtpath = process.env["RMGMT_PATH"]; }
+  if (!rmgmtpath) { return 0; }
+  if (!fs.existsSync(rmgmtpath)) { return 0; }
+  var haslan = fs.existsSync(rmgmtpath + "lan.txt");
+  var hasusr = fs.existsSync(rmgmtpath + "users.txt");
+  if (haslan && hasusr) { return 1; }
+  console.log("Warning: rmgmt info: haslan = "+haslan+", hasuser = "+hasusr);
+  return 0;
+}
+/** Load all available rmgmt info (lan info, users info).
+ * @param f {object} - Host facts (for ansible_fqdn).
+ * @param rmgmtpath {string} - Path where rmgmt (ipmi) info is stored.
+ * @return single host-specific rmgmt entity.
+ */
 function rmgmt_load(f, rmgmtpath) { // cb
-    var hn = f.ansible_fqdn;
-    var ent_dummy = { hname: f.ansible_fqdn, "ipaddr": "" }; // Dummy stub
-    var fn = rmgmtpath + "/" + hn + ".lan.txt";
-    if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
-    var cont = fs.readFileSync(fn, 'utf8');
-    if (!cont || !cont.length) { return (ent_dummy); } // dummy_add
-    fn = rmgmtpath + "/" + hn + ".users.txt";
-    if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
-    var cont2 = fs.readFileSync(fn, 'utf8');
-    if (!cont2 || !cont2.length) { return (ent_dummy); } // dummy_add
-    var lan   = lan_parse(cont);
-    var users = users_parse(cont2);
-    var ulist = "";
-    if (users && Array.isArray(users)) {
-      // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
-      //ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(',');
-      ulist = users.filter(function (it) {return it.Name;}).map(function (it) {return it.Name + "(" + it.ID + ")";}).join(',');
-    }
-    var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
-      ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
-      users: users,
-      ulist: ulist
-    };
-    //if (!cb) {
-    //arr.push(ent);
-    //}
-    //return cb(ent);
-    return ent;
+  var hn = f.ansible_fqdn;
+  if (!rmgmtpath) { rmgmtpath = process.env["RMGMT_PATH"]; }
+  var ent_dummy = { hname: f.ansible_fqdn, "ipaddr": "" }; // Dummy stub
+  var fn = rmgmtpath + "/" + hn + ".lan.txt";
+  if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
+  var cont = fs.readFileSync(fn, 'utf8');
+  if (!cont || !cont.length) { return (ent_dummy); } // dummy_add
+  fn = rmgmtpath + "/" + hn + ".users.txt";
+  if (!fs.existsSync(fn)) { return (ent_dummy); } // dummy_add
+  var cont2 = fs.readFileSync(fn, 'utf8');
+  if (!cont2 || !cont2.length) { return (ent_dummy); } // dummy_add
+  var lan   = lan_parse(cont);
+  var users = users_parse(cont2);
+  var ulist = "";
+  if (users && Array.isArray(users)) {
+    // TODO: it.Name + "(" + it.ID + ")" (REVERSE map,filer order)
+    //ulist = users.map(function (it) {return it.Name;}).filter(function (it) { return it; }).join(',');
+    ulist = users.filter(function (it) {return it.Name;}).map(function (it) {return it.Name + "(" + it.ID + ")";}).join(',');
   }
+  var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
+    ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
+    users: users,
+    ulist: ulist
+  };
+  //if (!cb) {
+  //arr.push(ent);
+  //}
+  //return cb(ent);
+  return ent;
+}
+/** Formulate IPMI remote command with host
+ * @param hname {string} - Hostname
+ * @param ipmicmd {string} - IPMI command without "remote" params (e.g. "chassis bootdev pxe" or "")
+ */
+/////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
+  // No possibility to boot PXE on next boot ?
+  // https://ma.ttwagner.com/ipmi-trick-set-the-boot-device/ (IBM)
+  // https://www.dell.com/community/PowerEdge-Hardware-General/Set-up-boot-method-using-IPMI/td-p/3775936 - Dell
+  // https://community.pivotal.io/s/article/How-to-work-on-IPMI-and-IPMITOOL?language=en_US
+  //
+  // " chassis bootdev pxe" // For the next boot (only, unless options=persistent option given) IBM
+  // "chassis bootparam set bootflag pxe" - Dell ?
+function ipmi_cmd(f, ipmicmd, opts) {
+  // load IPMI info
+  var ent = rmgmt_load(f);
+  var ipmifullcmd = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} " + ipmicmd; // power {{ powopt }}
+  console.log(ent);
+  return ipmifullcmd;
+}
 
 module.exports = {
+  init: init,
   hosts_rmgmt_info: hosts_rmgmt_info,
   lan_parse: lan_parse,
   users_parse: users_parse,
   lan_hostname: lan_hostname,
-  rmgmt_load: rmgmt_load
+  rmgmt_exists: rmgmt_exists,
+  rmgmt_load: rmgmt_load,
+  ipmi_cmd: ipmi_cmd
 };
