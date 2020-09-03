@@ -54,7 +54,19 @@
 <style>
   /* App specific styles (overrides, etc.) to be loaded last */
   /* For bootstrap (w/o content area) border: 1px solid red; */
-  #header { padding: 5px 20px; margin: 0px;  color: white; background-color: black;  }
+  #header { padding: 5px 20px; margin: 0px;  color: white; background-colorXX: black;  }
+  #header {
+    Xposition: relative;
+    /* horiz, vert. Still does not affect size */
+    background-position: center top;
+    /* Scale to right size */
+    background-size: cover;
+    background-repeat: no-repeat;
+    
+    Xbackground-image: url(https://events.redhat.com/accounts/register123/redhat/events/ansible-technical-wkshp/ansible_storage_1080.jpg);
+    /* scroll, fixed, ... */
+    Xbackground-attachment: scroll;
+  }
   .pre {background-color: #CCCCCC; border: 1px solid black; padding: 15px;}
   /* Sidebar UL */
   #sidebar {margin-top: 15px; }
@@ -134,7 +146,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <body class="">
 <div id="header">
   <!-- glyphicon-home -->
-  <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span style="font-weight: bold;">Linetboot Hosts Inventory</span></h1>
+  <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span id="appname" style="font-weight: bold;">Linetboot Hosts Inventory</span></h1>
 </div>
 <nav>
 <ul style="display:none">
