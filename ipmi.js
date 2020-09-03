@@ -185,16 +185,19 @@ function users_parse(userliststr, opts) {
  * @param rmgmtpath {string} - Path for IPMI files
  */
 function rmgmt_exists(hn, rmgmtpath) {
+  var debug = 1;
   if (!rmgmtpath) { rmgmtpath = process.env["RMGMT_PATH"]; }
-  if (!rmgmtpath) { return 0; }
-  if (!fs.existsSync(rmgmtpath)) { return 0; }
-  var haslan = fs.existsSync(rmgmtpath + "lan.txt");
-  var hasusr = fs.existsSync(rmgmtpath + "users.txt");
+  if (!rmgmtpath) { debug && console.log("No rmgmtpath as para or env."); return 0; }
+  if (!fs.existsSync(rmgmtpath)) { debug && console.log("No rmgmtpath found on FS."); return 0; }
+  var haslan = fs.existsSync(rmgmtpath + "/" +hn+ ".lan.txt");
+  var hasusr = fs.existsSync(rmgmtpath + "/" +hn+ ".users.txt");
   if (haslan && hasusr) { return 1; }
-  console.log("Warning: rmgmt info: haslan = "+haslan+", hasuser = "+hasusr);
+  debug && console.log("Warning: rmgmt info: haslan = "+haslan+", hasuser = "+hasusr);
   return 0;
 }
 /** Load all available rmgmt info (lan info, users info).
+ * Returns as-minimum a dummy record with member "hname" for hosts that do NOT have remote
+ * management info collected.
  * @param f {object} - Host facts (for ansible_fqdn).
  * @param rmgmtpath {string} - Path where rmgmt (ipmi) info is stored.
  * @return single host-specific rmgmt entity.
