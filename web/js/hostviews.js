@@ -338,6 +338,9 @@ window.onload = function () {
   //axios.get('/list').then(initapp)
   //.catch(function (error) { console.log(error); });
   function initapp (response) {
+    // Page Branding
+    if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
+    if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
     //console.log(response);
     // db.hosts = response.data;
     //datasets["hostlist"] = response.data;
