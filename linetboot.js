@@ -1649,15 +1649,22 @@ function bootlabels(fn) {
  */
 function installrequest(req, res) {
   var jr = {status: "error", "msg": "Could not register next boot/install request. "};
+  var msgarr = [];
+  console.log("Starting to process boot/install request");
+  function log(msg) {
+    console.log(msg);
+    msgarr.push(msg);
+  }
   // Validate request
   var q = req.query;
-  if (q.hname) { jr.msg += "No hostname (hname) indicated"; return res.json(jr); }
-  if (q.bootlbl) { jr.msg += "No Boot label (bootlbl) indicated"; return res.json(jr); }
+  if (!q) { jr.msg += "No query params"; return res.json(jr); }
+  if (!q.hname) { jr.msg += "No hostname (hname) indicated"; return res.json(jr); }
+  if (!q.bootlbl) { jr.msg += "No Boot label (bootlbl) indicated"; return res.json(jr); }
   // INSERT INTO boot_install () VALUES ()
   // Lookup host from index
   var f = hostcache[q.hname];
   if (!f) { jr.msg += "No host found by hname = '"+q.hname+"'. Check that you are passing the fqdn of the host"; return res.json(jr); }
-  console.log("Found host facts for " + q.hname + ". Try Using boot label "+ q.bootlbl);
+  log("Found host facts for " + q.hname + ". Try Using boot label "+ q.bootlbl);
   // Validate boot label ?
   if (!global.tftp || !global.tftp.menutmpl) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
   var mfn = global.tftp.menutmpl;
@@ -1665,7 +1672,7 @@ function installrequest(req, res) {
   var bootitem = boots.filter(function (it) { return it.id == q.bootlbl; })[0];
   if (!bootitem) { jr.msg += "No Boot Item found from menu by " + q.bootlbl; return res.json(jr); }
   // Consider multiple ?
-  console.log("Found boot item: id = "+bootitem.id+", name = "+ bootitem.name);
+  log("Found boot item: id = "+bootitem.id+", name = "+ bootitem.name);
   // Template menu file
   
   // if (!fs.existsSync(mfn)) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
@@ -1673,13 +1680,14 @@ function installrequest(req, res) {
   var g = dclone(global); // MUST Copy !
   g.tftp.menudef = q.bootlbl;
   var cont = Mustache.render(tmpl, g);
-  console.log("Created "+cont.length+" Bytes of menu content");
+  log("Created "+cont.length+" Bytes of menu content");
   // Create a MCA-Address based file in global.tftp.root + "" + "01"+MACaddr (See: hostcommands.js)
   var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
   if (!mac) { jr.msg += "No MAC Address (in facts) for "+q.hname; return res.json(jr); }
   mac = mac.replace(/:/g, "-");
   mac = mac.toLowerCase();
   var macfn = "01-" + mac;
+  log("Resolved MAC-based menu filename to " + macfn);
   var root = global.tftp.root;
   if (!fs.existsSync(root)) { jr.msg += "TFTP root does not exist"; return res.json(jr); }
   var pxecfg = root + "/pxelinux.cfg/";
@@ -1701,5 +1709,5 @@ function installrequest(req, res) {
     //cproc.exec(pxecmd, function () {})
     return;
   }
-  return res.json({status: "ok", data: {}});
+  return res.json({status: "ok", data: {"msgarr": msgarr}});
 }
