@@ -1611,7 +1611,7 @@ function bootlabels(fn) {
   var menucont = fs.readFileSync(fn, 'utf8');
   var m = [];
   var i = 1;
-  console.log("Starting matching");
+  console.log("bootlabels: Starting matching");
   //console.log(menucont);
   // Returns only $0:s in every match ("label word").
   //var m = menucont.match(/^label\s+(\w+)/gm);
@@ -1651,6 +1651,7 @@ function installrequest(req, res) {
   var jr = {status: "error", "msg": "Could not register next boot/install request. "};
   var msgarr = [];
   console.log("Starting to process boot/install request");
+  
   function log(msg) {
     console.log(msg);
     msgarr.push(msg);
@@ -1664,7 +1665,7 @@ function installrequest(req, res) {
   // Lookup host from index
   var f = hostcache[q.hname];
   if (!f) { jr.msg += "No host found by hname = '"+q.hname+"'. Check that you are passing the fqdn of the host"; return res.json(jr); }
-  log("Found host facts for " + q.hname + ". Try Using boot label "+ q.bootlbl);
+  log("Found host facts for " + q.hname + ". Use boot label "+ q.bootlbl);
   // Validate boot label ?
   if (!global.tftp || !global.tftp.menutmpl) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
   var mfn = global.tftp.menutmpl;
@@ -1694,20 +1695,22 @@ function installrequest(req, res) {
   if (!fs.existsSync(pxecfg)) { jr.msg += "pxelinux.cfg under TFTP root does not exist"; return res.json(jr); }
   var fullmacfn = pxecfg + macfn;
   if (fs.existsSync(fullmacfn)) {
-    try { fs.unlinkSync(); } catch(ex) { jr.msg += "Could not remove any previous macfile " + ex; return res.json(jr); }
+    try { fs.unlinkSync(fullmacfn); } catch(ex) { jr.msg += "Could not remove any previous macfile " + ex; return res.json(jr); }
   }
   try {
     fs.writeFileSync( fullmacfn, cont, {encoding: "utf8"} ); // {encoding: "utf8"}, "mode": 0o666, 
   } catch (ex) { jr.msg += "Could not write new macfile menu" + ex; return res.json(jr); }
+  log("Wrote Menu to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
   if (ipmi.rmgmt_exists(q.hname)) {
     var pxecmd = "";
+    log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
     console.log("HAS-RMGMT:", ent);
     // var pxecmd = ipmi.ipmi_cmd(f, "");
     //cproc.exec(pxecmd, function () {})
-    return;
+    //return;
   }
   return res.json({status: "ok", data: {"msgarr": msgarr}});
 }
