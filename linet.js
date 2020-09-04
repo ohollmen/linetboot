@@ -1,8 +1,19 @@
 #!/usr/bin/node
-/** Allow operating linetboot from command line
+/** Allow operating linetboot boots and installs from command line.
 * 
 * TODO: Plan to have access to facts (or inventory), so that we can do
 * pattern-based group selections (and expand to individual hosts).
+* 
+* # Demo Example
+*
+*     # List Boot / OS Install Options
+*     ./linet.js listos
+*     # Inquire Info on host
+*     ./linet.js info -h host-032.company.com
+*     # Request next-boot way of booting (e.g. OS Install)
+*     ./linet.js install -h host-032.company.com -l 
+*     # Boot host
+*     ./linet.js boot -h host-032.company.com
 */
 
 var ops = [
@@ -36,7 +47,7 @@ var ops = [
 var cfg = {
   httphost: "http://ash-test-ccx-01.ash.broadcom.net:3000",
 };
-
+// CL Options
 var clopts = [
   ["h", "host=ARG+", "Hostname or multiple full hostnames (given w. multiple -h args)"],
   ["l", "bootlbl=ARG", "Boot label for OS to boot or install"],
@@ -60,11 +71,11 @@ var opnode = ops.filter((on) => { return op == on.id; })[0];
 if (!opnode) { usage("No op: "+op+". Need subcommand !"); }
 getopt = new Getopt(clopts);
 var opt = getopt.parse(argv2);
-console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
+// console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
 if (!opnode.cb) { usage("Opnode missing CB !"); }
 var rc = opnode.cb(opt.options);
-//console.log("Op:"+op+" produced rc:"+rc);
-//process.exit(rc); // NOT here: async could be running
+// console.log("Op:"+op+" produced rc:"+rc);
+// process.exit(rc); // NOT here: async could be running
 
 function usage(msg) {
   if (msg) { console.error(msg); }
@@ -84,12 +95,12 @@ function boot(opts) {
   console.log(".. using URL:" + url + " + host");
   async.map(opts.host, doboot, function (err, ress) {
     if (err) { console.log("Boot/Info Error"+err); return 1;}
-    console.log("Complete !");
+    // console.log("Complete !");
     console.log(JSON.stringify(ress, null, 2));
     return 0;
   });
   function doboot(hn, cb) {
-    console.log("Operate single host: " + hn);
+    // console.log("Operate single host: " + hn);
     axios.get(url+hn).then(function (resp) {
       var d = resp.data;
       // console.log("DATA:", d);
@@ -103,7 +114,7 @@ function boot(opts) {
   }
 }
 /** Send a request to install particular OS the next time host is booted.
-* Support labels in linebootside main menu.
+* Support labels in lineboot server side main boot menu.
 * TODO: Can we (only) set to boot pxe the next time (not actually boot).
 */
 function install(opts) {
@@ -113,14 +124,14 @@ function install(opts) {
   var hn = opts.host[0]; url += "hname="+hn;
   var bl = opts.bootlbl; url += "&bootlbl="+bl;
   console.log("Calling: "+url);
-   axios.get(url).then(function (resp) {
-     var d = resp.data;
-     if (d.status == 'error') { console.error("Error: "+d.msg); return; }
-     console.log(d);
-     console.log("Successfully submitted boot or install request for host: "+hn);
-   }).catch(function (ex) {
-     console.log("Error during Linetboot call: "+ex);
-   });
+  axios.get(url).then(function (resp) {
+    var d = resp.data;
+    if (d.status == 'err') { console.error("Error: "+d.msg); return; }
+    console.log(d); // DEBUG
+    console.log("Successfully submitted boot or install request for host: "+hn);
+  }).catch(function (ex) {
+    console.log("Error during Linetboot boot / install call: "+ex);
+  });
 }
 
 function listos(opts) {
@@ -138,7 +149,7 @@ function listos(opts) {
 	console.log(" - " + it.id + " - " + it.name); // 2 props
       });
       console.log("To initiate next-time (pxe) boot to one of these boot/install choices, run:");
-      console.log("  linet.js ");
+      console.log("  linet.js install -h myhost -l bootlabel");
       // return cb(d.data, 1);
     }).catch(function (ex) {
       
