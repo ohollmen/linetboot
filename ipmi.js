@@ -250,7 +250,7 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   // load IPMI info
   var ent = rmgmt_load(f);
   console.log(ent);
-  if (!ent || !ent.ioaddr) { return ""; }
+  if (!ent || !ent.ipaddr) { console.log("No ipmi info or ipdaar. Can't formulate command"); return ""; }
   // Use ipmitool -h to see values for -I option (open,imb,lan,lanplus)
   // -L user -L administrator
   var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  " + ipmicmd; // power {{ powopt }}
