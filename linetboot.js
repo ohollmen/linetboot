@@ -1703,7 +1703,8 @@ function installrequest(req, res) {
   log("Wrote Menu to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
-  if (ipmi.rmgmt_exists(q.hname)) {
+  var useipmi = 0;
+  if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
