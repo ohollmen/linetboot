@@ -12,7 +12,7 @@
     "preseed_mini": "./tmpl/preseed_mini.cfg.mustache"
   },
   
-
+  "inst": "{",
   
   "locale": "en_US.UTF-8",
   "keymap": "us",
@@ -22,12 +22,16 @@
   "ntpserver": "ntp.example.com",
   "postscript": "mv_homedir_for_autofs.sh",
   
+  "}":",",
+  
   "fact_path":  "/home/ohollmen/hostinfo",
   "hostsfile" : "/home/ohollmen/.linetboot/hosts",
   "maindocroot_X": "/var/www/html/",
   "maindocroot": "/isomnt/",
   "core": {
-    "appname": "Hollmen Infomation Technology",
+    "appname": "Hollmen IT - Hosts",
+    "hdrbgX": "https://events.redhat.com/accounts/register123/redhat/events/ansible-technical-wkshp/ansible_storage_1080.jpg",
+    "hdrbg": "https://cms.qz.com/wp-content/uploads/2018/12/tinyturtles.jpg?quality=75&strip=all&w=1600&h=1067",
     "apiena": 1
   },
   "hostnamesX": [
@@ -40,16 +44,22 @@
     {"id": "other", "name": "Other Hosts", "policy": "nongrouped"}
   ],
   "tftp": {
+    "desc" : "TFTP and Boot (boot be separate ?)",
     "host": "banana1",
-    "root":"/srv/git",
+    "root": "/srv/git",
     "root_rh": "/var/lib/tftpboot/",
-    "lintftp" : false
+    "lintftp" : false,
+    "menutmpl": "./tmpl/default.installer.menu.mustache",
+    "menutout" : 100,
+    "menudef_test":"memtest",
+    "menudef": ""
   },
   "rmgmt_path": "/home/ohollmen/hostrmgmt",
   "ipmi": {
+    "desc":"Remote Management (redfish and IPMI)",
     "path": "/home/ohollmen/hostrmgmt",
-    "user":"mickey",
-    "pass":"mouse",
+    "user": "mickey",
+    "pass": "mouse",
     "bootpin": "abc123",
     "debug":1,
     "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5"

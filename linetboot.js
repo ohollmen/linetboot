@@ -41,7 +41,7 @@ var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
 var ans      = require("./ansiblerun.js");
 var ospkgs   = require("./ospackages.js");
-var ipmi = require("./ipmi.js");
+var ipmi     = require("./ipmi.js");
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -63,8 +63,10 @@ app.use(bodyParser.json({limit: '1mb'}));
 function app_init(global) {
   /** Modules */
   app.set('json spaces', 2);
+  /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
   netprobe.init(global.probe);
+  ipmi.init(global);
   //app.use(express.static('pkgcache'));
   // Express static path mapping
   // Consider: npm install serve-static
@@ -176,6 +178,7 @@ function app_init(global) {
   
   app.get("/dockerenv", dockerenv_info);
   app.get("/config", config_send);
+  app.get("/install_boot", installrequest);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1544,14 +1547,7 @@ function host_reboot(req, res) {
     console.log(meth+" Error: "+err);
     res.json(jr);
   }
-  /////////////////////////// IPMI ("power" options: on,off,cycle,soft) ///////////////////
-  // No possibility to boot PXE on next boot ?
-  // https://ma.ttwagner.com/ipmi-trick-set-the-boot-device/ (IBM)
-  // https://www.dell.com/community/PowerEdge-Hardware-General/Set-up-boot-method-using-IPMI/td-p/3775936 - Dell
-  // https://community.pivotal.io/s/article/How-to-work-on-IPMI-and-IPMITOOL?language=en_US
-  //var ipmicmd = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} power {{ powopt }}";
-  // " chassis bootdev pxe" // For the next boot (only, unless options=persistent option given) IBM
-  // "chassis bootparam set bootflag pxe" - Dell ?
+  // Used to have ipmitool in here. See ipmi.ipmi_cmd()
   //res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
 }
 // POST
@@ -1588,12 +1584,139 @@ function dockerenv_info(req, res) {
  * Config info is taken from global config structure.
  */
 function config_send(req, res) {
-  var cfg = {docker: {}};
+  var cfg = {docker: {}, core: {}, bootlbls: []};
   // Docker host group
   var dock = global.docker;
   var core = global.core;
+  var tftp = global.tftp;
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
+  // Core
   if (core && core.appname) { cfg.appname = core.appname; }
+  if (core && core.hdrbg)   { cfg.hdrbg = core.hdrbg; } // BG Image
+  if (tftp && tftp.menutmpl) { cfg.bootlbls = bootlabels(tftp.menutmpl); }
   res.json(cfg);
+}
+/** Collect boot labels from boot menu file.
+ * Create a (Array-of-Objects) list of os label ("id"), os description ("name") entries.
+ * @param fn {sting} - Pxelinux boot menu file
+ * @return list of OS descriptions.
+ */
+function bootlabels(fn) {
+  // Consider what config section to put into (tftp.menutmpl)
+  //var fn = global.tftp.menutmpl;
+  
+  //fn = "./tmpl/default.installer.menu.mustache";
+  if (!fs.existsSync(fn)) { return null; }
+  var menucont = fs.readFileSync(fn, 'utf8');
+  var m = [];
+  var i = 1;
+  console.log("bootlabels: Starting matching");
+  //console.log(menucont);
+  // Returns only $0:s in every match ("label word").
+  //var m = menucont.match(/^label\s+(\w+)/gm);
+  var re = /^label\s+(\w+)\nmenu\s+label\s+([^\n]+)\n/gm;
+  var match;
+  while (match = re.exec(menucont)) {
+    //m.push(match[1]);
+    m.push({ id: match[1], name: match[2] });
+    //console.log(match);
+    //console.log("Match "+i); i++;
+  }
+  return m;
+}
+/** Receive an next boot (e.g. OS installation) request and store it to persistent storage.
+ * Note that the 
+ * Params:
+ * - hname - Hostname
+ * - bootlbl - Menu boot label to boot later into
+ * As a result of request, store following properties on the install-case:
+ * - Set state of boot/install to "pending".
+ * - Set time of request
+ * - Set hname, ipaddr, macaddr to make lookups by these
+ * - Trigger actions
+ *   - Generate menufile by MAC address name in pxelinux.cfg (name: 01+macaddr)
+ *   - Possibly trigger RedFish "Pxe" or IPMI "pxe" boot type request for the "next boot".
+ * Mockup of table (boot_install)
+ * - bootreqid integer NOT NULL
+ * - createdate datetime,
+ * - hname   varchar(128) NOT NULL,
+ * - ipaddr  varchar(32) NOT NULL,
+ * - macaddr varchar(32) NOT NULL,
+ * - bootlbl varchar(64) NOT NULL,
+ * - status  varchar(16) NOT NULL, // "pending"
+ * 
+ */
+function installrequest(req, res) {
+  var jr = {status: "error", "msg": "Could not register next boot/install request. "};
+  var msgarr = [];
+  console.log("Starting to process boot/install request");
+  // Simple log-screen and log-to-message
+  function log(msg) {
+    console.log(msg);
+    msgarr.push(msg);
+  }
+  // Validate request
+  var q = req.query;
+  if (!q) { jr.msg += "No query params"; return res.json(jr); }
+  if (!q.hname) { jr.msg += "No hostname (hname) indicated"; return res.json(jr); }
+  if (!q.bootlbl) { jr.msg += "No Boot label (bootlbl) indicated"; return res.json(jr); }
+  // INSERT INTO boot_install () VALUES ()
+  // Lookup host from index
+  var f = hostcache[q.hname];
+  if (!f) { jr.msg += "No host found by hname = '"+q.hname+"'. Check that you are passing the fqdn of the host"; return res.json(jr); }
+  log("Found host facts for " + q.hname + ". Use boot label "+ q.bootlbl);
+  // Validate boot label ?
+  if (!global.tftp || !global.tftp.menutmpl) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
+  var mfn = global.tftp.menutmpl;
+  var boots = bootlabels(mfn);
+  var bootitem = boots.filter(function (it) { return it.id == q.bootlbl; })[0];
+  if (!bootitem) { jr.msg += "No Boot Item found from menu by " + q.bootlbl; return res.json(jr); }
+  // Consider multiple ?
+  log("Found boot item: id = "+bootitem.id+", name = "+ bootitem.name);
+  // Template menu file
+  
+  // if (!fs.existsSync(mfn)) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
+  var tmpl = fs.readFileSync(mfn, 'utf8');
+  var g = dclone(global); // MUST Copy !
+  g.tftp.menudef = q.bootlbl;
+  var cont = Mustache.render(tmpl, g);
+  log("Created "+cont.length+" Bytes of menu content");
+  // Create a MCA-Address based file in global.tftp.root + "" + "01"+MACaddr (See: hostcommands.js)
+  var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+  if (!mac) { jr.msg += "No MAC Address (in facts) for "+q.hname; return res.json(jr); }
+  mac = mac.replace(/:/g, "-");
+  mac = mac.toLowerCase();
+  var macfn = "01-" + mac;
+  log("Resolved MAC-based menu filename to " + macfn);
+  var root = global.tftp.root;
+  if (!fs.existsSync(root)) { jr.msg += "TFTP root does not exist"; return res.json(jr); }
+  var pxecfg = root + "/pxelinux.cfg/";
+  if (!fs.existsSync(pxecfg)) { jr.msg += "pxelinux.cfg under TFTP root does not exist"; return res.json(jr); }
+  var fullmacfn = pxecfg + macfn;
+  if (fs.existsSync(fullmacfn)) {
+    try { fs.unlinkSync(fullmacfn); } catch(ex) { jr.msg += "Could not remove any previous macfile " + ex; return res.json(jr); }
+  }
+  try {
+    fs.writeFileSync( fullmacfn, cont, {encoding: "utf8"} ); // {encoding: "utf8"}, "mode": 0o666, 
+  } catch (ex) { jr.msg += "Could not write new macfile menu" + ex; return res.json(jr); }
+  log("Wrote Menu to: " + fullmacfn);
+  // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
+  // Should detect presence of rmgmt info
+  if (ipmi.rmgmt_exists(q.hname)) {
+    //var cmd = "";
+    log("Found IPMI info files for " + q.hname);
+    var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
+    console.log("HAS-RMGMT:", ent);
+    // ipmitool lan print 1   ipmitool user list 1
+    var pxecmd = ipmi.ipmi_cmd(f, "lan print 1", global, {});
+    log("Formulated IPMI command: '"+pxecmd+"'");
+    //var run = cproc.exec(pxecmd, function (err, stdout, stderr) {
+    //  if (err) { jr.msg += "Problem with ipmitool run:" + ex; return res.json(jr); }
+    //  return res.json({status: "ok", data: {"msgarr": msgarr}});
+    //});
+    // run.on('exit', function (code) {});
+    //return;
+  }
+  return res.json({status: "ok", data: {"msgarr": msgarr} });
 }

@@ -93,11 +93,14 @@ function sshkeys() {
  * Note: dot (".") i field name (here: package name, jsgrid: "name") causes a problem in grid
  * because of jsgrid dot-notation support.
 */
-function pkgstat() {
+function pkgstat(jev, act) {
   // console.log("Launch Pkg stat ...");
-  axios.get('/hostpkgstats').then(function (response) {
-    var pinfo = response.data.data;
-    var gdef = response.data.grid;
+  // Params to pass
+  
+  var url = act.url + "?"; // encodeURIComponent()
+  axios.get(url).then(function (resp) {
+    var pinfo = resp.data.data;
+    var gdef  = resp.data.grid;
     console.log("Pkg data: ", pinfo);
     if (!pinfo || !pinfo.length) { alert("No Package Data"); return; }
     // Set cell handlers

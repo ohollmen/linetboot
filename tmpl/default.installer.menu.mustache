@@ -23,9 +23,13 @@ default vesamenu.c32
 menu title LiNetBoot Tools and Install Menu
 
 prompt 0
-timeout 100
+## timeout 100
+timeout {{{ tftp.menutout }}}
 # Declaring Default menuitem makes this boot directly to it (independent of timeout !?)
-# default local
+# OLD: default local
+# Templated (w. non-empty):
+{{#tftp.menudef}}default {{{ tftp.menudef }}}{{/tftp.menudef}}
+{{^tftp.menudef}}default vesamenu.c32{{/tftp.menudef}}
 
 # Note: Moved to using Gparted (0.31.0-1-amd64, Linux 4.15) for kernel
 # See: https://gparted.org/download.php
