@@ -1492,7 +1492,7 @@ function host_reboot(req, res) {
   // HP wants: “ResetType”: “ColdBoot”
   // Get IPMI / iDRAC URL. All URL:s https.
   // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
-  var sysid = "1";
+  var sysid = "1"; // HP, Others ?
   if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
   var rebooturl = {
     "base": "/redfish/v1/",
@@ -1699,7 +1699,7 @@ function installrequest(req, res) {
   }
   try {
     fs.writeFileSync( fullmacfn, cont, {encoding: "utf8"} ); // {encoding: "utf8"}, "mode": 0o666, 
-  } catch (ex) { jr.msg += "Could not write new macfile menu" + ex; return res.json(jr); }
+  } catch (ex) { jr.msg += "Could not write new macfile menu " + ex; return res.json(jr); }
   log("Wrote Menu to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
@@ -1708,15 +1708,17 @@ function installrequest(req, res) {
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
     console.log("HAS-RMGMT:", ent);
-    // ipmitool lan print 1   ipmitool user list 1
-    var pxecmd = ipmi.ipmi_cmd(f, "lan print 1", global, {});
-    log("Formulated IPMI command: '"+pxecmd+"'");
-    //var run = cproc.exec(pxecmd, function (err, stdout, stderr) {
-    //  if (err) { jr.msg += "Problem with ipmitool run:" + ex; return res.json(jr); }
-    //  return res.json({status: "ok", data: {"msgarr": msgarr}});
-    //});
+    // ipmitool lan print 1   ipmitool user list 1 chassis power status mc info  Reset BMC: mc reset cold
+    var pxecmd = "chassis bootdev pxe"; // "lan print 1"
+    var ipmicmd = ipmi.ipmi_cmd(f, pxecmd, global, {});
+    log("Formulated IPMI command: '"+ipmicmd+"'");
+    var run = cproc.exec(ipmicmd, function (err, stdout, stderr) {
+      if (err) { jr.msg += "Problem with ipmitool run:" + err; return res.json(jr); }
+      log("Executed IPMI command successfully");
+      return res.json({status: "ok", data: {"msgarr": msgarr}});
+    });
     // run.on('exit', function (code) {});
     //return;
   }
-  return res.json({status: "ok", data: {"msgarr": msgarr} });
+  else { return res.json({status: "ok", data: {"msgarr": msgarr} }); }
 }

@@ -249,13 +249,21 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   var Mustache = require("mustache");
   // load IPMI info
   var ent = rmgmt_load(f);
-  var cmdtmpl = "ipmitool —I lanplus -U {{{ user }}} -P {{{ pass }}} -H {{ bmcaddr }} " + ipmicmd; // power {{ powopt }}
+  // Use ipmitool -h to see values for -I option (open,imb,lan,lanplus)
+  // -L user -L administrator
+  var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  " + ipmicmd; // power {{ powopt }}
   var p = {user: global.ipmi.user, pass: global.ipmi.pass, bmcaddr: ent.ipaddr};
   var ipmifullcmd = Mustache.render(cmdtmpl, p);
   console.log(ent);
   return ipmifullcmd;
+  // Enable IPMI Over LAN: Enabled
+  // IP Blocking enabled: Disabled
+  // Encryption Key: 0000000000000000000000000000000000000000 (40 x)
 }
-
+/* Google: Get Session Challenge command failed
+ * https://admin-log.net/index.php/2016/07/17/ipmitool-stopped-working-on-dell-idrac-over-lan/
+ * https://serverfault.com/questions/424192/ipmi-cant-ping-or-remotely-connect
+ */
 module.exports = {
   init: init,
   hosts_rmgmt_info: hosts_rmgmt_info,
