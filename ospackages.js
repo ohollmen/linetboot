@@ -18,7 +18,7 @@ function pkgset(oslbl, hostname, fname, opts) {
   if (!fs.existsSync(fname)) { throw "Package File "+fname+" not found"; }
   // In JS you can do fileops w/o "file handle"
   var data = fs.readFileSync(fname, 'utf8');
-  if ( ! data) { throw("No data from package file (null, undef, '')"); }
+  if ( ! data) { console.log("No data from package file for "+fname+" (null, undef or'')"); return null; }
   // if ( ! data.length) {}
   var arr = data.split(/\n/); // Assume single newline
   var arrout = [];
