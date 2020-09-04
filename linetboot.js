@@ -1708,10 +1708,12 @@ function installrequest(req, res) {
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
     console.log("HAS-RMGMT:", ent);
-    // ipmitool lan print 1   ipmitool user list 1 chassis power status mc info  Reset BMC: mc reset cold
-    var pxecmd = "chassis bootdev pxe"; // "lan print 1"
+    // ipmitool lan print 1   ipmitool user list 1 chassis power status mc info  Reset BMC: mc reset cold [chassis] power soft
+    // chassis bootparam set bootflag pxe
+    var pxecmd = "chassis bootdev pxe"; // "lan print 1". Also options=persistent
     var ipmicmd = ipmi.ipmi_cmd(f, pxecmd, global, {});
     log("Formulated IPMI command: '"+ipmicmd+"'");
+    if (!ipmicmd) { jr.msg += "Could not formulate IPMI Command"; return res.json({status: "ok", data: {"msgarr": msgarr}}); } // NOTE: NOT OK (Change) !!!
     var run = cproc.exec(ipmicmd, function (err, stdout, stderr) {
       if (err) { jr.msg += "Problem with ipmitool run:" + err; return res.json(jr); }
       log("Executed IPMI command successfully");

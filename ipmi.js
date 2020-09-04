@@ -249,12 +249,14 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   var Mustache = require("mustache");
   // load IPMI info
   var ent = rmgmt_load(f);
+  console.log(ent);
+  if (!ent || !ent.ioaddr) { return ""; }
   // Use ipmitool -h to see values for -I option (open,imb,lan,lanplus)
   // -L user -L administrator
   var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  " + ipmicmd; // power {{ powopt }}
-  var p = {user: global.ipmi.user, pass: global.ipmi.pass, bmcaddr: ent.ipaddr};
+  var p = { user: global.ipmi.user, pass: global.ipmi.pass, bmcaddr: ent.ipaddr };
   var ipmifullcmd = Mustache.render(cmdtmpl, p);
-  console.log(ent);
+  
   return ipmifullcmd;
   // Enable IPMI Over LAN: Enabled
   // IP Blocking enabled: Disabled
