@@ -135,13 +135,15 @@ function outfmts(ev, act) {
 
 function dockercat_show(ev, act) {
   
-  axios.get("/dockerenv").then((resp) => {
+  axios.get("/dockerenv").then(function (resp) {
     var d = resp.data;
+    if (!d || !d.data) { return $('#denvinfo').html("No Docker Env. Info"); }
     //console.log(d.data);
     // Late-Templating
     var cont = rapp.templated("dockercat", d.data);
     $('#'+act.elsel).html(cont); // Redo with results of late-templating (w. d.data)
     showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
+    // Docker sync ops
     $(".docksync").click(function (jev) {
       var img = this.getAttribute("data-image"); // .dataset.image;
       //console.log(img);
@@ -162,7 +164,10 @@ function dockercat_show(ev, act) {
 function showdocindex (ev, act) {
   // Mimick flow from docindex_main.js
   var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1, acc: 0});
-  docIndex.ondocchange = function (docurl) { console.log("DOC-CHANGE: "+docurl); location.hash = '#nop'; };
+  docIndex.ondocchange = function (docurl) {
+    console.log("DOC-CHANGE: "+docurl);
+    // location.hash = '#nop';
+  };
   var url = act.idxurl || act.url || "/docindex.json";
   //if () {}
   //console.log("Staring load: "+ url);
@@ -179,10 +184,11 @@ function bootgui(ev, act) {
   var cont = rapp.templated("bootreq");
   $('#'+act.elsel).html(cont);
   // UI Setup
+  //function boot_select_setup() {
   webview.addoptions(datasets["cfg"].bootlbls, $("#bootlbl").get(0), {});
   webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
+  //}
   $("#bootreqsubmit").click(function (jev) {
-    //alert("Hi!");
     var para =  {"bootlbl": $("#bootlbl").val(), "hname": $("#hname").val()[0]};
     console.log(para);
     axios.get("/install_boot?", {params: para}).then(function (resp) {

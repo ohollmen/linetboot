@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /** Allow operating linetboot boots and installs from command line.
 * 
 * TODO: Plan to have access to facts (or inventory), so that we can do
@@ -7,13 +7,13 @@
 * # Demo Example
 *
 *     # List Boot / OS Install Options
-*     ./linet.js listos
+*     node ./linet.js listos
 *     # Inquire Info on host
-*     ./linet.js info -h host-032.company.com
+*     node ./linet.js info -h host-032.company.com
 *     # Request next-boot way of booting (e.g. OS Install)
-*     ./linet.js install -h host-032.company.com -l 
+*     node ./linet.js install -h host-032.company.com -l memtest
 *     # Boot host
-*     ./linet.js boot -h host-032.company.com
+*     node ./linet.js boot -h host-032.company.com
 */
 
 var ops = [
@@ -51,6 +51,7 @@ var cfg = {
 var clopts = [
   ["h", "host=ARG+", "Hostname or multiple full hostnames (given w. multiple -h args)"],
   ["l", "bootlbl=ARG", "Boot label for OS to boot or install"],
+  ["p", "pxe", "Boot pxe (Ths is an option flag w/o value)"],
 ];
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -73,6 +74,7 @@ getopt = new Getopt(clopts);
 var opt = getopt.parse(argv2);
 // console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
 if (!opnode.cb) { usage("Opnode missing CB !"); }
+opt.options.op = op;
 var rc = opnode.cb(opt.options);
 // console.log("Op:"+op+" produced rc:"+rc);
 // process.exit(rc); // NOT here: async could be running
@@ -80,6 +82,9 @@ var rc = opnode.cb(opt.options);
 function usage(msg) {
   if (msg) { console.error(msg); }
   console.error("Use one of subcommands:\n"+ ops.map((on) => {return " - "+on.id+ " - " + on.title;}).join("\n"));
+  console.log("Command Line Options");
+  var help = clopts.map((on) => {return " - -"+on[0]+ " (--"+on[1]+") - " + on[2];}).join("\n");
+  console.log(help);
   process.exit();
 }
 function help() {
@@ -87,12 +92,14 @@ function help() {
 }
 // boot OR info
 function boot(opts) {
-  var rmgmtop = "info"; // info / boot
+  var rmgmtop = opts.op; // "info" / "boot" Use: opts.op;
+  // console.log("Op: " + opts.op);
   if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h )!"); }
   
-  var url = cfg.httphost + "/rf/"+rmgmtop+"/"; // Append hname !
+  var baseurl = cfg.httphost + "/rf/"+rmgmtop+"/"; // Append hname !
+  //
   console.log("Should boot hosts:", opts.host);
-  console.log(".. using URL:" + url + " + host");
+  console.log(".. using URL:" + baseurl + " + host");
   async.map(opts.host, doboot, function (err, ress) {
     if (err) { console.log("Boot/Info Error"+err); return 1;}
     // console.log("Complete !");
@@ -101,7 +108,9 @@ function boot(opts) {
   });
   function doboot(hn, cb) {
     // console.log("Operate single host: " + hn);
-    axios.get(url+hn).then(function (resp) {
+    var url = baseurl+hn+"?";
+    if (opts.pxe) { url += "pxe=1";}
+    axios.get(url).then(function (resp) {
       var d = resp.data;
       // console.log("DATA:", d);
       // Check errors

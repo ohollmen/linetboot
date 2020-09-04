@@ -1411,7 +1411,7 @@ function host_pkg_stats(req, res) {
     var path = root + "/" + hn;
     if (!fs.existsSync(path)) { return; }
     //arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
-    var pidx = ospkgs.pkgset('', hn, path, {idx: 1});
+    var pidx = ospkgs.pkgset('', hn, path, {idx: 1}) || {};
     //console.log(pidx);
     var ent = {hname: hn};
     pkgs.forEach(function (pn) {
@@ -1423,14 +1423,15 @@ function host_pkg_stats(req, res) {
   });
   res.json({status:"ok", data: arr, grid: gdef});
 }
-/** TODO: Reboot host using BMI by RedFish or IPMI.
+/** Reboot host using BMI by RedFish.
  * Pass hostname to reboot. The IPMI/BMI address is figured out here.
  * Require PIN ?
  * Always validate host and its identity from facts.
  * TODO: Consider interrogating ".../Systems/" and choosing resp.Members[0]["@odata.id"]
  * URL Path params: ":hname", e.g. /reboot/bld-001.mycomp.com
+ * Operation is extracted from URL path param 
  * Query Params:
- * - op - Operation: info, boot - MOVE TO URL !
+ * - OLD: op - Operation: info, boot - MOVE TO URL !
  * - test - test/debug only, returns early and returns a planned mock-up message without making chained HTTP request
  * - pxe - Use PXE boot on next boot (Possibly an install, maintenance or memory test)
  * - pin - pin authorization code for reboot
@@ -1526,12 +1527,15 @@ function host_reboot(req, res) {
     var status = resp.status;
     var d = resp.data;
     if (resp.headers) { console.log("resp-hdr:",resp.headers); }
+    // Possible errors
     if (resp.headers && resp.headers["content-type"] && resp.headers["content-type"].match(/text\/html/)) {
       jr.msg += " Got HTML response"; return res.json(jr);
     }
+    if (status >= 400) { jr.msg += "Got HTTP Status "+400; return res.json(jr); }
     // Bott response does not have body (is empty string), but has 204 status
     console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
     if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
+    if (d) {d.msgsent = rfmsg; }
     res.json({"status":"ok", data: d});
   }
   // 400 (e.g. 404), 500 ?
@@ -1703,7 +1707,8 @@ function installrequest(req, res) {
   log("Wrote Menu to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
-  if (ipmi.rmgmt_exists(q.hname)) {
+  var useipmi = 0;
+  if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
