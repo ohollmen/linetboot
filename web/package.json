@@ -31,7 +31,7 @@
     "jsgrid": "1.5.3",
     "mustache": "3.0.1",
     "router66": "1.0.2",
-    "showdown": "1.2.2",
+    "showdown": "1.9.1",
     "toastr": "2.1.4",
     "wolfy87-eventemitter": "5.2.9"
   },
