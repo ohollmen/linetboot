@@ -583,8 +583,12 @@ function rfinfo(hname, dialogsel, cb) {
     console.log("RF-DATA:"+ JSON.stringify(d, null, 2));
     // Setup Extra
     d.hname = hname; // hname - here or server ?
+    // Reset Types
     var resettypes; try { resettypes = d.Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"]; } catch (ex) {};
     if (resettypes && Array.isArray(resettypes)) { d.ResetValues = resettypes; }
+    // Boot media Types
+    var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {};
+    if (mediatypes && Array.isArray(mediatypes)) { d.MediaValues = mediatypes; }
     var out = Mustache.render(tc, d);
     $('#rfdialog').html(out);
     $("#"+ dialogsel ).dialog(dopts_grid); // ????

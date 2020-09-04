@@ -1699,7 +1699,7 @@ function installrequest(req, res) {
   }
   try {
     fs.writeFileSync( fullmacfn, cont, {encoding: "utf8"} ); // {encoding: "utf8"}, "mode": 0o666, 
-  } catch (ex) { jr.msg += "Could not write new macfile menu " + ex; return res.json(jr); }
+  } catch (ex) { jr.msg += "Could not write new macfile named menu " + ex; return res.json(jr); }
   log("Wrote Menu to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // Should detect presence of rmgmt info
