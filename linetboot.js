@@ -1455,8 +1455,8 @@ function host_reboot(req, res) {
   var ops = {"boot": "post", "info": "get"};
   var rmc = global.ipmi || {};
   var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
-  //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
-  var rfmsg = {"ResetType": "ForceRestart", };
+  var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
+  //var rfmsg = {"ResetType": "ForceRestart", };
   var rq = req.query;
   var p = req.params;
   
@@ -1510,7 +1510,7 @@ function host_reboot(req, res) {
   
   var meth = ops[p.op];
   if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
-  console.log("Call("+meth+"): "+rfurl + " with body: ", rfmsg, " headers: ", hdrs);
+  console.log("Call("+meth+"): "+rfurl + "\nBody: ", rfmsg, " headers: ", hdrs);
   // Expect HTTP: 204 (!)
   // Error: self signed certificate
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
