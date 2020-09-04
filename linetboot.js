@@ -1716,7 +1716,8 @@ function installrequest(req, res) {
     if (!ipmicmd) { jr.msg += "Could not formulate IPMI Command"; return res.json({status: "ok", data: {"msgarr": msgarr}}); } // NOTE: NOT OK (Change) !!!
     var run = cproc.exec(ipmicmd, function (err, stdout, stderr) {
       if (err) { jr.msg += "Problem with ipmitool run:" + err; return res.json(jr); }
-      log("Executed IPMI command successfully");
+      
+      log("Executed IPMI command successfully: " + stdout);
       return res.json({status: "ok", data: {"msgarr": msgarr}});
     });
     // run.on('exit', function (code) {});
