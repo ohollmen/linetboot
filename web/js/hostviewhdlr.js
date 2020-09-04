@@ -19,7 +19,7 @@ function simplegrid_cd(ev, an) {
 
 /** Display Hosts in Groups (in mutiple grids)
  */
-function hostgroups() {
+function hostgroups(ev, act) {
   axios.get('/groups').then(function (response) {
     grps = response.data; // AoOoAoO...
     //console.log(JSON.stringify(grps, null, 2));
@@ -59,35 +59,33 @@ function probeinfo() {
     if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
     showgrid("jsGrid_probe", pinfo, fldinfo.probe);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-  })
-  .catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); });
 }
 /** Load Process and Uptime Information.
  */
-function loadprobeinfo(event, an) {
+function loadprobeinfo(event, act) {
   //console.log("Launch Probe ...");
-  axios.get('/proctest').then(function (response) {
+  axios.get(act.url).then(function (response) {
     var pinfo = response.data.data;
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { alert("No Load Probe data"); return; }
     showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-    if (an.uisetup) { an.uisetup(); console.log("CALLED UISETUP"); }
+    if (act.uisetup) { act.uisetup(); console.log("CALLED UISETUP"); }
   })
   .catch(function (error) { console.log(error); });
 }
 /** Display archived (and restorable) hostkeys.
  */
-function sshkeys() {
+function sshkeys(ev, act) {
   // console.log("Launch SSH KeyInfo ...");
-  axios.get('/ssh/keylist').then(function (response) {
-    var pinfo = response.data.data;
+  axios.get(act.url).then(function (resp) { // '/ssh/keylist'
+    var pinfo = resp.data.data;
     //console.log("SSH Key data: ", pinfo);
     if (!pinfo || !pinfo.length) { alert("No SSH Key data"); return; }
     showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
     // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
-  })
-  .catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); });
 }
 /** Display a package comparison view.
  * Note: dot (".") i field name (here: package name, jsgrid: "name") causes a problem in grid
@@ -177,6 +175,25 @@ function showdocindex (ev, act) {
   // axios.get(url).then((resp) => { cfg.initdocs(resp.data); })
 };
 
+function bootgui(ev, act) {
+  var cont = rapp.templated("bootreq");
+  $('#'+act.elsel).html(cont);
+  // UI Setup
+  webview.addoptions(datasets["cfg"].bootlbls, $("#bootlbl").get(0), {});
+  webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
+  $("#bootreqsubmit").click(function (jev) {
+    //alert("Hi!");
+    var para =  {"bootlbl": $("#bootlbl").val(), "hname": $("#hname").val()[0]};
+    console.log(para);
+    axios.get("/install_boot?", {params: para}).then(function (resp) {
+      var d = resp.data;
+      console.log(d);
+      if (d.status == "err") { return toastr.error("Failed to complete request "+ d.msg); }
+      var summ = d.msgarr ? d.msgarr.map.join("\n") : "";
+      toastr.info("Sent boot/install request successfully\n"+summ);
+    });
+  });
+}
 
 
 //////////// Dialog handlers ////////////////////

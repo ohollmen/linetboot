@@ -1648,7 +1648,7 @@ function bootlabels(fn) {
  * 
  */
 function installrequest(req, res) {
-  var jr = {status: "error", "msg": "Could not register next boot/install request. "};
+  var jr = {status: "err", "msg": "Could not register next boot/install request. "};
   var msgarr = [];
   console.log("Starting to process boot/install request");
   // Simple log-screen and log-to-message

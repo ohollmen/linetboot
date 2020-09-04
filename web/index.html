@@ -173,6 +173,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-7">About ...</a></li>
     <li><a href="#tabs-8">Docs</a></li>
     <li><a href="#tabs-9">Docker Env</a></li>
+    <li><a href="#tabs-10">Boot/Install</a></li>
   </ul>
   <!-- -->
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
@@ -196,6 +197,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="tabs-7"></div>
   <div id="tabs-8"></div>
   <div id="tabs-9"></div>
+  <div id="tabs-10"></div>
 </div>
 <!-- END OF id="tabs" -->
 
@@ -281,6 +283,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>UUID: {{{ UUID }}}</li>
 <li>Indicator LED: {{{ IndicatorLED }}}</li>
 <li>Health Status: {{{ Status.Health }}}</li>
+<li>Reset Types: <b>{{{ ResetValues }}}</b></li>
 <!-- <li>ODATA ID:  [@odata.id] </li> -->
 </ul>
 <input class="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
@@ -390,5 +393,11 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </div>
 </script>
 
+<script id="bootreq" type="text/template">
+<h3>Request Boot or OS Install</h3>
+<label style="width: 150px;">Boot Label</label><select id="bootlbl" name="bootlbl" ></select><br>
+<label style="width: 150px;">Host(s)</label><select id="hname" name="hname" multiple="multiple" size="5" style="width: 200px"></select><br>
+<input type="button" id="bootreqsubmit" value="Send Request">
+</script>
 </body>
 </html>

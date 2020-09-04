@@ -274,6 +274,7 @@ var tabloadacts = [
   {"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null},
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json"},
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv"},
+  {"name": "Boot/Install","elsel": "tabs-10", "tmpl":"bootreq", hdlr: bootgui, url: ""},
 ];
 
 
@@ -535,7 +536,7 @@ function data_load(url, id, array, opts) {
 * @param gridsel {string} - Selector (id, "#...") for grid (TODO: dialogsel)
 */
 function dockerinfo(hname, dialogsel, cb) { // gridsel
-  var port = 4243;
+  var port = 4243; // cfg.
   if (!hname) { console.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling docker ...");
@@ -567,7 +568,8 @@ function nfsinfo(hname, dialogsel, cb) {
   })
   .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
 }
-
+/** RedFish Info dialog.
+ */
 function rfinfo(hname, dialogsel, cb) {
   var tc = $('#redfish').html();
   if (!tc) { return alert("No template content"); }
@@ -579,7 +581,10 @@ function rfinfo(hname, dialogsel, cb) {
     var d = rd.data;
     if (!d) { return alert("No Data"); }
     console.log("RF-DATA:"+ JSON.stringify(d, null, 2));
+    // Setup Extra
     d.hname = hname; // hname - here or server ?
+    var resettypes; try { resettypes = d.Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"]; } catch (ex) {};
+    if (resettypes && Array.isArray(resettypes)) { d.ResetValues = resettypes; }
     var out = Mustache.render(tc, d);
     $('#rfdialog').html(out);
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
