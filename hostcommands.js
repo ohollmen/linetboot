@@ -46,11 +46,14 @@ var Mustache = require("mustache");
     }},
     // SSH Key archiving
     {"lbl": "sshkeyarch", name: "SSH Key archiving",
-      // "ssh -t {{ info.hname }} 'sudo rsync /etc/ssh/ssh_host_* {{username}}@{{ currhname }}:"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'"
+      // "tmpl": "ssh -t {{ info.hname }} 'sudo rsync /etc/ssh/ssh_host_* {{username}}@{{ currhname }}:"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'"
       "cb": function (info, f) {
+      // Note: Env. HOSTNAME seems to be a problem in Mac
       return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
     }},
-    // 
+    {lbl: "mac2ip", name: "ISC DHCP Server mac-to-IP mapping",
+       tmpl: "host {{ hname }} {\n  hardware ethernet {{ macaddr}};\n  fixed-address {{ ipaddr }};\n}\n",},
+    
   ];
 var genopts_idx;
 
@@ -97,12 +100,14 @@ function commands_gen(op, hostarr, ps) {
     // Actually this is a mix of module context and host context params
     var info = {
       hname: f.ansible_fqdn, ipaddr: f.ansible_default_ipv4.address, // Host (in iteration)
-      currhname: process.env['HOSTNAME'], // Current Linetboot local host
+      macaddr: f.ansible_default_ipv4.macaddress,
+      currhname: process.env['HOSTNAME'], // Current Linetboot local host (Problem on MacOS)
       username: username, userhome: process.env["HOME"], // User
       pkglistcmd: plcmd, paths: paths
       
     };
     var cmdcont, cmd;
+    // (Prioritize) Template
     if (op.tmpl) { cmd = Mustache.render(op.tmpl, info); }
     //if (f.ansible_os_family) {}
     else { cmd = op.cb(info, f, ps); }
