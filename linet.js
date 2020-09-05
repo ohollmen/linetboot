@@ -114,6 +114,7 @@ function boot(opts) {
       var d = resp.data;
       // console.log("DATA:", d);
       // Check errors
+      console.log("Error("+hn+") Additional info: ", d.messages);
       if (d.status == 'err') { return cb(d.msg, null ); }
       return cb(null, d.data); // OK
     }).catch(function (ex) {
@@ -135,7 +136,10 @@ function install(opts) {
   console.log("Calling: "+url);
   axios.get(url).then(function (resp) {
     var d = resp.data;
-    if (d.status == 'err') { console.error("Error: "+d.msg); return; }
+    if (d.status == 'err') {
+      console.error("Error: "+d.msg);
+      
+      return; }
     console.log(d); // DEBUG
     console.log("Successfully submitted boot or install request for host: "+hn);
   }).catch(function (ex) {
