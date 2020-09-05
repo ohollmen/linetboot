@@ -1441,6 +1441,11 @@ function host_pkg_stats(req, res) {
  * 
  * Info Only
  * curl  -X GET https://foo.com/redfish/v1/Systems/System.Embedded.1/ -u admin:admin --insecure | python -m json.tool | less
+ * Boot (Pxe)
+ * # try: On,ForceOff,ForceRestart,GracefulShutdown,PushPowerButton,Nmi. Ideally: GracefulRestart
+ * boot.json: {"ResetType": "GracefulRestart", "BootSourceOverrideTarget": "Pxe"}
+ * # May need: -H "Content-Type: application/json" -d "... data ..."
+ * curl -X POST https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset -u a:b --insecure -d @boot.json 
  * Refs:
  * https://www.dell.com/community/Systems-Management-General/Power-Cycle-System-Cold-Boot-via-rest-api/td-p/5081009
  * https://github.com/dell/iDRAC-Redfish-Scripting/blob/master/Redfish%20Python/SetNextOneTimeBootDeviceREDFISH.py
@@ -1456,8 +1461,8 @@ function host_reboot(req, res) {
   var ops = {"boot": "post", "info": "get"};
   var rmc = global.ipmi || {};
   var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
-  var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
-  //var rfmsg = {"ResetType": "ForceRestart", };
+  //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
+  var rfmsg = {"ResetType": "ForceRestart", };
   var rq = req.query;
   var p = req.params;
   
@@ -1545,10 +1550,16 @@ function host_reboot(req, res) {
   //     - Need to probe and choose closest (from Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"] ?
   //     - Secondary problem: Using valid "ForceRestart" + "Pxe" does normal boot, not PXE
   function hdl_redfish_err(err) {
+    // TODO: See how to get resp from here.
+    var resp = err.response;
     jr.msg += err.toString();
-    console.log(err.response);
-    console.log(err);
+    console.log(resp.statusText); // Has: status, statusText
+    console.log(JSON.stringify(resp.data, null, 2));
     console.log(meth+" Error: "+err);
+    if (resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
+      var arr = resp.data.error["@Message.ExtendedInfo"];
+      jr.messages = arr.map((it) => { return it.Message; }); 
+    }
     res.json(jr);
   }
   // Used to have ipmitool in here. See ipmi.ipmi_cmd()
