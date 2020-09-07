@@ -251,12 +251,16 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   var ent = rmgmt_load(f);
   console.log(ent);
   if (!ent || !ent.ipaddr) { console.log("No ipmi info or ipdaar. Can't formulate command"); return ""; }
+  var rmgmt = global.ipmi || {};
   // Use ipmitool -h to see values for -I option (open,imb,lan,lanplus)
   // -L user -L administrator
-  var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  " + ipmicmd; // power {{ powopt }}
-  var p = { user: global.ipmi.user, pass: global.ipmi.pass, bmcaddr: ent.ipaddr };
+  var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  "; // power {{ powopt }}
+  var p = { user: rmgmt.user, pass: rmgmt.pass, bmcaddr: ent.ipaddr };
   var ipmifullcmd = Mustache.render(cmdtmpl, p);
-  
+  // https://www.dell.com/community/Systems-Management-General/IPMITool-Commands-Not-Working-When-Using-Encryption-Key/td-p/4485338
+  // -x hexadecimal key (-k - normal "clear" key)
+  if (rmgmt.enckey ) { ipmifullcmd += " -x " +rmgmt.enckey; }
+  ipmifullcmd += ipmicmd;
   return ipmifullcmd;
   // Enable IPMI Over LAN: Enabled
   // IP Blocking enabled: Disabled
