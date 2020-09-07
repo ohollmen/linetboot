@@ -42,6 +42,8 @@ var netprobe = require("./netprobe.js");
 var ans      = require("./ansiblerun.js");
 var ospkgs   = require("./ospackages.js");
 var ipmi     = require("./ipmi.js");
+var tboot    = require("./tftpboot.js");
+
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -179,6 +181,10 @@ function app_init(global) {
   app.get("/dockerenv", dockerenv_info);
   app.get("/config", config_send);
   app.get("/install_boot", installrequest);
+  
+  app.get("/tftplist", tftp_listing);
+  
+  app.get("/bootreset", bootreset);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1558,14 +1564,16 @@ function host_reboot(req, res) {
     console.log(meth+" Error: "+err);
     if (resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
       var arr = resp.data.error["@Message.ExtendedInfo"];
-      jr.messages = arr.map((it) => { return it.Message; }); 
+      jr.messages = arr.map(function (it) { return it.Message; }); 
     }
     res.json(jr);
   }
   // Used to have ipmitool in here. See ipmi.ipmi_cmd()
   //res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
 }
-// POST
+/* POST to simulate RF response (Used internally when ipmiconf.testurl is set). 
+ * Only contains partial subset of RF response.
+ */
 function reboot_test(req, res) {
   console.log(req.method + "-TEST-BODY:", req.body);
   var p = req.params;
@@ -1578,6 +1586,10 @@ function reboot_test(req, res) {
     "@odata.id" : "/redfish/v1/Systems/System.Embedded.1"});
 }
 var docker_conf;
+/** Send Info from local environment docker.conf.json and dockercat.conf.json.
+ * If these exist for env, they should be configured in main config: docker.conf and docker.catalog.
+ * Client should gracefully detect error from this and let user know feature is not in use.
+ */
 function dockerenv_info(req, res) {
   var jr = {"status": "err", msg: "Failed docker view creation."};
   var dc = global.docker;
@@ -1609,42 +1621,22 @@ function config_send(req, res) {
   // Core
   if (core && core.appname) { cfg.appname = core.appname; }
   if (core && core.hdrbg)   { cfg.hdrbg = core.hdrbg; } // BG Image
-  if (tftp && tftp.menutmpl) { cfg.bootlbls = bootlabels(tftp.menutmpl); }
+  if (tftp && tftp.menutmpl) { cfg.bootlbls = tboot.bootlabels(tftp.menutmpl); }
   res.json(cfg);
 }
-/** Collect boot labels from boot menu file.
- * Create a (Array-of-Objects) list of os label ("id"), os description ("name") entries.
- * @param fn {sting} - Pxelinux boot menu file
- * @return list of OS descriptions.
- */
-function bootlabels(fn) {
-  // Consider what config section to put into (tftp.menutmpl)
-  //var fn = global.tftp.menutmpl;
-  
-  //fn = "./tmpl/default.installer.menu.mustache";
-  if (!fs.existsSync(fn)) { return null; }
-  var menucont = fs.readFileSync(fn, 'utf8');
-  var m = [];
-  var i = 1;
-  console.log("bootlabels: Starting matching");
-  //console.log(menucont);
-  // Returns only $0:s in every match ("label word").
-  //var m = menucont.match(/^label\s+(\w+)/gm);
-  var re = /^label\s+(\w+)\nmenu\s+label\s+([^\n]+)\n/gm;
-  var match;
-  while (match = re.exec(menucont)) {
-    //m.push(match[1]);
-    m.push({ id: match[1], name: match[2] });
-    //console.log(match);
-    //console.log("Match "+i); i++;
-  }
-  return m;
-}
+
 /** Receive an next boot (e.g. OS installation) request and store it to persistent storage.
- * Note that the 
- * Params:
+ * Note that the actual booting ins **not yet** done by calling this. Send a follow-up call to
+ * actually boot.
+ * URL k-v Parameters:
  * - hname - Hostname
  * - bootlbl - Menu boot label to boot later into
+ * 
+ * Actions taken to enable next boot:
+ * - Resolve pxelinux supported mac address based filename.
+ * 
+ * ## Plan for DB based processing
+ * 
  * As a result of request, store following properties on the install-case:
  * - Set state of boot/install to "pending".
  * - Set time of request
@@ -1652,7 +1644,9 @@ function bootlabels(fn) {
  * - Trigger actions
  *   - Generate menufile by MAC address name in pxelinux.cfg (name: 01+macaddr)
  *   - Possibly trigger RedFish "Pxe" or IPMI "pxe" boot type request for the "next boot".
+ * 
  * Mockup of table (boot_install)
+ * 
  * - bootreqid integer NOT NULL
  * - createdate datetime,
  * - hname   varchar(128) NOT NULL,
@@ -1660,65 +1654,48 @@ function bootlabels(fn) {
  * - macaddr varchar(32) NOT NULL,
  * - bootlbl varchar(64) NOT NULL,
  * - status  varchar(16) NOT NULL, // "pending"
- * 
+ * Refs:
+ * https://github.com/dell/redfish-ansible-module/issues/56
+ * ./SetNextOneTimeBootDeviceREDFISH.py
+ * https://github.com/dell/iDRAC-Redfish-Scripting/blob/master/Redfish%20Python/SetNextOneTimeBootDeviceREDFISH.py
  */
 function installrequest(req, res) {
   var jr = {status: "err", "msg": "Could not register next boot/install request. "};
   var msgarr = [];
   console.log("Starting to process boot/install request");
   // Simple log-screen and log-to-message
-  function log(msg) {
-    console.log(msg);
-    msgarr.push(msg);
-  }
+  function log(msg) { console.log(msg); msgarr.push(msg); }
   // Validate request
   var q = req.query;
   if (!q) { jr.msg += "No query params"; return res.json(jr); }
-  if (!q.hname) { jr.msg += "No hostname (hname) indicated"; return res.json(jr); }
+  if (!q.hname)   { jr.msg += "No hostname (hname) indicated"; return res.json(jr); }
   if (!q.bootlbl) { jr.msg += "No Boot label (bootlbl) indicated"; return res.json(jr); }
+  var tcfg = global.tftp;
+  if (!tcfg) { jr.msg += "No TFTP Config inside main config"; return res.json(jr); }
+  if (!tcfg.menutmpl) { jr.msg += "No Boot Menu file found (for label validation)"; return res.json(jr); }
   // INSERT INTO boot_install () VALUES ()
   // Lookup host from index
   var f = hostcache[q.hname];
   if (!f) { jr.msg += "No host found by hname = '"+q.hname+"'. Check that you are passing the fqdn of the host"; return res.json(jr); }
   log("Found host facts for " + q.hname + ". Use boot label "+ q.bootlbl);
-  // Validate boot label ?
-  if (!global.tftp || !global.tftp.menutmpl) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
-  var mfn = global.tftp.menutmpl;
-  var boots = bootlabels(mfn);
-  var bootitem = boots.filter(function (it) { return it.id == q.bootlbl; })[0];
-  if (!bootitem) { jr.msg += "No Boot Item found from menu by " + q.bootlbl; return res.json(jr); }
+  var macaddr = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+  if (!macaddr) { jr.msg += "No MAC Address found for hname " + q.hname; return res.json(jr); }
+  var bootitem;
+  try { bootitem = tboot.bootlbl2bootitem(q.bootlbl, tcfg); }
+  catch (ex) { jr.msg += "bootlbl2bootitem: "+ex.toString(); return res.json(jr); }
   // Consider multiple ?
   log("Found boot item: id = "+bootitem.id+", name = "+ bootitem.name);
   // Template menu file
   
   // if (!fs.existsSync(mfn)) { jr.msg += "No Boot Menu file found for label validation "; return res.json(jr); }
-  var tmpl = fs.readFileSync(mfn, 'utf8');
-  var g = dclone(global); // MUST Copy !
-  g.tftp.menudef = q.bootlbl;
-  var cont = Mustache.render(tmpl, g);
-  log("Created "+cont.length+" Bytes of menu content");
-  // Create a MCA-Address based file in global.tftp.root + "" + "01"+MACaddr (See: hostcommands.js)
-  var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
-  if (!mac) { jr.msg += "No MAC Address (in facts) for "+q.hname; return res.json(jr); }
-  mac = mac.replace(/:/g, "-");
-  mac = mac.toLowerCase();
-  var macfn = "01-" + mac;
-  log("Resolved MAC-based menu filename to " + macfn);
-  var root = global.tftp.root;
-  if (!fs.existsSync(root)) { jr.msg += "TFTP root does not exist"; return res.json(jr); }
-  var pxecfg = root + "/pxelinux.cfg/";
-  if (!fs.existsSync(pxecfg)) { jr.msg += "pxelinux.cfg under TFTP root does not exist"; return res.json(jr); }
-  var fullmacfn = pxecfg + macfn;
-  if (fs.existsSync(fullmacfn)) {
-    try { fs.unlinkSync(fullmacfn); } catch(ex) { jr.msg += "Could not remove any previous macfile " + ex; return res.json(jr); }
-  }
-  try {
-    fs.writeFileSync( fullmacfn, cont, {encoding: "utf8"} ); // {encoding: "utf8"}, "mode": 0o666, 
-  } catch (ex) { jr.msg += "Could not write new macfile named menu " + ex; return res.json(jr); }
-  log("Wrote Menu to: " + fullmacfn);
+  
+  var fullmacfn;
+  try { fullmacfn = tboot.bootmenu_save(tcfg, global, q.bootlbl, f); }
+  catch (ex) { jr.msg += "bootmenu_save: "+ex.toString(); return res.json(jr); }
+  log("Wrote Menu (for '"+macaddr+"') to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
-  // Should detect presence of rmgmt info
-  var useipmi = 0;
+  // see if IPMI is in use (by config) and detect presence of rmgmt info for q.hname
+  var useipmi = global.ipmi.useipmi;
   if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
@@ -1740,4 +1717,37 @@ function installrequest(req, res) {
     //return;
   }
   else { return res.json({status: "ok", data: {"msgarr": msgarr} }); }
+}
+
+function tftp_listing(req, res) { // global
+  var jr = {status: "err", "msg": "Could List PXE Linux dir. "};
+  // PXE Linux Config dir
+  var path = global.tftp.root + "/pxelinux.cfg/";
+  if (!fs.existsSync(path)) { jr.msg += "TFTP subdir for PXE linux Config does not exist"; return res.json(jr); }
+  console.log("Found: "+path);
+  var list = tboot.pxelinuxcfg_list(path, 1);
+  res.json({"status": "ok", data: list});
+}
+/** Reset the earlier set custom PXE boot back to default boot menu.
+ * Pass "macfname"
+ */
+function bootreset(req, res) {
+  var jr = {status: "err", "msg": "Could not reset old boot request. "};
+  var q = req.query;
+  var tcfg = global.tftp;
+  if (!tcfg) { jr.msg += "No TFTP Config inside main config"; return res.json(jr); }
+  if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
+  if (!q.macfname) { jr.msg += "No Boot menu file name"; return res.json(jr); }
+  // Validate format of name
+  if (!tboot.has_macfile_pattern(q.macfname)) { jr.msg += "Not a valid Boot menu file name"; return res.json(jr); }
+  console.log("macfname param validated. Formulating fullname and executing bootmenu_link_default()");
+  // Must exist
+  var fullfn = tcfg.root+ "/pxelinux.cfg/" + q.macfname;
+  if (!fs.existsSync(fullfn)) { jr.msg += "Boot menu file not there"; return res.json(jr); }
+  try { tboot.bootmenu_link_default(tcfg, q.macfname); }
+  catch (ex) { console.log(ex.toString()); jr.msg + "Error Re-Establishing default menu linking: " + ex.toString(); return res.json(jr); }
+  // Reload new data like in tftp_listing() ?
+  var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1);
+  res.json({status: "ok", data: list});
+  
 }
