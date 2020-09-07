@@ -40,7 +40,9 @@ function hostsfile_load(hfn) {
   return hnames;
 }
 
-/** Find out the configured hostnames (from various possible places) and load host facts.
+/** Find out the configured hostnames (from various possible places) and load host inventory.
+
+**NO facts*** are loaded here (See `facts_load_all()` or `facts_load()` for that). 
 
 Hosts list can come from:
 - An Inventory style text file given in `global.hostsfile`
@@ -84,6 +86,7 @@ function hosts_load(global) {
   // Allow easy commenting-out as JSON itself does not have comments.
   hnames = hnames.filter(function (hn) { return ! hn.match(/^#/); }); // OLD: ^(#|\[)/ - keep [...] in and handle later
   if (!hnames.length) { console.error("No hosts remain after filtering"); process.exit(1); }
+  //
   
   // NEW: Parse inventory-style free-form params here
   global.hostparams = {};
@@ -96,7 +99,7 @@ function hosts_load(global) {
     var g;
     // Group (mark as curr_g)
     if (g = hnline.match(re_g)) {
-      console.log("Got group: '" + g[1] + "'");
+      debug && console.log("Got group: '" + g[1] + "'");
       curr_g = g[1];
       groups[g[1]] = [];
       
@@ -109,7 +112,7 @@ function hosts_load(global) {
     var hent  = hline_parse(hnames, i, hnline);
     var hn = hent.hn;
     global.hostparams[hn] = hent.p;
-    console.log("HN:" + hn);
+    debug && console.log("HN:" + hn);
     if (curr_g) { groups[curr_g].push(hn); }
     //else {global.hostparams[hnline] = {}; return;};
     hnames2.push(hn);
@@ -126,17 +129,19 @@ function hosts_load(global) {
 }
 /** Load Facts for all hosts.
  * Uses `facts_load(hn)` to load individual host facts.
+ * After this facts should be in module var colls.hostcache and colls.hostarr (See 2nd param passed to module init())
  * @return None
  */
-function facts_load_all() {
+function facts_load_all(opts) {
+  opts = opts || {};
   if (!colls) { throw "No colls (module level) object !"; }
   if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
   colls.hostnames.forEach(function (hn) {
-    var f = facts_load(hn);
+    var f = facts_load(hn, opts);
     if (!f) { console.log("facts_load_all: No facts for: "+hn); return; }
     host_add(f);
   });
-  debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
+  opts.debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
 }
 
 /** Parse single hostline.
@@ -152,7 +157,7 @@ function hline_parse(hnames, i, hnline) {
   if (hnline.match(/\s+/)) {
     
     var rec = hnline.split(/\s+/);
-    console.log("Has space: '"+hnline+"' Rec: ", rec);
+    debug && console.log("Has space: '"+hnline+"' Rec: ", rec);
     //var hn = hnames[i] = rec.shift(); // OLD (Going by index gets out-of-sync)
     hn = rec.shift(); // NEW
     // Parse rec
@@ -179,7 +184,8 @@ function hline_parse(hnames, i, hnline) {
 * @param hn - Hostname
 * @return Host facts object for named host (OLD:None)
 */
-function facts_load(hn) { // ipaddr
+function facts_load(hn, opts) { // ipaddr
+  opts = opts || {};
   var absname = fact_path + "/" + hn;
   var facts;
   try {
@@ -189,10 +195,10 @@ function facts_load(hn) { // ipaddr
     var cont = fs.readFileSync(absname, 'utf8');
     
     facts = JSON.parse(cont);
-    if (!facts) { } // Check Object
+    if (!facts) { console.log("No Facts loaded - corrupt JSON ?"); } // Check Object
     var facts0 = facts.ansible_facts; // Simplify !
     if (!facts0) {
-      console.error("No ansible_facts branch for host '" + hn + "'");
+      opts.debug && console.error("No 'ansible_facts' branch for host '" + hn + "'");
       // Sample a known property to "recover" a file
       var ipv4 = facts.ansible_all_ipv4_addresses;
       if (!ipv4) { return; }
