@@ -1,17 +1,18 @@
 # # Gather Facts
-# Effectively does: ansible all -m setup --tree /tmp/facts
+# Effectively does:
+# ansible all -m setup --tree /tmp/facts
 # [WARNING]: error, 'jsonfile' cache plugin requires the 'fact_caching_connection' config option to be set
 #(to a writeable directory path)
-- name: Gather Host Facts
+- name: Gather Facts For All Hosts
   become: yes
   #hosts: all
   hosts: '{{ host }}'
   vars:
-    factpath: '/tmp/facts'
+    factpathX: '/tmp/facts'
   tasks:
     - name: Gather Single Host facts
       setup:
         fact_path: '{{ factpath }}'
-        gather_timeout: 10
+        gather_timeout: 15
         # NOT Supported
         #fact_caching_connection:  '{{ factpath }}'
