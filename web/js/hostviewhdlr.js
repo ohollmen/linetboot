@@ -179,7 +179,9 @@ function showdocindex (ev, act) {
   .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
   // axios.get(url).then((resp) => { cfg.initdocs(resp.data); })
 };
-
+/** Show Boot Options and allow set "next boot".
+ * 
+ */
 function bootgui(ev, act) {
   var cont = rapp.templated("bootreq");
   $('#'+act.elsel).html(cont);
@@ -197,8 +199,27 @@ function bootgui(ev, act) {
       if (d.status == "err") { return toastr.error("Failed to complete request "+ d.msg); }
       var summ = d.msgarr ? d.msgarr.map.join("\n") : "";
       toastr.info("Sent boot/install request successfully\n"+summ);
+    }).catch(function (err) { console.log(err); });;
+  }); // 
+  // {params: para}
+  axios.get("/tftplist").then(function (resp) {
+    var d = resp.data;
+    console.log(d);
+    showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
+    // Set handlers
+    $(".defboot").click(function (jev) {
+      var macfname = this.dataset.macfname;
+      // DEBUG:alert("Reset " + macfname);
+      var url = "/bootreset?macfname="+macfname;
+      axios.get(url).then(function (resp) {
+        var d = resp.data;
+        if (d.status == "err") { return toastr.error("Error resetting boot for "+macfname+ "\n"+d.msg); }
+        toastr.info("Successfully reset boot to default menu.");
+        showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
+      }).catch(function (ex) { toastr.error(ex.toString()); });
+      return false;
     });
-  });
+  }).catch(function (err) { console.log(err); });
 }
 
 
