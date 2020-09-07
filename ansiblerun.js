@@ -9,7 +9,8 @@ var async = require("async");
 var yaml  = require('js-yaml');
 var path  = require('path');
 // Ansible command template. (Mustache)
-var anscmd = "ansible-playbook -i '{{{ hostsfile }}}'  '{{{ pb }}}' --extra-vars \"ansible_sudo_pass={{{ sudopass }}} host={{{ host }}} {{{ xpara }}}\"";
+// ansible_sudo_pass={{{ sudopass }}} host={{{ host }}}
+var anscmd = "ansible-playbook -i '{{{ hostsfile }}}'  '{{{ pb }}}' --extra-vars \"{{{ xpara }}}\"";
 
 // var .. = {}; /// Config holder
 
@@ -52,7 +53,9 @@ function hostsfile(hnarr, grpname) {
   return fn;
 }
 
-/** Get a play profile */
+/** Get a play profile from the config structure.
+ * Pass profiles of config structure as the subsection "pbprofs" (array of objects).
+ */
 function prof_get(profs, k) {
    profs = profs || [];
    console.log("Profs said to be (of type): " + typeof profs);
@@ -62,7 +65,7 @@ function prof_get(profs, k) {
 }
 
 /** Resolve playbooks passed by basename to full playbook paths.
- * Only involves suncronous activity.
+ * Only involves syncronous activity.
  * Must be called for both playbooks and playprofile to make sure paths are absolute.
  * Resolves final playbooks to run (on this ansible run-session) onto p.playbooks
  */
@@ -107,13 +110,33 @@ Runner.prototype.playbooks_resolve = function (acfg) {
   return 0;
 };
 /** Resolve individual hosts from groups passed.
- * If object does not have "hostgroups", we return immediately.
+ * If object does not have "hostgroups", we return immediately (w/o any resolving).
+ * If this.hostgroups is said to be a "virtual group" `["all"]`, all hosts are gathered from groups.
+ * TODO: Should go by Linetboot known hosts, as groups may not be defined. Where to get these ?
  */
 Runner.prototype.hostgrps_resolve = function (grps) {
   var grpidx = {};
   if (!this.hostgroups) { return; }
   var gnames = this.hostgroups;
+  if (!Array.isArray(gnames)) { throw "Ansible HostGroups not in an array !"; }
+  if (!Array.isArray(grps)) { throw "Passed groupnames not in an array !"; }
   var hnames = [];
+  function isarrayofstrings(grps) {
+    var strcnt = grps.filter(function (gi) { return typeof gi == 'string'; }).length;
+    if (grps.length == strcnt) { return 1; }
+    return 0;
+  }
+  // Special case for "all" 
+  if (gnames.length == 1 && gnames[0] == 'all' && isarrayofstrings(grps)) {
+    // Collect from groups structure ?
+    
+    grps.forEach(function (g) {
+      // var ghosts = g.hosts.map((h) => { return h.hname; });
+      hnames = hnames.concat(g.hostnames);
+    });
+    return hnames;
+  }
+  
   grps.forEach(function (g) {
     //g.id;
     if (gnames.includes(g.id)) { hnames = hnames.concat(g.hostnames); }
@@ -136,7 +159,7 @@ Runner.prototype.hostgrps_resolve = function (grps) {
 * 
 * TODO: *real* Object
 */
-Runner.prototype.ansible_run = function () { // 
+Runner.prototype.ansible_run = function (xpara) { // 
   p = this;
   p.debug && console.log("ansible_run: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
@@ -147,19 +170,37 @@ Runner.prototype.ansible_run = function () { //
   var grpname = "myhosts"; // Local Temp group name
   var fn = hostsfile(p.hostnames, grpname); // Temporary !
   console.log("Wrote ("+p.hostnames.length+") hosts for playbook run to temp file: '" + fn + "'");
-  function xpara(xps) {
+  function mkxpara(xps) {
     // Must be Object, not Array
-    var xparr = Object.keys(xps).map((k) => { return k+"="+xps[k]; });
+    var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
     return xparr.join(" ");
   }
   // Start running playbooks (TODO: async)
-  var prun = { hostsfile: fn, host: grpname, sudopass: p.sudopass, "xpara": ""}; // NOT directly: global.hostsfile
-  if (p.xpara) { prun.xpara = xpara(p.xpara); }
+  var prun = { hostsfile: fn, XXXhost: grpname, XXXsudopass: p.sudopass, xpara: ""}; // NOT directly: global.hostsfile
+  
+  p.xpara.host = grpname; // Set late but outside / before set_xpara()
+  console.log("xpara (before overrides)", p.xpara);
+  // Extra parameters for the -e / --extra-vars. Also consider @filename.json
+  function set_xpara(xpara, prun) { // Instance method
+    // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
+  
+    //OLD:if (xpara) { prun.xpara = mkxpara(xpara); }
+    //OLD:else if (p.xpara) { prun.xpara = mkxpara(p.xpara); }
+    if (xpara) {
+      Object.keys(xpara).forEach(function (k) {
+        if (xpara[k]) { p.xpara[k] = xpara[k]; }
+      });
+    }
+    // Serialize to prun at the very end
+    prun.xpara = mkxpara(p.xpara);
+  }
+  set_xpara(xpara, prun);
+  console.log("xpara (after overrides)", p.xpara);
   console.log("Command tmpl params: ", prun);
   var fullcmds = [];
   // Formulate full commands
   p.playbooks.forEach(function (pbfull) {
-    prun.pb = pbfull; // Current playbook
+    prun.pb = pbfull; // Set Current playbook (of possibly many)
     cont = Mustache.render(anscmd, prun);
     (p.debug > 1) && console.log("CMD:" + cont);
     fullcmds.push(cont);
@@ -208,6 +249,7 @@ Runner.prototype.ansible_run = function () { //
 
 function Runner(cfg, acfg) {
   var attrs = ["hostnames", "hostgroups", "playbooks",  "playprofile", "runstyle"]; // , "debug"
+  if (!acfg) { acfg = {}; }
   this.hostnames = cfg.hostnames;
   this.hostgroups = cfg.hostgroups;
   this.playbooks = cfg.playbooks;
@@ -215,10 +257,10 @@ function Runner(cfg, acfg) {
   this.playprofile = cfg.playprofile;
   this.runstyle = cfg.runstyle;
   
-  this.xpara = cfg.xpara;
+  this.xpara = cfg.xpara || {};
   ////// 
-  this.sudopass = acfg.sudopass || process.env["ANSIBLE_PASS"];
-  this.debug = acfg.debug || process.env["LINETBOOT_ANSIBLE_DEBUG"] || 0;
+  this.xpara.ansible_sudo_pass = acfg.sudopass || process.env["ANSIBLE_PASS"];
+  this.debug = cfg.debug || acfg.debug || process.env["LINETBOOT_ANSIBLE_DEBUG"] || 0;
   this.debug = parseInt(this.debug);
   // Keep acfg in instance ?
   // this.acfg = acfg;
