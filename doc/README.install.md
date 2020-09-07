@@ -82,7 +82,7 @@ Do this for all the machines (If you did not have SSH key to start with, generat
 
 Record facts (for all hosts in single step) by running command:
 
-    ansible -i ~/.linetboot/hosts  -b -m setup --tree ~/hostinfo \
+    ansible all -i ~/.linetboot/hosts  -b -m setup --tree ~/hostinfo \
        --extra-vars "ansible_sudo_pass=$ANSIBLE_PASS"
 
 Use `ansible_user=remoteuser` in --extra-vars if your current user is not
