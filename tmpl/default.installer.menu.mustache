@@ -15,7 +15,8 @@
 # ???? default ubuntu-installer/amd64/boot-screens/libcom.c32
 # Simplified to root
 #default ubuntu-installer/amd64/boot-screens/vesamenu.c32
-default vesamenu.c32
+# Removed to prefer logic below
+# default vesamenu.c32
 # Failed to load COM32 file ubuntu-installer/amd64/boot-screens/stdmenu.c32
 #default ubuntu-installer/amd64/boot-screens/stdmenu.c32
 # TEMPORARILY DISABLED. Gives grayish / silvery background
@@ -203,8 +204,15 @@ kernel http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz
 append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
 
 # Dell Update CD (R630)
-# Aka DTK = Dell Deployment Toolkit
-# Lot of info on kernel options in ISO image: isolinux/isolinux.cfg
+# Aka DTK = Dell Deployment Toolkit (File isolinux/VER_INFO gives DTK version, e.g. DTK_VERSION_STRING="6.3.0")
+# DSA = DellOpenManage Server Assistant
+# Lot of info on kernel options in ISO image: isolinux/isolinux.cfg (Should be applicable for current CD)
+# By certain files in there, the ISO seems to be still (as of 2020) be based on RedHat or GCC 4.X: less /isomnt/dell_m640/isolinux/implantisomd5
+# Does not work (!) | grep -iP 'red\s?hat' see (GNU) 4.8.5 20150623 (Red Hat 4.8.5-39) /usr/lib/gcc/x86_64-redhat-linux/4.8.5/
+# Dirs:
+# - repository/ - Update packages (*.BIN, all "POSIX shell script text executable" invcol.sign, Catalog.xml)
+# - drm_files/ - Contains e.g. the apply_bundles.sh script
+# There's conflicting info whether share_location=IP:/path should contain drm_files and if share_script=PATH should contain it (Only one should)
 # See: https://www.dell.com/support/article/us/en/04/sln296511/update-poweredge-servers-with-platform-specific-bootable-iso?lang=en#1
 # https://dl.dell.com/FOLDER05876647M/1/PER630_BOOTABLE_19.10.00.99.iso
 # https://www.dell.com/community/Dell-OpenManage-Essentials/Cross-Post-PXE-Boot-into-OME/td-p/4736261
@@ -215,12 +223,33 @@ append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=tru
 # Google: "dell update ramdisk_size share_type share_location"
 # https://www.mail-archive.com/search?l=linux-poweredge@dell.com&q=subject:%22Re%5C%3A+Dell+DTK+bootable+iso+or+pxe+images+with+Cobbler%22&o=newest&f=1
 # https://fedorahosted.org/cobbler/wiki/HowToPxeAnyLiveCd
-label dellupdate_r630
-menu label Dell R630 Update
-kernel http://{{ httpserver }}/dellupdate/isolinux/SA.1
+# https://www.dell.com/downloads/global/power/ps1q06-20050170-gujarathi-oe.pdf - PXE Booting DTK - 2006 Whitepaper on DSA / Dell updates CD:s and PXE
+# 
+# # Using NFS with DTK
+# 
+# - Install NFS: Debian: nfs-kernel-server, RH: nfs-utils
+# - Add to /etc/exports: /isomnt/dell_m640 *(ro,no_root_squash,sync,no_subtree_check,insecure)
+# - Consider PDF Whitepaper PXE Instructions:
+#   - Stage3_type=nfs Stage3_opts=nolock Stage3_source={{{ nfsserver }}}:/isomnt/dell_m640/
+# Warning: dracut-initqueue - starting timeout scripts   (repeats)
+# Could not boot
+# Warning: /dev/disk/by-label/CDROM does not exist
+# Warning: /dev/mapper/live-rw does not exist
+# Generating "/run/init/rdsosreport.txt"
+# Type journalctl to view system logs
+# Also...
+# 
+# See 'systemctl status initrd-switch-root.service' for details
+# /sysroot does not seem to be an OS tree. os-release file is missing. # Has only /var
+
+# label dell_r630
+# menu label Dell R630 Update
+label dell_m640
+menu label Dell M640 Update
+kernel http://{{ httpserver }}/dell_m640/isolinux/SA.1
 # DEBUG=0 quiet ... Also: loglevel=1
 # Share types seen/used: cdrom,nfs,tftp,smbfs (Also http is made to be supported by SA.2(initrd file): bin/start-stage3.sh with addition)
-append initrd=http://{{ httpserver }}/dellupdate/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/dellupdate/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
+append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
 
 # OpenSuse ISO Install (and autoinst.xml, also called AutoYaST control files (control-files/) ?
 # There's also linuxrc key-value based text (non-XML) format
