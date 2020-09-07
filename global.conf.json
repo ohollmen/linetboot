@@ -46,7 +46,7 @@
   "tftp": {
     "desc" : "TFTP and Boot (boot be separate ?)",
     "host": "banana1",
-    "root": "/srv/git",
+    "root": "/srv/tftp",
     "root_rh": "/var/lib/tftpboot/",
     "lintftp" : false,
     "menutmpl": "./tmpl/default.installer.menu.mustache",
@@ -56,12 +56,14 @@
   },
   "rmgmt_path": "/home/ohollmen/hostrmgmt",
   "ipmi": {
-    "desc":"Remote Management (redfish and IPMI)",
+    "desc": "Remote Management (redfish and IPMI)",
     "path": "/home/ohollmen/hostrmgmt",
     "user": "mickey",
     "pass": "mouse",
+    "enckey": "0000000000000000000000000000000000000000",
     "bootpin": "abc123",
-    "debug":1,
+    "debug": 1,
+    "useipmi": 0,
     "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5"
   },
   "probe" : {
@@ -75,6 +77,7 @@
     "hostgrp":"nuc"
   },
   "net": {
+    "desc": "Installation Related Network Configuration",
     "netmask": "255.255.240.0",
     "gateway": "192.168.1.1",
     "nameservers": ["192.168.1.107", "192.168.1.108"],
