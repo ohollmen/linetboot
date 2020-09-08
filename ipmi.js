@@ -259,6 +259,7 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   var ipmifullcmd = Mustache.render(cmdtmpl, p);
   // https://www.dell.com/community/Systems-Management-General/IPMITool-Commands-Not-Working-When-Using-Encryption-Key/td-p/4485338
   // -x hexadecimal key (-k - normal "clear" key)
+  // Ubuntu IPMI tool says to ue -y (not -x)
   if (rmgmt.enckey ) { ipmifullcmd += " -x " +rmgmt.enckey+" "; }
   ipmifullcmd += ipmicmd;
   return ipmifullcmd;

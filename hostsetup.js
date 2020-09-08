@@ -49,9 +49,9 @@ var acts = [
     "opts": [],
   },
   {
-    "id": "",
-    "title": "",
-    "cb": null,
+    "id": "ipmiinfo",
+    "title": "IPMI Information Extraction",
+    "cb": ipmiinfo,
     "opts": [],
   },
   {
@@ -298,3 +298,11 @@ function tftpsetup() {
   if (!cfg.hostarr.length) { usage("No hosts found in inventory !"); }
   } // if
 */
+/** Have a chicken-n-egg problem:
+ * Would be nice to execyte on single host centrally using newtwork interface (e.g. lanplus),
+ * but contact need to be made to BMC (not host), which is (initially) unknown.
+ * It will be hard to sudo on host.
+ */
+function ipmiinfo(opts) {
+  
+}
