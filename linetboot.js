@@ -185,6 +185,8 @@ function app_init(global) {
   app.get("/tftplist", tftp_listing);
   
   app.get("/bootreset", bootreset);
+  // 
+  app.get("/medialist", media_listing);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1449,7 +1451,8 @@ function host_pkg_stats(req, res) {
  * curl  -X GET https://foo.com/redfish/v1/Systems/System.Embedded.1/ -u admin:admin --insecure | python -m json.tool | less
  * Boot (Pxe)
  * # try: On,ForceOff,ForceRestart,GracefulShutdown,PushPowerButton,Nmi. Ideally: GracefulRestart
- * boot.json: {"ResetType": "GracefulRestart", "BootSourceOverrideTarget": "Pxe"}
+ * boot.json: {"ResetType": "GracefulRestart", "BootSourceOverrideTarget": "Pxe"}   ... OR
+ *            {"ResetType": "PowerCycle", "BootSourceOverrideTarget": "Pxe"}
  * # May need: -H "Content-Type: application/json" -d "... data ..."
  * curl -X POST https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset -u a:b --insecure -d @boot.json 
  * Refs:
@@ -1468,7 +1471,7 @@ function host_reboot(req, res) {
   var rmc = global.ipmi || {};
   var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
-  var rfmsg = {"ResetType": "ForceRestart", };
+  var rfmsg = {"ResetType": "PowerCycle", }; // ForceRestart
   var rq = req.query;
   var p = req.params;
   
@@ -1484,7 +1487,7 @@ function host_reboot(req, res) {
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
-  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += " No rmgmt host."; return res.json(jr); }
+  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += "No BMC/rmgmt host."; return res.json(jr); }
   // console.log("RMGMT-info:",rmgmt);
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
@@ -1499,7 +1502,9 @@ function host_reboot(req, res) {
     
   }
   var bauth = basicauth(ipmiconf);
-  // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi"
+  // TODO: Call Base URL to detect/discover several things
+  
+  // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi" ("PowerCycle")
   // failed: Unsupported Reset Type:ColdBoot"
   // HP wants: “ResetType”: “ColdBoot”
   // Get IPMI / iDRAC URL. All URL:s https.
@@ -1546,8 +1551,9 @@ function host_reboot(req, res) {
     // Bott response does not have body (is empty string), but has 204 status
     console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
     if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
-    if (d) {d.msgsent = rfmsg; }
-    res.json({"status":"ok", data: d});
+    if (d) { d.msgsent = rfmsg; }
+    var mcinfo = {ipaddr: rmgmt.ipaddr};
+    res.json({"status":"ok", data: d, mcinfo: mcinfo});
   }
   // 400 (e.g. 404), 500 ?
   // Error: Parse Error
@@ -1708,7 +1714,12 @@ function installrequest(req, res) {
     log("Formulated IPMI command: '"+ipmicmd+"'");
     if (!ipmicmd) { jr.msg += "Could not formulate IPMI Command"; return res.json({status: "ok", data: {"msgarr": msgarr}}); } // NOTE: NOT OK (Change) !!!
     var run = cproc.exec(ipmicmd, function (err, stdout, stderr) {
-      if (err) { jr.msg += "Problem with ipmitool run:" + err; console.log(jr.msg); return res.json(jr); }
+      if (err) {
+        jr.msg += "Problem with ipmitool run:" + err;
+        console.log(jr.msg);
+        //console.log(stderr);
+        return res.json(jr);
+      }
       
       log("Executed IPMI command successfully: " + stdout);
       return res.json({status: "ok", data: {"msgarr": msgarr}});
@@ -1750,4 +1761,27 @@ function bootreset(req, res) {
   var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1);
   res.json({status: "ok", data: list});
   
+}
+/** List Media directories ()
+ * Additionally probes into stub directories to see if they are mounted (and have one or more files).
+ * 
+ */
+function media_listing (req, res) {
+  var jr = {status: "err", "msg": "Could properly list media dirs. "};
+  var path = global.maindocroot;
+  if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; return res.json(jr); }
+  var list = fs.readdirSync(path);
+  if (!list || !list.length) { jr.msg += "No (accessible) dirs under maindocroot"; return res.json(jr); }
+  var list2 = [];
+  list.forEach(function (subdir) {
+    
+    var subpath = path + "/" + subdir;
+    var e = { path: subpath, filecnt: 0 };
+    var sublist = fs.readdirSync(subpath);
+    e.filecnt = sublist.length;
+    //e.sublist = sublist;
+    // return e; // map
+    list2.push(e);
+  });
+  res.json({status: "ok", data: list2});
 }
