@@ -436,7 +436,15 @@ function preseed_gen(req, res) {
   // if (req.url.indexOf('?')) { }
   //var ctype = tmplmap[req.url]; // Do not use - contains query parameters
   var ctype = tmplmap[req.route.path]; // config type
-  if (!ctype) { res.end("# Config type (ks/preseed) could not be derived\n"); return;}
+  // TODO: Allow manually authored kickstart, preseed, etc. to come in here
+  // Look fname up from host inventory parameters. Allow it to be either fixed/literal or template ?
+  var override;
+  if (!ctype) {
+    // var p = global.hostparams[h.ansible_fqdn]; // f vs. h
+    //if (p.instrecipe) {} // As-is No templating. Send immmediately
+    //else  if (p.insttmpl) {} // Load overriden template 
+    res.end("# Config type (ks/preseed) could not be derived\n");
+    return;}
   console.log("Concluded type: " + ctype + " for url ");
   // Acquire all params and blend them together for templating.
   var d; // Final template params
@@ -1547,8 +1555,8 @@ function host_reboot(req, res) {
     if (resp.headers && resp.headers["content-type"] && resp.headers["content-type"].match(/text\/html/)) {
       jr.msg += " Got HTML response"; return res.json(jr);
     }
-    if (status >= 400) { jr.msg += "Got HTTP Status "+400; return res.json(jr); }
-    // Bott response does not have body (is empty string), but has 204 status
+    if (status >= 400) { jr.msg += "Got HTTP (Error) Status "+status; return res.json(jr); }
+    // Boot response does not have body (is empty string), but has 204 status
     console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
     if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
     if (d) { d.msgsent = rfmsg; }
@@ -1735,8 +1743,16 @@ function tftp_listing(req, res) { // global
   // PXE Linux Config dir
   var path = global.tftp.root + "/pxelinux.cfg/";
   if (!fs.existsSync(path)) { jr.msg += "TFTP subdir for PXE linux Config does not exist"; return res.json(jr); }
-  console.log("Found: "+path);
+  console.log("Found Path: "+path);
   var list = tboot.pxelinuxcfg_list(path, 1);
+  // Blend in hostnames (loose-coupled way) + dig up target ?
+  list.forEach((it) => {
+    it.macaddr = tboot.has_macfile_pattern(it.fname, 1);
+    if (it.macaddr) { var f = hostcache[it.macaddr]; it.hname = f["ansible_hostname"] || ""; }
+    // Private boot menu file
+    var fullfn = path + it.fname;
+    if (!it.issym) { it.bootlbl = tboot.menu_deflbl(fullfn); }
+  });
   res.json({"status": "ok", data: list});
 }
 /** Reset the earlier set custom PXE boot back to default boot menu.
@@ -1762,9 +1778,9 @@ function bootreset(req, res) {
   res.json({status: "ok", data: list});
   
 }
-/** List Media directories ()
+/** List Media directories (Under maindocroot)
  * Additionally probes into stub directories to see if they are mounted (and have one or more files).
- * 
+ * TODO: Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
  */
 function media_listing (req, res) {
   var jr = {status: "err", "msg": "Could properly list media dirs. "};
@@ -1772,10 +1788,11 @@ function media_listing (req, res) {
   if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; return res.json(jr); }
   var list = fs.readdirSync(path);
   if (!list || !list.length) { jr.msg += "No (accessible) dirs under maindocroot"; return res.json(jr); }
+  var slash = global.maindocroot.match(/\/$/) ? "" : "/";
   var list2 = [];
   list.forEach(function (subdir) {
     
-    var subpath = path + "/" + subdir;
+    var subpath = path + slash + subdir;
     var e = { path: subpath, filecnt: 0 };
     var sublist = fs.readdirSync(subpath);
     e.filecnt = sublist.length;
@@ -1784,4 +1801,14 @@ function media_listing (req, res) {
     list2.push(e);
   });
   res.json({status: "ok", data: list2});
+}
+/** Provide info on loop mount.
+ */
+function media_info(req, res) {
+  var jr = {status: "err", "msg": "Failed to provide info on loop mount. "};
+  var path = global.maindocroot;
+  var q = req.query;
+  if (!q || !q.mid) { jr.msg += "No Query or mount id in query ('mid')"; return res.json(jr); }
+  
+  //async.series();
 }

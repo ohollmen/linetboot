@@ -15,17 +15,25 @@ var Mustache = require("mustache");
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 
 function init() {}
-
-function has_macfile_pattern(bn) {
+/**
+ * @param f {string} - Mac address string or Facts object indicating unique host
+ */
+function has_macfile_pattern(bn, retmac) {
     var patt = /^01-([0-9a-fA-F]{2}-[0-9a-fA-F]{2}-[0-9a-fA-F]{2}-[0-9a-fA-F]{2}-[0-9a-fA-F]{2}-[0-9a-fA-F]{2})$/;
     var ok = bn.match(patt);
+    if (ok && retmac) { return ok[1].replace(/-/g, ':').toLowerCase(); }
     return ok;
   }
 
-// Create a MCA-Address based file in global.tftp.root + "" + "01"+MACaddr (See: hostcommands.js)
+/** Create a MCA-Address based file in global.tftp.root + "" + "01"+MACaddr (See: hostcommands.js)
+ * @param f {string} - Mac address string or Facts object indicating unique host
+ * @return MAC Address based filename ("01" prefixed, colons trurned into hyphens)
+ */
 function menu_macfilename(f) {
-  if (!f) { console.log("menu_macfilename: No facts !"); return ""; }
-  var mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+  if (!f) { console.log("menu_macfilename: No facts or macaddr !"); return ""; }
+  var mac;
+  if (typeof f == 'string') { mac = f; }
+  else { mac = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : ""; }
   if (!mac) { return ""; }
   mac = mac.replace(/:/g, "-");
   mac = mac.toLowerCase();
@@ -33,7 +41,8 @@ function menu_macfilename(f) {
   var macfn = "01-" + mac;
   return macfn;
 }
-
+/** List PXELinux Config directory files.
+ */
 function pxelinuxcfg_list(path, extra) {
   var list = fs.readdirSync(path);
   var list2 = [];
@@ -87,12 +96,31 @@ function bootlabels(fn) {
   }
   return m;
 }
+/** Menu Default Boot Item Label.
+ * @param fn {string} - Menu Filename
+ * @return Boot label string
+ */
+function menu_deflbl(fn) {
+  if (!fs.existsSync(fn)) { return null; }
+  var menucont = fs.readFileSync(fn, 'utf8');
+  // "-" seems to be valid char in boot label
+  var re = /^default\s+([\w\-]+)/gm;
+  var match = re.exec(menucont);
+  if (match) { return match[1]; }
+  return "";
+}
 
-// Validate boot label ? (boot label to bootitem - would validate and provide info)
+/** Convertboot label to bootitem (w. id and name)
+* Can be used to would validate boot label against a real manu or provide info for bootitem.
+* @param bootlbl {string} - Boot label
+* @param tcfg {object} - TFTP Config (for the tcfg.menutmpl)
+* @return Boot Item.
+*/
 function bootlbl2bootitem(bootlbl, tcfg) {
   tcfg = tcfg || {}; // module init stored ?
   if (!tcfg.menutmpl) { throw "No Boot Menu file found for label validation "; }
   var mfn = tcfg.menutmpl;
+  // Validate boot label against 
   var boots = bootlabels(mfn);
   if (!boots) { throw "No bootlabel structure";  } // return null;
   var bootitem = boots.filter(function (it) { return it.id == bootlbl; })[0];
@@ -161,6 +189,7 @@ module.exports = {
   menu_macfilename: menu_macfilename,
   pxelinuxcfg_list: pxelinuxcfg_list,
   bootlabels, bootlabels,
+  menu_deflbl: menu_deflbl,
   bootlbl2bootitem: bootlbl2bootitem,
   bootmenu_save: bootmenu_save,
   bootmenu_link_default: bootmenu_link_default

@@ -20,14 +20,17 @@ function simplegrid_cd(ev, an) {
 /** Display Hosts in Groups (in mutiple grids)
  */
 function hostgroups(ev, act) {
-  axios.get('/groups').then(function (response) {
-    grps = response.data; // AoOoAoO...
+  var elsel = act.elsel;
+  axios.get(act.url).then(function (resp) { // '/groups'
+    grps = resp.data; // AoOoAoO...
+    if (!grps || !grps.length) { $('#' + elsel).html("No groups in this system"); return; }
+    // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
     grps.forEach(function (g) {
       var harr = g.hosts;
-      $('#tabs-5').append("<h2>"+g.name+" ("+ harr.length +")</h2>\n");
-      $('#tabs-5').append("<div id=\"grp_"+ g.id +"\"></div>\n");
-      showgrid("grp_"+g.id, harr, fldinfo_hw); // newt, hw,
+      $('#' + elsel).append("<h2>"+g.name+" ("+ harr.length +")</h2>\n");
+      $('#' + elsel).append("<div id=\"grp_"+ g.id +"\"></div>\n");
+      showgrid("grp_"+g.id, harr, fldinfo["hw"]);
     });
   }).catch(function (error) { console.log(error); });
 }
@@ -36,9 +39,9 @@ function hostgroups(ev, act) {
 */
 function rmgmt(ev, act) {
   
-  axios.get('/hostrmgmt').then(function (response) {
+  axios.get('/hostrmgmt').then(function (resp) {
     // SHared global for event handler... on_rmgmt_click
-    rmgmt_data = response.data; // TODO: .data
+    rmgmt_data = resp.data; // TODO: .data
     // console.log("Remote Mgmt data: ", rmgmt_data);
     if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
     var hr = 0; // Has remote management
@@ -53,11 +56,11 @@ function rmgmt(ev, act) {
  */
 function probeinfo() {
   //console.log("Launch Probe ...");
-  axios.get('/nettest').then(function (response) {
-    var pinfo = response.data.data;
+  axios.get('/nettest').then(function (resp) {
+    var pinfo = resp.data.data;
     // console.log("Probe data: ", pinfo);
-    if (!pinfo || !pinfo.length) { alert("No Probe data"); return; }
-    showgrid("jsGrid_probe", pinfo, fldinfo.probe);
+    if (!pinfo || !pinfo.length) { alert("No Net Probe data"); return; }
+    showgrid("jsGrid_probe", pinfo, fldinfo.netprobe);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
   }).catch(function (error) { console.log(error); });
 }
@@ -65,8 +68,8 @@ function probeinfo() {
  */
 function loadprobeinfo(event, act) {
   //console.log("Launch Probe ...");
-  axios.get(act.url).then(function (response) {
-    var pinfo = response.data.data;
+  axios.get(act.url).then(function (resp) {
+    var pinfo = resp.data.data;
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { alert("No Load Probe data"); return; }
     showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
@@ -199,15 +202,27 @@ function bootgui(ev, act) {
       if (d.status == "err") { return toastr.error("Failed to complete request "+ d.msg); }
       var summ = d.msgarr ? d.msgarr.map.join("\n") : "";
       toastr.info("Sent boot/install request successfully\n"+summ);
-    }).catch(function (err) { console.log(err); });;
+      tftplist(); // Refresh
+    }).catch(function (err) { console.log(err); });
   }); // 
+  tftplist();
+  medialist();
   // {params: para}
+  
+}
+// In a separate tab, make this to an action handler, not merely event
+function tftplist() {
+  // TODO: "Join" with hostname here or server side ?
   axios.get("/tftplist").then(function (resp) {
     var d = resp.data;
     console.log(d);
     showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
-    // Set handlers
-    $(".defboot").click(function (jev) {
+    // Handle Click on (Default Boot) Reset Link
+    $(".defboot").click(defboot_reset);
+  }).catch(function (err) { console.log(err); });
+  }
+// Click handler for 
+function defboot_reset(jev) {
       var macfname = this.dataset.macfname;
       // DEBUG:alert("Reset " + macfname);
       var url = "/bootreset?macfname="+macfname;
@@ -215,12 +230,18 @@ function bootgui(ev, act) {
         var d = resp.data;
         if (d.status == "err") { return toastr.error("Error resetting boot for "+macfname+ "\n"+d.msg); }
         toastr.info("Successfully reset boot to default menu.");
-        showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
+        //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
+        tftplist();
       }).catch(function (ex) { toastr.error(ex.toString()); });
       return false;
-    });
+    }
+function medialist() {
+  axios.get("/medialist").then(function (resp) {
+    var d = resp.data;
+    console.log(d);
+    showgrid("jsGrid_bootmedia", d.data, fldinfo.bootmedia);
+    // Handle Click on (Default Boot) Reset Link
+    //$(".defboot").click(defboot_reset);
   }).catch(function (err) { console.log(err); });
 }
-
-
 //////////// Dialog handlers ////////////////////

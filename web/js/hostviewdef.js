@@ -114,15 +114,16 @@
    var fldinfo_rmgmt = [
      hostfld,
      // fldinfo_net[2],
-     {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 120, itemTemplate: rmgmtcell},
-     {name: "rmhname",  title: "Rmgmt Host", type: "text", width: 120, itemTemplate: rmgmtcell}, // 
+     {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 90, itemTemplate: rmgmtcell},
+     {name: "rmhname",  title: "Rmgmt Host (DNS Res.)", type: "text", width: 120, itemTemplate: rmgmtcell}, // 
      fldinfo_net[5],
      
      // {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120}, // Redundant
      fldinfo_net[3],
      {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
+     {name: "rfop",  title: "RF Info", type: "text", width: 50, itemTemplate: redfish_cell},
    ];
-   var fldinfo_probe = [
+   var fldinfo_netprobe = [
      hostfld, // Need hn ?
      // itemTemplate: probeokcell
      {name: "ip",     title: "IP Addr", type: "text", width: 70},
@@ -267,17 +268,37 @@
      if (item.issym) { return ""; }
      return "<a class=\"defboot\" href=\"#\" data-macfname=\""+item.fname+"\">Reset</a>";
    }
+   function bootitem_info(val, item) {
+     if (item.issym && item.size == 7) { return("Default Boot Menu"); }
+     return "Custom Boot Target ("+item.bootlbl+")"; // Name ?
+   }
    var fldinfo_pxelinux = [
-     {name: "fname",     title: "Boot Menu Filename",  type: "text", width: 80, }, // itemTemplate: docktags
-     {name: "size",      title: "Size",  type: "text", width: 200, }, // itemTemplate: dockver
+     hostfld, // "Joined"
+     {name: "fname",     title: "Boot Menu Filename",  type: "text", width: 80, },
+     {name: "macaddr", title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
+     {name: "size",      title: "Size",  type: "text", width: 200, itemTemplate: bootitem_info}, // 
      {name: "mtime",     title: "Created",  type: "text", width: 100, },
-     {name: "issym",   title: "Symlink ?",  type: "text", width: 200, },
+     //{name: "issym",   title: "Symlink ?",  type: "text", width: 200, },
      {name: "reset",     title: "Set Default",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
+   ];
+   function bootmedia_status(val, item) {
+     if (!item.filecnt) { return ("<span style=\"color: #C60C30\">Not mounted or present</span>"); }
+     return "Mounted (w. "+item.filecnt+" items on top dir)";
+   }
+   // NEW
+   var fldinfo_bootmedia = [
+     
+     {name: "path",     title: "Boot Media Path",  type: "text", width: 80, },
+     {name: "filecnt", title: "File Cnt.", type: "text", width: 30, },
+     {name: "status",      title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
+     //{name: "mtime",     title: "Created",  type: "text", width: 100, },
+     //{name: "issym",   title: "Symlink ?",  type: "text", width: 200, },
+     //{name: "reset",     title: "Set Default",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
-      "rmgmt": fldinfo_rmgmt, "probe" : fldinfo_probe, "proc": fldinfo_proc,
+      "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
-      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux
+      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia
    };
    
