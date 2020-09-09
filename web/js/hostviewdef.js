@@ -182,8 +182,10 @@
        return "<span class=\"load\" style=\"background-color: "+col.bg+"; color: "+col.text+"\">"+v+"</span>";
      }).join(" ");
    }
+   /* Can be shared on any view having item.hname */
    function redfish_cell(val, item) {
-     if (!item.hasrm) { return "-"; } // No Rmgmt info
+     if (item.uptime && !item.hasrm) { return "-"; } // No Rmgmt info. Misbehaved when shared.
+     if (item.rmhname != undefined && !item.ipaddr) { return "-"; }
      return "<a class=\"rfop\" data-hname=\""+item.hname+"\" data-op='info' Xhref=\"/rf/info/"+item.hname+"\" data-tgt=\"rfdialog\">Info</a>" + '';
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"?pxe\">PXE Boot</a>" +
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"\">Reboot</a>";

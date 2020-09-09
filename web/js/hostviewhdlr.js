@@ -48,6 +48,8 @@ function rmgmt(ev, act) {
     if (!rmgmt_data.filter((it) => {return it.ipaddr}).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
     showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
     // $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); // UI Setup
+    //$("jsGrid_rmgmt .rfop").click(); // Dedicate
+    $('.rfop').click(on_docker_info); // VERY Shared.
   })
   .catch(function (error) { console.log(error); });
 }
