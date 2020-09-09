@@ -590,7 +590,7 @@ function rfinfo(hname, dialogsel, cb) {
     var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {};
     if (mediatypes && Array.isArray(mediatypes)) { d.MediaValues = mediatypes; }
     // Info / Link
-    if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = d.mcinfo.ipaddr; }
+    if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
     var out = Mustache.render(tc, d);
     $('#rfdialog').html(out);
