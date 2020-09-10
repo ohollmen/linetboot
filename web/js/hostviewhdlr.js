@@ -242,8 +242,26 @@ function medialist() {
     var d = resp.data;
     console.log(d);
     showgrid("jsGrid_bootmedia", d.data, fldinfo.bootmedia);
-    // Handle Click on (Default Boot) Reset Link
-    //$(".defboot").click(defboot_reset);
+    // Handle Click on Media Info
+    $(".mediainfo").click(function (jev) {
+      var p = this.dataset.path;
+      // Pop up dialog
+      //alert(p);
+      var url = "/mediainfo?mid=" + p;
+      axios.get(url).then(function (resp) {
+        var d = resp.data;
+        if (!d) { return toastr.error("No media info"); }
+        if (d.status == 'err') { return toastr.info(p + " Does not seem to be a loop mounted image"); }
+        console.log(d);
+        //return;
+        // Dialog "pattern"
+        document.getElementById('midialog').innerHTML = rapp.templated("mitmpl", d.data);
+        var dopts2 = {modal: true, width: 500, height: 200};
+        //$( "#midialog" ).html(output); // NOT needed
+        $( "#midialog" ).dialog(dopts2);
+      }).catch(function (ex) { toastr.error(ex.toString()); });
+      return false;
+    });
   }).catch(function (err) { console.log(err); });
 }
 //////////// Dialog handlers ////////////////////

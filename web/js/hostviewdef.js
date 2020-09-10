@@ -271,13 +271,13 @@
      return "<a class=\"defboot\" href=\"#\" data-macfname=\""+item.fname+"\">Reset</a>";
    }
    function bootitem_info(val, item) {
-     if (item.issym && item.size == 7) { return("Default Boot Menu"); }
+     if (item.issym && item.size == 7) { return("<span style=\"color: #AAAAAA\">Default Boot Menu</span>"); }
      return "Custom Boot Target ("+item.bootlbl+")"; // Name ?
    }
    var fldinfo_pxelinux = [
      hostfld, // "Joined"
-     {name: "fname",     title: "Boot Menu Filename",  type: "text", width: 80, },
-     {name: "macaddr", title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
+     {name: "fname",     title: "Boot Menu Filename",  type: "text", width: 80, css: "macaddr"},
+     {name: "macaddr",   title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
      {name: "size",      title: "Size",  type: "text", width: 200, itemTemplate: bootitem_info}, // 
      {name: "mtime",     title: "Created",  type: "text", width: 100, },
      //{name: "issym",   title: "Symlink ?",  type: "text", width: 200, },
@@ -287,13 +287,17 @@
      if (!item.filecnt) { return ("<span style=\"color: #C60C30\">Not mounted or present</span>"); }
      return "Mounted (w. "+item.filecnt+" items on top dir)";
    }
+   function bootmedia_info(val, item) {
+     if (!item.filecnt) { return (""); }
+     return "<a class=\"mediainfo\" href=\"#\" data-path=\""+item.path+"\">Info</a>";
+   }
    // NEW
    var fldinfo_bootmedia = [
      
      {name: "path",      title: "Boot Media Path",  type: "text", width: 80, },
      {name: "filecnt",   title: "File Cnt.", type: "text", width: 30, },
      {name: "status",    title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
-     //{name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
+     {name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

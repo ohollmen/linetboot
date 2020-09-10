@@ -245,9 +245,9 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="jsGrid_nfs" class="fwgrid"></div>
 </div>
 
-<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject">
-  
-</div>
+<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject"></div>
+
+<div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}" hint=""></div>
 
 <script id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
@@ -292,6 +292,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <input class="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
 <input class="bbut" type="button" data-hname="{{{ hname }}}" data-pxe="1" value="Set PXE Next-Boot">
 </script>
+
 <script id="dockercat" type="text/template">
 <h3>Docker System settings and Images</h3>
 <div id="denvinfo">
@@ -405,8 +406,19 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <hr>
 <h4>PXELinux Registered Boot Entries</h4>
 <div id="jsGrid_pxelinux"></div>
+<hr>
 <h4>Mounted ISO Boot Media</h4>
 <div id="jsGrid_bootmedia"></div>
 </script>
+
+<script id="mitmpl" type="text/template">
+<h4>Media Info</h4>
+<ul style="list-style-type: none; padding: 0px;">
+<li><label style="width: 150px;">Loop Device:</label> {{{ dev }}}</li>
+<li><label style="width: 150px;">Image File (ISO):</label> {{{ img }}}</li>
+<li><label style="width: 150px;">Image Size:</label> {{{ size }}}</li>
+</ul>
+</script>
+
 </body>
 </html>
