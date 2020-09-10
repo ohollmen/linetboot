@@ -245,10 +245,10 @@
      {name: "RepoTags",     title: "Tag(s)",  type: "text", width: 100, itemTemplate: docktags},
      {name: "Labels",     title: "Version",  type: "text", width: 50, itemTemplate: dockver},
      // To ISO
-     {name: "Created",     title: "Created",  type: "text", width: 100, itemTemplate: tscell},
-     {name: "Id", title: "Id", type: "text", width: 60, itemTemplate: dockidcell},
+     {name: "Created",     title: "Created",  type: "text", width: 90, itemTemplate: tscell},
+     {name: "Id", title: "Id", type: "text", width: 52, itemTemplate: dockidcell},
      {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
-     {name: "Size",     title: "Size (MB)",  type: "text", width: 100, itemTemplate: function (value, item) { return value /1000000; }},
+     {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return value /1000000; }},
    ];
    var fldinfo_nfs = [
      {name: "path",     title: "Exported Path",  type: "text", width: 200, }, // itemTemplate: docktags
@@ -290,12 +290,10 @@
    // NEW
    var fldinfo_bootmedia = [
      
-     {name: "path",     title: "Boot Media Path",  type: "text", width: 80, },
-     {name: "filecnt", title: "File Cnt.", type: "text", width: 30, },
-     {name: "status",      title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
-     //{name: "mtime",     title: "Created",  type: "text", width: 100, },
-     //{name: "issym",   title: "Symlink ?",  type: "text", width: 200, },
-     //{name: "reset",     title: "Set Default",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
+     {name: "path",      title: "Boot Media Path",  type: "text", width: 80, },
+     {name: "filecnt",   title: "File Cnt.", type: "text", width: 30, },
+     {name: "status",    title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
+     //{name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
