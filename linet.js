@@ -45,7 +45,7 @@ var ops = [
 ];
 
 var cfg = {
-  httphost: "http://ash-test-ccx-01.ash.broadcom.net:3000",
+  httphost: process.env["LINETBOOT_URL"],
 };
 // CL Options
 var clopts = [
@@ -60,7 +60,7 @@ var async  = require("async");
 var axios  = require("axios");
 var Getopt = require("node-getopt"); // getopt ?
 
-
+if (!cfg.httphost) { console.error("No (env.) LINETBOOT_URL found (e.g. http://linet.my.corp.com:3000"); process.exit(1); }
 // console.log("ARGV:", process.argv);
 var argv2 = process.argv.slice(2)
 // console.log("ARGV2:", argv2);

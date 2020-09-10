@@ -43,6 +43,7 @@ var ans      = require("./ansiblerun.js");
 var ospkgs   = require("./ospackages.js");
 var ipmi     = require("./ipmi.js");
 var tboot    = require("./tftpboot.js");
+var redfish  = require("./redfish.js");
 
 user.groups  = user.groups.join(" ");
 global.tmpls = {};
@@ -187,6 +188,8 @@ function app_init(global) {
   app.get("/bootreset", bootreset);
   // 
   app.get("/medialist", media_listing);
+  
+  app.get("/mediainfo", media_info);
   //////////////// Load Templates ////////////////
   var tkeys = Object.keys(global.tmplfiles);
   tkeys.forEach(function (k) {
@@ -1462,7 +1465,16 @@ function host_pkg_stats(req, res) {
  * boot.json: {"ResetType": "GracefulRestart", "BootSourceOverrideTarget": "Pxe"}   ... OR
  *            {"ResetType": "PowerCycle", "BootSourceOverrideTarget": "Pxe"}
  * # May need: -H "Content-Type: application/json" -d "... data ..."
- * curl -X POST https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset -u a:b --insecure -d @boot.json 
+ * curl -X POST https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset -u a:b --insecure -d @boot.json
+ * curl -X PATCH https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/ -u a:b --insecure -d '{"Boot": {"BootSourceOverrideTarget": "Pxe"}}'
+ * Need to reset earlier ... ResetType or BootSourceOverrideTarget ???
+ * 
+ * TODO:
+ * - /redfish/v1/UpdateService/FirmwareInventory
+ * - /redfish/v1/UpdateService/FirmwareInventory/Available
+ * - /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
+ * - /redfish/v1/Systems/<System-Id>/Actions/ComputerSystem.Reset
+ * Also see: Updating firmware using HTTP share
  * Refs:
  * https://www.dell.com/community/Systems-Management-General/Power-Cycle-System-Cold-Boot-via-rest-api/td-p/5081009
  * https://github.com/dell/iDRAC-Redfish-Scripting/blob/master/Redfish%20Python/SetNextOneTimeBootDeviceREDFISH.py
@@ -1471,11 +1483,16 @@ function host_pkg_stats(req, res) {
  * https://redfishforum.com/thread/261/host-warm-reboots
  * https://eehpcwg.llnl.gov/assets/121015_intro_to_redfish.pdf - 2015 overview of RedFish with good JSON message examples
  * https://github.com/dell/iDRAC-Redfish-Scripting/issues/39 - racadm / python firmware update (non-RF)
- * https://www.dandh.com/pdfs/Cloud-Axcient-idrac9-lifecycle-controller-v3212121_api-guide_en-us.pdf - Dell Redfish API Guide
+ * https://www.dandh.com/pdfs/Cloud-Axcient-idrac9-lifecycle-controller-v3212121_api-guide_en-us.pdf - Dell Redfish API Guide (3.21.21.21)
+ * https://www.dell.com/idracmanuals
+ * https://www.dell.com/support/home/en-sg/product-support/product/idrac9-lifecycle-controller-v4.x-series/docs - Has Redfish guide
+ * https://topics-cdn.dell.com/pdf/idrac9-lifecycle-controller-v4x-series_api-guide_en-us.pdf - iDRAC9 Redfish API Guide
+https://www.dmtf.org/standards/redfish
  */
 function host_reboot(req, res) {
   var jr = {"status": "err", msg: "Failed redfish (info/boot)."};
-  var ops = {"boot": "post", "info": "get"};
+  // TODO: Parametrize ID
+  
   var rmc = global.ipmi || {};
   var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
@@ -1485,13 +1502,17 @@ function host_reboot(req, res) {
   
   if (!p || !Object.keys(p).length) { jr.msg += " No URL path params."; return res.json(jr); }
   if (!p.hname) { jr.msg += " No Host."; return res.json(jr); }
-  if (!p.op || !ops[p.op]) { jr.msg += " Not a supported op (try: info,boot)."; return res.json(jr); }
+  if (!p.op || ! redfish.ops_idx[p.op]) { jr.msg += " Not a supported op (try: info,boot,setpxe)."; return res.json(jr); }
   if (!rq) {  jr.msg += " No Query params."; return res.json(jr); }
   var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
   // if (req.body) { console.log("Express-body: ",req.body); } // Always {}
-  if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; } // PXE !
+  //if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; } // PXE !
+  if (p.op == 'boot' && rq.pxe) { p.op = "setpxe"; } // Need both !? - NOT
   if (rq.test) { return res.json(rfmsg); }
+  
+  var rfop = new redfish.RFOp(p.op, ipmiconf);
+  if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
@@ -1499,17 +1520,11 @@ function host_reboot(req, res) {
   // console.log("RMGMT-info:",rmgmt);
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
-  // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
-  function basicauth(obj) {
-    // [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues.
-    // Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
-    let buff = new Buffer(obj.user + ":" + obj.pass); // , 'ascii'
-    return buff.toString('base64');
-  }
-  function opurl(op, rmgmt, rebooturl, ipmiconf) {
-    
-  }
-  var bauth = basicauth(ipmiconf);
+  
+  //function opurl(op, rmgmt, rebooturl, ipmiconf) {
+  //  
+  //}
+  //var bauth = redfish.basicauth(ipmiconf);
   // TODO: Call Base URL to detect/discover several things
   
   // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi" ("PowerCycle")
@@ -1522,30 +1537,34 @@ function host_reboot(req, res) {
   var rebooturl = {
     "base": "/redfish/v1/",
     "info": "", // Add NONE
-    "boot": "/Actions/ComputerSystem.Reset",
+    "boot": "/Actions/ComputerSystem.Reset", // POST
+    "noot_p": "", // PATCH
   // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
   // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
   // /redfish/v1/UpdateService/Actions/Oem/DellUpdateService.Install
   };
   // use IP Address to NOT have to use DNS to resolve.
-  var rfurl = "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
-  if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
+  //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
+  //NONEED: if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
   // "User-Agent": "curl/7.54.0"
-  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
-  
-  var meth = ops[p.op];
-  if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
-  console.log("Call("+meth+"): "+rfurl + "\nBody: ", rfmsg, " headers: ", hdrs);
+  //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
+  rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  rfop.request(rmgmt.ipaddr, ipmiconf);
+  return;
+  //var meth = rfop.m; //var meth = ops[p.op];
+  //if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
+  //console.log("Call("+meth+"): "+rfurl + "\nBody: ", rfmsg, " headers: ", hdrs);
   // Expect HTTP: 204 (!)
   // Error: self signed certificate
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  //process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   
   //const https = require('https'); // import https from 'https';
   //https.globalAgent.options.rejectUnauthorized = false;
   //const agent = new https.Agent({ rejectUnauthorized: false });
-  var reqopts = {headers: hdrs, }; // httpsAgent: agent
-  if (meth == 'post') { axios[meth](rfurl, rfmsg, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
-  if (meth == 'get') { axios[meth](rfurl, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
+  
+  //var reqopts = {headers: hdrs, }; // httpsAgent: agent
+  //if (meth == 'post') { axios[meth](rfurl, rfmsg, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
+  //if (meth == 'get') { axios[meth](rfurl, reqopts).then(hdl_redfish_succ).catch(hdl_redfish_err); }
   // Advanced handling: https://github.com/axios/axios/issues/960
   function hdl_redfish_succ(resp) {
     var status = resp.status;
@@ -1557,7 +1576,7 @@ function host_reboot(req, res) {
     }
     if (status >= 400) { jr.msg += "Got HTTP (Error) Status "+status; return res.json(jr); }
     // Boot response does not have body (is empty string), but has 204 status
-    console.log(meth+ "-Success-response-data("+status+"): ",resp.data);
+    console.log(rfop.m + "-Success-response-data("+status+"): ",resp.data); // meth+ 
     if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
     if (d) { d.msgsent = rfmsg; }
     var mcinfo = {ipaddr: rmgmt.ipaddr};
@@ -1572,11 +1591,12 @@ function host_reboot(req, res) {
   function hdl_redfish_err(err) {
     // TODO: See how to get resp from here.
     var resp = err.response;
+    if (!resp) { console.log("No (axios) response object in error !"); }
     jr.msg += err.toString();
-    console.log(resp.statusText); // Has: status, statusText
-    console.log(JSON.stringify(resp.data, null, 2));
-    console.log(meth+" Error: "+err);
-    if (resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
+    resp && console.log(resp.statusText); // Has: status, statusText
+    resp && console.log(JSON.stringify(resp.data, null, 2));
+    console.log(rfop.m + " Error: "+err); // meth+
+    if (resp && resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
       var arr = resp.data.error["@Message.ExtendedInfo"];
       jr.messages = arr.map(function (it) { return it.Message; }); 
     }
@@ -1709,8 +1729,30 @@ function installrequest(req, res) {
   log("Wrote Menu (for '"+macaddr+"') to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // see if IPMI is in use (by config) and detect presence of rmgmt info for q.hname
-  var useipmi = global.ipmi.useipmi;
-  if (useipmi && ipmi.rmgmt_exists(q.hname)) {
+  var useipmi = 0; // global.ipmi.useipmi;
+  var userf = global.ipmi.userf;
+  // RedFish (patch)
+  if (userf) {
+    var rmgmtpath = process.env["RMGMT_PATH"] || global.ipmi.path;
+    var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
+    if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
+    // Instantiate by IPMI Config (shares creds)
+    var rfop = new redfish.RFOp("setpxe", global.ipmi);
+    rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
+    // Call host by MC ip address
+    rfop.request(rmgmt.ipaddr, ipmiconf);
+    // TODO: Decorate these with better message extraction
+    function hdl_redfish_succ(resp) {
+      return res.json({status: "ok", data: {"msgarr": msgarr}});
+    }
+    function hdl_redfish_err(ex) {
+      console.log(ex.toString());
+      jr.msg += ex.toString();
+      return res.json(jr);
+    }
+  }
+  // IPMI
+  else if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
     var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
@@ -1746,7 +1788,7 @@ function tftp_listing(req, res) { // global
   console.log("Found Path: "+path);
   var list = tboot.pxelinuxcfg_list(path, 1);
   // Blend in hostnames (loose-coupled way) + dig up target ?
-  list.forEach((it) => {
+  list.forEach(function (it) {
     it.macaddr = tboot.has_macfile_pattern(it.fname, 1);
     if (it.macaddr) { var f = hostcache[it.macaddr]; it.hname = f["ansible_hostname"] || ""; }
     // Private boot menu file
@@ -1810,5 +1852,58 @@ function media_info(req, res) {
   var q = req.query;
   if (!q || !q.mid) { jr.msg += "No Query or mount id in query ('mid')"; return res.json(jr); }
   
-  //async.series();
+  // Parse tablular "df" output
+  function getdf(cb) {
+    cproc.exec("df", function (err, stdout, stderr) {
+      if (err) { return cb("Failed df:" + err, null); }
+      var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
+      console.log(csv);
+      if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
+      var rec = csv.filter((it) => { return it.Mounted == q.mid; })[0]; // MOT: "/isomnt/"+
+      if (!rec) { return cb("No Entry found by:"+q.mid, null); }
+      console.log(rec);
+      loopdev = rec.Filesystem;
+      cb(null, rec.Filesystem); // Pass rec ? w. all info !
+    });
+    //cb(null, 1); // TEST ONLY
+  }
+  // Problematic: newer losetup (part of util-linux) has completely different opts (e.g. Ubu18: 2.31.1)
+  // RH 6 version does not even support --version (!)
+  // Resides in /sbin/losetup in old RH and new Ubuntu (in all Linux)
+  // losetup --list
+  // losetup --list --noheadings -O BACK-FILE /dev/loop3
+  // Common: sudo losetup /dev/loop3 (But requires sudo on RH ! ... or ugo+s)
+  function getlosetup(cb) {
+    console.log("Continue by: " + loopdev);
+    //var cmd = "losetup --list --noheadings -O BACK-FILE "+ loopdev;
+    var cmd = "losetup "+ loopdev;
+    var legpatt = /\(([^)]+)\)/; // Legacy (compatible) output pattern
+    //0 &&
+    cproc.exec(cmd, function (err, stdout, stderr) {
+      if (err) { return cb("Failed losetup: " + err, null); }
+      var m = stdout.match(legpatt);
+      if (!m) { return cb("No Image matched in "+stdout, null); }
+      return cb(null, m[1]);
+      ///////////////////////////
+      
+      //var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
+      //console.log(csv);
+      //if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
+      //var rec = csv.filter((it) => { return it.Mounted == q.mid; })[0]; // MOT: "/isomnt/"+
+      //if (!rec) { return cb("No Entry found by:"+q.mid, null); }
+      //console.log(rec);
+      //loopdev = rec.Filesystem;
+      //cb(null, rec.Filesystem); // Pass rec ? w. all info !
+    });
+    //cb(null, 2);
+  }
+  // Data Driven: async.eachSeries(arr, func, complcb) // async.waterfall([f1, f2], coplcb): 1st: cb only
+  var loopdev = "";
+  console.log("Will look by: "+q.mid);
+  // series: signatures always cb (only!)
+  async.series([getdf, getlosetup], function (err, result) {
+    if (err) { jr.msg += "Failed async.series: " + err; console.log("Error: "+jr.msg); return res.json(jr); }
+    var loopinfo = { "dev": result[0], "img": result[1] };
+    res.json({status: "ok", data: loopinfo});
+  });
 }
