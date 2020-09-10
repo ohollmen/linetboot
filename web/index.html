@@ -285,11 +285,12 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>Health Status: {{{ Status.Health }}}</li>
 <li>Boot Reset Types: <b>{{{ ResetValues }}}</b></li>
 <li>Boot Media Types: <b>{{{ MediaValues }}}</b></li>
+<li>Special Next-Boot: {{#Boot}}<b>{{{ Boot.BootSourceOverrideTarget }}} ({{{ Boot.BootSourceOverrideEnabled }}})</b>{{/Boot}}</li>
 <li>BMC IP Address: {{#ipaddr}}<a href="https://{{{ipaddr}}}/">{{{ipaddr}}}</a>{{/ipaddr}}</li>
 <!-- <li>ODATA ID:  [@odata.id] </li> -->
 </ul>
 <input class="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
-<input class="bbut" type="button" data-hname="{{{ hname }}}" data-pxe="1" value="Boot PXE">
+<input class="bbut" type="button" data-hname="{{{ hname }}}" data-pxe="1" value="Set PXE Next-Boot">
 </script>
 <script id="dockercat" type="text/template">
 <h3>Docker System settings and Images</h3>
