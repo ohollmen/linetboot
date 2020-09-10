@@ -1792,7 +1792,7 @@ function tftp_listing(req, res) { // global
     it.macaddr = tboot.has_macfile_pattern(it.fname, 1);
     if (it.macaddr) {
       var f = hostcache[it.macaddr];
-      it.hname = f ? f["ansible_hostname"] : ""; }
+      it.hname = f ? f["ansible_fqdn"] : ""; }
     // Private boot menu file
     var fullfn = path + it.fname;
     if (!it.issym) { it.bootlbl = tboot.menu_deflbl(fullfn); }
