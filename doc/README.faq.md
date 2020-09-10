@@ -25,8 +25,11 @@ This happens < 5% of the time for reasons unknown to me.
 Press tab character to get pxelinux boot option labels ("label ..." property in menu file) and type one that you want hoping that menu labels were made descriptive enough to meaningfully choose from.
 If you get to know why this prompt-mode triggers instead of full arrow-key driven visual menu, let me know too.
 
-Q: I cannot get pxelinux assistes install working with HTTP, do I have to use HTTP ?
+Q: I cannot get pxelinux assisted install working with HTTP, do I have to use HTTP ?
 
 No you can craft the pxelinux menu to by-pass the http based install. E.g. Ubuntu 18.04 (MATE) Desktop rejects HTTP, but supports NFS based install.
 Fall back onto whatever is supported.
 
+Q: I'm installing Dell iDRAC firmware update and get "Failed to start firmware update. Possible reason may be that Local Configuration using RACADM is disabled." - What's up with this ?
+A: You could try installing newer BIOS update first - this helps in some cases.
+Also adjusting iDRAC Settings => Services => Local Configuration => "Disable iDRAC ..." to "Disabled" helps.

@@ -15,6 +15,7 @@ RedFish
 - New standard (~2015 ...), based on HTTP+JSON+REST
 - Early implementations suffer from immaturity
 - Protocol / communication is easy to debug
+- Find PDF docs by (e.g.): iDRAC9 Redfish API Guide
 
 ## Mini FAQ
 
