@@ -1740,7 +1740,7 @@ function installrequest(req, res) {
     var rfop = new redfish.RFOp("setpxe", global.ipmi);
     rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
     // Call host by MC ip address
-    rfop.request(rmgmt.ipaddr, ipmiconf);
+    rfop.request(rmgmt.ipaddr, global.ipmi);
     // TODO: Decorate these with better message extraction
     function hdl_redfish_succ(resp) {
       return res.json({status: "ok", data: {"msgarr": msgarr}});
