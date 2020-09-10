@@ -1806,7 +1806,9 @@ function bootreset(req, res) {
   var jr = {status: "err", "msg": "Could not reset old boot request. "};
   var q = req.query;
   var tcfg = global.tftp;
+  var ipmicfg = global.ipmi;
   if (!tcfg) { jr.msg += "No TFTP Config inside main config"; return res.json(jr); }
+  if (!ipmicfg) { jr.msg += "No IPMI Config inside main config"; return res.json(jr); }
   if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
   if (!q.macfname) { jr.msg += "No Boot menu file name"; return res.json(jr); }
   // Validate format of name
@@ -1817,6 +1819,10 @@ function bootreset(req, res) {
   if (!fs.existsSync(fullfn)) { jr.msg += "Boot menu file not there"; return res.json(jr); }
   try { tboot.bootmenu_link_default(tcfg, q.macfname); }
   catch (ex) { console.log(ex.toString()); jr.msg + "Error Re-Establishing default menu linking: " + ex.toString(); return res.json(jr); }
+  // TODO: Call Redfish to make patch to {BootSourceOverrideTarget: "None"}
+  // var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  // rfop.msg.Boot.BootSourceOverrideTarget = "None"; // None => Cancel
+  // rfop.request(rmgmt.ipaddr, ipmicfg);
   // Reload new data like in tftp_listing() ?
   var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1);
   res.json({status: "ok", data: list});
@@ -1847,6 +1853,8 @@ function media_listing (req, res) {
   res.json({status: "ok", data: list2});
 }
 /** Provide info on loop mount.
+ * Gets query (k-v) param "mid" valued to mount path (mount point) and
+ * resolves it to undelying image.
  */
 function media_info(req, res) {
   var jr = {status: "err", "msg": "Failed to provide info on loop mount. "};
@@ -1885,27 +1893,27 @@ function media_info(req, res) {
       if (err) { return cb("Failed losetup: " + err, null); }
       var m = stdout.match(legpatt);
       if (!m) { return cb("No Image matched in "+stdout, null); }
+      imgfull = m[1];
       return cb(null, m[1]);
-      ///////////////////////////
-      
-      //var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
-      //console.log(csv);
-      //if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
-      //var rec = csv.filter((it) => { return it.Mounted == q.mid; })[0]; // MOT: "/isomnt/"+
-      //if (!rec) { return cb("No Entry found by:"+q.mid, null); }
-      //console.log(rec);
-      //loopdev = rec.Filesystem;
-      //cb(null, rec.Filesystem); // Pass rec ? w. all info !
     });
-    //cb(null, 2);
+  }
+  // Stat image ?
+  function imagestat(cb) {
+    var stats;
+    try { stats = fs.statSync(imgfull); } catch (ex) { return cb(ex.toString(), null); }
+    var size = stats.size;
+    console.log("Size: "+size);
+    cb(null, stats.size);
   }
   // Data Driven: async.eachSeries(arr, func, complcb) // async.waterfall([f1, f2], coplcb): 1st: cb only
   var loopdev = "";
-  console.log("Will look by: "+q.mid);
+  var imgfull = "";
+  console.log("Will lookup (df) mounts by: " + q.mid);
   // series: signatures always cb (only!)
-  async.series([getdf, getlosetup], function (err, result) {
+  async.series([ getdf, getlosetup, imagestat ], function (err, result) {
     if (err) { jr.msg += "Failed async.series: " + err; console.log("Error: "+jr.msg); return res.json(jr); }
-    var loopinfo = { "dev": result[0], "img": result[1] };
+    //imgfull = result[1];
+    var loopinfo = { "dev": result[0], "img": result[1], "size": result[2]};
     res.json({status: "ok", data: loopinfo});
   });
 }
