@@ -353,27 +353,37 @@ function host2facts(h, global) {
   return f;
 }
 /** Lightweight poor-mans (naive) CSV parser.
+ * Opts:
+ * - debug - Produce debug output
+ * - sep - separator / delimiter. May be either string or regexp
+ * - hdr - Array of headers
+ * - max - Max number of fields (-1 = Use all)
  * @return array of object formulated per first / header line.
  */
-function csv_parse(fname) {
+function csv_parse(fname, opts) {
+  opts = opts || {};
   if (!fs.existsSync(fname)) { console.log("No CSV file "+ fname);return null; }
   var cont = fs.readFileSync(fname, 'utf8');
+  return csv_parse_data(cont, opts);
+  
+}
+function csv_parse_data(cont, opts) {
+  opts = opts || {sep: ',', max: -1};
   var lines = cont.split("\n");
-  var hdr = lines.shift().split(',');
+  var hdr = opts.hdr || lines.shift().split(opts.sep, opts.max);
   // Validate header names as symbol names ?
-  console.log("Headers: ", hdr);
+  opts.debug && console.log("Headers: ", hdr);
   var arr = []; // Final Array-of-Objects (AoO) from CSV
   lines.forEach(function (l) {
     var rec = {};
-    var lrec = l.split(','); // Max as many fields as hdr ?
+    var lrec = l.split(opts.sep, opts.max); // Max as many fields as hdr ?
     if (!l) { return; } // Empty !
     if (hdr.length != lrec.length) { console.log("Flawed rec. - field counts not matching ("+hdr.length+" vs "+lrec.length+")"); return; }
     for (var i =0;i<lrec.length;i++) { rec[hdr[i]] = lrec[i]; }
     arr.push(rec);
   });
-  return arr; // CSV parser
+  return arr;
 }
-
 /** Load special hosts from CSV file (TODO: json, sqlite).
  */
 function customhost_load(fname, global, iptrans) {
@@ -400,5 +410,6 @@ module.exports = {
   hosts_filter: hosts_filter,
   customhost_load: customhost_load,
   facts_load_all: facts_load_all,
-  csv_parse: csv_parse
+  csv_parse: csv_parse,
+  csv_parse_data: csv_parse_data
 };
