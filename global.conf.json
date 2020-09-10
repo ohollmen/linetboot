@@ -64,6 +64,7 @@
     "bootpin": "abc123",
     "debug": 1,
     "useipmi": 0,
+    "userf": 0,
     "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5"
   },
   "probe" : {
