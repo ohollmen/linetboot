@@ -123,6 +123,7 @@ function app_init(global) {
   ///////////// Dynamic content URL:s (w. handlers) //////////////
   ////////////////////// Installer ///////////////////////////////////
   // preseed_gen - Generated preseed and kickstart shared handler
+  // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   app.get('/preseed.cfg', preseed_gen);
   app.get('/ks.cfg', preseed_gen);
   app.get('/preseed.desktop.cfg', preseed_gen);
@@ -133,6 +134,7 @@ function app_init(global) {
   // Network configs (still same handler)
   app.get('/sysconfig_network', preseed_gen);
   app.get('/interfaces', preseed_gen);
+  // Autounattend.xml
   ////////////////////
   // Install event logger (evtype is start/done)
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
@@ -1843,6 +1845,9 @@ function media_listing (req, res) {
   list.forEach(function (subdir) {
     
     var subpath = path + slash + subdir;
+    // Should succeeed as we just got item (ownership/access problems ?)
+    var stats = fs.statSync(subpath);
+    if (!stats.isDirectory()) { return; } // File - Skip !
     var e = { path: subpath, filecnt: 0 };
     var sublist = fs.readdirSync(subpath);
     e.filecnt = sublist.length;
