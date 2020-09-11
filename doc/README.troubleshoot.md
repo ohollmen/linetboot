@@ -79,4 +79,12 @@ Errors are recognizable by *not* having the `PXE-E...` prefix.
 - ...failed: No such file or directory (After selecting menu item) - Likely means you are using non-http capable pxelinux or syslinux and filename was given as HTTP URL. This error message is very misleading and there will be no trace of
 failed load in either TFTP or HTTP logs.
 
- 
+### Memdisk errors
+
+Error `MEMDISK: No ramdisk image specified` may mean that you need user pxelinux `append` line without initrd=http://... or forgot
+the "dedicated" `inird` line (with *no* options). Either one needs to be there.
+
+## Dell DTK ISO Boot Errors
+
+dracut-initqueue[738]: Warning: dracut-initqueue timeout - starting timeout scripts
+

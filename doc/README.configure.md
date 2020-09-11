@@ -30,6 +30,16 @@ To make DHCP Server assign constant/fixed ip address ("pseudo-static") by MAC ad
       fixed-address 192.168.0.152;
     }
     ...
+    
+In case you want to customize a particular host to a special NBP boot file and different server (or just one
+of them leaving the other one out):
+
+    host compute-001 {
+      filename "gpxelinux.0";
+      next-server 10.1.10.6;
+      hardware ethernet bc:30:d9:2a:c9:50;
+      fixed-address 192.168.0.152;
+    }
 
 See ISC DHCP server documentation for advanced details.
 Restart server by `sudo service restart dhcpd`.
@@ -53,7 +63,7 @@ many conditional forms that could be used for PXE boot client differentiation (i
 
 dnsmasq allows also advanced differentiation of PXE Boot clients (not tested w. linetboot):
 
-    # For some reason ".0" suffix has to be left out with pxe-service
+    # NOTE: For some reason ".0" suffix has to be left out with pxe-service
     pxe-service=x86PC, "PXELINUX (BIOS)", "lpxelinux"
     pxe-service=X86-64_EFI, "PXELINUX (EFI)", "efi64/syslinux.efi"
 
@@ -75,7 +85,8 @@ Other good info on configring dnsmasq:
 - [Sonicwall table of DHCP Option codes](http://help.sonicwall.com/help/sw/eng/6800/26/2/3/content/Network_DHCP_Server.042.12.htm)
 - [Dealing with Option 93 / vendor-class-identifier](https://www.syslinux.org/archives/2014-October/022683.html)
 - https://forums.fogproject.org/topic/8726/advanced-dnsmasq-techniques
-Reload server config by `sudo kill -HUP $DNSMASQ_PID` (Use ps -ef | grep dnsmasq to find out pid).
+
+Reload server config by `sudo kill -HUP $DNSMASQ_PID` (Use `ps -ef | grep dnsmasq` to find out pid).
 
 dnsmasq also has an integrated tftp server that can be turned on with `enable-tftp` (See also `tftp-root` for
 customizing the TFTP root path).
@@ -165,44 +176,54 @@ Lineboot Configuration is best started by creating the initial "hosts" file
 
 ## Main Configuration
 
-Configuration in the main config file `global.conf.json` (Currently items with "main." reside on top level):
+### Config Top level
+
+Configuration in the main config file `~/.linetboot/global.conf.json` (Currently items with "main." reside on top level):
 
 - main.httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
   Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
   This setting is important (and mainly used on) templates (e.g. bootmenu).
 - main.nfsserver - NFS server for special installations that cannot cope with HTTP (E.g. Ubuntu
   18.04 Desktop seems to be crippled with HTTP)
-- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this). This external file should have members:
-  - fullname - full firstname, lastname of user
-  - username - login username for user
-  - password - login password for user (in clear text for now)
-  - groups - The OS groups user should be member of
-  - homedir - Home directory for user
-- tmplfiles (obj) - Object with keys "preseed", "ks" to refer to (Mustache template toolkit) template files to be used for Debian Preseed and RedHat Kickstart configoutput respectively. Tweak only if you need to customize the templates.
 - fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be enabled for install.
-- main.maindocroot (str) - The dcocument root of linetboot (Express) static file delivery
 - main.useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
 - main.hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
 - main.hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config 
   (array valued) key for hostnames (Default: Current users ~/.linetboot/hosts).
-- net - Install time (and general) Network settings
+- tmplfiles (obj) - Object with keys "preseed", "ks" to refer to (Mustache template toolkit) template files to be used for Debian Preseed and RedHat Kickstart configoutput respectively. Tweak only if you need to customize the templates.
+
+### Section "core" - Essential Linetboot Settings
+
+- maindocroot (str) - The linetboot HTTP server (Express.js) document root for static file delivery
+- appname (str) - "Branded" Application name shown in Web frontend of Linetboot
+- hdrbg (str) - Header Background Image URL for frontend "branding"
+- apiena (bool) - N/A
+
+### Section "net" - Install time (and general) Network settings
+
   - netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
   - gateway - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
   - namesearch - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
   - nameservers - DNS nameservers in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
   - domain - Domainname suffix for local network (E.g. "veryclose.net").
   - dev - The default network interface name for the OS being installed (E.g. "eno1")
-  - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above).
+  - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
+  - ntpserver - Network Time Server (hostname)
 
-### OS Installation
+### Section "inst" - OS Installation
 
 Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now) that are used on preseed/kickstart templates:
 - locale - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
 - keymap - Keyboard map / layout (E.g. "us")
-- time_zone - Timezone of hosts (E.g. "")
+- time_zone - Timezone of hosts (E.g. "America/Los_Angeles")
 - install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
-- ntpserver - Network Time Server
 - postscript - Script to launch at the end of installation
+- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this). This external file should have members:
+  - fullname - full firstname, lastname of user
+  - username - login username for user
+  - password - login password for user (in clear text for now)
+  - groups - The OS groups user should be member of
+  - homedir - Home directory for user
 
 See "net" section above for install network settings (Object with global network base settings).
 

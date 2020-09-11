@@ -20,8 +20,10 @@ Optional (Development):
 
 Ubuntu/Debian Install:
 
-    # Pulls in syslinux-common as dependency
+    # Pulls in syslinux-common as "recommended", contains: gpxelinux.0 lpxelinux.0 and pxelinux.0
     sudo apt-get install pxelinux
+    # Also install this if you want to boot load-into-memory ISO images (w. memdisk chained bootloader)
+    sudo apt-get install syslinux-common
 
 Centos/RHEL does not seem to have lpxelinux.0 at all, but syslinux can be installed:
 
@@ -79,14 +81,16 @@ Info on UEFI syslinux.efi boot: https://wiki.syslinux.org/wiki/index.php?title=C
 
 ## Installing TFTP Server
 
-Debian/Ubuntu (Default TFTP Server data/content root: **/srv/tftp**).
+Debian/Ubuntu (Default TFTP Server data/content root in older Ubuntu/Debian: `/srv/tftp`, More recent: ``).
+TFTP Server on Linux (mainly because of it's simplicity)"just works" with no config customizations needed.
 
-    # This "just works". No config needed. Default TFTP root /srv/tftp.
-    # However this TFTP server does not support TFTP "options" (See RFC 2347).
+    # Default TFTP root /srv/tftp (or /var/lib/tftpboot).
+    # However this TFTP server package tftpd named does not support TFTP "options" (See RFC 2347).
     # Some X86_64 UEFI BIOSes require options for PXE Boot TFTP phase.
-    sudo apt-get install tftp tftpd
-    # For TFTP protocol "options" support (RFC 2347,2349) install tftpd-hpa
-    sudo apt-get install tftpd-hpa
+    # Older server (and client) package tftpd, not recommended.
+    # sudo apt-get install tftp tftpd
+    # Recommended server (and client) package tftpd-hpa for TFTP protocol "options" support (RFC 2347,2349) 
+    sudo apt-get install tftpd-hpa tftp-hpa
 
 In Debian/Ubuntu follow log `/var/log/syslog` for TFTP daemon messages.
 
@@ -163,3 +167,26 @@ Installing the distro bundled ansible is recomended:
     sudo yum install ansible
     # MacOSX (brew likes to run non-superuser)
     brew install ansible
+
+Ansible Requires no special (system wide) configuration.
+Inventory file for ansible operations will be configured as part of Linetboot install flow (Ansible and Linetboot will
+share the inventory config).
+
+## Optional Dependencies / Pre-requisites
+
+Some Installers prefer to access files needed for installation via network shares (NFS and Samba/CIFS).
+Recent Ubuntu desktop distributions (Ubuntu 18.04 => NFS and Windows => Samba) seem to follow this model
+and are unable to use http based installation.
+
+Install NFS file server:
+```
+# NFS - Debian and Ubuntu
+sudo apt-get install nfs-kernel-server
+# NFS - RH and Centos
+sudo yum install nfs-utils
+```
+Install Samba/CIFS Server:
+```
+
+```
+
