@@ -241,6 +241,9 @@ append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=tru
 # 
 # See 'systemctl status initrd-switch-root.service' for details
 # /sysroot does not seem to be an OS tree. os-release file is missing. # Has only /var
+# Mounting update binaries (*.BIN) dir for update. Possibly max 3 (nested) mounts (sudo mkdir /mnt2 /mnt3).
+# sudo mount 10.85.233.180:/isomnt/dell_m640/ /mnt; sudo mount  /mnt/LiveOS/squashfs.img /mnt2 ; sudo mount /mnt2/LiveOS/ext3fs.img /mnt3
+# Run update: cd /mnt/repository/; ./iDRAC-with-Lifecycle-Controller_Firmware_369M3_LN_4.20.20.20_A00.BIN
 
 # label dell_r630
 # menu label Dell R630 Update
