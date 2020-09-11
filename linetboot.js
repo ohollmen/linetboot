@@ -35,7 +35,7 @@ var axios   = require("axios");
 // var nb      = require("./netboot.json"); // Not used.
 var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || "./global.conf.json";
 var global   = require(globalconf);
-var userconf = process.env["LINETBOOT_USER_CONF"] || global.userconfig || "./initialuser.json";
+var userconf = process.env["LINETBOOT_USER_CONF"] || global.inst.userconfig || "./initialuser.json";
 var user     = require(userconf);
 var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
@@ -66,6 +66,12 @@ app.use(bodyParser.json({limit: '1mb'}));
 function app_init(global) {
   /** Modules */
   app.set('json spaces', 2);
+  // Validate config section presence
+  var sectnames = ["core", "tftp", "ipmi", "probe", "net"];
+  sectnames.forEach(function (sn) {
+    // TODO: Check for real object !
+    if (!global[sn]) { console.error("Main Config Section "+sn+" missing. Exiting ..."); process.exit(1); }
+  });
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
   netprobe.init(global.probe);
@@ -87,8 +93,7 @@ function app_init(global) {
   var staticconf = {"setHeaders": logger };
   // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
   // app.set('trust proxy', true); // relates to req.header('x-forwarded-for') ?
-  // Note this URL mapping *can* be done by establishing symlinks from
-  // global.maindocroot
+  // Note this URL mapping *can* be done by establishing symlinks from maindocroot
   /*
   if (global.useurlmapping) {
   console.log("URL Mappings (url => path):");
@@ -113,10 +118,10 @@ function app_init(global) {
   // Installer Kernel and Initrd from mirror area (CD/DVD)
   // global.mirror.docroot
   // For local disk boot (recent) kernels and network install as well
-  //global.maindocroot = "/isomnt/";
-  if (!fs.existsSync(global.maindocroot)) { console.error("Main docroot '"+global.maindocroot+"' does not exist"); process.exit(1); }
+  var maindocroot = global.core.maindocroot;
+  if (!fs.existsSync(maindocroot)) { console.error("Main docroot '"+maindocroot+"' does not exist"); process.exit(1); }
   // Main docroot
-  app.use(express.static(global.maindocroot)); // e.g. /var/www/html/ or /isomnt/
+  app.use(express.static(maindocroot)); // e.g. /var/www/html/ or /isomnt/ (from global config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distors that need bare ISO image (non-mounted).
   app.use(express.static("/isoimages"));
   app.use('/web', express.static('web')); // Host Inventory
@@ -352,7 +357,7 @@ function host_for_request(req, cb) {
 
 /** Generate Preseed or KS installation file based on global settings and host facts.
 * Additionally Information for initial user to create is extracted from local
-* config file (given by JSON filename in setting global.userconfig, e.g. "userconfig": "initialuser.json",).
+* config file (given by JSON filename in setting global.inst.userconfig, e.g. "userconfig": "initialuser.json",).
 * Multiple URL:s are supported by this handler (e.g.) based on URL mappings for this module:
 * 
 * - /preseed.cfg
@@ -474,6 +479,8 @@ function preseed_gen(req, res) {
     // "Run: nslookup ${ip} for further info on host."
     //return;
   }
+  // Copy inst params for (transition period) compatibility !
+  params_compat(d)
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
   var tmplcont = global.tmpls[ctype];
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
@@ -518,12 +525,18 @@ function patch_params(d, osid) {
   }
 }
 /** Create dummy params (minimal subset) that ONLY depend on global config.
- * 
+ * This approach is needed for hosts that are being installed and make a http call
+ * for dynamic kickstart or preseed (or other recipe), but are NOT known to linetboot by their facts.
+ * See host_params() for creating params from facts (for a comparison).
+ * @param global {object} - main config
+ * @param osid {string} - OS ID label (...)
+ * @return Made-up host params
  */
 function host_params_dummy(global, osid) {
   var net = dclone(global.net);
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
+  d.user = user; // global
   // Make up hostname ???
   // We could also lookup the hostname by ip (if passed), by async. Use await here ?
   net.hostname = "MYHOST-001";
@@ -533,7 +546,7 @@ function host_params_dummy(global, osid) {
   net.ipaddress = iparr.join('.'); // Get/Derive from net.gateway ?
   //net.domain 
   net.nameservers = net.nameservers.join(" ");
-  d.user = user; // global
+  
   // NOTE: user.groups Array somehow turns (correctly) to space separated string. Feature of Mustache ?
   //NOT:d.disk = disk;
   /////////////////////////// Mirror - Copy-paste or simplify 
@@ -541,6 +554,25 @@ function host_params_dummy(global, osid) {
   d.postscript = global.postscript; // TODO: Can we batch copy bunch of props collectively
   
   return d;
+}
+/** Clone global params and do basic universally applicable setup on them.
+* Setup done here should be applicable to all/both use cased "old machine - have facts" and "new machine - don't have facts".
+* 
+* @param global {object} - Main config
+* @param user {object} - initial user object
+* @return Install templating params that can be further customized.
+*/
+function global_params_cloned(global, user) {
+  var net = dclone(global.net);
+  var d = dclone(global);
+  d.net = net;
+  d.user = user;
+}
+// Compatibility-copy install params from "inst" to top level
+function params_compat(d) {
+  // For now all keys (Explicit: "locale","keymap","time_zone","install_recommends", "postscript")
+  if (!d.inst) { return 0; }
+  Object.keys(d.inst).forEach((k) => { d[k] = d.inst[k]; });
 }
 /** Generate host parameters for OS installation.
 * Parameters are based on global linetboot settings and host
@@ -636,7 +668,7 @@ function host_params(f, global, ip, ctype, osid) {
   * @todo Allow output generation in various unattended install recipe formats
   * - Debian/Ubuntu
   * - RH kickstart
-  * - Windows Autounattend.xml (XML Section DiskConfiguration)
+  * - Windows Autounattend.xml (XML Section "DiskConfiguration")
   */
   function disk_params (f) {
     var disk = {rootsize: 40000, swapsize: 8000, bootsize: 500}; // Safe undersized defaults in case we return early (should not happen)
@@ -1836,11 +1868,11 @@ function bootreset(req, res) {
  */
 function media_listing (req, res) {
   var jr = {status: "err", "msg": "Could properly list media dirs. "};
-  var path = global.maindocroot;
+  var path = global.core.maindocroot; // Already validated by main server globally
   if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; return res.json(jr); }
   var list = fs.readdirSync(path);
   if (!list || !list.length) { jr.msg += "No (accessible) dirs under maindocroot"; return res.json(jr); }
-  var slash = global.maindocroot.match(/\/$/) ? "" : "/";
+  var slash = global.core.maindocroot.match(/\/$/) ? "" : "/";
   var list2 = [];
   list.forEach(function (subdir) {
     
@@ -1863,7 +1895,7 @@ function media_listing (req, res) {
  */
 function media_info(req, res) {
   var jr = {status: "err", "msg": "Failed to provide info on loop mount. "};
-  var path = global.maindocroot;
+  var path = global.core.maindocroot;
   var q = req.query;
   if (!q || !q.mid) { jr.msg += "No Query or mount id in query ('mid')"; return res.json(jr); }
   
