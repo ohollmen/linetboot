@@ -75,7 +75,7 @@ var tmplfiles = {
     "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
     "preseed_mini": "./tmpl/preseed_mini.cfg.mustache",
     "pcbsd":   "tmpl/pcinstall.cfg.mustache",
-    // "win": "", // mime: "text/xml"
+    "win": "", // mime: "text/xml"
   };
 var tmpls = {};
 // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
@@ -147,7 +147,12 @@ function url_hdlr_set(app) {
 
 function ipaddr_v4(req) {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  console.log("x-forwarded-for: "+req.headers['x-forwarded-for']);
+  console.log("connection.remoteAddress: "+req.connection.remoteAddress);
+  // localhost shows value "::1"
+  if (ip == "::1") { ip = "127.0.0.1"; }
   if (ip.substr(0, 7) == "::ffff:") { ip = ip.substr(7); }
+  console.log("ip (before trans): "+ip);
   // We now have the actual client address. See if mapping / translation is needed
   var newip = iptrans[ip];
   if (newip) {
@@ -539,7 +544,24 @@ function netconfig(net, f) {
     }
     return disktot;
   }
-
+/** Generate contents of Windows Autounattend.xml DiskConfiguration -> Disk section.
+ * Subsections:
+ * - Disk -> CreatePartitions - Create parts w. Size,Order,Type (or Extend=true instead of Size)
+ * - Disk -> ModifyPartitions - Format parts w. Format,Label,Order,PartitionID (Opt: Letter
+ *   - May be missing Format,Label e.g if imaged by ImageInstall -> OSImage or special part (MSR ?).
+ */
+function disk_out_winxml(disk) {
+  // Should embed CreatePartitions and ModifyPartitions
+  var dconf = `<DiskConfiguration>
+                <Disk wcm:action="add">
+                    {{{ diskops }}}
+                    <DiskID>0</DiskID>
+                    <WillWipeDisk>true</WillWipeDisk>
+                </Disk>
+                <WillShowUI>OnError</WillShowUI>
+            </DiskConfiguration>
+  `;
+}
 ////// Scripts and templating //////////////
 
 /** Send a shell script / commands (or any text content) using HTTP GET.
