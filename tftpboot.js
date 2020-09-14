@@ -144,11 +144,13 @@ function bootmenu_save(tcfg, global, bootlbl, f) {
   var g = dclone(global); // MUST Copy (to change below) !
   g.tftp.menudef = bootlbl;
   var cont = Mustache.render(tmpl, g);
-  console.log("Created "+cont.length+" Bytes of menu content");
+  tcfg.debug && console.log("Created "+cont.length+" Bytes of menu content");
+  // TODO: Allow dry-run and ONLY return content
+  if (tcfg.dryrun) { return cont; }
   ////////// Save
   var macfn = f ? menu_macfilename(f) : "default"; // No facts => "default"
   if (!macfn) { throw "No MAC Address (in facts) for "+q.hname;  }
-  console.log("Resolved MAC-based menu filename to " + macfn);
+  tcfg.debug && console.log("Resolved MAC-based menu filename to " + macfn);
   var root = tcfg.root;
   if (!fs.existsSync(root)) { throw "TFTP root does not exist";  }
   var pxecfg = root + "/pxelinux.cfg/";
