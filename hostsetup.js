@@ -55,8 +55,8 @@ var acts = [
     "opts": [],
   },
   {
-    "id": "",
-    "title": "",
+    "id": "bootmenu",
+    "title": "Generate Bootmenu based on Lineboot main Config into TFTP dirs (Use --dryrun to preview)",
     "cb": null,
     "opts": [],
   },
@@ -79,6 +79,7 @@ var clopts = [
   ["p", "pxe", "Boot pxe (Ths is an option flag w/o value)"],
   ["", "pass=ARG", "Ansible Sudo password"],
   ["u", "user=ARG", "Ansible Sudo password"],
+  ["", "dryrun", "Dryrun, Preview (for ops that produce content)"],
 ];
 var em = { // Error Messages
   "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -240,13 +241,13 @@ function rmgmt_collect() {}
 * - Ensure "pxelinux.cfg" exists. Create if not.
 * Create mac symlink files.
 */
-function tftpsetup() {
+function tftpsetup(opts) {
   // TODO: Lookup 
   var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
   var tcfg = mcfg.tftp;
-  if (!tcfg) { console.error("No TFTP Config"); }
-  console.log(tcfg);
-  console.log("TFTP Root configured as:"+tcfg.root);
+  if (!tcfg) { console.error("No TFTP Config"); process.exit(1); }
+  //console.log(tcfg);
+  console.error("TFTP Root configured as:"+tcfg.root);
   if (!fs.existsSync(tcfg.root)) { usage("TFPT Root does not exist"); }
   var pxelindir = tcfg.root+"/pxelinux.cfg/";
   if (!fs.existsSync(pxelindir)) {
@@ -257,7 +258,10 @@ function tftpsetup() {
   }
   if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
   //////////////////////// Create default menu (named "default")
-  tboot.bootmenu_save(tcfg, mcfg, "vesamenu.c32", null);
+  // TODO: Dry-run
+  if (opts.dryrun) { tcfg.dryrun = 1; }
+  var cont = tboot.bootmenu_save(tcfg, mcfg, "vesamenu.c32", null);
+  if (opts.dryrun) { console.log("# Dryrun mode - preview boot menu content\n"+cont); process.exit(1); }
   /////////////////// Individual host links ////////////////
   // Check writeability for the runner of the script
   try {
