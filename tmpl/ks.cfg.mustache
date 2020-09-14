@@ -103,7 +103,7 @@ bootloader --location=mbr
 # zerombr causes NO (UI) interaction for clearing parts (better for auto)
 zerombr
 
-# Remove prtitions from system --list=sda2,sda3,sdb1 (Only individual parts) --none --linux (Linux parts only)
+# Remove partitions from system --list=sda2,sda3,sdb1 (Only individual parts) --none --linux (Linux parts only)
 # Note: Term "disklabel" or "label" seems to mean partition table (!), NOT partition or filesystem name/label (!).
 # parted seems to have "makelabel", "maketable" as synonyms for creating partition table.
 clearpart --drives=sda --all --initlabel
@@ -136,7 +136,7 @@ part swap  --asprimary --fstype=swap --label="swap" --size=2048
 #################### Network Config and Firewall ###########################
 # Note nameservers need to be separated by comma for for Redhat KS (Preseed has space)
 # Must --activate (to not get installer error: not activating because --activate flag is not set)
-network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
+network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers_csv }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
 # network --bootproto=dhcp --device=eth0
 # firewall --enabled --ssh --smtp --http --ftp
 firewall --disabled
