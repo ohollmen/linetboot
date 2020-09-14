@@ -1,9 +1,9 @@
 {
   "httpserver": "192.168.1.141:3000",
   "nfsserver" : "192.168.1.141",
-  
+  "smbserver" : "192.168.1.141",
   "debug": 1,
-  "tmplfiles": {
+  "tmplfiles_X": {
     "preseed": "./tmpl/preseed.cfg.mustache",
     "ks":      "./tmpl/ks.cfg.mustache",
     "netif":   "./tmpl/interfaces.mustache",
@@ -20,7 +20,9 @@
     "time_zone": "America/Los_Angeles",
     "install_recommends": true,
   
-    "postscript": "mv_homedir_for_autofs.sh"
+    "postscript": "mv_homedir_for_autofs.sh",
+    "script_path": "./scripts/",
+    "sshkey_path": ""
   
   },
   
