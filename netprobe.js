@@ -24,6 +24,7 @@ var selfmac; // Discover own mac (for better report, where self would have mac e
 var tout;
 var opts = {tout: 0, debug: 0};
 var debugarr = []; // Like async results
+function privkey() { return pkey; }
 /**
 */
 function init(popts) {
@@ -280,6 +281,7 @@ function stats_proc(hnode, cb) {
       //});
       
 module.exports = {
+  privkey: privkey,
   init: init,
   probe_all: probe_all,
   stats_proc: stats_proc
