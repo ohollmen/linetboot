@@ -63,7 +63,7 @@ function resolve(hnode, cb) {
     if (addrs[0].address == ip_org) { prec.ipok = 1; }
     prec.addrs = addrs; // Results of resolveAny()
     // Fix: Limit addrs always to max 1 item.
-    if (addrs.length > 1) { console.log("Warn: multi-rec ("+addrs.length+") for "+hn); addrs = addrs[0]; }
+    if (addrs.length > 1) { console.log("Warn: multi-rec ("+addrs.length+") for "+hn); addrs = [addrs[0]]; }
     // This forEach() (for multiple addr records) could cause "Callback was already called" (understandably)
     addrs.forEach(function (rec) {
       // Note: For 'CNAME' Recs rec.value contains name
@@ -71,7 +71,7 @@ function resolve(hnode, cb) {
       var ipaddr = rec.address || ip_org; // rec.value; // Skip IPv6 ?
       dns.reverse(ipaddr, function (err, domains) {
         if (err) { console.log("Reverse Resolution error: " + err); return cb(null, prec); }
-        if (domains[0] == hn) { prec.nameok = 1;}
+        if (domains[0] == hn) { prec.nameok = 1; }
         console.log("Reverse result ("+ipaddr+"): " + JSON.stringify(domains));
         // Note: Linetboot host itself does not resolve. Implement self-check differentiation !
         //arp.getMAC(ipaddr, function(err, mac) {
