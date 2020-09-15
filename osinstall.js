@@ -598,6 +598,7 @@ function script_send(req, res) {
     var p = {};
     if (tpc == 'user') { p = user; }
     if (tpc == 'net') { p = global.net; } // TODO: adjust
+    if (tpc == 'global') { p = global; }
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p);
   }
