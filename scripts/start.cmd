@@ -1,9 +1,11 @@
 :: Test snippet to see if this file gets launched.
+:: TEMPLATE_WITH: global
+:: Load this: /scripts/start.cmd
 :: Seems to tolerate bare "\n" fine.
-cmd.exe
-pause
+:: cmd.exe
+:: pause
 
-echo "Hello and welcome to Windows install"
+:: echo "Hello and welcome to Windows install"
 :: Note: after WInPE boots the main drive seems to be x:
 :: and active dir seems to be \windows\system32
 dir x:\
@@ -23,5 +25,5 @@ net use I: \\{{ smbserver }}\isomnt /user:user pass
 :: (even is in same but not current dir) as the settings are in
 :: A...xml
 :: Accepts /unattend:filename option
-I:\setup.exe
+I:\win2019\setup.exe /unattend:i:\win2019\Autounattend.xml
 :: If run from x:\ rename setup.exe.orig
