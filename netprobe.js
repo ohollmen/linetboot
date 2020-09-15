@@ -69,7 +69,7 @@ function resolve(hnode, cb) {
       dns.reverse(ipaddr, function (err, domains) {
         if (err) { console.log("Reverse Resolution error: " + err); return cb(null, prec); }
         if (domains[0] == hn) { prec.nameok = 1;}
-        console.log("Reverse result: " + JSON.stringify(domains));
+        console.log("Reverse result ("+ipaddr+"): " + JSON.stringify(domains));
         // Note: Linetboot host itself does not resolve. Implement self-check differentiation !
         //arp.getMAC(ipaddr, function(err, mac) {
         //  if (err) { console.log("No ARP response for "+ ipaddr); return cb(null, prec); }
@@ -77,7 +77,7 @@ function resolve(hnode, cb) {
         //  
         ping.sys.probe(ipaddr, function (isok) {
           prec.ping = isok;
-          if (! isok) { return cb(null, prec); } // No use connecting, but not error
+          if (! isok) { console.log("Ping fail: "+ipaddr); return cb(null, prec); } // No use connecting, but not error. Error: Callback was already called.
           // console.log(sshcfg);
           ssh.connect(sshcfg).then(function () {
             prec.sshconn = 1;
@@ -85,7 +85,7 @@ function resolve(hnode, cb) {
             // NOTE: This is only successful on volatile basis ! Not concurrency proof ?
             //ssh.execCommand(sshcmd, {cwd: "/"}).then(function (result) {
             //  prec.sshrunok = 1; // result.stdout;
-            return cb(null, prec); // Success
+            return cb(null, prec); // Final Success
           //}).catch(function () { console.log("Run error: " + hn);return cb(null, prec); });
           }).catch(function (err) {
             console.log("SSH Conn. Err: " + err);
