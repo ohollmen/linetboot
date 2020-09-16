@@ -47,7 +47,7 @@ var tboot    = require("./tftpboot.js");
 var redfish  = require("./redfish.js");
 var osinst   = require("./osinstall.js");
 
-
+var global = {};
 global.tmpls = {}; // cached
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
 // from their DNS static IP address (and name). This only gets loaded by request via Env.variable
@@ -266,9 +266,12 @@ function app_init() { // global
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
-  hlr.facts_load_all();
+  hlr.facts_load_all(); // var hostarr = 
   
-  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file) */
+  /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file)
+   * Note: This is only needed with bad DHCP service that returns wrong or undeterministic
+   * IP addresses for particular host (MAC address). Even then this is a really tedious mechanism.
+   */
   var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
   if (mfn && fs.existsSync(mfn)) {
     iptrans = require(mfn); // TODO: try/catch ?
@@ -363,7 +366,7 @@ app.use(function (req, res, next) {
 });
 
 
-app_init(global);
+app_init();
 app.listen(port, function () {
   console.log("Linux Network Installer app listening on host:port http://localhost:"+port+" OK"); // ${port}
 });
