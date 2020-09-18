@@ -18,9 +18,21 @@
 
 var ops = [
   {
-    "id": "boot",
-    "title": "Boot host passed by -h ",
-    cb: boot,
+    "id": "listos",
+    "title": "Get info on OS:s available for install",
+    "url": "/config/",
+    "pretext": "OS Boot/Install options (to use with -l, --bootlbl):",
+    "posttext": `To initiate next-time (pxe) boot to one of these boot/install choices, run:
+  linet.js install -h myhost -l bootlabel`,
+    cb: listos,
+  },
+  {
+    "id": "listhosts",
+    "title": "List Hosts in Inventory",
+    "url": "/list/",
+    "pretext": "Hosts Available:",
+    "posttext": `Use one (or more) of these with option -h`,
+    cb: listos,
   },
   {
     "id": "info",
@@ -28,14 +40,14 @@ var ops = [
     cb: boot,
   },
   {
-    "id": "listos",
-    "title": "Get info on OS:s available for install",
-    cb: listos,
+    "id": "install",
+    "title": "Request Boot or Install of a host with (one of valid) bootlbl. Use -h host -b bootlbl.",
+    cb: install,
   },
   {
-    "id": "install",
-    "title": "Boot or Install host with (one of valid) bootlbl. Use -h host -b bootlbl.",
-    cb: install,
+    "id": "boot",
+    "title": "Boot host passed by -h. Use -p to boot PXE (leading to special boot, e.g. OS Install)",
+    cb: boot,
   },
   {
     "id": "help",
@@ -61,6 +73,7 @@ var axios  = require("axios");
 var Getopt = require("node-getopt"); // getopt ?
 
 if (!cfg.httphost) { console.error("No (env.) LINETBOOT_URL found (e.g. http://linet.my.corp.com:3000"); process.exit(1); }
+if (cfg.httphost.match(/\/+$/)) { cfg.httphost = cfg.httphost.replace(/\/+$/, ''); }
 // console.log("ARGV:", process.argv);
 var argv2 = process.argv.slice(2)
 // console.log("ARGV2:", argv2);
@@ -90,7 +103,9 @@ function usage(msg) {
 function help() {
   usage("");
 }
-// boot OR info
+/** Get (RedFish) Info on host or Boot it.
+* Options must have 'host' (one or hosts more hosts to boot), and may have 'pxe' (Boot by PXE)
+*/
 function boot(opts) {
   var rmgmtop = opts.op; // "info" / "boot" Use: opts.op;
   // console.log("Op: " + opts.op);
@@ -124,9 +139,11 @@ function boot(opts) {
   }
 }
 /** Send a request to install particular OS the next time host is booted.
-* Support labels in lineboot server side main boot menu.
-* TODO: Can we (only) set to boot pxe the next time (not actually boot).
+* Supports labels in lineboot server side main boot menu.
+* Options must have host
+* 
 */
+// TODO: Can we (only) set to boot pxe the next time (not actually boot).
 function install(opts) {
   var url = cfg.httphost + "/install_boot?";
   if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h )!"); }
@@ -134,6 +151,7 @@ function install(opts) {
   var hn = opts.host[0]; url += "hname="+hn;
   var bl = opts.bootlbl; url += "&bootlbl="+bl;
   console.log("Calling: "+url);
+  // TODO: async.map(opts.host, (d, cb) => {}, ...) for multiple hosts
   axios.get(url).then(function (resp) {
     var d = resp.data;
     if (d.status == 'err') {
@@ -146,23 +164,31 @@ function install(opts) {
     console.log("Error during Linetboot boot / install call: "+ex);
   });
 }
-
+/** List Boot Options (listos).
+* 
+*/
 function listos(opts) {
-   var url = cfg.httphost + "/config/";
+   var url = cfg.httphost + opnode.url; // "/config/";
+   console.log("Calling REST API @: "+url);
    axios.get(url).then(function (resp) {
       var d = resp.data;
       console.log("DATA:", d);
-      var oslist = d.bootlbls;
+      var oslist;
+      if      (op == 'listos') { oslist = d.bootlbls;}
+      else if (op == 'listhosts') { oslist = d;}
       // Check errors
       if (d.status == 'err') { return cb(d.msg, null ); }
       if (!Array.isArray(oslist)) { console.log("Not an array of OS choices"); return 1; }
-      console.log("OS Install options:");
+      // OLD: console.log("OS Boot/Install options (to use with -l, --bootlbl):");
+      console.log(opnode.pretext);
       oslist.forEach(function (it) {
         // console.log(" - "+it);
-	console.log(" - " + it.id + " - " + it.name); // 2 props
+	if      (op == 'listos') { console.log(" - " + it.id + " - " + it.name); } // 2 props
+	else if (op == 'listhosts') { console.log(" - "+it.hname+" ("+it.sysmodel+", "+it.distname+")"); }
       });
-      console.log("To initiate next-time (pxe) boot to one of these boot/install choices, run:");
-      console.log("  linet.js install -h myhost -l bootlabel");
+      //console.log("To initiate next-time (pxe) boot to one of these boot/install choices, run:");
+      //console.log("  linet.js install -h myhost -l bootlabel");
+      console.log(opnode.posttext);
       // return cb(d.data, 1);
     }).catch(function (ex) {
       
