@@ -1,0 +1,39 @@
+swagger: "2.0"
+info:
+  title: Linetboot API
+  description: Linetboot API for geting host information.
+  version: 1.0.0
+host: localhost
+basePath: /
+schemes:
+  - http
+paths:
+  /list:
+    get:
+      summary: List hosts
+      description: List hosts with properties used in host info tabs (props for frontend GUI are in short non-ansible names)
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Hosts in Array of objects
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Host'
+  /play:
+    get:
+    summary: List Playbooks
+    produces:
+      - application/json
+    responses:
+      200:
+        description: list of Playbooks in Array of Object
+ 
+definitions:
+  Host:
+    properties:
+      hname:
+        type: string
+      cores:
+        type: integer
