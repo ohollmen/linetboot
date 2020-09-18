@@ -498,8 +498,11 @@ function dhcpconf(opts) {
   // Add hosts to mcfg
   hlr.init(mcfg);
   var hnames = hlr.hosts_load(mcfg);
+  // Note: Not all of these may have facts. Do NOT use this.
   console.error("DHCP Hostnames: ", hnames);
   var hostarr = hlr.facts_load_all();
+  // NOW: Use
+  hnames = hostarr.map(function (it) { return it.ansible_fqdn; });
   // console.error(hostarr); // Huge
   // TODO: Add (temporarily, not de-facto) the NBP if configured
   hostarr.forEach(function (f) {
