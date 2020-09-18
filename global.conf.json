@@ -46,9 +46,17 @@
     {"id": "odroid", "name": "Odroid:s", "patt": "^odroid"},
     {"id": "other", "name": "Other Hosts", "policy": "nongrouped"}
   ],
+  "dhcp": {
+    "desc":"DHCP Settings (only needed for generating DHCP config)",
+    "conf_path": "/etc/dhcp/",
+    "range": ["192.168.1.60", "192.168.1.160"],
+    "broadcast":"",
+    "gateway":  ""
+  },
   "tftp": {
     "desc" : "TFTP and Boot (boot be separate ?)",
     "host": "banana1",
+    "ipaddr": "192.168.1.108",
     "root": "/srv/tftp",
     "root_rh": "/var/lib/tftpboot/",
     "lintftp" : false,
