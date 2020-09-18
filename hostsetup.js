@@ -474,6 +474,7 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
  */
 function dhcpconf(opts) {
   var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
+  mcfg.fact_path = mcfg.fact_path || process.env["FACT_PATH"];
   // TODO: load from resolved config location, not ./tmpl !!
   var tmplfn = "./tmpl/isc.dhcpd.conf.mustache";
   if (!fs.existsSync(tmplfn)) { console.error("DHCP Config Template "+tmplfn + " does not exist"); return; }
