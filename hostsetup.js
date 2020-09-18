@@ -1,6 +1,20 @@
-/** Installer for LinetBoot.
+/** @file
+* # Installer for LinetBoot.
+* 
 * Starts with hosts file prefilled.
-* Assumes Homedir to be correctly set in env var $HOST
+* Assumes Homedir to be correctly set in env var $HOME (for many operations)
+* 
+* ## Rough outline of installation steps
+* 
+* ```
+* # Gather facts
+* node hostsetup.js hostsetup
+* # Setup TFTP data files (bootmenu ...)
+* node hostsetup.js tftpsetup
+* # Copy Bootloaders (and related) binaries into TFTP dirs
+* # For now assumes 
+* node hostsetup.js bootbins
+* ```
 * 
 * TODO: Utilize prompting module (prompt)
 */
@@ -8,10 +22,11 @@ var hlr      = require("./hostloader.js");
 var ans      = require("./ansiblerun.js");
 var netprobe = require("./netprobe.js");
 var tboot    = require("./tftpboot");
+var osinst   = require("./osinstall");
 // CORE
 var fs       = require("fs");
 var path     = require("path");
-var cproc   = require('child_process');
+var cproc    = require('child_process');
 // NPM
 var async    = require("async");
 var Getopt   = require("node-getopt"); // NPM
@@ -31,7 +46,7 @@ var cfg = {
 var acts = [
   {
     "id": "configedit",
-    "title": "Edit Most important parts of config",
+    "title": "Edit Most important parts of config (Do not use, Work in progress)",
     "cb": null,
     "opts": [],
   },
@@ -43,27 +58,33 @@ var acts = [
   },
   {
     "id": "tftpsetup",
-    "title": "Setup TFTP Directory hierarchy (w/o executables)",
+    "title": "Create Bootmenu (based on Lineboot main Config) and symlinks into TFTP Directories (w/o executables)",
     "cb": tftpsetup,
     "needfacts": 1,
     "opts": [],
   },
+  //{
+  //  "id": "ipmiinfo",
+  //  "title": "IPMI Information Extraction",
+  //  "cb": ipmiinfo,
+  //  "opts": [],
+  //},
+  //{
+  //  "id": "bootmenu",
+  //  "title": "Generate Bootmenu based on Lineboot main Config into TFTP dirs (Use --dryrun to preview)",
+  //  "cb": null,
+  //  "opts": [],
+  //},
   {
-    "id": "ipmiinfo",
-    "title": "IPMI Information Extraction",
-    "cb": ipmiinfo,
+    "id": "bootbins",
+    "title": "Install (available) Boot Loader binaries for TFTP stage (Ubuntu)",
+    "cb": bootbins,
     "opts": [],
   },
   {
-    "id": "bootmenu",
-    "title": "Generate Bootmenu based on Lineboot main Config into TFTP dirs (Use --dryrun to preview)",
-    "cb": null,
-    "opts": [],
-  },
-  {
-    "id": "",
-    "title": "",
-    "cb": null,
+    "id": "dhcpconf",
+    "title": "Generate ISC DHCP Server config",
+    "cb": dhcpconf,
     "opts": [],
   },
   {
@@ -80,6 +101,8 @@ var clopts = [
   ["", "pass=ARG", "Ansible Sudo password"],
   ["u", "user=ARG", "Ansible Sudo password"],
   ["", "dryrun", "Dryrun, Preview (for ops that produce content)"],
+  ["s", "save", "Save file (for ops that produce content)"],
+  //["", "dest=ARG", "Destination for files (bootbins)"],
 ];
 var em = { // Error Messages
   "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -116,7 +139,12 @@ function usage(msg) {
   console.error("Use one of subcommands:\n"+ acts.map(function (on) {return " - "+on.id+ " - " + on.title;}).join("\n"));
   process.exit(1);
 }
-
+function apperror(msg) {
+  console.error(msg);
+  process.exit(1);
+}
+/** Gather Facts.
+ */
 function hostsetup (opts) {
   
   var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
@@ -147,8 +175,9 @@ function hostsetup (opts) {
   //  // Load facts ?
   //  hlr.facts_load_all();
   //}
-  // Use traditional "ansible ... -m setup" way of gathering facts
-  // // TODO: Consider using --extra-vars serialization from ans module
+  /** Use traditional "ansible ... -m setup" way of gathering facts
+   * TODO: Consider using --extra-vars serialization from ans module
+   */
   function gather_facts_setup(mcfg) {
     // 
     mcfg.fact_path = "/tmp/facts2"; // DEBUG !!! TEMP Location ?
@@ -210,14 +239,14 @@ function hostsetup (opts) {
   
   // Cleanup bad facts
   function badfact_cleanup(mcfg) {
-    var path = mcfg.fact_path;
+    var fpath = mcfg.fact_path;
     //console.log(mcfg.hostarr);
     hostnames.forEach(function (hn) {
-      var fullpath = path+"/"+hn;
+      var fullpath = fpath+"/"+hn;
       if (!fs.existsSync(fullpath)) { console.log("missing facts: " + fullpath); return; }
       var data = fs.readFileSync(fullpath, 'utf8');
       var len = data.length;
-      var j = JSON.parse(data);
+      var j = JSON.parse(data); // TODO: Consider bad JSON
       // j.changed && j.msg
       if (!j.ansible_facts && (len < 500)) {
         console.log("Remove bad facts: " + fullpath + " ("+len+" B)");
@@ -249,13 +278,29 @@ function tftpsetup(opts) {
   //console.log(tcfg);
   console.error("TFTP Root configured as:"+tcfg.root);
   if (!fs.existsSync(tcfg.root)) { usage("TFPT Root does not exist"); }
+  var dirs = [tcfg.root+"/pxelinux.cfg/", tcfg.root+"/efi32/pxelinux.cfg/", tcfg.root+"/efi64/pxelinux.cfg/"];
   var pxelindir = tcfg.root+"/pxelinux.cfg/";
+  //var ok = mkdir(pxelindir);
+  //if (!ok) { process.exit(1);}
+  dirs.forEach(function (pxelindir) {
+    var ok = mkdir(pxelindir);
+    if (!ok) { process.exit(1);}
+  });
+  // Note recursive: ... only works with node > 10.12.0
+  function mkdir(pxelindir) {
+  
   if (!fs.existsSync(pxelindir)) {
-    console.log("pxelinux.cfg dir does not exist, creating ...");
-    try { fs.mkdirSync(pxelindir); } catch (ex) {
-      console.log("Could not make pxelinux.cfg: " + ex); process.exit();
+    console.log("dir "+pxelindir+" does not exist, try creating ...");
+    try {
+      //fs.mkdirSync(pxelindir, {recursive: true});
+      mkDirByPathSync(pxelindir); // Compat (for older node)
+    } catch (ex) {
+      console.log("Could not make dir "+pxelindir+": " + ex); return ""; // process.exit();
     }
   }
+  else { console.log("Dir "+pxelindir+" seems to already exist."); }
+    return pxelindir;
+  } // mkdir
   if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
   //////////////////////// Create default menu (named "default")
   // TODO: Dry-run
@@ -263,29 +308,114 @@ function tftpsetup(opts) {
   var cont = tboot.bootmenu_save(tcfg, mcfg, "vesamenu.c32", null);
   if (opts.dryrun) { console.log("# Dryrun mode - preview boot menu content\n"+cont); process.exit(1); }
   /////////////////// Individual host links ////////////////
+  //console.log(cfg.hostarr);
+  // Make "default" symlinks to efi32/ and efi64/ (refer to dirs[0]/default)
+  try {
+      var linkfile = dirs[1]+"default";
+      fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+  } catch (ex) { console.log(ex.toString()); }
+  try {
+      var linkfile = dirs[2]+"default";
+      fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+  } catch (ex) { console.log(ex.toString()); }
+  
+  dirs.forEach(function (pxelindir) {
+    mkmacsymlinks(pxelindir, cfg.hostarr);
+  });
+  
+  /** */
+  function mkmacsymlinks(pxelindir, hostarr) {
   // Check writeability for the runner of the script
   try {
     //await fs.access(pxelindir, fs.constants.W_OK);
     fs.accessSync(pxelindir, fs.constants.W_OK);
   } catch (ex) { usage("PXE linux config dir not writeable: " + ex.toString()); }
-  //console.log(cfg.hostarr);
-  cfg.hostarr.forEach(function (facts) {
+  
+  hostarr.forEach(function (facts) {
     var ifinfo = facts.ansible_default_ipv4;
     var maca   = ifinfo.macaddress;
     var macfn = tboot.menu_macfilename(facts);
     //return;
     var linkfile = pxelindir + macfn;
-    if (fs.existsSync(linkfile)) { console.log("Link already exists ("+linkfile+")"); return; }
-    console.log("Create symlink: " + macfn);
+    if (fs.existsSync(linkfile)) { console.log("Link or file already exists ("+linkfile+")"); return; }
+    console.log("Create symlink: " + linkfile); // macfn
     // NOTE: Should create a very relative link (within same dir) for things to work (mounted) over NFS and TFTP-locally
     try {
       // Yes, keep this out: pxelindir+
       fs.symlinkSync("default", linkfile); // 3rd: type
     } catch (ex) { console.log(ex.toString()); }
   });
-  console.log("Setup pxelinux TFTP Dir: " + pxelindir);
+    return 1; // ??
+  }
+  console.log("Setup pxelinux TFTP Dirs under TFTP root: " + tcfg.root);
   //global.
 }
+/** Add bootloader binaries to the TFTP Area.
+ */
+function bootbins(opts) {
+  // Final place should be: mcfg.tftp.root
+  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
+  var destroot = "/tmp/"+new Date().getTime()+"_"+process.pid; // pid, time
+  // fs.existsSync()
+  var apath = fs.mkdirSync( destroot, {recursive: true} ); // mode: ...
+  // Does not seem to returning anything (contrary to doc)
+  // if (!apath) { console.log("Dest " + destroot + " not created !"); process.exit(1);}
+  if (!fs.existsSync(destroot)) { console.log("Destroot "+destroot+" not created"); return; }
+  var bins = [
+    // src, dest, pkg
+    // ["/usr/lib/PXELINUX/gpxelinux.0","gpxelinux.0"], // Any use ?
+    // ["/usr/lib/PXELINUX/pxelinux.0","pxelinux.0"], // Any use ?
+    ["/usr/lib/PXELINUX/lpxelinux.0","lpxelinux.0"],
+    ["/usr/lib/syslinux/modules/bios/ldlinux.c32",  "ldlinux.c32"],
+    ["/usr/lib/syslinux/modules/bios/libcom32.c32", "libcom32.c32"],
+    ["/usr/lib/syslinux/modules/bios/libutil.c32",  "libutil.c32"],
+    ["/usr/lib/syslinux/modules/bios/menu.c32",     "menu.c32"],
+    ["/usr/lib/syslinux/modules/bios/vesamenu.c32", "vesamenu.c32"],
+    // 
+    ["/usr/lib/syslinux/memdisk","memdisk"],
+    // 
+    ["/usr/lib/SYSLINUX.EFI/efi32/syslinux.efi", "efi32/syslinux.efi"],
+    ["/usr/lib/SYSLINUX.EFI/efi64/syslinux.efi", "efi64/syslinux.efi"],
+    // EFI variants. No ldlinux.c32, need ldlinux.e32/ldlinux.e64 (or linux.c32 ?)
+    // EFI32
+    ["/usr/lib/syslinux/modules/efi32/ldlinux.e32",  "efi32/ldlinux.e32"],
+    ["/usr/lib/syslinux/modules/efi32/libcom32.c32", "efi32/libcom32.c32"],
+    ["/usr/lib/syslinux/modules/efi32/libutil.c32",  "efi32/libutil.c32"],
+    ["/usr/lib/syslinux/modules/efi32/vesamenu.c32", "efi32/vesamenu.c32"],
+    ["/usr/lib/syslinux/modules/efi32/menu.c32",     "efi32/menu.c32"],
+    
+    // EFI 64
+    ["/usr/lib/syslinux/modules/efi64/ldlinux.e64",  "efi64/ldlinux.e64"],
+    ["/usr/lib/syslinux/modules/efi64/libcom32.c32", "efi64/libcom32.c32"],
+    ["/usr/lib/syslinux/modules/efi64/libutil.c32",  "efi64/libutil.c32"],
+    ["/usr/lib/syslinux/modules/efi64/vesamenu.c32", "efi64/vesamenu.c32"],
+    ["/usr/lib/syslinux/modules/efi64/menu.c32",     "efi64/menu.c32"],
+    
+    //["/usr/lib/syslinux/modules/bios/", ""],
+    
+    // iPXE (package ipxe)
+    ["/usr/lib/ipxe/undionly.kpxe", "undionly.kpxe"],
+    ["/usr/lib/ipxe/ipxe.efi", "ipxe.efi"],
+    // Grub
+    // ["", "boot/grub/"] // grub.cfg (menu file)
+  ];
+  bins.forEach(function (it) {
+    var src  = it[0];
+    var dest = destroot + "/"+it[1];
+    if (!fs.existsSync(src)) { console.log(src + " does not exist (skipping)"); return; }
+    var destdir = path.dirname(dest);
+    if (!fs.existsSync(destdir)) { fs.mkdirSync( destdir, {recursive: true} ); }
+    if (!fs.existsSync(destdir)) { console.log(destdir + " (dest subdir) does not exist and could not be created."); return; }
+    //if (!src) { return; }
+    // flags - 3rd param
+    var flags = fs.constants.COPYFILE_EXCL; // fs.constants.COPYFILE_FICLONE fs.constants.COPYFILE_FICLONE_FORCE
+    try { fs.copyFileSync(src, dest ); } catch (ex) { console.log("Error Copying "+src+"... skip"); return; }
+    
+    
+  });
+  console.log("Copied files to " + destroot + "\nls -alR "+destroot + "");
+}
+
 /*
 // Load template
   if (0) {
@@ -308,5 +438,104 @@ function tftpsetup(opts) {
  * It will be hard to sudo on host.
  */
 function ipmiinfo(opts) {
+  
+}
+// https://stackoverflow.com/questions/31645738/how-to-create-full-path-with-nodes-fs-mkdirsync
+function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
+  const sep = path.sep;
+  const initDir = path.isAbsolute(targetDir) ? sep : '';
+  const baseDir = isRelativeToScript ? __dirname : '.';
+
+  return targetDir.split(sep).reduce((parentDir, childDir) => {
+    const curDir = path.resolve(baseDir, parentDir, childDir);
+    try {
+      fs.mkdirSync(curDir);
+    } catch (err) {
+      if (err.code === 'EEXIST') { // curDir already exists!
+        return curDir;
+      }
+
+      // To avoid `EISDIR` error on Mac and `EACCES`-->`ENOENT` and `EPERM` on Windows.
+      if (err.code === 'ENOENT') { // Throw the original parentDir error on curDir `ENOENT` failure.
+        throw new Error(`EACCES: permission denied, mkdir '${parentDir}'`);
+      }
+
+      const caughtErr = ['EACCES', 'EPERM', 'EISDIR'].indexOf(err.code) > -1;
+      if (!caughtErr || caughtErr && curDir === path.resolve(targetDir)) {
+        throw err; // Throw if it's just the last created dir.
+      }
+    }
+
+    return curDir;
+  }, initDir);
+}
+/** Generate ISC DHCP Configuration with single range of addresses (small scale).
+ * 
+ */
+function dhcpconf(opts) {
+  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
+  // TODO: load from resolved config location, not ./tmpl !!
+  var tmplfn = "./tmpl/isc.dhcpd.conf.mustache";
+  if (!fs.existsSync(tmplfn)) { console.error("DHCP Config Template "+tmplfn + " does not exist"); return; }
+  var tmpl = fs.readFileSync(tmplfn, 'utf8');
+  // Setup params. Possibly embed to a library (osinstall ?)
+  //NOT: osinst.netconfig(mcfg.net, f); // Needs facts - not suitable
+  var net = mcfg.net;
+  var dhcp = mcfg.dhcp;
+  if (!net) { usage("No network config"); }
+  if (!dhcp) { console.error("Error: No 'dhcp' section in main config (need it for 'range')"); process.exit(1); }
+  net.nameservers = net.nameservers.join(",");
+  // Validate, turn into space separated
+  if (!Array.isArray(dhcp.range) || dhcp.range.length != 2) { console.error("Error:dhcp.range not an array or does not have len==2."); process.exit(1); }
+  dhcp.range = dhcp.range.join(" ");
+  var fnet = net_fallback(net);
+  // Allow broadcast and subnet to originate from mcfg.net.*, fall back on computed.
+  net.broadcast = net.broadcast || fnet.broadcast;
+  // ... for subnet
+  net.subnet = net.subnet || fnet.subnet;
+  console.log(net);
+  // Add hosts to mcfg
+  hlr.init(mcfg);
+  var hnames = hlr.hosts_load(mcfg);
+  console.error("DHCP Hostnames: ", hnames);
+  var hostarr = hlr.facts_load_all();
+  // console.error(hostarr); // Huge
+  // TODO: Add (temporarily, not de-facto) the NBP if configured
+  hostarr.forEach(function (f) {
+    var p = hlr.hostparams(f) || {};
+    console.log("Params: ", p);
+    if (p.nbp) { f.nbp = p.nbp; }
+  });
+  mcfg.hosts = hostarr;
+  var cont = Mustache.render(tmpl, mcfg);
+  var fn = dhcp.conf_path + "/dhcpd.conf";
+  // Save ?
+  if (dhcp.conf_path && fs.existsSync(dhcp.conf_path) && opts.save) {
+    console.error("Check "+dhcp.conf_path+" writeability ...");
+    // var accok = 0;
+    try { fs.accessSync(dhcp.conf_path, fs.constants.W_OK);  } // accok = 1;
+    //  sudo chmod g+w /etc/dhcp/ ; sudo chgrp $USER /etc/dhcp/
+    catch (ex) {console.error("Cannot write "+dhcp.conf_path + " - consider sharing it to group"); process.exit(0); }
+    
+    fs.writeFileSync(fn, cont); // {encoding: 'utf8'}
+    console.error("Wrote: "+fn);
+  }
+  else {
+    console.log(cont);
+    console.error("# Redirect output (stdout) to a 'dhcpd.conf' or use --save option to save to "+fn+"");
+  }
+  // Mock-up fallback (DHCP geared) net settings (if broadcast and subnet are NOT give in "net")
+  function net_fallback(net) {
+    var fnet = {}; // Fallback net settings
+    // Broadcast
+    var gwarr = net.gateway.split(".");
+    gwarr[3] = "255";
+    fnet.broadcast = gwarr.join(".");
+    // Subnet
+    var snarr = net.gateway.split(".");
+    gwarr[3] = "0";
+    fnet.subnet = gwarr.join(".");
+    return fnet;
+  }
   
 }
