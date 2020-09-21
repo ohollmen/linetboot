@@ -21,15 +21,60 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Host'
-  /play:
+  /anslist/play:
     get:
-    summary: List Playbooks
-    produces:
-      - application/json
-    responses:
-      200:
-        description: list of Playbooks in Array of Object
- 
+      summary: List Playbooks
+      description: List Ansible Playbooks registered in Linetboot playbook paths
+      produces:
+        - application/json
+      responses:
+        200:
+          description: list of Playbooks in Array of Object
+  /rf/info/$hname:
+    get:
+      summary: Redfish Info
+      description: Allows inquiring RedFish Info for Host by host IP Address (w/o knowing BMC address directly)
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Respond with RedFish host info Object
+  /rf/boot/$hname:
+    get:
+      summary: Execute Booting a Host
+      description: 
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Respond with Boot Acknowledgement
+  /install_boot?hname=$hname&bootlbl=$bootlbl:
+    get:
+      summary: Request Booting Host (hname) with PXE by a "Boot Label" (bootlbl)
+      description: Request Booting a Host and store the boot label it should boot to. Use a separate call to *actually* boot it.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Respond with Boot Acknowledgement
+  /bootreset?macfname=$macfname:
+    get:
+      summary: Reset a stored "Boot Label" for a host
+      description: Request a host (by MAC filename) to be reset to default boot (boot menu) instead of "Boot Label" it was given earlier.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Standard Response. Return MAC file listing on sucecss.
+  /installevent/$evtype:
+    get:
+      summary: Signal a "milestone" event during OS install
+      description: Supported events "start" - beginning of install (Install pre-script), "end" - end of install (Install post-script)
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Simple standard response
 definitions:
   Host:
     properties:

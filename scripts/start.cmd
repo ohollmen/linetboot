@@ -11,7 +11,7 @@
 dir x:\
 :: Detect devices and load drivers (\windows\system32\wpeinit.exe)
 wpeinit.exe
-:: Enable (TCP/IP) Networking
+:: Enable (TCP/IP) Networking (set user-class: /setclassid myclass)
 ipconfig.exe
 :: Mount final install network share
 :: Pass dummy creds to succeed /user:user pass
