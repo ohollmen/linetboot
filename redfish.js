@@ -23,34 +23,50 @@ var ops_idx = {}; ops.forEach(function (op) { ops_idx[op.id] = op; });
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 var isbodymeth = {"post":1, "put":1, "patch":1, };
-
+/** Construct an RedFish operation.
+ * @param opid {string} - an operation registered in ops structure of redfish module.
+ * @param conf {object} - Config object (with user, pass for basic authentication and optional testurl params)
+ */
 function RFOp(opid, conf) {
   var op  = ops_idx[opid];
   this.id = op.id;
   this.m  = op.m;
   this.url = op.url;
   this.msg = op.msg ? JSON.parse(JSON.stringify(op.msg)) : null; // Copy !
-  this.conf = op.conf; // TODO: utilize !
+  this.conf = conf; // TODO: utilize !
 }
-
+/** Add ("register") operation. */
 RFOp.add = function (op) {
   if (!op.id) { throw "No ID for new Op!"; }
   if (ops_idx[op.id]) { throw "Op by id "+op.id+" already in"; }
+  // Validate members ?
   ops.push(op);
   ops_idx[op.id] = id;
 };
-
+/** Create final full user from host and current op (RedFish API) URL path.
+ * @param host {string} - BMC Hostname (name or ip address)
+ * @param extra {object} - Object where member testurl would be returned as override for generated URL
+ * @return URL to use for RedFish op (http call).
+ */
 RFOp.prototype.makeurl = function (host, extra) {
-  if (host.match(/\/$/)) { host.replace(/\/+$/, ''); }
+  if (host.match(/\/$/)) { host = host.replace(/\/+$/, ''); }
   if (extra && extra.testurl) { return extra.testurl; }
   return "https://"+host+this.url;
 };
+/** Set success and error operations for (asynchronous) RedFish operation.
+ * The success and error calls recieve axios http call promise resolve and reject objects
+ * (See axios api for that). 
+ */
 RFOp.prototype.sethdlr = function (succcb, errcb) {
   this.succ = succcb;
   this.err = errcb;
+  // Validate as functions ?
+  if (typeof this.succ != 'function') { throw "sethdlr: Success CB not a function"; }
+  if (typeof this.err != 'function') { throw "sethdlr: Error CB not a function"; }
   return this;
 };
-/** Make a request for the operation.
+/** Make a HTTP request for the RedFish operation.
+ * 
  */
 RFOp.prototype.request = function(host, auth) {
   var rfop = this;
@@ -58,7 +74,7 @@ RFOp.prototype.request = function(host, auth) {
   if (!auth || !auth.user || !auth.pass) { throw "No Credentials"; }
   var bauth = basicauth(auth);
   var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
-  var msg = this.msg; // Copy ?
+  var msg = this.msg; // Copy ? Only for POST,PUT,PATCH
   var meth = this.m; //var meth = ops[p.op];
   if (!meth) { throw "request: meth missing in op:" + this.id; }
   // TODO: isbodymeth[meth]
