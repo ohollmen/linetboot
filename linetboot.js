@@ -46,6 +46,7 @@ var ipmi     = require("./ipmi.js");
 var tboot    = require("./tftpboot.js");
 var redfish  = require("./redfish.js");
 var osinst   = require("./osinstall.js");
+var mc = require("./mainconf.js");
 
 var global = {};
 global.tmpls = {}; // cached
@@ -70,62 +71,15 @@ function app_init() { // global
   app.set('json spaces', 2);
   var user;
   
-  function mainconf_load(globalconf) {
-    function error(msg) {
-      console.error(msg); process.exit(1);
-    }
-    
-    if (!fs.existsSync(globalconf)) { error("Main conf ("+globalconf+") does not exist !");}
-    var global   = require(globalconf);
-    if (!global) { error("Main conf JSON ("+globalconf+") could not be loaded !"); }
-    var userconf = process.env["LINETBOOT_USER_CONF"] || global.inst.userconfig || "./initialuser.json";
-    if (!fs.existsSync(userconf)) { error("User conf ("+userconf+") does not exist !");}
-    //var
-    user     = require(userconf);
-    if (!user) { error("User conf JSON ("+user+") could not be loaded !"); }
-    user.groups  = user.groups.join(" ");
-    return global;
-  }
-  // Validate config and expand shell-familiar "~" -notation on path / file vars.
-  function mainconf_process(global) {
-  // Validate config section presence
-  var sectnames = ["core", "tftp", "ipmi", "probe", "net"]; // "ansible"
-  sectnames.forEach(function (sn) {
-    // TODO: Check for real object !
-    if (!global[sn]) { console.error("Main Config Section "+sn+" missing. Exiting ..."); process.exit(1); }
-  });
-  ////// TRANSFER KEY ENV VARS /////////////////
-  // No Transfer: LINETBOOT_GLOBAL_CONF, LINETBOOT_URL (linet.js)
-  // LINETBOOT_USER_CONF  LINETBOOT_ANSIBLE_DEBUG
-  // LINETBOOT_SSHKEY_PATH LINETBOOT_DEBUG LINETBOOT_IPTRANS_MAP LINETBOOT_SCRIPT_PATH
-  // TOP
-  // if (process.env["FACT_PATH"])             { global.fact_path = process.env["FACT_PATH"]; }
-  // if (process.env["LINETBOOT_DEBUG"])       { global.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
-  // INST
-  // if (process.env["LINETBOOT_USER_CONF"])   { global.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
-  // if (process.env["LINETBOOT_SSHKEY_PATH"]) { global.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
-  // if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = parseInt(process.env["LINETBOOT_SCRIPT_PATH"]); }
-  // TODO: LINETBOOT_TMPL_PATH
-  // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
   
   
-  //////// "~" (HOME) expansion //////////////////
-  // ... for config convenience (top-level & some sects ?)
-  var top_paths = ["fact_path", "hostsfile", "rmgmt_path"];
-  var home = process.env['HOME'];
-  top_paths.forEach(function (pk) {
-    if (global[pk]) { global[pk] = global[pk].replace('~', home); }
-  });
-  // Sections: tftp.menutmpl, ipmi.path, docker.config, docker.catalog, ansible.pbpath
-  if (global.tftp.menutmpl) { global.tftp.menutmpl = global.tftp.menutmpl.replace('~', home); }
-  if (global.ipmi.path)     { global.ipmi.path     = global.ipmi.path.replace('~', home); }
-  }
   ///////////////////////////
   // 
   var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
   console.log("Choosing mainconf: " + globalconf);
-  global = mainconf_load(globalconf);
-  mainconf_process(global);
+  global = mc.mainconf_load(globalconf);
+  user = mc.user_load(global);
+  mc.mainconf_process(global);
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
   netprobe.init(global.probe);
@@ -200,6 +154,7 @@ function app_init() { // global
   // Autounattend.xml
   ////////////////////
   // Install event logger (evtype is start/done)
+  // More commonly: hostevent ? Also evtype=bootup
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   // Netplan (custom YAML based handler)
   app.get('/netplan.yaml', netplan_yaml);
@@ -247,14 +202,16 @@ function app_init() { // global
   app.get("/dockerenv", dockerenv_info);
   app.get("/config", config_send);
   app.get("/install_boot", installrequest);
+  app.get("/bootreset", bootreset); // Createa after tftplist
   
   app.get("/tftplist", tftp_listing);
   
-  app.get("/bootreset", bootreset);
+  
   // 
   app.get("/medialist", media_listing);
   
   app.get("/mediainfo", media_info);
+  app.get("/apidoc", apidoc);
   //////////////// Load Templates ////////////////
   
   fact_path = process.env["FACT_PATH"] || global.fact_path;
@@ -396,8 +353,15 @@ function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 *      http://localhost:3000/installevent/start
 */
 function oninstallevent(req,res) {
+  var jr = {status: "err", msg: "Failed to respond to install event."};
+  var evok = {"start": "Start", "done":"Legacy for End", "end": "End"};
   var ip = osinst.ipaddr_v4(req);
   var p = req.params;  // :evtype
+  if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
+  if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
+  // lookup facts
+  var f = hostcache[ip];
+  if (!f) { jr.msg += "Could not lookup facts for " + ip; return res.json(jr); }
   var now = new Date();
   console.log("IP:" + ip + ", event: " + p.evtype + " time:" + now.toISOString());
   var sq = "INSERT INTO hostinstall () VALUES (?)";
@@ -406,11 +370,12 @@ function oninstallevent(req,res) {
   //  
   //});
   var endtypes = {"done": "deprecated", "end":"preferred"};
-  // If end event signal trigger approximate timer and start checking when host i s up ?
+  // If end event signal trigger approximate timer and start checking when host is up ?
   // Use async.eachSeries() to poll by hdl = setTimeout(cb, toutms) / hdl=setInterval(cb, toutms) (combo of 2)
   // Note args can be passed after toutms
   // Use clearTimeout(hdl) / clearInterval(hdl)
   if (endtypes[p.evtype]) {
+    //function host_wait_up() {
     // TODO: get to know if *this* host (or OS profile) needs post-provisioning
     var node_ssh = require('node-ssh');
     //var ssh2  = require('ssh2');
@@ -418,7 +383,10 @@ function oninstallevent(req,res) {
     //var conn = new ssh2.Client();
     var ssh = new node_ssh();
     var tout = 10000; // ms. => 10 s. TODO: Pull from config.
+    var trycnt_max = 30;
+    var trycnt = trycnt_max;
     var iid = setInterval(function () { // iid = Interval ID
+      if (trycnt < 1) { console.log("Try count exhausted"); clearInterval(iid); }
       console.log("try reach: "+ip+ " by SSH");
       ssh.connect(sshcfg).then(function () {
         console.log("Got connection to: "+ip);
@@ -430,9 +398,13 @@ function oninstallevent(req,res) {
       }).catch(function (ex) {
          console.log("No SSH Conn. Continue polling at every "+tout+" ms.");
       });
+      trycnt--;
     }, tout);
+    //  return;
+    //}
   }
-  res.json({msg: "Thanks", ip: ip, "event":  p.evtype, time: now.toISOString()});
+  // msg: "Thanks",
+  res.json({ status: "ok", data: { ip: ip, "event":  p.evtype, time: now.toISOString()} });
 }
 
 
@@ -658,6 +630,43 @@ function netplan_yaml(req, res) {
        getNetMaskParts(netmask)
         // .map(part => decimalToBinary(part)).join(''),'1');
         .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
+  }
+}
+/** generate API doc out of swagger API doc.
+ * Swagger apidoc structure has several weaknesses for logic-less templating (e.g Mustache, google ctemplate)
+ * and has to be transformed to less quirky formats in many parts of structure.
+ * 
+ */
+function apidoc(req, res) {
+  //var jr = {"status":"err", "msg":"Failed to generate hostcommand output."};
+  // var ycont = yaml.safeDump(JSON.parse(JSON.stringify(nproot)), ycfg);
+  var apidocfn = "./swagger.yaml";
+  var doc;
+  var q = req.query;
+  try { doc = yaml.safeLoad(fs.readFileSync(apidocfn, 'utf8')); }
+  catch (ex) { return res.end("No YAML parsed "+ ex.toString());}
+  paths_fix(doc);
+  if (q.doc) {
+    paths_fix(doc);
+    var tmplfn = "./tmpl/apidoc.mustache";
+    var tmpl = fs.readFileSync(tmplfn, 'utf8');
+    var cont = Mustache.render(tmpl, doc);
+    return res.end(cont);
+  }
+  else { return res.json(doc); }
+  // Convert to templateable
+  function paths_fix(doc) {
+    if (Array.isArray(doc.paths)) { return; }
+    var ks = Object.keys(doc.paths);
+    var arr = [];
+    ks.forEach(function (k) {
+      var n = doc.paths[k];
+      n.path = k; // Move key into node
+      n.mime = n.get.produces[0]; // move mime type
+      arr.push(n);
+    });
+    doc.paths = arr;
+    // Same for doc.definitions ?
   }
 }
 
@@ -1180,9 +1189,9 @@ function host_reboot(req, res) {
   var rfop = new redfish.RFOp(p.op, ipmiconf);
   if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   var f = hostcache[p.hname];
-  if (!f) { jr.msg += " Not a valid host:"+p.hname; return res.json(jr); }
+  if (!f) { jr.msg += " No facts, Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
-  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += "No BMC/rmgmt host."; return res.json(jr); }
+  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += " No BMC/rmgmt host."; return res.json(jr); }
   // console.log("RMGMT-info:",rmgmt);
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
@@ -1325,7 +1334,7 @@ function config_send(req, res) {
   res.json(cfg);
 }
 
-/** Receive an next boot (e.g. OS installation) request and store it to persistent storage.
+/** Receive a next boot (e.g. OS installation) request and store it to persistent storage.
  * Note that the actual booting ins **not yet** done by calling this. Send a follow-up call to
  * actually boot.
  * URL k-v Parameters:
@@ -1403,8 +1412,7 @@ function installrequest(req, res) {
     var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
     if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
     // Instantiate by IPMI Config (shares creds)
-    var rfop = new redfish.RFOp("setpxe", global.ipmi);
-    rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
+    var rfop = new redfish.RFOp("setpxe", global.ipmi).sethdlr(hdl_redfish_succ, hdl_redfish_err);
     // Call host by MC ip address
     rfop.request(rmgmt.ipaddr, global.ipmi);
     // TODO: Decorate these with better message extraction
@@ -1466,7 +1474,8 @@ function tftp_listing(req, res) { // global
   res.json({"status": "ok", data: list});
 }
 /** Reset the earlier set custom PXE boot back to default boot menu.
- * Pass "macfname"
+ * Pass "macfname".
+ * TODO: Allow reset by hostname "" to allow access from linet.js
  */
 function bootreset(req, res) {
   var jr = {status: "err", "msg": "Could not reset old boot request. "};
@@ -1477,6 +1486,12 @@ function bootreset(req, res) {
   if (!ipmicfg) { jr.msg += "No IPMI Config inside main config"; return res.json(jr); }
   if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
   if (!q.macfname) { jr.msg += "No Boot menu file name"; return res.json(jr); }
+  // TODO: if (q.hname) {
+  //   var f = hostcache[q.hname];
+  //   var macaddr = f.ansible_default_ipv4.macaddress;
+  //   // MAC to MAC filename
+  //   
+  //}
   // Validate format of name
   if (!tboot.has_macfile_pattern(q.macfname)) { jr.msg += "Not a valid Boot menu file name"; return res.json(jr); }
   console.log("macfname param validated. Formulating fullname and executing bootmenu_link_default()");
