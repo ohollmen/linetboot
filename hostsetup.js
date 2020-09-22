@@ -23,6 +23,7 @@ var ans      = require("./ansiblerun.js");
 var netprobe = require("./netprobe.js");
 var tboot    = require("./tftpboot");
 var osinst   = require("./osinstall");
+var mc       = require("./mainconf");
 // CORE
 var fs       = require("fs");
 var path     = require("path");
@@ -353,30 +354,45 @@ function tftpsetup(opts) {
 /** Add bootloader binaries to the TFTP Area.
  */
 function bootbins(opts) {
+  // TMP root to use if configured dir is not found.
+  var tmproot = "/tmp/"+new Date().getTime()+"_"+process.pid; // pid, time
   // Final place should be: mcfg.tftp.root
-  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
-  var destroot = "/tmp/"+new Date().getTime()+"_"+process.pid; // pid, time
+  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
+  if (!mcfg.tftp) { apperror("No TFTP Config (within main config)"); }
+  var tftp = mcfg.tftp;
+  if (!tftp.root) { apperror("No TFTP Root dir (within TFTP config)"); }
+  var root = tftp.root;
+  var root_found = 1;
+  if (!fs.existsSync(root)) { console.log("Warning TFTP root "+root+" not found locally (mirror or final)"); root_found = 0; }
+  else { var apath = fs.mkdirSync( tmproot, {recursive: true} ); } // mode: ...
+  var destroot = root_found ? root : tmproot;
+  // destroot = 
   // fs.existsSync()
-  var apath = fs.mkdirSync( destroot, {recursive: true} ); // mode: ...
+  
   // Does not seem to returning anything (contrary to doc)
   // if (!apath) { console.log("Dest " + destroot + " not created !"); process.exit(1);}
-  if (!fs.existsSync(destroot)) { console.log("Destroot "+destroot+" not created"); return; }
+  if (!fs.existsSync(destroot)) { console.log("Destroot "+destroot+" does not exist and could possibly not be created"); return; }
+  // Binaries in Ubuntu 18 (plus FreeBSD-12.1-RELEASE-i386-bootonly.iso for "pxeboot")
   var bins = [
     // src, dest, pkg
     // ["/usr/lib/PXELINUX/gpxelinux.0","gpxelinux.0"], // Any use ?
     // ["/usr/lib/PXELINUX/pxelinux.0","pxelinux.0"], // Any use ?
-    ["/usr/lib/PXELINUX/lpxelinux.0","lpxelinux.0"],
+    ["/usr/lib/PXELINUX/lpxelinux.0",               "lpxelinux.0"],
     ["/usr/lib/syslinux/modules/bios/ldlinux.c32",  "ldlinux.c32"],
     ["/usr/lib/syslinux/modules/bios/libcom32.c32", "libcom32.c32"],
     ["/usr/lib/syslinux/modules/bios/libutil.c32",  "libutil.c32"],
     ["/usr/lib/syslinux/modules/bios/menu.c32",     "menu.c32"],
     ["/usr/lib/syslinux/modules/bios/vesamenu.c32", "vesamenu.c32"],
+    // pxechn (for chainloading "pxeboot", see menu)
+    ["/usr/lib/syslinux/modules/bios/pxechn.c32", "pxechn.c32"],
     // 
     ["/usr/lib/syslinux/memdisk","memdisk"],
     // 
     ["/usr/lib/SYSLINUX.EFI/efi32/syslinux.efi", "efi32/syslinux.efi"],
     ["/usr/lib/SYSLINUX.EFI/efi64/syslinux.efi", "efi64/syslinux.efi"],
     // EFI variants. No ldlinux.c32, need ldlinux.e32/ldlinux.e64 (or linux.c32 ?)
+    // NOTE: pxechn.c32 is included for EFI (32,64), but documentation (outdated ?) says
+    // it will not work with EFI (!)
     // EFI32
     ["/usr/lib/syslinux/modules/efi32/ldlinux.e32",  "efi32/ldlinux.e32"],
     ["/usr/lib/syslinux/modules/efi32/libcom32.c32", "efi32/libcom32.c32"],
@@ -398,10 +414,12 @@ function bootbins(opts) {
     ["/usr/lib/ipxe/ipxe.efi", "ipxe.efi"],
     // Grub
     // ["", "boot/grub/"] // grub.cfg (menu file)
+    // BSD PXE Bootloader from FreeBSD 12 ISO
+    ["/isomnt/freebsd12/boot/pxeboot", "pxeboot"],
   ];
   bins.forEach(function (it) {
     var src  = it[0];
-    var dest = destroot + "/"+it[1];
+    var dest = destroot + "/"+it[1]; // Abs destfile
     if (!fs.existsSync(src)) { console.log(src + " does not exist (skipping)"); return; }
     var destdir = path.dirname(dest);
     if (!fs.existsSync(destdir)) { fs.mkdirSync( destdir, {recursive: true} ); }
@@ -414,6 +432,31 @@ function bootbins(opts) {
     
   });
   console.log("Copied files to " + destroot + "\nls -alR "+destroot + "");
+  // TODO: Sync / replicate to remote TFTP ?
+  // https://unix.stackexchange.com/questions/193368/can-scp-create-a-directory-if-it-doesnt-exist
+  if (tftp.synccmd) {
+    var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
+    scp_sync(tftp.root, remloc, {recursive: 1}, function (err, path) {
+      if (err) { apperror("Failed sync." + err); }
+    });
+  }
+}
+/** Sync by SSH scp (Local path to remote path)
+ * @param local {string} - Local path (scp compatible source path)
+ * @param remloc {string} - Remote server and path in format server:/path/to/dest/
+ * @param cb {function} - Callback to call after asyncronous file sync.
+ */
+function scp_sync(local, remloc, opts, cb) {
+  opts = opts || {};
+  var rec = opts.recursive ? "-r" : "";
+  var cmd = "scp "+rec+" -p "+local+" "+remloc+"";
+  console.log("Try sync: " + cmd);
+  var opts = {};
+  cproc.exec(cmd, {}, function(err, stdout, stderr) {
+    if (err) { console.log("Error running sync: "+cmd); return cb(stderr, null); }
+    console.log("Copied (successfully) to: " + remloc);
+    cb(null, remloc);
+  });
 }
 
 /*
@@ -473,7 +516,8 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
  * 
  */
 function dhcpconf(opts) {
-  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
+  var mcfg = mc.mainconf_load(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
+  mc.mainconf_process(mcfg);
   mcfg.fact_path = mcfg.fact_path || process.env["FACT_PATH"];
   // TODO: load from resolved config location, not ./tmpl !!
   var tmplfn = "./tmpl/isc.dhcpd.conf.mustache";
@@ -498,10 +542,10 @@ function dhcpconf(opts) {
   // Add hosts to mcfg
   hlr.init(mcfg);
   var hnames = hlr.hosts_load(mcfg);
-  // Note: Not all of these may have facts. Do NOT use this.
+  // Note: Not all of these may have facts (?/). Do NOT use this.
   console.error("DHCP Hostnames: ", hnames);
   var hostarr = hlr.facts_load_all();
-  // NOW: Use
+  // NOW: Use hostarr
   hnames = hostarr.map(function (it) { return it.ansible_fqdn; });
   // console.error(hostarr); // Huge
   // TODO: Add (temporarily, not de-facto) the NBP if configured
@@ -519,7 +563,7 @@ function dhcpconf(opts) {
     // var accok = 0;
     try { fs.accessSync(dhcp.conf_path, fs.constants.W_OK);  } // accok = 1;
     //  sudo chmod g+w /etc/dhcp/ ; sudo chgrp $USER /etc/dhcp/
-    catch (ex) {console.error("Cannot write "+dhcp.conf_path + " - consider sharing it to group"); process.exit(0); }
+    catch (ex) {console.error("Cannot write "+dhcp.conf_path + " - consider sharing it to a group"); process.exit(0); }
     
     fs.writeFileSync(fn, cont); // {encoding: 'utf8'}
     console.error("Wrote: "+fn);
@@ -528,6 +572,20 @@ function dhcpconf(opts) {
     console.log(cont);
     console.error("# Redirect output (stdout) to a 'dhcpd.conf' or use --save option to save to "+fn+"");
   }
+  // Sync output to remote server and restart ? Any method used / tried here bases on passwordless SSH (scp,rsync,git)
+  if (dhcp.reloadcmd) {
+    // Copy to server
+    var remloc = dhcp.host + ":" + "/tmp/tftp"; // dhcp.conf_path; // 
+    scp_sync(dhcp.conf_path+"/dhcpd.conf", remloc, {}, function (err, path) {
+      if (err) { apperror("Failed sync."); }
+      // Restart
+      //cproc.exec(dhcp.reloadcmd, function (err, stdout, stderr) {
+      //  if (err) { }
+      //});
+    });
+    
+  }
+  
   // Mock-up fallback (DHCP geared) net settings (if broadcast and subnet are NOT give in "net")
   function net_fallback(net) {
     var fnet = {}; // Fallback net settings
