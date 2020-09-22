@@ -22,6 +22,7 @@
   
     "postscript": "mv_homedir_for_autofs.sh",
     "script_path": "./scripts/",
+    "tmpl_path":   "./tmpl/",
     "sshkey_path": ""
   
   },
@@ -51,7 +52,9 @@
     "range": ["192.168.1.60", "192.168.1.160"],
     "broadcast":"",
     "gateway":  "192.168.1.1",
-    "reloadcmd" : "ssh root@banana1 service isc-dhcp-server restart"
+    "sync": 1,
+    "reloadcmd_isc" : "ssh root@banana1 service isc-dhcp-server restart",
+    "reloadcmd": "ssh root@banana1 'sudo kill -HUP `cat /var/run/dnsmasq.pid`'"
   },
   "tftp": {
     "desc" : "TFTP and Boot (boot be separate ?)",
@@ -65,8 +68,8 @@
     "menutout" : 100,
     "menudef_test":"memtest",
     "menudef": "",
-    "menutitle":"",
-    "synccmd":"auto"
+    "menutitle": "",
+    "sync": 1
   },
   "rmgmt_path": "~/hostrmgmt",
   "ipmi": {
