@@ -32,7 +32,7 @@ var cproc    = require('child_process');
 var async    = require("async");
 var Getopt   = require("node-getopt"); // NPM
 var Mustache = require("mustache");
-var home = process.env["HOME"];
+var home     = process.env["HOME"];
 // 
 var cfg = {
   fact_path: home + "/hostinfo", // global
@@ -348,8 +348,15 @@ function tftpsetup(opts) {
   });
     return 1; // ??
   }
-  console.log("Setup pxelinux TFTP Dirs under TFTP root: " + tcfg.root);
-  //global.
+  console.log("Setup pxelinux TFTP Dirs under local TFTP root: " + tcfg.root);
+  var tftp = tcfg;
+  if (tcfg.sync) {
+    
+    var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
+    scp_sync(tftp.root, remloc, {recursive: 1}, function (err, path) {
+      if (err) { apperror("Failed sync." + err); }
+    });
+  }
 }
 /** Add bootloader binaries to the TFTP Area.
  */
@@ -415,8 +422,10 @@ function bootbins(opts) {
     // Grub
     // ["", "boot/grub/"] // grub.cfg (menu file)
     // BSD PXE Bootloader from FreeBSD 12 ISO
+    // NOTE: Shoud chmod u+w 
     ["/isomnt/freebsd12/boot/pxeboot", "pxeboot"],
   ];
+  var i = 0;
   bins.forEach(function (it) {
     var src  = it[0];
     var dest = destroot + "/"+it[1]; // Abs destfile
@@ -428,13 +437,15 @@ function bootbins(opts) {
     // flags - 3rd param
     var flags = fs.constants.COPYFILE_EXCL; // fs.constants.COPYFILE_FICLONE fs.constants.COPYFILE_FICLONE_FORCE
     try { fs.copyFileSync(src, dest ); } catch (ex) { console.log("Error Copying "+src+"... skip"); return; }
-    
-    
+    var mode = 0644; // fs.constants.S_IWUSR; // Must "OR" lot of constants
+    fs.chmodSync(dest, mode); // Must change to user writable to prevent nasty chain-reaction.
+    // console.log(dest + " Current File Mode:",  fs.statSync(dest).mode);
+    i++;
   });
-  console.log("Copied files to " + destroot + "\nls -alR "+destroot + "");
+  console.log("Copied ("+i+") files to " + destroot + "\nls -alR "+destroot + "");
   // TODO: Sync / replicate to remote TFTP ?
   // https://unix.stackexchange.com/questions/193368/can-scp-create-a-directory-if-it-doesnt-exist
-  if (tftp.synccmd) {
+  if (tftp.sync) {
     var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
     scp_sync(tftp.root, remloc, {recursive: 1}, function (err, path) {
       if (err) { apperror("Failed sync." + err); }
@@ -442,6 +453,7 @@ function bootbins(opts) {
   }
 }
 /** Sync by SSH scp (Local path to remote path)
+ * Not in case or direcrory source, caller should append a trailing slash to path.
  * @param local {string} - Local path (scp compatible source path)
  * @param remloc {string} - Remote server and path in format server:/path/to/dest/
  * @param cb {function} - Callback to call after asyncronous file sync.
@@ -449,11 +461,17 @@ function bootbins(opts) {
 function scp_sync(local, remloc, opts, cb) {
   opts = opts || {};
   var rec = opts.recursive ? "-r" : "";
-  var cmd = "scp "+rec+" -p "+local+" "+remloc+"";
+  // Strip one path component out of the name
+  if (opts.recursive) { remloc = path.dirname(remloc); }
+  // Assume recursive also as a signal of dir
+  // NOT: var slash = opts.recursive ? "/" : "";
+  // Do not use -p - could lead to problems
+  // DOES_NOT_WORK Not must detect type of source: file/dir
+  var cmd = "scp "+rec+" "+local+" "+remloc+"";
   console.log("Try sync: " + cmd);
   var opts = {};
   cproc.exec(cmd, {}, function(err, stdout, stderr) {
-    if (err) { console.log("Error running sync: "+cmd); return cb(stderr, null); }
+    if (err) { console.log("Error running sync cmd: "+cmd + " ("+err+")"); return cb(stderr, null); }
     console.log("Copied (successfully) to: " + remloc);
     cb(null, remloc);
   });
@@ -573,15 +591,20 @@ function dhcpconf(opts) {
     console.error("# Redirect output (stdout) to a 'dhcpd.conf' or use --save option to save to "+fn+"");
   }
   // Sync output to remote server and restart ? Any method used / tried here bases on passwordless SSH (scp,rsync,git)
-  if (dhcp.reloadcmd) {
+  // For dnsmasq command could refer to /var/run/dnsmasq.pid
+  if (dhcp.sync) {
     // Copy to server
-    var remloc = dhcp.host + ":" + "/tmp/tftp"; // dhcp.conf_path; // 
+    var remloc = dhcp.host + ":" +  dhcp.conf_path; // "/tmp/tftp"; // // 
+    // SIngle file, non-recursive.
     scp_sync(dhcp.conf_path+"/dhcpd.conf", remloc, {}, function (err, path) {
       if (err) { apperror("Failed sync."); }
       // Restart
-      //cproc.exec(dhcp.reloadcmd, function (err, stdout, stderr) {
-      //  if (err) { }
-      //});
+      if (dhcp.reloadcmd) {
+        cproc.exec(dhcp.reloadcmd, function (err, stdout, stderr) {
+          if (err) { console.log("Failed to reload: " + err); return; }
+          console.log("Reloaded successfully by: " + dhcp.reloadcmd);
+        });
+      }
     });
     
   }
