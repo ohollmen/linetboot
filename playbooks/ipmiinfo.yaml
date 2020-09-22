@@ -1,5 +1,6 @@
-- name: Extract Remote Management (IPMI) Info
-  hosts: {{ host }}
+# Playbook to gather Remote Management info
+- name: Extract Remote Management IPMI Info
+  hosts: '{{ host }}'
   vars:
     homedir: '{{ lookup("env","HOME") }}'
     destpath: '{{ lookup("env","HOME") }}/hostrmgmt'
