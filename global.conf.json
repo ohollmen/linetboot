@@ -13,7 +13,7 @@
   },
   
   "inst": {
-    "userconfig": "initialuser.json",
+    "userconfig": "~/.linetboot/user.conf.json",
     "locale": "en_US.UTF-8",
     "keymap": "us",
     "time_zoneXX": "US/Pacific",
@@ -26,10 +26,8 @@
   
   },
   
-  "fact_path":  "/home/ohollmen/hostinfo",
-  "hostsfile" : "/home/ohollmen/.linetboot/hosts",
-  "maindocroot_X": "/var/www/html/",
-  
+  "fact_path":  "~/hostinfo",
+  "hostsfile" : "~/.linetboot/hosts",
   "core": {
     "maindocroot": "/isomnt/",
     "appname": "Hollmen IT - Hosts",
@@ -48,17 +46,19 @@
   ],
   "dhcp": {
     "desc":"DHCP Settings (only needed for generating DHCP config)",
+    "host": "banana1",
     "conf_path": "/etc/dhcp/",
     "range": ["192.168.1.60", "192.168.1.160"],
     "broadcast":"",
-    "gateway":  ""
+    "gateway":  "192.168.1.1",
+    "reloadcmd" : "ssh root@banana1 service isc-dhcp-server restart"
   },
   "tftp": {
     "desc" : "TFTP and Boot (boot be separate ?)",
-    "host": "banana1",
+    "host": "banana2",
     "ipaddr": "192.168.1.108",
-    "root": "/srv/tftp",
-    "root_rh": "/var/lib/tftpboot/",
+    "root_old": "/srv/tftp",
+    "root": "/var/lib/tftpboot",
     "lintftp" : false,
     "bootfile": "lpxelinux.0",
     "menutmpl": "./tmpl/default.installer.menu.mustache",
@@ -66,12 +66,12 @@
     "menudef_test":"memtest",
     "menudef": "",
     "menutitle":"",
-    "":""
+    "synccmd":"auto"
   },
-  "rmgmt_path": "/home/ohollmen/hostrmgmt",
+  "rmgmt_path": "~/hostrmgmt",
   "ipmi": {
     "desc": "Remote Management (redfish and IPMI)",
-    "path": "/home/ohollmen/hostrmgmt",
+    "path": "~/hostrmgmt",
     "user": "mickey",
     "pass": "mouse",
     "enckey": "0000000000000000000000000000000000000000",
@@ -87,8 +87,8 @@
   },
   "docker": {
     "port": "4243",
-    "config": "/home/ohollmen/docker.conf.json",
-    "catalog": "/home/ohollmen/dockercat.conf.json",
+    "config": "~/docker.conf.json",
+    "catalog": "~/dockercat.conf.json",
     "hostgrp":"nuc"
   },
   "net": {
