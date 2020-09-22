@@ -10,9 +10,8 @@
 * ```
 * var mc = require("./mainconf.js");
 * var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
-* mc.mainconf_load(globalconf);
-* var mcfg = mainconf_load(globalconf);
-* mainconf_process(mcfg);
+* var mcfg = mc.mainconf_load(globalconf);
+* mc.mainconf_process(mcfg);
 * ```
 */
 var fs = require("fs");
@@ -68,6 +67,8 @@ function mainconf_process(global) {
   //if (global.ipmi.path)     { global.ipmi.path     = global.ipmi.path.replace('~', home); }
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
+  
+  tilde_expand(global.inst, ["script_path"]);
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
