@@ -54,15 +54,16 @@ var tmplmap = {
    "/preseed_mini.cfg": "preseed_mini",
    // ???? Not used yet ?
    "/boot/pc-autoinstall.conf": "pcbsd",
-   "/cust-install.cfg": "xxx",
+   "/cust-install.cfg": "pcbsd2", // freebsd/pcbsd
    // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls
    // https://github.com/CanonicalLtd/subiquity/tree/master/examples
    // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls/QuickStart
-   // "":"", // Ubuntu 20.04 YAML
+   // "user-data":"ubu20", // Ubuntu 20.04 YAML
    // "autounattend.xml" // Windows
    // https://www.packer.io/guides/automatic-operating-system-installs/autounattend_windows
    // https://github.com/StefanScherer/packer-windows
-   "/Autounattend.xml": "win"
+   "/Autounattend.xml": "win",
+   //"boot.ipxe": "" // E.g. https://coreos.com/matchbox/docs/latest/network-booting.html
 //];
 };
 // TODO: Create tmplmap (k-v) here for compat.
@@ -74,7 +75,8 @@ var tmplfiles = {
     "netw_rh": "./tmpl/sysconfig_network.mustache",
     "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
     "preseed_mini": "./tmpl/preseed_mini.cfg.mustache",
-    "pcbsd":   "tmpl/pcinstall.cfg.mustache",
+    "pcbsd":   "tmpl/pc-autoinstall.conf.mustache",
+    "pcbsd2":   "tmpl/pcinstall.cfg.mustache",
     "win": "", // mime: "text/xml"
   };
 var tmpls = {};
@@ -445,10 +447,10 @@ function host_params(f, global, ip,  osid) { // ctype,
   // Create netconfig as a blend of information from global network config
   // and hostinfo facts.
 function netconfig(net, f) {
-  if (!f) { return; } // No facts, cannot do overrides
+  if (!f) { return net; } // No facts, cannot do overrides
   var anet = f.ansible_default_ipv4;
   var dns_a = f.ansible_dns; // Has search,nameservers
-  
+  net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
   net.nameservers = net.nameservers.join(" "); // Debian: space separated
   // Override nameservers, gateway and netmask from Ansible facts (if avail)
   if (dns_a.nameservers && Array.isArray(dns_a.nameservers)) {
@@ -457,6 +459,7 @@ function netconfig(net, f) {
   // Account for KS needing nameservers comma-separated
   // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
   net.nameservers_csv = net.nameservers.replace(' ', ',');
+  
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
   // Domain !
@@ -637,5 +640,6 @@ module.exports = {
   // 
   preseed_gen: preseed_gen, // Calls a lot of locals
   disk_params: disk_params,
-  script_send: script_send
+  script_send: script_send,
+  netconfig: netconfig
 };
