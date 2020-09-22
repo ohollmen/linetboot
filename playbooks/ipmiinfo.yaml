@@ -2,6 +2,7 @@
   hosts: {{ host }}
   vars:
     homedir: '{{ lookup("env","HOME") }}'
+    destpath: '{{ lookup("env","HOME") }}/hostrmgmt'
   become: yes
   tasks:
     # Depends on ipmitool
@@ -19,12 +20,12 @@
     - name: localhost delegated copy
       copy:
         content: '{{ laninfo.stdout }}'
-        dest: '{{ homedir }}/hostrmgmt/{{ ansible_fqdn }}.lan.txt'
+        dest: '{{ destpath }}/{{ ansible_fqdn }}.lan.txt'
       delegate_to: localhost
       become: no
     - name: localhost delegated copy
       copy:
         content: '{{ userinfo.stdout }}'
-        dest: '{{ homedir }}/hostrmgmt/{{ ansible_fqdn }}.users.txt'
+        dest: '{{ destpath }}/{{ ansible_fqdn }}.users.txt'
       delegate_to: localhost
       become: no
