@@ -9,7 +9,9 @@ allow bootp;
 
 option subnet-mask {{{ net.netmask }}};
 option broadcast-address {{{ net.broadcast }}};
+# Gateway
 ## option routers 192.168.1.254;
+option routers {{{ dhcp.gateway }}};
 # Comma separated (like RH)
 option domain-name-servers {{{ net.nameservers }}};
 option domain-name "{{{ net.domain }}}";
@@ -19,6 +21,17 @@ option domain-name "{{{ net.domain }}}";
 # conditionals related to choosing boot file
 # option architecture code 93 = unsigned integer 16;
 
+# Eliminate problem of same mac different client UID:s getting different IP
+one-lease-per-client true;
+# ISC dhcpd > 4.2.0
+ignore-client-uids true;
+# deny duplicates;
+# Other (to be on safe side)
+# ping-check true;
+# get-lease-hostnames true;
+# Change /etc/syslog.conf to define final log file
+# log-facility local7;
+
 subnet {{{ net.subnet }}} netmask {{{ net.netmask }}} {
   # Possibly multiple ranges
   range {{{ dhcp.range }}};
@@ -26,7 +39,7 @@ subnet {{{ net.subnet }}} netmask {{{ net.netmask }}} {
   # This can have subnet specific options
   # option subnet-mask {{{ net.netmask }}};
   # option broadcast-address {{{ net.broadcast }}};
-  # options kw value
+  # option routers {{{ dhcp.gateway }}};
   ### Core PXE Settings ##############
   # Needed ? Does PXE firmware even have ability to resolve the DNS name ?
   # server-name "{{{ tftp.host }}}";
