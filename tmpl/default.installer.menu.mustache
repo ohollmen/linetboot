@@ -147,10 +147,24 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
 # Ubuntu Server 20.04
+# Relies on completely new subiquity installer ("live-installer") and YAML autoinstall mechanism (non-preseed).
+# https://ubuntu.com/server/docs/install/autoinstall-quickstart
+# https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
+# OLDER: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
+# See also: http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/mini.iso
+# Discussed on: https://discourse.ubuntu.com/t/netbooting-the-live-server-installer/14510/9
+# Seems file / URL path downloaded is "user-data"
+# Needs also file (in same path): "meta-data: instance-id: focal-autoinstall
+# Seems loop-mounted dir is not accepted url=... must be an ISO file.
 #label localinst_ps20
 #menu label Install Ubuntu 20.04 Server (TODO: Automated)
 #kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
-# append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+# append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp autoinstall
+# url=http://{{ httpserver }}/isoimages/ubuntu-20.04-live-server-amd64.iso
+# ds=nocloud-net\;s=http://{{ httpserver }}/
+# NONEED(?): priority=critical auto=true interface=auto ipv6.disable=1
+# MAY NEED: root=/dev/ram0 ramdisk_size=1500000
+# Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
 
 label localinst_ps18
 menu label Install Ubuntu 18.04 Server (Full Automated)
@@ -293,13 +307,17 @@ initrd http://{{ httpserver }}/bootonly.iso
 append iso
 
 # FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot, Starting the BTX loader)
+# https://blog.narf.ssji.net/2013/06/pxelinux_openbsd_install/
+# The chainloader modules seems to be pxechain.com, but seems to be
+# have been renamed to pxechn.c32 (syslinux-common)
 label freebsd12
-menu label FreeBSD 12 Net Install 2
+menu label FreeBSD 12 (BSD pxeboot)
 # kw "pxe" is specific to NBP. "kernel" leads to loading ok, but "Booting kernel/failed: Invalid argument", "boot" - nothing (!).
 # linux memdisk; initrd http://.../pxeboot; append raw; starts boot but freezes
-linux memdisk
-initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
-append raw
+kernel pxechn.c32
+#initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
+initrd ::pxeboot
+# append raw
 
 # Arch Linux
 # archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)
