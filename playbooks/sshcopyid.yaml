@@ -1,7 +1,7 @@
 # # Copy remote host SSH user key to central Ansible machine
-# Do effective (reverse) ssh-copy-id, except deal with faw files
+# Do effective (reverse) ssh-copy-id, except deal with few files
 # and text content to avoid password promting interactivity
-# during automation.
+# during automation (root has rights to do the file shuffle).
 # Refs:
 # - https://docs.ansible.com/ansible/latest/modules/synchronize_module.html
 # Also: lookup('vars', Component) ~ vars[Component]
@@ -43,7 +43,7 @@
     - name: Copy Key from Remote to Ansible Host
       lineinfile:
         #content: '{{ pubkey.stdout }}'
-	# "line:" adds a newline ? or need "\n"
+        # "line:" adds a newline ? or need "\n"
         line: '{{ pubkey.stdout }}'
         path: '{{ localuserhome }}/{{ ahfile }}'
         state: present
