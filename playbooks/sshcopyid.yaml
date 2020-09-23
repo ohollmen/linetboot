@@ -26,7 +26,7 @@
     # TODO: generate key if does not exist (-P old, use -N)
     # See -y: print public key to stdout
     - name: Gen Remote Keys (ssh-keygen) whenever missing
-      shell: ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+      shell: 'ssh-keygen -t rsa -b 4096 -f {{ keyfile }} -N ""'
       when: keystat.stat.exists == False
     #- name: Gen Keys (Ansible:openssh_keypair, > 2.8)
     #  openssh_keypair:
