@@ -6,6 +6,10 @@
 # - https://docs.ansible.com/ansible/latest/modules/synchronize_module.html
 # Also: lookup('vars', Component) ~ vars[Component]
 # hostvars[inventory_hostname][Component]
+# Note: All keys may not be copied on the first run (E.g. 3/5 might be copied) !
+# Ansible Concurrency/File synchronization problem (in lineinfile) ?
+# All keys were registered properly and showed in debug: output, but only 3/5 ended
+# up in file. 2nd run captured the remaining 2 keys.
 - name: Copy remote keys to ansible machine
   become: yes
   hosts: '{{ host }}'

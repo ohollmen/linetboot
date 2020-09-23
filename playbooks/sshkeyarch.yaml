@@ -37,7 +37,7 @@
       delegate_to: localhost
     - name: run cmd
       #shell: echo "{{ inventory_hostname }}"
-      shell: `cat {{ sshdir }}/ssh_host_rsa_key`
+      shell: 'cat {{ sshdir }}/ssh_host_rsa_key'
       register: 'sshkey'
     # Then (after) use: with_items: "{{ keylist.stdout_lines }}"
     - name: list keys
