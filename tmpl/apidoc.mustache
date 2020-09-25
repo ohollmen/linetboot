@@ -1,0 +1,19 @@
+<h1>{{ info.title }} ({{ info.version }})</h1>
+<p>{{ info.description }}</p>
+<p>Most API URL:s respond with following JSON top-level structure:</p>
+<pre><code>
+# API Call Success
+{"status":"ok", "data": ...};
+# API Call Failure
+{"status":"err", "msg":"Failed to ... (human readable reason for failure)"};
+</code></pre>
+
+Where API success data: ... contains the response data either as JSON Array (Most often array-of-objects) or an Object (containing API specific data
+nested underneath it). The structure of data depends on API.
+
+<h2>API Entrypoints</h2>
+
+{{#paths}}
+<h3><a href="{{{ path }}}">{{{ path }}}</a> - {{{ get.summary }}} ({{{ mime }}})</h3>
+<p>{{{ get.description }}} </p>
+{{/paths}}
