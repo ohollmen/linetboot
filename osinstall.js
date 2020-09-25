@@ -12,19 +12,19 @@
  * {
  * ipaddr_v4 ( ~ l. 328)
  * host_for_request  UNUSED
- * preseed_gen
- * patch_params - TODO: Plugin !
- * host_params_dummy
+ * preseed_gen - DONE
+ * patch_params - TODO: Add chained Plugin !
+ * host_params_dummy - DONE
  * global_params_cloned (Unused ?)
- * params_compat
- * host_params
+ * params_compat DONE
+ * host_params DONE
  * }
  * disk_params DONE
  * disk_calc_size ( ~ l. 702) DONE
  * ------ Lot of subs ----
- * netplan_yaml (~ l. 860)
- * script_send
- * needs_template (~l. 1020)
+ * netplan_yaml LEFT OUT (~ l. 860)
+ * script_send DONE
+ * needs_template DONE (~l. 1020)
  * # TODO
  * - Possibly load initial user here, keep as priv variable ?
  */
@@ -58,11 +58,11 @@ var tmplmap = {
    // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls
    // https://github.com/CanonicalLtd/subiquity/tree/master/examples
    // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls/QuickStart
-   // "user-data":"ubu20", // Ubuntu 20.04 YAML
-   // "autounattend.xml" // Windows
+   // "/user-data": "ubu20", // Ubuntu 20.04 YAML
+   // "/autoinst.xml": "suse",
    // https://www.packer.io/guides/automatic-operating-system-installs/autounattend_windows
    // https://github.com/StefanScherer/packer-windows
-   "/Autounattend.xml": "win",
+   "/Autounattend.xml": "win", // Windows "autounattend.xml" 
    //"boot.ipxe": "" // E.g. https://coreos.com/matchbox/docs/latest/network-booting.html
 //];
 };
@@ -75,8 +75,8 @@ var tmplfiles = {
     "netw_rh": "./tmpl/sysconfig_network.mustache",
     "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
     "preseed_mini": "./tmpl/preseed_mini.cfg.mustache",
-    "pcbsd":   "tmpl/pc-autoinstall.conf.mustache",
-    "pcbsd2":   "tmpl/pcinstall.cfg.mustache",
+    "pcbsd":   "./tmpl/pc-autoinstall.conf.mustache",
+    "pcbsd2":   "./tmpl/pcinstall.cfg.mustache",
     "win": "", // mime: "text/xml"
   };
 var tmpls = {};
@@ -102,7 +102,7 @@ function template_content(ctype) {
   if (!fs.existsSync(fn)) { return ""; }
   return fs.readFileSync(fn, 'utf8');
 }
-//////// cache templates into memory //////
+//////// cache templates into memory. TODO: Deprecate or make optional //////
 function templates_load() {
   // 
   var tkeys = Object.keys(tmplfiles); // OLD: global.tmplfiles
@@ -132,6 +132,15 @@ function init(conf, _patch_params) {
   if (_patch_params) { console.log("Got patch_params customization CB"); patch_params = _patch_params; }
   
   templates_load(); // Keep after assigning "global"
+  // Transform to new structure
+  var recipes = [];
+  Object.keys(tmplmap).forEach((k) => {
+    var ctype = tmplmap[k];
+    if (!tmplfiles[ctype]) { console.log("Warning: missing template for ctype "+ctype); return; }
+    var e = {url: k, ctype: tmplmap[k], tmpl: tmplfiles[ctype]};
+    recipes.push(e);
+  });
+  console.log("NEW recipes array: ", recipes);
 }
 
 /** Set URL handlers for all recipe URL:s.
@@ -633,6 +642,19 @@ function needs_template(cont) {
   return tcs[0];
 }
 
+function recipe_view(req, res) {
+  var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
+  var grid = [hostfld]; // Grid def
+  var keys = Object.keys(tmplmap);
+  var urls = [];
+  keys.forEach((k) => { // k == URL
+    var fld = {name: tmplmap[k],  title: tmplmap[k], type: "text", width: 80, itemTemplate: null};
+    urls.push(k);
+    grid.push(fld);
+  });
+  res.json({status: "ok", grid: grid, urls: urls, data: []});
+}
+
 module.exports = {
   init: init,
   url_hdlr_set: url_hdlr_set,
@@ -641,5 +663,7 @@ module.exports = {
   preseed_gen: preseed_gen, // Calls a lot of locals
   disk_params: disk_params,
   script_send: script_send,
-  netconfig: netconfig
+  netconfig: netconfig,
+  
+  recipe_view: recipe_view
 };
