@@ -45,6 +45,7 @@ function init(popts) {
 */
 function resolve(hnode, cb) {
   cb = cb || function () {};
+  if ((typeof hnode == 'string') || (typeof hnode != 'object')) { return cb("", null); }
   var hn = hnode.ansible_fqdn;
   var ip_org = hnode.ansible_default_ipv4.address;
   var mac_org = hnode.ansible_default_ipv4.macaddress;
@@ -150,7 +151,7 @@ function probe_all(harr, usecase, cb) {
     harr.forEach((it) => { if (!idx[it.ansible_fqdn]) { console.log(it.ansible_fqdn); i++; } });
     console.log("Done reporting Missing ("+i+")");
   }, 30000);
-  console.log("Probe Load on "+harr.length+" hosts");
+  console.log("Probe (type:"+usecase+") on "+harr.length+" hosts");
   async.map(harr, callable, function(err, results) {
     if (err) { return cb("Error probing hosts: " + err, null); }
     //console.log(JSON.stringify(results)); /// Dump !
@@ -158,6 +159,7 @@ function probe_all(harr, usecase, cb) {
   });
 }
 /** OLD node-ssh based Non-working version of. "Not connected to server" at execCommand
+ * Deprecated. See: stats_proc()
  */
 function stats_proc_0(hnode, cb) {
   var cmd = "/bin/ps -ef | /usr/bin/wc -l";
