@@ -46,7 +46,7 @@ var ipmi     = require("./ipmi.js");
 var tboot    = require("./tftpboot.js");
 var redfish  = require("./redfish.js");
 var osinst   = require("./osinstall.js");
-var mc = require("./mainconf.js");
+var mc       = require("./mainconf.js");
 
 var global = {};
 global.tmpls = {}; // cached
@@ -212,6 +212,8 @@ function app_init() { // global
   
   app.get("/mediainfo", media_info);
   app.get("/apidoc", apidoc);
+  app.get("/recipes",  osinst.recipe_view);
+  
   //////////////// Load Templates ////////////////
   
   fact_path = process.env["FACT_PATH"] || global.fact_path;
@@ -1474,18 +1476,36 @@ function tftp_listing(req, res) { // global
   res.json({"status": "ok", data: list});
 }
 /** Reset the earlier set custom PXE boot back to default boot menu.
- * Pass "macfname".
+ * Pass "macfname" or allow lineboot to auto-detect IP address.
  * TODO: Allow reset by hostname "" to allow access from linet.js
+ * Testing by client ip auto-detection: curl http://linethost:3000/bootreset
  */
 function bootreset(req, res) {
   var jr = {status: "err", "msg": "Could not reset old boot request. "};
-  var q = req.query;
+  var q = req.query || {};
   var tcfg = global.tftp;
   var ipmicfg = global.ipmi;
   if (!tcfg) { jr.msg += "No TFTP Config inside main config"; return res.json(jr); }
   if (!ipmicfg) { jr.msg += "No IPMI Config inside main config"; return res.json(jr); }
-  if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
-  if (!q.macfname) { jr.msg += "No Boot menu file name"; return res.json(jr); }
+  //if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
+  if (!q.macfname) {
+    // Fall back to detecting IP address of client
+    var ip = osinst.ipaddr_v4(req);
+    console.log("bootreset: Choose rest-host by auto detecting IP: "+ip);
+    if (!ip) { jr.msg += "No Boot menu file name or IP address detected"; return res.json(jr); }
+    var f = hostcache[ip];
+    if (!f) { jr.msg += "No Facts found by IP address " + ip; return res.json(jr); }
+    //var mac;
+    //try { mac = f.ansible_default_ipv4.macaddress; }
+    //catch (ex) { jr.msg += ex.toString(); return res.json(jr); }
+    var macfname = tboot.menu_macfilename(f);
+    if (! macfname || (macfname.length != 20)) {
+      jr.msg += "No macfname derived by facts"; return res.json(jr);
+    }
+    q.macfname = macfname;
+    console.log("Translated client IP "+ip+" to macfname: "+macfname+"");
+  }
+  
   // TODO: if (q.hname) {
   //   var f = hostcache[q.hname];
   //   var macaddr = f.ansible_default_ipv4.macaddress;
@@ -1502,10 +1522,11 @@ function bootreset(req, res) {
   catch (ex) { console.log(ex.toString()); jr.msg + "Error Re-Establishing default menu linking: " + ex.toString(); return res.json(jr); }
   // TODO: Call Redfish to make patch to {BootSourceOverrideTarget: "None"}
   // var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  // We can doe this because message is cloned for this instance. Basically becomes "unset-PXE"
   // rfop.msg.Boot.BootSourceOverrideTarget = "None"; // None => Cancel
   // rfop.request(rmgmt.ipaddr, ipmicfg);
   // Reload new data like in tftp_listing() ?
-  var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1);
+  var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1); // 1=
   res.json({status: "ok", data: list});
   
 }
