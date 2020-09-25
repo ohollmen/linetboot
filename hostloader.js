@@ -73,7 +73,8 @@ minimalistic loading of hosts for a generic app:
      console.log("Host items:", hostarr);
      // (For now) hostparams are found in cfg Object passsed to hlr.hosts_load(cfg)
      console.log("Host params:", cfg.hostparams);
-     
+     // Gather facts (returns an array of facts)
+     var hostsarr = hlr.facts_load_all();
 
 * TODO: throw on errors, strip out any process.exit().
 */
@@ -83,7 +84,7 @@ function hosts_load(global) {
   // Line oriented text file. Rename hnames ?
   if (hfn) { hnames = hostsfile_load(hfn); }
   if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
-  debug && console.error("Hostlines (before parsing):", hnames); // global.debug && ...
+  debug && console.error(hnames.length + " Hostlines (before parsing):", hnames); // global.debug && ...
   // Allow easy commenting-out as JSON itself does not have comments.
   hnames = hnames.filter(function (hn) { return ! hn.match(/^#/); }); // OLD: ^(#|\[)/ - keep [...] in and handle later
   if (!hnames.length) { console.error("No hosts remain after filtering"); process.exit(1); }
@@ -135,7 +136,7 @@ Internal function to be used by hosts_load().
 @param hnames {array} - An array of hostnames
 @param i {integer} - Index of current item (in hnames array)
 @param hline {string} - Current hostline to parse (from text file as-is)
-@return object with "hn" (hostname) and "p" ( host parameters)
+@return object with "hn" (hostname) and "p" (host parameters)
 */
 function hline_parse(hnline) {
   var p = {}; // Host params for the host presented by this line.
@@ -183,7 +184,8 @@ function facts_load_all(opts) {
 /** Load Ansible facts for a single host from facts directory.
 * This is to be done during init phase.
 * Cache facts into global facts cache by both (fqdn) hostname and ip address.
-* @param hn - Hostname
+* @param hn - Hostname (a file by this name must be found in facts directory)
+* @patam opts - Loading / parsing opst (debug)
 * @return Host facts object for named host (OLD:None)
 */
 function facts_load(hn, opts) { // ipaddr
@@ -203,7 +205,7 @@ function facts_load(hn, opts) { // ipaddr
       opts.debug && console.error("No 'ansible_facts' branch for host '" + hn + "'");
       // Sample a known property to "recover" a file
       var ipv4 = facts.ansible_all_ipv4_addresses;
-      if (!ipv4) { return; }
+      if (!ipv4) { return null; }
       facts0 =  facts; // Facts *DIRECTLY*
     }
     facts = facts0;
