@@ -45,15 +45,15 @@ var cfg = {
   }
 };
 var acts = [
-  {
-    "id": "configedit",
-    "title": "Edit Most important parts of config (Do not use, Work in progress)",
-    "cb": null,
-    "opts": [],
-  },
+  //{
+  //  "id": "configedit",
+  //  "title": "Edit Most important parts of config (Do not use, Work in progress)",
+  //  "cb": null,
+  //  "opts": [],
+  //},
   {
     "id": "hostsetup",
-    "title": "Check host reachability and gather facts",
+    "title": "Check host reachability and gather facts. This is a primary prerequisite for all other operations.",
     "cb": hostsetup,
     "opts": [],
   },
@@ -115,7 +115,7 @@ var argv2 = process.argv.slice(2);
 var op = argv2.shift();
 if (!op) { usage("No subcommand"); }
 var opnode = acts.filter(function (on) { return op == on.id; })[0];
-if (!opnode) { usage("No op: "+op+". Need subcommand !"); }
+if (!opnode) { usage("No such op/subcommand available: "+op+". Need valid subcommand !"); }
 if (!opnode.cb) { usage("Opnode missing CB !"); }
 getopt = new Getopt(clopts);
 var opt = getopt.parse(argv2);
@@ -149,7 +149,7 @@ function apperror(msg) {
 function hostsetup (opts) {
   
   var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
-  var pass = opts.pass || process.env["ANSIBLE_PASS"];
+  var pass = opts.pass || process.env["ANSIBLE_PASS"] || mcfg.ansible.sudopass;
   if (!pass) { console.log("Need password for Ansible sudo user (--pass or env. ANSIBLE_PASS)"); process.exit(1); }
   opts.pass = pass;
   // Access loaded things
@@ -157,12 +157,24 @@ function hostsetup (opts) {
   console.log("Num Host items:" + hostnames.length);
   //console.log("Host params:\n"+ JSON.stringify(cfg.hostparams, null, 2));
   // Ping hosts ? extract facts ?
+  var hostarr = hlr.facts_load_all();
+  console.log(cfg.hostarr.length + " facts gathered.");
   netprobe.probe_all(cfg.hostarr, "net", function (err, results) {
-      if (err) { console.log(err); process.exit(); } // usage("Failed net probing: "+ err);
-      console.log(results);
+      if (err) { apperror("Error checking hosts: "+err); } // usage("Failed net probing: "+ err);
+      //console.log("Net probe results: "+JSON.stringify(results, null, 2));
+      // Report on Network connectivity (Sync., could be a func)
+      // function netprobe_to_md(results) {
+      var rep = "";
+      results.forEach(function (it) {
+        console.log("# "+ it.hname);
+        console.log("  - Reachable by ping: "+ (it.ping ? "Yes" : "No"));
+        if (!it.ping) { it.ssherr = "Even Ping does not work"; }
+        console.log("  - Found in DNS: "+ (it.nameok ? "Yes" : "No"));
+        console.log("  - Reachable by SSH: "+ (it.ssherr ? "No ("+it.ssherr+")" : "Yes"));
+      });
       // Detect ansible ?
       
-      console.log("Probe of all hosts ran ok. Run subcommand facts ...");
+      console.log("Probe run on all hosts. Run subcommand facts ...");
       // gather_facts(mcfg);
       gather_facts_setup(mcfg);
     });
@@ -180,14 +192,15 @@ function hostsetup (opts) {
    * TODO: Consider using --extra-vars serialization from ans module
    */
   function gather_facts_setup(mcfg) {
-    // 
+    // Override with a temp facts path
     mcfg.fact_path = "/tmp/facts2"; // DEBUG !!! TEMP Location ?
     var xpara = "ansible_sudo_pass=" + opts.pass;
     xpara += " ansible_user=" + (opts.user || process.env["USER"]);
     var cmd = "ansible all -i "+mcfg.hostsfile+"  -b -m setup --tree "+mcfg.fact_path+" --extra-vars \""+xpara+"\"";
-    cproc.exec(cmd, function (err, stdout, stderr) {
+    // Increase stdout buffer (to get rid of nasty warnings, even if non-fatal)
+    cproc.exec(cmd, {maxBuffer: 1024 * 500}, function (err, stdout, stderr) {
       if (err) {
-        console.error("Failed partially / completely to gather facts: " + err);
+        console.error("Failed partially or completely to gather facts: " + err);
         //console.log("STDOUT:" + stdout);
         //console.log("STDERR:" + stderr);
         //console.log("Tried to gather facts into path: " + mcfg.fact_path);
@@ -437,7 +450,7 @@ function bootbins(opts) {
     // flags - 3rd param
     var flags = fs.constants.COPYFILE_EXCL; // fs.constants.COPYFILE_FICLONE fs.constants.COPYFILE_FICLONE_FORCE
     try { fs.copyFileSync(src, dest ); } catch (ex) { console.log("Error Copying "+src+"... skip"); return; }
-    var mode = 0644; // fs.constants.S_IWUSR; // Must "OR" lot of constants
+    var mode = 0o644; // fs.constants.S_IWUSR; // Must "OR" lot of constants
     fs.chmodSync(dest, mode); // Must change to user writable to prevent nasty chain-reaction.
     // console.log(dest + " Current File Mode:",  fs.statSync(dest).mode);
     i++;
@@ -457,6 +470,7 @@ function bootbins(opts) {
  * @param local {string} - Local path (scp compatible source path)
  * @param remloc {string} - Remote server and path in format server:/path/to/dest/
  * @param cb {function} - Callback to call after asyncronous file sync.
+ * See also (for spawn/exec data buffering / handlers): https://stackoverflow.com/questions/23429499/stdout-buffer-issue-using-node-child-process
  */
 function scp_sync(local, remloc, opts, cb) {
   opts = opts || {};
