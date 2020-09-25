@@ -209,6 +209,7 @@ function bootgui(ev, act) {
   }); // 
   tftplist();
   medialist();
+  recipes();
   // {params: para}
   
 }
@@ -225,18 +226,18 @@ function tftplist() {
   }
 // Click handler for 
 function defboot_reset(jev) {
-      var macfname = this.dataset.macfname;
-      // DEBUG:alert("Reset " + macfname);
-      var url = "/bootreset?macfname="+macfname;
-      axios.get(url).then(function (resp) {
-        var d = resp.data;
-        if (d.status == "err") { return toastr.error("Error resetting boot for "+macfname+ "\n"+d.msg); }
-        toastr.info("Successfully reset boot to default menu.");
-        //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
-        tftplist();
-      }).catch(function (ex) { toastr.error(ex.toString()); });
-      return false;
-    }
+  var macfname = this.dataset.macfname;
+  // DEBUG:alert("Reset " + macfname);
+  var url = "/bootreset?macfname="+macfname;
+  axios.get(url).then(function (resp) {
+    var d = resp.data;
+    if (d.status == "err") { return toastr.error("Error resetting boot for "+macfname+ "\n"+d.msg); }
+    toastr.info("Successfully reset boot to default menu.");
+    //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
+    tftplist();
+  }).catch(function (ex) { toastr.error(ex.toString()); });
+  return false;
+}
 function medialist() {
   axios.get("/medialist").then(function (resp) {
     var d = resp.data;
@@ -262,6 +263,28 @@ function medialist() {
       }).catch(function (ex) { toastr.error(ex.toString()); });
       return false;
     });
+  }).catch(function (err) { console.log(err); });
+}
+function recipes() {
+  function recipe_cell(val, item) {
+    return "<a href=\""+val+"?ip="+item.ipaddr+"\">"+val+"</a>";
+  }
+  axios.get("/recipes").then(function (resp) {
+    var d = resp.data;
+    console.log(d);
+    var fis  = d.grid;
+    var urls = d.urls;
+    var data = datasets["hostlist"]; //
+    var i = 0;
+    fis.forEach((fi) => {
+      if (fi.name == 'hname') { console.log("Skipping: " + fi.name); return; }
+      var name = fi.name;
+      fi.itemTemplate = recipe_cell;
+      data.forEach((it) => { it[name] = urls[i]; });
+      i++;
+    });
+    
+    showgrid("jsGrid_recipes", data, fis);
   }).catch(function (err) { console.log(err); });
 }
 //////////// Dialog handlers ////////////////////
