@@ -389,12 +389,17 @@ function csv_parse_data(cont, opts) {
   });
   return arr;
 }
-/** Load special hosts from CSV file (TODO: json, sqlite).
+/** Load special hosts from CSV file.
+ * Parsing for CSV is "naive" - and does not allow any quotes in file.
+ * @param fname {string} - CSV filename
+ * @param global {object} - Main configuration (will be used to generate facts heuristically by "guessing" good values)
+ * @param iptrans {object} - Optional legacy IP translation "fixup" table. Usage not recommended (and there's no need with proper DHCP).
+ * TODO: json, sqlite ?
  */
 function customhost_load(fname, global, iptrans) {
   // TODO: Analyze hostname, detect format.
   if (!fs.existsSync(fname)) { console.log("No customhost file "+ fname);return; }
-  var arr = csv_parse(fname);
+  var arr = csv_parse(fname); // AoO (Array of objects)
   console.log("Customhost (parsed):", arr);
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
