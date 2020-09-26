@@ -119,8 +119,8 @@ function pkgstat(jev, act) {
 
 // Output Gen
 function outfmts(ev, act) {
-  axios.get('/allhostgen').then(function (response) {
-    var outtypes = response.data || [];
+  axios.get('/allhostgen').then(function (resp) {
+    var outtypes = resp.data || [];
     var tpara = {outtypes: outtypes};
     //var otmpl = document.getElementById("outputs").innerHTML;
     //var olistout = Mustache.render(otmpl, tpara);
@@ -144,7 +144,7 @@ function dockercat_show(ev, act) {
     var d = resp.data;
     if (!d || !d.data) { return $('#denvinfo').html("No Docker Env. Info"); }
     //console.log(d.data);
-    // Late-Templating
+    // Late-Templating (after we have data)
     var cont = rapp.templated("dockercat", d.data);
     $('#'+act.elsel).html(cont); // Redo with results of late-templating (w. d.data)
     showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
@@ -224,7 +224,7 @@ function tftplist() {
     $(".defboot").click(defboot_reset);
   }).catch(function (err) { console.log(err); });
   }
-// Click handler for 
+// Click handler for Boot item reset (to default)
 function defboot_reset(jev) {
   var macfname = this.dataset.macfname;
   // DEBUG:alert("Reset " + macfname);
@@ -265,6 +265,10 @@ function medialist() {
     });
   }).catch(function (err) { console.log(err); });
 }
+
+/** Present a Preview grid on various supported recipes.
+ * Should also include other templated content (e.g. boot menu).
+ */
 function recipes() {
   function recipe_cell(val, item) {
     return "<a href=\""+val+"?ip="+item.ipaddr+"\">"+val+"</a>";
@@ -274,7 +278,7 @@ function recipes() {
     console.log(d);
     var fis  = d.grid;
     var urls = d.urls;
-    var data = datasets["hostlist"]; //
+    var data = datasets["hostlist"]; // All hosts
     var i = 0;
     fis.forEach((fi) => {
       if (fi.name == 'hname') { console.log("Skipping: " + fi.name); return; }

@@ -573,9 +573,8 @@ function nfsinfo(hname, dialogsel, cb) {
 function rfinfo(hname, dialogsel, cb) {
   var tc = $('#redfish').html();
   if (!tc) { return alert("No template content"); }
-  axios.get("/rf/info/" + hname)
-  .then(function (response) {
-    var rd = response.data;
+  axios.get("/rf/info/" + hname).then(function (resp) {
+    var rd = resp.data;
     if (rd.status == 'err') { return alert(""+rd.msg); }
     //console.log("RFDATA", rd);
     var d = rd.data;
@@ -589,7 +588,7 @@ function rfinfo(hname, dialogsel, cb) {
     // Boot media Types
     var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {};
     if (mediatypes && Array.isArray(mediatypes)) { d.MediaValues = mediatypes; }
-    // Info / Link
+    // BMC (MC) Info / Link
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
     var out = Mustache.render(tc, d);
@@ -601,14 +600,16 @@ function rfinfo(hname, dialogsel, cb) {
         console.log(jev.originalEvent.target); // Same as this
         console.log("THIS:", this); // 2 elems ?
         console.log($(this).data('pxe'));
-        var url = "/rf/boot/"+hname;
+        var op = $(this).data('op');
+        var url = "/rf/"+op+"/"+hname;
         var btype = "";
         if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
         console.log("use URL: "+url);
-        axios.get(url).then((resp) => {
+        // var tid = setTimeout(() => {}, 10000);
+        axios.get(url).then(function (resp) {
           console.log(resp.data);
-          toastr.info("Boot in Progress on "+hname+btype);
-        }).catch((err) => { alert(err); });
+          toastr.info("Op "+op+" executed on "+hname+btype); // in Progress
+        }).catch(function (err) { alert(err); });
       });
     }
     uisetup();
