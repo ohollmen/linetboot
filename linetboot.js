@@ -191,13 +191,14 @@ function app_init() { // global
   // NFS/Showmounts
   
   app.get('/showmounts/:hname', showmounts);
-  // Redfish Info or Reboot /rf/boot/, /rf/info
+  // Redfish Info or Reboot /rf/boot/, /rf/info /rf/setpxe
   app.get('/rf/:op/:hname', host_reboot);
   // RF Test URL/handler
   //app.post('/rf/boot/:hname', reboot_test); // For testing
   
   app.post('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
   app.get('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
+  app.patch('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
   
   app.get("/dockerenv", dockerenv_info);
   app.get("/config", config_send);
@@ -1119,22 +1120,23 @@ function host_pkg_stats(req, res) {
   });
   res.json({status:"ok", data: arr, grid: gdef});
 }
-/** Reboot host using BMI by RedFish.
- * Pass hostname to reboot. The IPMI/BMI address is figured out here.
+/** Reboot host using BMI by RedFish (Always GET for simplicity).
+ * Pass URL path embedded parameters:
+ * - :hname - hostname to reboot. The IPMI/BMI address is figured out here. (e.g. bld-001.mycomp.com in /boot/bld-001.mycomp.com)
+ * - :op - Operation (Options: info,boot,setpxe)
  * Require PIN ?
  * Always validate host and its identity from facts.
  * TODO: Consider interrogating ".../Systems/" and choosing resp.Members[0]["@odata.id"]
- * URL Path params: ":hname", e.g. /reboot/bld-001.mycomp.com
+ * URL Path params: ":hname", e.g. /boot/bld-001.mycomp.com
  * Operation is extracted from URL path param 
  * Query Params:
- * - OLD: op - Operation: info, boot - MOVE TO URL !
  * - test - test/debug only, returns early and returns a planned mock-up message without making chained HTTP request
  * - pxe - Use PXE boot on next boot (Possibly an install, maintenance or memory test)
- * - pin - pin authorization code for reboot
+ * - pin - pin authorization code for reboot (NOT USED)
  * Config "ipmi.testurl" - changes the url to a mock-up tese url
- * Could first query "PowerState" by GET
+ * Could first query "PowerState", "Id" (e.g. "Id": "System.Embedded.1",) "@odata.id" ... by GET
  * Examples for URL call:
- * 
+ * ```
  * Info Only
  * curl  -X GET https://foo.com/redfish/v1/Systems/System.Embedded.1/ -u admin:admin --insecure | python -m json.tool | less
  * Boot (Pxe)
@@ -1144,6 +1146,8 @@ function host_pkg_stats(req, res) {
  * # May need: -H "Content-Type: application/json" -d "... data ..."
  * curl -X POST https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset -u a:b --insecure -d @boot.json
  * curl -X PATCH https://10.75.159.81/redfish/v1/Systems/System.Embedded.1/ -u a:b --insecure -d '{"Boot": {"BootSourceOverrideTarget": "Pxe"}}'
+ * ```
+ * 
  * Need to reset earlier ... ResetType or BootSourceOverrideTarget ???
  * 
  * TODO:
@@ -1173,7 +1177,7 @@ function host_reboot(req, res) {
   var rmc = global.ipmi || {};
   var rmgmtpath = process.env['RMGMT_PATH'] || rmc.path ||  process.env['HOME'] + "/.linetboot/rmgmt"; // Duplicated !
   //var rfmsg = {"ResetType": "GracefulRestart", }; // "BootSourceOverrideTarget": "Pxe"
-  var rfmsg = {"ResetType": "PowerCycle", }; // ForceRestart
+  //var rfmsg = {"ResetType": "PowerCycle", }; // ForceRestart
   var rq = req.query;
   var p = req.params;
   
@@ -1183,13 +1187,11 @@ function host_reboot(req, res) {
   if (!rq) {  jr.msg += " No Query params."; return res.json(jr); }
   var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
-  // if (req.body) { console.log("Express-body: ",req.body); } // Always {}
-  //if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; } // PXE !
-  if (p.op == 'boot' && rq.pxe) { p.op = "setpxe"; } // Need both !? - NOT
-  if (rq.test) { return res.json(rfmsg); }
   
-  var rfop = new redfish.RFOp(p.op, ipmiconf);
-  if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
+  if (p.op == 'boot' && rq.pxe) { console.log("pxe=true, Use op=setpxe"); p.op = "setpxe"; } // Need both ops !? - NOT if kept strictly separate
+  if (rq.test) { return res.json({status: "ok", test: 1}); } // rfmsg
+  
+  
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " No facts, Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
@@ -1198,34 +1200,17 @@ function host_reboot(req, res) {
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
   
-  //function opurl(op, rmgmt, rebooturl, ipmiconf) {
-  //  
-  //}
-  //var bauth = redfish.basicauth(ipmiconf);
-  // TODO: Call Base URL to detect/discover several things
   
-  // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi" ("PowerCycle")
-  // failed: Unsupported Reset Type:ColdBoot"
-  // HP wants: “ResetType”: “ColdBoot”
-  // Get IPMI / iDRAC URL. All URL:s https.
-  // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
-  var sysid = "1"; // HP, Others ?
-  if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
-  var rebooturl = {
-    "base": "/redfish/v1/",
-    "info": "", // Add NONE
-    "boot": "/Actions/ComputerSystem.Reset", // POST
-    "noot_p": "", // PATCH
-  // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
-  // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
-  // /redfish/v1/UpdateService/Actions/Oem/DellUpdateService.Install
-  };
+  var rfop = new redfish.RFOp(p.op, ipmiconf).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
+  rfop.debug = 1;
+  console.log("Constructed RFOp", rfop);
+  
   // use IP Address to NOT have to use DNS to resolve.
   //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
-  //NONEED: if (ipmiconf.testurl) { rfurl = ipmiconf.testurl; }
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
-  rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  //rfop
   rfop.request(rmgmt.ipaddr, ipmiconf);
   return;
   //var meth = rfop.m; //var meth = ops[p.op];
@@ -1245,6 +1230,7 @@ function host_reboot(req, res) {
   // Advanced handling: https://github.com/axios/axios/issues/960
   function hdl_redfish_succ(resp) {
     var status = resp.status;
+    console.log("RF Success:"+status);
     var d = resp.data;
     if (resp.headers) { console.log("resp-hdr:",resp.headers); }
     // Possible errors
@@ -1255,8 +1241,8 @@ function host_reboot(req, res) {
     // Boot response does not have body (is empty string), but has 204 status
     console.log(rfop.m + "-Success-response-data("+status+"): ",resp.data); // meth+ 
     if (!d && (status == 204)) { d = {"msg": "204 ... RedFish Boot should be in progress"};}
-    if (d) { d.msgsent = rfmsg; }
-    var mcinfo = {ipaddr: rmgmt.ipaddr};
+    if (d) { d.msgsent = rfop.msg; } // OLD: rfmsg
+    var mcinfo = { ipaddr: rmgmt.ipaddr };
     res.json({"status":"ok", data: d, mcinfo: mcinfo});
   }
   // 400 (e.g. 404), 500 ?
@@ -1267,21 +1253,53 @@ function host_reboot(req, res) {
   //     - Secondary problem: Using valid "ForceRestart" + "Pxe" does normal boot, not PXE
   function hdl_redfish_err(err) {
     // TODO: See how to get resp from here.
+    console.log("RF Error: ...");
     var resp = err.response;
     if (!resp) { console.log("No (axios) response object in error !"); }
     jr.msg += err.toString();
     resp && console.log(resp.statusText); // Has: status, statusText
     resp && console.log(JSON.stringify(resp.data, null, 2));
     console.log(rfop.m + " Error: "+err); // meth+
+    var messages = [];
     if (resp && resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
       var arr = resp.data.error["@Message.ExtendedInfo"];
-      jr.messages = arr.map(function (it) { return it.Message; }); 
+      messages = arr.map(function (it) { return it.Message; });
+      
     }
+    jr.messages = messages;
     res.json(jr);
   }
   // Used to have ipmitool in here. See ipmi.ipmi_cmd()
-  //res.json({bauth: bauth, rfmsg: rfmsg, rfurl:rfurl, p: p});
+  //DONOTUSE: res.json({bauth: bauth, rfmsg: null, rfurl:rfurl, p: p}); // rfmsg
 }
+
+  // if (req.body) { console.log("Express-body: ",req.body); } // Always {}
+  //if (rq.pxe) { rfmsg.BootSourceOverrideTarget = 'Pxe'; } // DOES NOT WORK w. POST
+  //function opurl(op, rmgmt, rebooturl, ipmiconf) {
+  //  
+  //}
+  //var bauth = redfish.basicauth(ipmiconf);
+  // TODO: Call Base URL to detect/discover several things
+  
+  // Dell opts for ResetType: "On","ForceOff","GracefulRestart","PushPowerButton","Nmi" ("PowerCycle")
+  // failed: Unsupported Reset Type:ColdBoot"
+  // HP wants: “ResetType”: “ColdBoot”
+  // Get IPMI / iDRAC URL. All URL:s https.
+  // The <id> part may be (e.g.) "1" (HP) or "System.Embedded.1" (Dell) or "437XR1138R2" (example)
+  //var sysid = "1"; // HP, Others ?
+  //if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
+  /*
+  var rebooturl = {
+    "base": "/redfish/v1/",
+    "info": "", // Add NONE
+    "boot": "/Actions/ComputerSystem.Reset", // POST
+    "noot_p": "", // PATCH
+     // "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset/" // HP ? Seems more standard per initial spec (e.g. 121015_intro_to_redfish.pdf)
+     // "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset" // Dell ?
+     // /redfish/v1/UpdateService/Actions/Oem/DellUpdateService.Install
+  };
+  */
+
 /* POST to simulate RF response (Used internally when ipmiconf.testurl is set). 
  * Only contains partial subset of RF response.
  */
