@@ -289,8 +289,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>BMC IP Address: {{#ipaddr}}<a href="https://{{{ipaddr}}}/">{{{ipaddr}}}</a>{{/ipaddr}}</li>
 <!-- <li>ODATA ID:  [@odata.id] </li> -->
 </ul>
-<input class="bbut" type="button" data-hname="{{{ hname }}}" value="Boot">
-<input class="bbut" type="button" data-hname="{{{ hname }}}" data-pxe="1" value="Set PXE Next-Boot">
+<input class="bbut" type="button" data-hname="{{{ hname }}}" data-op="boot" value="Boot">
+<input class="bbut" type="button" data-hname="{{{ hname }}}" data-op="setpxe" data-pxe="1" value="Set PXE Next-Boot">
 </script>
 
 <script id="dockercat" type="text/template">
@@ -409,6 +409,10 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <hr>
 <h4>Mounted ISO Boot Media</h4>
 <div id="jsGrid_bootmedia"></div>
+
+<h4>Install Recipes</h4>
+<div id="jsGrid_recipes"></div>
+
 </script>
 
 <script id="mitmpl" type="text/template">
