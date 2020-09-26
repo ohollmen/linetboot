@@ -40,6 +40,11 @@ var ops = [
     cb: boot,
   },
   {
+    "id": "setpxe",
+    "title": "Set next boot to be PXE on host passed by -h ",
+    cb: boot,
+  },
+  {
     "id": "install",
     "title": "Request Boot or Install of a host with (one of valid) bootlbl. Use -h host -b bootlbl.",
     cb: install,
@@ -103,28 +108,28 @@ function usage(msg) {
 function help() {
   usage("");
 }
-/** Get (RedFish) Info on host or Boot it.
+/** Get (RedFish) Info on host (info) Boot it (boot) or set Boot mode to PXE (setpxe).
 * Options must have 'host' (one or hosts more hosts to boot), and may have 'pxe' (Boot by PXE)
 */
 function boot(opts) {
-  var rmgmtop = opts.op; // "info" / "boot" Use: opts.op;
+  var rmgmtop = opts.op; // "info", "boot" or "setpxe" Use: opts.op;
   // console.log("Op: " + opts.op);
   if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h )!"); }
   
   var baseurl = cfg.httphost + "/rf/"+rmgmtop+"/"; // Append hname !
   //
-  console.log("Should boot hosts:", opts.host);
+  console.log("Should run op '"+opts.op+"' on hosts:", opts.host);
   console.log(".. using URL:" + baseurl + " + host");
-  async.map(opts.host, doboot, function (err, ress) {
-    if (err) { console.log("Boot/Info Error"+err); return 1;}
-    // console.log("Complete !");
+  async.map(opts.host, bmcop, function (err, ress) {
+    if (err) { console.log(rmgmtop +" Error"+err); return 1;} // Boot/Info/SetPXE
+    console.log(rmgmtop+" Success ...");
     console.log(JSON.stringify(ress, null, 2));
     return 0;
   });
-  function doboot(hn, cb) {
+  function bmcop(hn, cb) {
     // console.log("Operate single host: " + hn);
     var url = baseurl+hn+"?";
-    if (opts.pxe) { url += "pxe=1";}
+    if (opts.pxe) { url += "pxe=1"; }
     axios.get(url).then(function (resp) {
       var d = resp.data;
       // console.log("DATA:", d);
@@ -133,7 +138,7 @@ function boot(opts) {
       if (d.status == 'err') { return cb(d.msg, null ); }
       return cb(null, d.data); // OK
     }).catch(function (ex) {
-      console.log("Encountered Error: "+ ex);
+      console.log("Encountered Error (host: "+hn+"): "+ ex);
       cb(ex.toString(), null)
     });
   }
@@ -148,6 +153,7 @@ function install(opts) {
   var url = cfg.httphost + "/install_boot?";
   if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h )!"); }
   if (!opts.bootlbl) { return usage("No bootlbl parameter to indicate boot item."); }
+  // TODO: Support multiple hosts (with async.map())
   var hn = opts.host[0]; url += "hname="+hn;
   var bl = opts.bootlbl; url += "&bootlbl="+bl;
   console.log("Calling: "+url);
@@ -164,7 +170,7 @@ function install(opts) {
     console.log("Error during Linetboot boot / install call: "+ex);
   });
 }
-/** List Boot Options (listos).
+/** List Boot Options (listos) or list hosts (listhosts).
 * 
 */
 function listos(opts) {
@@ -193,6 +199,6 @@ function listos(opts) {
     }).catch(function (ex) {
       
       //cb(ex.toString(), null);
-      console.error("Error querying OS:s: "+ex);
+      console.error("Error querying OS:s or Hosts: "+ex);
     });
 }
