@@ -140,7 +140,7 @@ function init(conf, _patch_params) {
     var e = {url: k, ctype: tmplmap[k], tmpl: tmplfiles[ctype]};
     recipes.push(e);
   });
-  console.log("NEW recipes array: ", recipes);
+  //console.log("NEW recipes array: ", recipes);
 }
 
 /** Set URL handlers for all recipe URL:s.
@@ -611,6 +611,10 @@ function script_send(req, res) {
     if (tpc == 'user') { p = user; }
     if (tpc == 'net') { p = global.net; } // TODO: adjust
     if (tpc == 'global') { p = global; }
+    // Custom ... how to formulate this into more static config ? clone global and add ?
+    if (tpc == 'sysinfo') {
+      p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetnode: process.execPath};
+    }
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p);
   }
