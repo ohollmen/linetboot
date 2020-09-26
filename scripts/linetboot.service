@@ -1,0 +1,19 @@
+[Unit]
+# TEMPLATE_WITH: sysinfo
+# Lineboot systemd startup file. This works very much like
+# starting linetboot by PM2, but has much more appeal to Linux
+# Devops/Admin people and provides the "standard" systemd interface
+# to starting, stopping, restaring and seeing status of Linetboot.
+Description=Linetboot - Linux Network Boot and Install App
+After=network.target
+
+[Service]
+Type=simple
+User={{ linetuser }}
+# Distro Out-of-Box Node is typically /usr/bin/node
+ExecStart={{{ linetnode }}} {{{ linetapproot }}}/linetboot.js
+WorkingDirectory={{{ linetapproot }}}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
