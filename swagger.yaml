@@ -60,7 +60,7 @@ paths:
   /bootreset?macfname=$macfname:
     get:
       summary: Reset a stored "Boot Label" for a host
-      description: Request a host (by MAC filename) to be reset to default boot (boot menu) instead of "Boot Label" it was given earlier.
+      description: Request a host (by MAC filename or auto-detected client IP address) to be reset to default boot (boot menu) instead of "Boot Label" it was given earlier.
       produces:
         - application/json
       responses:
