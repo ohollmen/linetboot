@@ -279,7 +279,7 @@ function app_init() { // global
     mod = require(modfn);
     if (!mod || !mod.run || typeof mod.run != 'function') {
       console.error("Error: module either 1) Not present 2) Does not have run() member 3) run member is not a callable");
-      return;
+      return; // exit() ?
     }
     console.log("Loaded app custom module: "+ modfn + " ... running it ...");
     // Call for local customization
@@ -1495,23 +1495,25 @@ function tftp_listing(req, res) { // global
 }
 /** Reset the earlier set custom PXE boot back to default boot menu.
  * Pass "macfname" or allow lineboot to auto-detect IP address.
+ * Implicitly also resets the (RedFish) boot setting "BootSourceOverrideTarget" to "None".
  * TODO: Allow reset by hostname "" to allow access from linet.js
  * Testing by client ip auto-detection: curl http://linethost:3000/bootreset
  */
 function bootreset(req, res) {
-  var jr = {status: "err", "msg": "Could not reset old boot request. "};
+  var jr = {status: "err", "msg": "Could not reset custom boot target. "};
   var q = req.query || {};
   var tcfg = global.tftp;
   var ipmicfg = global.ipmi;
   if (!tcfg) { jr.msg += "No TFTP Config inside main config"; return res.json(jr); }
   if (!ipmicfg) { jr.msg += "No IPMI Config inside main config"; return res.json(jr); }
   //if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
+  var f;
   if (!q.macfname) {
     // Fall back to detecting IP address of client
     var ip = osinst.ipaddr_v4(req);
     console.log("bootreset: Choose rest-host by auto detecting IP: "+ip);
     if (!ip) { jr.msg += "No Boot menu file name or IP address detected"; return res.json(jr); }
-    var f = hostcache[ip];
+    f = hostcache[ip];
     if (!f) { jr.msg += "No Facts found by IP address " + ip; return res.json(jr); }
     //var mac;
     //try { mac = f.ansible_default_ipv4.macaddress; }
@@ -1523,7 +1525,13 @@ function bootreset(req, res) {
     q.macfname = macfname;
     console.log("Translated client IP "+ip+" to macfname: "+macfname+"");
   }
-  
+  // As minimum ensure this is valid host
+  else {
+    var mac = tboot.macfilename_to_mac(q.macfname);
+    if (!mac) { jr.msg += "No mac derived from mac filename (for facts lookup)"; return res.json(jr);}
+    f = hostcache[mac];
+    if (!f) { jr.msg += "No Facts found by mac " + mac; return res.json(jr); }
+  }
   // TODO: if (q.hname) {
   //   var f = hostcache[q.hname];
   //   var macaddr = f.ansible_default_ipv4.macaddress;
@@ -1538,14 +1546,25 @@ function bootreset(req, res) {
   if (!fs.existsSync(fullfn)) { jr.msg += "Boot menu file not there"; return res.json(jr); }
   try { tboot.bootmenu_link_default(tcfg, q.macfname); }
   catch (ex) { console.log(ex.toString()); jr.msg + "Error Re-Establishing default menu linking: " + ex.toString(); return res.json(jr); }
+  // Lookup rmgmt
+  // var rmgmtpath = global.ipmi.path;
+  if (!ipmicfg.path) { jr.msg += "No rmgmt path in config"; return res.json(jr);}
+  var rmgmt = ipmi.rmgmt_load(f, ipmicfg.path);
+  if (!rmgmt) { jr.msg += "No rmgmt info by facts"; return res.json(jr); }
   // TODO: Call Redfish to make patch to {BootSourceOverrideTarget: "None"}
-  // var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
-  // We can doe this because message is cloned for this instance. Basically becomes "unset-PXE"
-  // rfop.msg.Boot.BootSourceOverrideTarget = "None"; // None => Cancel
-  // rfop.request(rmgmt.ipaddr, ipmicfg);
+  var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  // We can do this because message is cloned for this instance. Basically becomes "unset-PXE"
+  rfop.msg.Boot.BootSourceOverrideTarget = "None"; // None => Cancel
+  rfop.request(rmgmt.ipaddr, ipmicfg);
   // Reload new data like in tftp_listing() ?
-  var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1); // 1=
-  res.json({status: "ok", data: list});
+  function hdl_redfish_succ(resp) {
+    var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1); // 1=??
+    res.json({status: "ok", data: list});
+  }
+  function hdl_redfish_err(err) {
+    jr.msg += err.toString();
+    return res.json(jr);
+  }
   
 }
 /** List Media directories (Under maindocroot)
