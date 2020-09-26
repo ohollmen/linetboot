@@ -42,6 +42,11 @@
       "grp":"ins"
     },
     {
+      "title" : "OS Installation",
+      "urlpath" : "doc/README.osinstall.md",
+      "grp":"osi"
+    },
+    {
       "title" : "Disks and Disk Partitioning",
       "urlpath" : "doc/README.disk.md",
       "grp":"osi"
