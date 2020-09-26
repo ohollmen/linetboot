@@ -1,4 +1,8 @@
-/**
+/** @file
+ * 
+ * # RedFish Operations on BCM
+ * 
+ * This module allows executing simple high level Remote management operations via RedFish BMC API.
  * 
  * # Typical sequence of Setting up RFOp:
  * 
@@ -9,8 +13,16 @@
  *      rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
  *      // Call host by MC ip address
  *      rfop.request(rmgmt.ipaddr, ipmiconf);
+ * # TODO
+ * Consider a mandatory "discovery call" to "/redfish/v1/Systems/System.Embedded.1/" (or equivalent).
+ * One of the rmaing (chicken-and-egg type) problems is that to formulate the info URL the "Id" in info response is needed.
+ * The discovery call would help:
+ * - Choosing appropriate "ResetType" (preference order could be set by module)
+ * - Get to know "PowerState"
+ * - 
  */
 var axios = require("axios");
+// TODO: Embed templating fragment for {{ sysid }} ?
 var ops = [
     {"id":"boot",  "m": "post",  url: "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset", msg: {"ResetType": "PowerCycle", } },
     {"id":"info",  "m": "get",   url: "/redfish/v1/Systems/System.Embedded.1/"},
@@ -22,6 +34,14 @@ var ops_idx = {}; ops.forEach(function (op) { ops_idx[op.id] = op; });
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+/** Make a good guess on "Id" (system id) based on facts.
+ */
+function sysid(f) {
+  if (!f) { console.error("sysid: No facts"); return "1"; }
+  if (f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { return "System.Embedded.1"; }
+  return "1";
+}
+
 var isbodymeth = {"post":1, "put":1, "patch":1, };
 /** Construct an RedFish operation.
  * @param opid {string} - an operation registered in ops structure of redfish module.
@@ -31,6 +51,9 @@ function RFOp(opid, conf) {
   var op  = ops_idx[opid];
   this.id = op.id;
   this.m  = op.m;
+  // Test BMC / host vendor here to set / tweak URL (Or in makeurl)
+  // var sysid = "1";
+  // if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
   this.url = op.url;
   this.msg = op.msg ? JSON.parse(JSON.stringify(op.msg)) : null; // Copy !
   this.conf = conf; // TODO: utilize !
@@ -51,6 +74,8 @@ RFOp.add = function (op) {
 RFOp.prototype.makeurl = function (host, extra) {
   if (host.match(/\/$/)) { host = host.replace(/\/+$/, ''); }
   if (extra && extra.testurl) { return extra.testurl; }
+  // Check BMC and host type / vendor, decide on final URL, see also constructor
+  
   return "https://"+host+this.url;
 };
 /** Set success and error operations for (asynchronous) RedFish operation.
@@ -78,13 +103,14 @@ RFOp.prototype.request = function(host, auth) {
   var meth = this.m; //var meth = ops[p.op];
   if (!meth) { throw "request: meth missing in op:" + this.id; }
   // TODO: isbodymeth[meth]
-  if (!isbodymeth[meth]) { delete(hdrs["content-type"]); msg = null; }
+  if (!isbodymeth[meth]) { delete(hdrs["content-type"]); this.msg = msg = null; }
   var rfurl = this.makeurl(host, auth);
   console.log("Call("+meth+"): "+rfurl + "\nBody: ", msg, " headers: ", hdrs);
   var reqopts = {headers: hdrs, };
-  if (!this.succ || !this.err) { throw "One of success/error handlers missing (Call sethdlr(succ,err) for this)"; }
-  if (meth == 'post') { axios[meth](rfurl, msg, reqopts).then(this.succ).catch(this.err); }
-  if (meth == 'get') { axios[meth](rfurl, reqopts).then(this.succ).catch(this.err); }
+  //if (msg) { }
+  if (!this.succ || !this.err) { throw "One of success/error handlers missing (Call sethdlr(succ,err) for setting these)"; }
+  if (isbodymeth[meth]) { axios[meth](rfurl, msg, reqopts).then(this.succ).catch(this.err); }
+  else { axios[meth](rfurl, reqopts).then(this.succ).catch(this.err); }
 };
 
 // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
@@ -94,8 +120,11 @@ RFOp.prototype.request = function(host, auth) {
     var buff = new Buffer(obj.user + ":" + obj.pass); // , 'ascii'
     return buff.toString('base64');
   }
-  
+///// Possibly add HTTP handlers for RF Interaction here /////////////////
+// host_reboot
+
 module.exports = {
+  sysid: sysid,
   RFOp: RFOp,
   ops_idx: ops_idx,
   basicauth: basicauth
