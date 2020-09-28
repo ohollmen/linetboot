@@ -25,6 +25,7 @@ LINETDOC_PATH=/tmp/linetdoc
 LINETDOCS=prereq configure bootmedia bootmenu changes faq troubleshoot
 # # TODO: Use python markdown_py to support tables ?
 MDCONV=markdown
+
 all:
 	# TODO: Grep for the targets: grep -P ^\w+: Makefile
 	echo "Choose one of the valid targets" `grep -P '^\w+:' Makefile`
@@ -45,6 +46,8 @@ transdefault: FORCE
 # Make Boot menu for a local system hosting the TFTP
 default_local: gendefault
 	echo "Copy to local TFTP Server path"
+	# Backup !
+	#if [ -e /tmp/default $(TFTP_PATH_LOCAL)/pxelinux.cfg/default ]; then cp $(MEMDISK_PATH) $(PXETEMPDIR)/memdisk; fi
 	cp -p /tmp/default $(TFTP_PATH_LOCAL)/pxelinux.cfg/
 	rm /tmp/default
 # Fake target to set as dependency to force another target to run (despite what Make thinks about "is up to date" situation)
@@ -103,7 +106,8 @@ dia:
 	# In Debian/Ubuntu /usr/bin/plantuml is a nice wrapper
 	# to avoid starting by java -jar plantuml.jar ...
 	plantuml doc/netbootseq.plantuml
-	eog doc/netbootseq.png
+	plantuml doc/recipegen.plantuml
+	eog doc/netbootseq.png doc/recipegen.png
 test: FORCE
 	./test/test_http.sh
 # Create a default config in ~/.linetboot of current user.
@@ -147,3 +151,7 @@ htmldoc: FORCE
 
 	@ls -al $(LINETDOC_PATH)
 	echo "Point your browser to: file://$(LINETDOC_PATH)"
+mkmediadir:
+	#if 
+	cd /isomnt; sudo mkdir centos6 centos7 ubuntu18 ubuntu18dt ubuntu20 arch2019 \
+	   clzilla freebsd12 freedos1 gparted opensuse_tw_64
