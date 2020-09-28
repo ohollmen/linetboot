@@ -72,7 +72,8 @@ your existing file systems. On the other hand if the very distro and it's versio
 in PXE boot un-friendly way (with bugs and malfunctions) you might need to copy the files on image to
 a path location and alter them.
 
-The loop mount on BSD UNIX is said to use combination of mdconfig and mount.
+The loop mount on BSD UNIX is said to use combination of `mdconfig` and `mount` commands. In MacOS
+`hdiutil attach ...` facilitates eqivalent of Linuxloop mounts.
 
 After loop-back mounting you should make sure all the bootable distros will be available to linetboot
 via HTTP for the http server configured as "httpserver" in lineboot main config.
