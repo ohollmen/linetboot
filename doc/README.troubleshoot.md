@@ -1,7 +1,7 @@
 
 # Debugging and Troubleshooting
 
-## Linux installer on Install client host
+## Linux OS installer on Install client host
 
 - Ubuntu installer virtual console #4
   - Installer runtime (ramdisk?) /var/log/syslog (Only "more" pager is avail during install, also use tail -n 200 ...)
@@ -20,8 +20,8 @@
 ## Testing DHCP Client
 
 - Real (ISC) DHCP Client: /sbin/dhclient (-v = verbose, -x Stop the running DHCP client without releasing the current lease.)
-- dhcping - Not sure how this works sudo dhcping -s 192.168.1.107 reponds: "no answer"
-- sudo dhcpdump -i eno1 - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
+- dhcping - Not sure how this works (`sudo dhcping -s 192.168.1.107` reponds: "no answer")
+- `sudo dhcpdump -i eno1` - Only dumps traffic, attaches to an interface (utilizes tcpdump). Run `sudo dhclient` to monitor traffic (requests and responses). Must use separate terminals (e.g. virtual consoles) starting with boot, device detection, etc.
 
 ## Testing DHCP Server
 
@@ -88,3 +88,7 @@ the "dedicated" `inird` line (with *no* options). Either one needs to be there.
 
 dracut-initqueue[738]: Warning: dracut-initqueue timeout - starting timeout scripts
 
+## References
+- https://stackoverflow.com/questions/8504065/ubuntu-preseed-file-installation-hanging
+- https://stackoverflow.com/questions/27201419/automate-ubuntu-install-via-packer-stuck-at-welcome-screen
+- https://www.experts-exchange.com/questions/28918859/Debian-Preseed-Installation-process-stuck-at-18-at-finishing-installation.html
