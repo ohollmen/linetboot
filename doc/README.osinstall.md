@@ -122,6 +122,11 @@ hname,macaddr,ipaddr
 test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115
 test-002.mycorp.com,b0:26:30:f8:07:35,192.168.1.116
 ```
+To use admin too newhosts operation yuo *must* add (otherwise optional) column  "bmcipaddr"
+```
+hname,macaddr,ipaddr,bmcipaddr
+test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115,192.168.1.215
+```
 Based this info lineboot will heuristically generate "fake-facts" for these hosts (based on e.g. global network info) and add these
 in its internal (runtime) host lists, indexes, etc.
 Note: These hosts should not be entered in the inventory "hosts" file.
