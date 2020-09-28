@@ -27,6 +27,7 @@ var ops = [
     {"id":"boot",  "m": "post",  url: "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset", msg: {"ResetType": "PowerCycle", } },
     {"id":"info",  "m": "get",   url: "/redfish/v1/Systems/System.Embedded.1/"},
     {"id":"setpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "Pxe"}} },
+    {"id":"unsetpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "None"}} },
     {"id":"fwinv", "m": "get",   url: "/redfish/v1/UpdateService/FirmwareInventory"}, // Also multipart POST to upload (Note ETag)
     // "m":"post", url: UpdateService/Actions/UpdateService.SimpleUpdate} // SW URL in body
 ];
