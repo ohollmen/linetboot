@@ -31,7 +31,8 @@
     "pminfo": "echo 'The successful package manager of this week is npm.'",
     "deps": "npm install --no-save",
     "start": "node linetboot.js",
-    "startpm": "node_modules/pm2/bin/pm2 start linetboot.js"
+    "startpm": "node_modules/pm2/bin/pm2 start linetboot.js",
+    "gendoc": "node node_modules/jsdoc/cli.js *.js -R README.md -c .jsdoc.conf.js"
   },
   "keywords": [
     "pxe",
