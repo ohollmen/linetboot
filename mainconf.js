@@ -11,6 +11,7 @@
 * var mc = require("./mainconf.js");
 * var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
 * var mcfg = mc.mainconf_load(globalconf);
+* mc.env_merge(mcfg);
 * mc.mainconf_process(mcfg);
 * ```
 */
@@ -68,7 +69,7 @@ function mainconf_process(global) {
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
   
-  tilde_expand(global.inst, ["script_path"]);
+  tilde_expand(global.inst, ["script_path", "tmpl_path"]);
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
@@ -83,21 +84,30 @@ function mainconf_process(global) {
   // LINETBOOT_SSHKEY_PATH LINETBOOT_DEBUG LINETBOOT_IPTRANS_MAP LINETBOOT_SCRIPT_PATH
 function env_merge(global) {
   // TOP
-  if (process.env["FACT_PATH"]) 	    { global.fact_path = process.env["FACT_PATH"]; }
+  if (process.env["FACT_PATH"])           { global.fact_path = process.env["FACT_PATH"]; }
   if (process.env["LINETBOOT_DEBUG"])	    { global.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
   // INST
   if (process.env["LINETBOOT_USER_CONF"])   { global.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
   if (process.env["LINETBOOT_SSHKEY_PATH"]) { global.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
   if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = parseInt(process.env["LINETBOOT_SCRIPT_PATH"]); }
-  // TODO: LINETBOOT_TMPL_PATH
+  // NOT: split(/:/); ? Keep as is as our path resolver can use a string.
+  if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path = process.env["LINETBOOT_TMPL_PATH"]; }
+  // RMGMT_PATH
+  if (process.env["RMGMT_PATH"])            { global.ipmi.path = process.env["RMGMT_PATH"]; }
+  
   // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
 }
 function tilde_expand(obj, keyarr) {
   if (typeof obj != 'object') { throw "Not an object"; }
   if (!Array.isArray(keyarr)) { throw "Not an array (of keys)"; }
   var home = process.env['HOME'];
-    keyarr.forEach(function (pk) {
-    if (obj[pk] && (typeof obj[pk] == 'string')) { obj[pk] = obj[pk].replace('~', home); }
+  keyarr.forEach(function (pk) {
+    if (obj[pk] && (typeof obj[pk] == 'string')) {
+      // Replace ONCE ONLY
+      // obj[pk] = obj[pk].replace('~', home);
+      // In case we have many (e.g. PATH-string)
+      obj[pk] = obj[pk].replace(/~/g, home);
+    }
   });
 }
 
@@ -105,5 +115,6 @@ module.exports = {
   mainconf_load: mainconf_load,
   user_load: user_load,
   mainconf_process: mainconf_process,
+  env_merge: env_merge,
   tilde_expand: tilde_expand,
 };
