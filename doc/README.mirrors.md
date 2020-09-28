@@ -12,7 +12,7 @@ Reverse engineered:
 
 After installation Ubuntu remembers *the* mirror (provided by linetboot, ad-hoc) as authoritative mirror when running for example `sudo apt-get update`.
 This causes errors like (long paste for later analysis, shows well what all is "tried"):
-
+```
 sudo apt-get update
 Ign:1 http://10.85.233.180:3000/ubuntu18 bionic InRelease
 Ign:2 http://10.85.233.180:3000/ubuntu18 bionic-updates InRelease
@@ -40,6 +40,7 @@ W: Skipping acquire of configured file 'multiverse/binary-i386/Packages' as repo
 W: Skipping acquire of configured file 'multiverse/i18n/Translation-en_US' as repository 'http://10.85.233.180:3000/ubuntu18 bionic InRelease' doesn't have the component 'multiverse' (component misspelt in sources.list?)
 W: Skipping acquire of configured file 'multiverse/i18n/Translation-en' as repository 'http://10.85.233.180:3000/ubuntu18 bionic InRelease' doesn't have the component 'multiverse' (component misspelt in sources.list?)
 W: Skipping acquire of configured file 'multiverse/cnf/Commands-amd64' as repository 'http://10.85.233.180:3000/ubuntu18 bionic InRelease' doesn't have the component 'multiverse' (component misspelt in sources.list?)
+```
 
 /etc/apt/sources.list
 
