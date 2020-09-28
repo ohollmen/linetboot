@@ -79,6 +79,7 @@ function app_init() { // global
   console.log("Choosing mainconf: " + globalconf);
   global = mc.mainconf_load(globalconf);
   user = mc.user_load(global);
+  //mc.env_merge(global);
   mc.mainconf_process(global);
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
@@ -1508,7 +1509,8 @@ function bootreset(req, res) {
   if (!ipmicfg) { jr.msg += "No IPMI Config inside main config"; return res.json(jr); }
   //if (!q || !Object.keys(q).length) { jr.msg += "No Params"; return res.json(jr);}
   var f;
-  if (!q.macfname) {
+  // Likely an OS install (Detect IP)
+  if (!q.macaddr) { // q.macfname
     // Fall back to detecting IP address of client
     var ip = osinst.ipaddr_v4(req);
     console.log("bootreset: Choose rest-host by auto detecting IP: "+ip);
@@ -1518,39 +1520,46 @@ function bootreset(req, res) {
     //var mac;
     //try { mac = f.ansible_default_ipv4.macaddress; }
     //catch (ex) { jr.msg += ex.toString(); return res.json(jr); }
-    var macfname = tboot.menu_macfilename(f);
-    if (! macfname || (macfname.length != 20)) {
-      jr.msg += "No macfname derived by facts"; return res.json(jr);
-    }
-    q.macfname = macfname;
-    console.log("Translated client IP "+ip+" to macfname: "+macfname+"");
+    
   }
   // As minimum ensure this is valid host
   else {
-    var mac = tboot.macfilename_to_mac(q.macfname);
+    //var mac = tboot.macfilename_to_mac(q.macfname);
+    var mac = q.macaddr;
     if (!mac) { jr.msg += "No mac derived from mac filename (for facts lookup)"; return res.json(jr);}
     f = hostcache[mac];
     if (!f) { jr.msg += "No Facts found by mac " + mac; return res.json(jr); }
   }
+  
+  var macfname = tboot.menu_macfilename(f);
+  if (! macfname || (macfname.length != 20)) {
+    jr.msg += "No macfname derived by facts"; return res.json(jr);
+  }
+  //q.macfname = macfname;
+  console.log("Translated client IP or passed mac to macfname: "+macfname+"");
+  
   // TODO: if (q.hname) {
   //   var f = hostcache[q.hname];
   //   var macaddr = f.ansible_default_ipv4.macaddress;
   //   // MAC to MAC filename
   //   
   //}
-  // Validate format of name
-  if (!tboot.has_macfile_pattern(q.macfname)) { jr.msg += "Not a valid Boot menu file name"; return res.json(jr); }
-  console.log("macfname param validated. Formulating fullname and executing bootmenu_link_default()");
+  // Validate format of mac filename
+  if (!tboot.has_macfile_pattern(macfname)) { jr.msg += "Not a valid Boot menu file name"; return res.json(jr); }
+  console.log("derived macfname validated. Formulating fullname and executing bootmenu_link_default()");
   // Must exist
-  var fullfn = tcfg.root+ "/pxelinux.cfg/" + q.macfname;
+  var fullfn = tcfg.root+ "/pxelinux.cfg/" + macfname;
   if (!fs.existsSync(fullfn)) { jr.msg += "Boot menu file not there"; return res.json(jr); }
-  try { tboot.bootmenu_link_default(tcfg, q.macfname); }
+  try { tboot.bootmenu_link_default(tcfg, macfname); }
   catch (ex) { console.log(ex.toString()); jr.msg + "Error Re-Establishing default menu linking: " + ex.toString(); return res.json(jr); }
+  // NOTE: If rmgmt NOT in use.. respond syncronously by: return 
   // Lookup rmgmt
   // var rmgmtpath = global.ipmi.path;
-  if (!ipmicfg.path) { jr.msg += "No rmgmt path in config"; return res.json(jr);}
+  if (!ipmicfg.path) { hdl_redfish_succ({});   jr.msg += "No rmgmt path in config"; return res.json(jr);}
   var rmgmt = ipmi.rmgmt_load(f, ipmicfg.path);
-  if (!rmgmt) { jr.msg += "No rmgmt info by facts"; return res.json(jr); }
+  if (!rmgmt) { hdl_redfish_succ({}); jr.msg += "No rmgmt info by facts"; return res.json(jr); }
+  
+  
   // TODO: Call Redfish to make patch to {BootSourceOverrideTarget: "None"}
   var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
   // We can do this because message is cloned for this instance. Basically becomes "unset-PXE"
