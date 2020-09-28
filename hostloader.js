@@ -257,20 +257,28 @@ function groups_create(global, hostarr) {
   
 }
 
-/** Resolve file by name from ':' -separated path
+/** Resolve file (or dir) by name from paths of ':' -separated path string or an array of paths.
+ * Return the first resolvable match (possibly just the original filename if resolvable as-is).
+ * @param fname {string} - Filename (typically plain basename or relative name)
+ * @param path {array/string} - Paths as array or ":" - delimited path-string
+ * @return file with resolvable "more full" (not necessarily absolute) path or falsy value for non resolvable name.
 */
 function file_path_resolve(fname, path) {
+  var patharr;
   if (typeof fname != 'string') { throw "Filename is not a string"; }
-  if (typeof path != 'string')  { throw "Path is not a string"; }
-  var patharr = path.split(":");
-  console.log("file_path_resolve: Filename: ", fname);
-  console.log("file_path_resolve: Path for resolving files: ", patharr);
-  // Try fname as-is (from current dir)
-  if (fs.existsSync(fname)) { return fname; }
+  if (Array.isArray(path)) { patharr = path; }
+  else if (typeof path == 'string')  { patharr = path.split(":"); }
+  else { throw "Path is neither an array of paths or a path-string"; }
+  if (!fname) { console.log("Empty filename, no use in resolving..."); return ""; }
+  if (!patharr.length) { console.log("Empty path-array, no use in resolving..."); return ""; }
+  console.error("file_path_resolve: Filename: ", fname);
+  console.error("file_path_resolve: Path for resolving files: ", patharr);
+  // Try fname as-is (relative to current dir or by its abs name)
+  if (fs.existsSync(fname)) { console.error("file_path_resolve: File itself is resolvable: "+fname); return fname; }
   pathmatch = patharr.filter(function (path) {
     var fullfn = path + '/' + fname;
     if (fs.existsSync(fullfn)) { return 1; }
-    console.log("No match for(path+fname): " + fullfn);
+    console.error("file_path_resolve: No match for (path+fname): " + fullfn);
     return 0;
   });
   if (!pathmatch.length) { return ""; }
@@ -361,12 +369,13 @@ function host2facts(h, global) {
  * Opts:
  * - debug - Produce debug output
  * - sep - separator / delimiter. May be either string or regexp
- * - hdr - Array of headers
+ * - hdr - Array of headers to treat (already) the first line (basicaly every line) of CSV as (non-header) data.
+ *         Not setting this (to array) makes parser treat first line of CSV as headers.
  * - max - Max number of fields (-1 = Use all)
- * @return array of object formulated per first / header line.
+ * @return array of objects (AoO) formulated per first / header line.
  */
 function csv_parse(fname, opts) {
-  opts = opts || {};
+  // opts = opts || {}; // Keep undefined to set good defaults !
   if (!fs.existsSync(fname)) { console.log("No CSV file "+ fname);return null; }
   var cont = fs.readFileSync(fname, 'utf8');
   return csv_parse_data(cont, opts);
@@ -375,6 +384,8 @@ function csv_parse(fname, opts) {
 function csv_parse_data(cont, opts) {
   opts = opts || {sep: ',', max: -1};
   var lines = cont.split("\n");
+  console.log("csv_parse_data: " + lines.length + " lines. Headers: "+opts.hdr);
+  console.log("csv_parse_data: opts: ", opts);
   var hdr = opts.hdr || lines.shift().split(opts.sep, opts.max);
   // Validate header names as symbol names ?
   opts.debug && console.log("Headers: ", hdr);
@@ -391,6 +402,7 @@ function csv_parse_data(cont, opts) {
 }
 /** Load special hosts from CSV file.
  * Parsing for CSV is "naive" - and does not allow any quotes in file.
+ * Special hosts are finally added just like real legacy hosts (w. facts) to all indexes, etc. (hostcache, hostarr) by host_add(f);
  * @param fname {string} - CSV filename
  * @param global {object} - Main configuration (will be used to generate facts heuristically by "guessing" good values)
  * @param iptrans {object} - Optional legacy IP translation "fixup" table. Usage not recommended (and there's no need with proper DHCP).
