@@ -35,15 +35,14 @@ var Mustache = require("mustache");
 var home     = process.env["HOME"];
 // 
 var cfg = {
-  fact_path: home + "/hostinfo", // global
-  hostsfile: home + "/.linetboot/hosts",
-  mainconf: home + "/.linetboot/global.conf.json",
+  //fact_path: home + "/hostinfo", // global
+  //hostsfile: home + "/.linetboot/hosts",
+  //mainconf: home + "/.linetboot/global.conf.json",
   debug: 0,
-  hostcache: {}, hostarr: [], // hostloader needed.
-  tftp: {
-    "menutmpl": "./tmpl/default.installer.menu.mustache",
-  }
+  hostcache: {}, hostarr: [], // hostloader needed structures.
+  //tftp: { "menutmpl": "./tmpl/default.installer.menu.mustache",} // NOT Needed
 };
+var mainconf_fn_default = home + "/.linetboot/global.conf.json";
 var acts = [
   //{
   //  "id": "configedit",
@@ -53,7 +52,7 @@ var acts = [
   //},
   {
     "id": "hostsetup",
-    "title": "Check host reachability and gather facts. This is a primary prerequisite for all other operations.",
+    "title": "Check host reachability and gather facts. This is a primary prerequisite for all other operations (Use --dest to sort facts in location other than given in main config 'fact_path').",
     "cb": hostsetup,
     "opts": [],
   },
@@ -86,6 +85,7 @@ var acts = [
     "id": "dhcpconf",
     "title": "Generate ISC DHCP Server config",
     "cb": dhcpconf,
+    "needfacts": 1,
     "opts": [],
   },
   {
@@ -100,16 +100,22 @@ var clopts = [
   ["l", "bootlbl=ARG", "Boot label for OS to boot or install"],
   ["p", "pxe", "Boot pxe (Ths is an option flag w/o value)"],
   ["", "pass=ARG", "Ansible Sudo password"],
-  ["u", "user=ARG", "Ansible Sudo password"],
+  ["u", "user=ARG", "Ansible user (to override the env. $USER)"],
   ["", "dryrun", "Dryrun, Preview (for ops that produce content)"],
   ["s", "save", "Save file (for ops that produce content)"],
-  //["", "dest=ARG", "Destination for files (bootbins)"],
+  ["", "dest=ARG", "Destination for files for particular op. (facts gather, bootbins, ...)"],
+  // ["c", "clean", "Cleanup files Installed by operation (e.g. Boot Binaries)"],
 ];
-var em = { // Error Messages
-  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
-};
+//var em = { // Error Messages
+//  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
+//};
 // Required by any action
-if (!fs.existsSync(cfg.hostsfile)) { console.error("No Hosts file found in:"+cfg.hostsfile+". "+em.crhosts); process.exit(1); }
+var mainconf_fn = process.env["LINETBOOT_GLOBAL_CONF"] || mainconf_fn_default;
+var mcfg = mc.mainconf_load(mainconf_fn);
+if (!mcfg) { apperror("No main Config loaded ! (from: "+mainconf_fn+")"); }
+mc.env_merge(mcfg);
+mc.mainconf_process(mcfg);
+if (!fs.existsSync(mcfg.hostsfile)) { console.error("No Hosts file found in:"+mcfg.hostsfile+". "+"Create Hosts file (one hostname per line) first in and run installer again."); process.exit(1); }
 
 var argv2 = process.argv.slice(2);
 var op = argv2.shift();
@@ -123,15 +129,17 @@ var opt = getopt.parse(argv2);
 
 opt.options.op = op;
 
-// Is this UNIVERSAL ?
-hlr.init(cfg, cfg); // {fact_path: home + "/hostinfo"}
+// Is this UNIVERSAL ? {fact_path: home + "/hostinfo"}
+hlr.init(mcfg, cfg); // global, gcolls
 var hostnames;
-hostnames = hlr.hosts_load(cfg);
+hostnames = hlr.hosts_load(mcfg); // Needs global / mcfg
 if (!hostnames) { console.log("No hosts in inventory !"); process.exit(1);}
 console.log("Installer Hosts:", hostnames);
-if (opnode.needfacts) { hlr.facts_load_all(); } // {hostsfile: home + "/.linetboot/hosts"}
+var hostarr;
+if (opnode.needfacts) { hostarr = hlr.facts_load_all(); } // Returns hostarr
 
 var rc = opnode.cb(opt.options);
+///////////////////////////////////////////////////////////////
 // No exit for async
 function usage(msg) {
   if (msg) { console.error(msg);  }
@@ -144,18 +152,30 @@ function apperror(msg) {
   console.error(msg);
   process.exit(1);
 }
-/** Gather Facts.
+/** Gather and store Facts.
  */
 function hostsetup (opts) {
   
-  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
+  // var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
   var pass = opts.pass || process.env["ANSIBLE_PASS"] || mcfg.ansible.sudopass;
   if (!pass) { console.log("Need password for Ansible sudo user (--pass or env. ANSIBLE_PASS)"); process.exit(1); }
   opts.pass = pass;
+  if (opts.dest) { mcfg.fact_path = opts.dest; }
+  // Override with a temp facts path // DEBUG !!! TEMP Location ?
+  // else { mcfg.fact_path = "/tmp/facts2"; }
+  if (!fs.existsSync(mcfg.fact_path)) {
+    mkDirByPathSync(mcfg.fact_path);
+    console.log("Created: " + mcfg.fact_path);
+  }
   // Access loaded things
   console.log("Host names:" + JSON.stringify(cfg.hostnames, null, 2));
   console.log("Num Host items:" + hostnames.length);
   //console.log("Host params:\n"+ JSON.stringify(cfg.hostparams, null, 2));
+  // Jump directly to gather
+  gather_facts_setup(mcfg);
+  return;
+  
+  // NOTE: CANNOT load facts w/o facts (TODO: Create mini facts just enough to ping) ?
   // Ping hosts ? extract facts ?
   var hostarr = hlr.facts_load_all();
   console.log(cfg.hostarr.length + " facts gathered.");
@@ -192,8 +212,7 @@ function hostsetup (opts) {
    * TODO: Consider using --extra-vars serialization from ans module
    */
   function gather_facts_setup(mcfg) {
-    // Override with a temp facts path
-    mcfg.fact_path = "/tmp/facts2"; // DEBUG !!! TEMP Location ?
+    
     var xpara = "ansible_sudo_pass=" + opts.pass;
     xpara += " ansible_user=" + (opts.user || process.env["USER"]);
     var cmd = "ansible all -i "+mcfg.hostsfile+"  -b -m setup --tree "+mcfg.fact_path+" --extra-vars \""+xpara+"\"";
@@ -209,7 +228,8 @@ function hostsetup (opts) {
       // console.log(stdout);
       console.log("Gathered (or tried to gather) facts into path: " + mcfg.fact_path);
       // Clean up bad facts
-      badfact_cleanup(mcfg);
+      var badcnt = badfact_cleanup(mcfg);
+      console.log("Removed " + badcnt + " bad facts files.");
       process.exit(0);
       //return cb(null, stat);
     });
@@ -255,6 +275,7 @@ function hostsetup (opts) {
   function badfact_cleanup(mcfg) {
     var fpath = mcfg.fact_path;
     //console.log(mcfg.hostarr);
+    var badcnt = 0;
     hostnames.forEach(function (hn) {
       var fullpath = fpath+"/"+hn;
       if (!fs.existsSync(fullpath)) { console.log("missing facts: " + fullpath); return; }
@@ -265,8 +286,10 @@ function hostsetup (opts) {
       if (!j.ansible_facts && (len < 500)) {
         console.log("Remove bad facts: " + fullpath + " ("+len+" B)");
         try { fs.unlinkSync(fullpath); } catch(ex) { throw "Could not remove bad host facts " + ex.toString(); }
+        badcnt++;
       }
     });
+    return badcnt;
   }
        
        
@@ -279,20 +302,22 @@ function rmgmt_collect() {}
 
 
 /** Setup TFTP server directories.
-* Depends on global config and facts
-* - Use Config cfg.tftp.root to determine TFTP root
+* Depends on global config and facts.
+* - Use Main Config mcfg.tftp.root to determine TFTP root
 * - Ensure "pxelinux.cfg" exists. Create if not.
-* Create mac symlink files.
+* Create needes subdirectories and mac symlink files.
+* If tftp.sync is set, replicate files (by SSH scp) to remote TFTP server in use (given by tftp.ipaddr).
 */
 function tftpsetup(opts) {
   // TODO: Lookup 
-  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
+  // var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
   var tcfg = mcfg.tftp;
   if (!tcfg) { console.error("No TFTP Config"); process.exit(1); }
   //console.log(tcfg);
-  console.error("TFTP Root configured as:"+tcfg.root);
+  console.error("TFTP Root configured as: "+tcfg.root);
   if (!fs.existsSync(tcfg.root)) { usage("TFPT Root does not exist"); }
   var dirs = [tcfg.root+"/pxelinux.cfg/", tcfg.root+"/efi32/pxelinux.cfg/", tcfg.root+"/efi64/pxelinux.cfg/"];
+  var efidirs = [tcfg.root+"/efi32/", tcfg.root+"/efi64/"];
   var pxelindir = tcfg.root+"/pxelinux.cfg/";
   //var ok = mkdir(pxelindir);
   //if (!ok) { process.exit(1);}
@@ -302,17 +327,16 @@ function tftpsetup(opts) {
   });
   // Note recursive: ... only works with node > 10.12.0
   function mkdir(pxelindir) {
-  
-  if (!fs.existsSync(pxelindir)) {
-    console.log("dir "+pxelindir+" does not exist, try creating ...");
-    try {
-      //fs.mkdirSync(pxelindir, {recursive: true});
-      mkDirByPathSync(pxelindir); // Compat (for older node)
-    } catch (ex) {
-      console.log("Could not make dir "+pxelindir+": " + ex); return ""; // process.exit();
+    if (!fs.existsSync(pxelindir)) {
+      console.log("dir "+pxelindir+" does not exist, try creating ...");
+      try {
+        //fs.mkdirSync(pxelindir, {recursive: true});
+        mkDirByPathSync(pxelindir); // Compat (for older node)
+      } catch (ex) {
+        console.log("Could not make dir "+pxelindir+": " + ex); return ""; // process.exit();
+      }
     }
-  }
-  else { console.log("Dir "+pxelindir+" seems to already exist."); }
+    else { console.log("Dir "+pxelindir+" seems to already exist."); }
     return pxelindir;
   } // mkdir
   if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
@@ -337,7 +361,9 @@ function tftpsetup(opts) {
     mkmacsymlinks(pxelindir, cfg.hostarr);
   });
   
-  /** */
+  /** Create MAC adress files for 
+   * 
+   **/
   function mkmacsymlinks(pxelindir, hostarr) {
   // Check writeability for the runner of the script
   try {
@@ -360,7 +386,7 @@ function tftpsetup(opts) {
     } catch (ex) { console.log(ex.toString()); }
   });
     return 1; // ??
-  }
+  } // mkmacsymlinks
   console.log("Setup pxelinux TFTP Dirs under local TFTP root: " + tcfg.root);
   var tftp = tcfg;
   if (tcfg.sync) {
@@ -372,12 +398,14 @@ function tftpsetup(opts) {
   }
 }
 /** Add bootloader binaries to the TFTP Area.
+ * Meant to be used on Ubuntu (Debian) Host, which has best pxelinux packaging
+ * (RH/Centos is missing the lpxelinux.0 binary that Linetboot uses).
  */
 function bootbins(opts) {
   // TMP root to use if configured dir is not found.
   var tmproot = "/tmp/"+new Date().getTime()+"_"+process.pid; // pid, time
   // Final place should be: mcfg.tftp.root
-  var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
+  // var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
   if (!mcfg.tftp) { apperror("No TFTP Config (within main config)"); }
   var tftp = mcfg.tftp;
   if (!tftp.root) { apperror("No TFTP Root dir (within TFTP config)"); }
@@ -439,6 +467,7 @@ function bootbins(opts) {
     ["/isomnt/freebsd12/boot/pxeboot", "pxeboot"],
   ];
   var i = 0;
+  var dbins = [];
   bins.forEach(function (it) {
     var src  = it[0];
     var dest = destroot + "/"+it[1]; // Abs destfile
@@ -453,9 +482,10 @@ function bootbins(opts) {
     var mode = 0o644; // fs.constants.S_IWUSR; // Must "OR" lot of constants
     fs.chmodSync(dest, mode); // Must change to user writable to prevent nasty chain-reaction.
     // console.log(dest + " Current File Mode:",  fs.statSync(dest).mode);
-    i++;
+    i++; dbins.push(it[1]);
   });
-  console.log("Copied ("+i+") files to " + destroot + "\nls -alR "+destroot + "");
+  console.log("Copied ("+dbins.length+") files to " + destroot); console.log("\nls -alR "+destroot + "");
+  console.log("Bins:", dbins);
   // TODO: Sync / replicate to remote TFTP ?
   // https://unix.stackexchange.com/questions/193368/can-scp-create-a-directory-if-it-doesnt-exist
   if (tftp.sync) {
@@ -548,8 +578,8 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
  * 
  */
 function dhcpconf(opts) {
-  var mcfg = mc.mainconf_load(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
-  mc.mainconf_process(mcfg);
+  //var mcfg = mc.mainconf_load(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
+  //mc.mainconf_process(mcfg);
   mcfg.fact_path = mcfg.fact_path || process.env["FACT_PATH"];
   // TODO: load from resolved config location, not ./tmpl !!
   var tmplfn = "./tmpl/isc.dhcpd.conf.mustache";
@@ -571,12 +601,15 @@ function dhcpconf(opts) {
   // ... for subnet
   net.subnet = net.subnet || fnet.subnet;
   console.log(net);
+  ////////////////////////////////////////////////
   // Add hosts to mcfg
-  hlr.init(mcfg);
-  var hnames = hlr.hosts_load(mcfg);
+  //hlr.init(mcfg); // global, gcolls (opt)
+  var hnames = hostnames; // hlr.hosts_load(mcfg); // main conf
   // Note: Not all of these may have facts (?/). Do NOT use this.
   console.error("DHCP Hostnames: ", hnames);
-  var hostarr = hlr.facts_load_all();
+  //var hostarr = hlr.facts_load_all();
+  if (!hostarr) { apperror("dhcpconf: No host (facts) array loaded"); }
+  ///////////////////////////////////////////////
   // NOW: Use hostarr
   hnames = hostarr.map(function (it) { return it.ansible_fqdn; });
   // console.error(hostarr); // Huge
