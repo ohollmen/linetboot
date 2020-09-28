@@ -5,16 +5,15 @@ List of prerequisites for a functional lineboot system:
 - pxelinux - Provides network bootloaders (pxelinux0, lpxelinux.0, with latter supporting http)
 - syslinux-efi - Network bootloader for UEFI (Not widely proven in lineboot)
 - TFTP server - to store PXELinux binaries and menus on (Debian/Ubuntu: tftpd, tftpd-hpa, dnsmasq or atftpd, Redhat/CentOS: tftp-server)
-- nodejs and npm - to run the preseed generation (and optionally mirror server for static file content (packages))
-- ansible - to extract and record host facts form inventoried machines
+- nodejs and npm - The lineboot system is written in Node.js and thus needs this 
+- ansible - to extract and record host facts form inventoried machines (Ansible also depends on Python)
 
-Additionally you need download CD/DVD ISO Images, e.g:
-- Ubuntu: [archive.ubuntu.com](http://archive.ubuntu.com/ubuntu/dists/).
-- Gparted Live ISO/CD Image (from https://gparted.org/download.php)
-- Centos Install ISO:s (from https://wiki.centos.org/Download)
+Additionally you need download OS/Distor Intallation CD/DVD ISO Images, e.g:
+- Ubuntu: [archive.ubuntu.com](http://archive.ubuntu.com/ubuntu/dists/ ).
+- Gparted Live ISO/CD Image (from https://gparted.org/download.php )
+- Centos Install ISO:s (from https://wiki.centos.org/Download )
 
-Optional (Development):
-- devscripts - Tools to explore remote Ubuntu/Debian mirrors (e.g. rmadison linux-generic)
+<!-- Optional (Development): - devscripts - Tools to explore remote Ubuntu/Debian mirrors (e.g. rmadison linux-generic) -->
 
 ## PXELinux Bootloader
 
@@ -36,6 +35,8 @@ Files that are needed from `pxelinux` package come from directories:
 - /usr/lib/PXELINUX/*pxelinux.0 - 3 possible `*pxelinux.0` bootloaders, but we linetboot mandates the `lpxelinux.0` with HTTP support
 - /usr/lib/syslinux/modules/bios/*.c32 pxelinux bootloader modules (from `syslinux-common`)
 
+If you run linetboot on RH/Centos, try to "borrow" bootloader binaries from a Debian/Ubuntu machine (These are simple monolithic
+boot-stage binaries running "raw on CPU", not dependent on anything so they do not have a dependency to particular distro type).
 
 ## TFTP Server
 
@@ -84,6 +85,7 @@ sudo launchctl load -F /System/Library/LaunchDaemons/tftp.plist
 sudo launchctl start com.apple.tftpd
 ```
 MacOS also comes with tftp client (named "tftp"), by which you can test the server.
+In MacOS you would set the main config tftp.root to "/private/tftpboot" accordingly.
 
 
 ### Setting up TFTP Server directories for PXE Booting
@@ -199,10 +201,12 @@ Install Samba/CIFS Server:
 # Samba/CIFS - Ubuntu / Debian
 sudo apt-get install samba samba-common
 # Samba/CIFS - RH and Centos (Optional samba-client)
-yum install samba samba-common
+sudo yum install samba samba-common
 ```
 
-In MacOS goto "System Preferences" => "Sharing" => (Check) "File Sharing" => (Click) Options => (Check) "Share files and folders using SMB". Add directories by clicking "+" under "Shared Folders" and setting "Everyone ... Read Only" under Users.
+In MacOS goto "System Preferences" => "Sharing" => (Check) "File Sharing" => (Click) Options =>
+(Check) "Share files and folders using SMB". Add directories by clicking "+" under "Shared Folders" and
+by setting "Everyone ... Read Only" under "Users".
 
 ### Configuring NFS Server
 
@@ -227,7 +231,7 @@ Example of configuring /isomnt to be shared (to local 192.168.1.0 network):
 ```
 /isomnt -ro -mapall=501 -network 192.168.1.0 -mask 255.255.255.0
 ```
-Enabling NFS Daemon and checking exported dirs:
+Enabling MacOS NFS Daemon and checking exported dirs:
 ```
 # Enable / Start
 sudo nfsd enable
@@ -333,7 +337,7 @@ configfile /tftpboot/$net_default_mac.conf
 - http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
 - Ubuntu 20.04 Netboot (w. Grub) https://ubuntu.com/server/docs/install/netboot-amd64
 
-### Configuring Samba Server
+### Configuring Samba Server on Linux
 
 Edit Samba main config `/etc/samba/smb.conf` (In both RH and Debian based distros).
 In case of linetboot it will likely be good to expose the /isomnt dirs (your Windows related path location may differ).
@@ -374,6 +378,7 @@ sudo service smbd restart
 sudo apt-get install libwim15 wimtools
 ```
 wimtools contains the important utility `mkwinpeimg` for re-authoring simple WinPE windows ISO images out of
-full Windows install ISO:s.
+full Windows install ISO:s. It will read the *essential* windows files from and re-author a new "mini-ISO" that will be
+< 1/10 of original size.
 
 
