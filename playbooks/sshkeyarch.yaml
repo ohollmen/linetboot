@@ -1,4 +1,6 @@
-# Note: {{ ansible_user_id }} with become is root (except > 2.8.3)
+# Notes:
+# - {{ ansible_user_id }} with become is root (except > 2.8.3)
+# - This playbook requires also passwordless reverse connectivity (from ansible remote host to ansible running host)
 # Use for env variables (e.g): lookup("env","USER")
 # Refs:
 # https://stackoverflow.com/questions/38143647/set-fact-with-dynamic-key-name-in-ansible

@@ -317,7 +317,7 @@ function tftpsetup(opts) {
   console.error("TFTP Root configured as: "+tcfg.root);
   if (!fs.existsSync(tcfg.root)) { usage("TFPT Root does not exist"); }
   var dirs = [tcfg.root+"/pxelinux.cfg/", tcfg.root+"/efi32/pxelinux.cfg/", tcfg.root+"/efi64/pxelinux.cfg/"];
-  var efidirs = [tcfg.root+"/efi32/", tcfg.root+"/efi64/"];
+  var efidirs = [tcfg.root+"/efi32/", tcfg.root+"/efi64/"]; // TODO: topdirs, add tcfg.root+"/boot/" (BSD)
   var pxelindir = tcfg.root+"/pxelinux.cfg/";
   //var ok = mkdir(pxelindir);
   //if (!ok) { process.exit(1);}
@@ -349,16 +349,20 @@ function tftpsetup(opts) {
   //console.log(cfg.hostarr);
   // Make "default" symlinks to efi32/ and efi64/ (refer to dirs[0]/default)
   try {
-      var linkfile = dirs[1]+"default";
-      fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+    // OLD
+    var linkfile = dirs[1]+"default";
+    fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+    // NEW: fs.symlinkSync(dirs[0], efidirs[0]+"pxelinux.cfg/");
   } catch (ex) { console.log(ex.toString()); }
   try {
-      var linkfile = dirs[2]+"default";
-      fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+    // OLD
+    var linkfile = dirs[2]+"default";
+    fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
+    // NEW: fs.symlinkSync(dirs[0], efidirs[1]+"pxelinux.cfg/");
   } catch (ex) { console.log(ex.toString()); }
-  
+  // TODO: Only in /pxelinux.cfg, make **dir** symlinks for others above
   dirs.forEach(function (pxelindir) {
-    mkmacsymlinks(pxelindir, cfg.hostarr);
+    mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
   });
   
   /** Create MAC adress files for 

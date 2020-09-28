@@ -42,7 +42,7 @@ var Mustache = require("mustache");
       return  "ssh " + info.username+"@"+ info.hname + " " + info.pkglistcmd + " > " + info.paths.pkglist +"/"+ info.hname;
     }},
     {"lbl": "rmgmtcoll", name: "Remote mgmt. info Extraction", "cb": function (info, f) {
-      return  "ansible-playbook -i ~/.linetboot/hosts  build-idrac.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
+      return  "ansible-playbook -i ~/.linetboot/hosts  ipmiinfo.yaml --extra-vars \"ansible_sudo_pass=$ANSIBLE_SUDO_PASS host="+info.hname+"\"";
     }},
     // SSH Key archiving
     {"lbl": "sshkeyarch", name: "SSH Key archiving",
