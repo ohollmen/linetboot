@@ -1,14 +1,35 @@
 /** @file
- * OS Installations recipe generation and disk recipe calculations
+ * # OS Installations recipe generation and disk recipe calculations
  * 
- * ## Needs from main server
+ * ## Request Headers from OS installers
+*
+* These could be potentially used by generator.
+*
+* Debian Installer req.headers shows (initially)
+*
+*     'user-agent': 'debian-installer',
+*
+* then (later) also:
+*
+*     'user-agent': "Debian APT-HTTP/1.3 (1.6.3)"
+*
+* Redhat/CentOS:
+*
+*     'user-agent': 'anaconda/13.21.229'
+*     'x-anaconda-architecture': 'x86_64',
+*     'x-anaconda-system-release': 'CentOS'
+* 
+ * ## Refactor (DONE)
+ * 
+ * ### Needs from main server
  * - hostcache
  * - mod - Custom setup module or single params patcher cb
  * - iptrans
  * - global
  * - user
  * - 
- * ## Potential funcs to move
+ * ### Funcs moved
+ * ```
  * {
  * ipaddr_v4 ( ~ l. 328)
  * host_for_request  UNUSED
@@ -25,11 +46,15 @@
  * netplan_yaml LEFT OUT (~ l. 860)
  * script_send DONE
  * needs_template DONE (~l. 1020)
+ * ```
+ * 
  * # TODO
  * - Possibly load initial user here, keep as priv variable ?
  */
 var fs = require("fs");
 var Mustache = require("mustache");
+
+var hlr = require("./hostloader.js"); // file_path_resolve
 
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 // https://stackabuse.com/using-global-variables-in-node-js/
@@ -37,7 +62,7 @@ var hostcache = {};
 var iptrans = {};
 var global = {};
 var user = {};
-var patch_params; // CB
+var patch_params_custom; // CB
 
 // Map URL to symbolic template name needed. template names get mapped by global.tmplfiles (Object-map, See main config)
 // {url: ..., ctype: ..., tmpl: "", nopara: ...}
@@ -69,54 +94,85 @@ var tmplmap = {
 // TODO: Create tmplmap (k-v) here for compat.
 // ctype => tmplfile
 var tmplfiles = {
-    "preseed": "./tmpl/preseed.cfg.mustache",
-    "ks":      "./tmpl/ks.cfg.mustache",
-    "netif":   "./tmpl/interfaces.mustache",
-    "netw_rh": "./tmpl/sysconfig_network.mustache",
-    "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
-    "preseed_mini": "./tmpl/preseed_mini.cfg.mustache",
-    "pcbsd":   "./tmpl/pc-autoinstall.conf.mustache",
-    "pcbsd2":   "./tmpl/pcinstall.cfg.mustache",
+    "preseed": "preseed.cfg.mustache",
+    "ks":      "ks.cfg.mustache",
+    "netif":   "interfaces.mustache",
+    "netw_rh": "sysconfig_network.mustache",
+    "preseed_dt": "preseed.desktop.cfg.mustache",
+    "preseed_mini": "preseed_mini.cfg.mustache",
+    "pcbsd":   "pc-autoinstall.conf.mustache",
+    "pcbsd2":   "pcinstall.cfg.mustache",
     "win": "", // mime: "text/xml"
-  };
-var tmpls = {};
+};
+//var tmpls = {};
+var recipes = [
+  {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache"},
+  {"url":"/ks.cfg",             "ctype":"ks",         "tmpl":"ks.cfg.mustache"},
+  {"url":"/sysconfig_network",  "ctype":"netw_rh",    "tmpl":"sysconfig_network.mustache"},
+  {"url":"/interfaces",         "ctype":"netif",      "tmpl":"interfaces.mustache"},
+  {"url":"/preseed.desktop.cfg","ctype":"preseed_dt", "tmpl":"preseed.desktop.cfg.mustache"},
+  {"url":"/preseed_mini.cfg",   "ctype":"preseed_mini","tmpl":"preseed_mini.cfg.mustache"},
+  {"url":"/boot/pc-autoinstall.conf","ctype":"pcbsd", "tmpl":"pc-autoinstall.conf.mustache"},
+  {"url":"/cust-install.cfg",   "ctype":"pcbsd2",     "tmpl":"pcinstall.cfg.mustache"},
+  {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"}
+];
+var recipes_idx = {};
 // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
-var _skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
+// var _skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
   
 
-var tmplmap_idx = {}; // By URL !
+//var tmplmap_idx = {}; // By URL !
 // tmpls.forEach((it) => { tmplmap_idx[it.url] = it; });
 
 // Pass url as req.route.path
 function url_config_type(url) {
-  return tmplmap[url];
+  //return tmplmap[url]; // OLD
+  return recipes_idx[url].ctype;
 }
-// req.route.path
+// DEPRECATED
+// url ~ req.route.path
 function skip_host_params(url) {
   return _skip_host_params[url];
 }
-function template_content(ctype) {
-  return tmpls[ctype]; // OLD: global.tmpls
+// Wrapper for getting template content
+function template_content(url) {
+  //return tmpls[ctype]; // OLD/Cached: global.tmpls
+  //// Phase 2 (url)
+  //var ctype = tmplmap[url];
+  //if (!ctype) { return ""; }
+  //return tmpls[ctype];
+  //////////////////////////////////
   // NEW: On demand
-  var fn = ""; // recipe.tmpl;
-  if (!fs.existsSync(fn)) { return ""; }
-  return fs.readFileSync(fn, 'utf8');
+  //var url = "";
+  var recipe = recipes_idx[url]; // url
+  if (!recipe) { console.log("No recipe for URL: "+ url); return ""; }
+  var fn = recipe.tmpl;
+  var fnr = hlr.file_path_resolve(fn, global.inst.tmpl_path);
+  if (!fs.existsSync(fnr)) { console.log("Resolved Template "+fnr+" does not exist !"); return ""; }
+  return fs.readFileSync(fnr, 'utf8');
 }
 //////// cache templates into memory. TODO: Deprecate or make optional //////
+/*
 function templates_load() {
   // 
   var tkeys = Object.keys(tmplfiles); // OLD: global.tmplfiles
   tkeys.forEach(function (k) {
     // TODO: try/catch
     var fn = tmplfiles[k]; // OLD: global.tmplfiles
-    if (!fn) { return; }
-    if (!fs.existsSync(fn)) { return; }
-    tmpls[k] = fs.readFileSync(fn, 'utf8'); // OLD: global.tmpls
+    if (!fn) { console.log("templates_load: No template filename for "+k); return; }
+    var fnr = fn;
+    fnr = hlr.file_path_resolve(fn, global.inst.tmpl_path);
+    if (!fs.existsSync(fnr)) { console.log("templates_load: No template resolved for caching: "+ fnr); return; }
+    tmpls[k] = fs.readFileSync(fnr, 'utf8'); // OLD: global.tmpls
     
   });
   console.error("loaded " + tkeys.length + " templates.");
 }
-/** 
+*/
+
+/** Initialize osinstall module.
+ * @param conf {object} - Handle members: hostcache, global, iptrans, user
+ * @param _patch_params {function} - User defined custom function for customizing params
  */
 function init(conf, _patch_params) {
   // ["hostcache", "global", "iptrans", "user"];
@@ -129,30 +185,42 @@ function init(conf, _patch_params) {
   user = conf.user;
   if (!user) { throw "No initial user config"; }
   // TODO: patch_params
-  if (_patch_params) { console.log("Got patch_params customization CB"); patch_params = _patch_params; }
-  
-  templates_load(); // Keep after assigning "global"
+  if (_patch_params) { console.log("Got patch_params customization CB"); patch_params_custom = _patch_params; }
+  // Additional in-depth validation (e.g. MUST HAVE "inst" and "inst.tmpl_path
+  if (!global.inst) { throw "No 'inst' in main conf"; }
+  if (!global.inst.tmpl_path) { throw "No 'inst.tmpl_path' in main conf"; }
+  // In-memory cached templates
+  // templates_load(); // Keep after assigning "global"
   // Transform to new structure
-  var recipes = [];
-  Object.keys(tmplmap).forEach((k) => {
-    var ctype = tmplmap[k];
-    if (!tmplfiles[ctype]) { console.log("Warning: missing template for ctype "+ctype); return; }
-    var e = {url: k, ctype: tmplmap[k], tmpl: tmplfiles[ctype]};
-    recipes.push(e);
-  });
-  //console.log("NEW recipes array: ", recipes);
+  //NOT:recipes = [];
+  // TODO: Disable generation, change url_hdlr_set
+  //Object.keys(tmplmap).forEach((k) => {
+  //  var ctype = tmplmap[k];
+  //  if (!tmplfiles[ctype]) { console.log("Warning: missing template for ctype "+ctype); return; }
+  //  var e = {url: k, ctype: tmplmap[k], tmpl: tmplfiles[ctype]};
+  //  recipes.push(e);
+  //});
+  console.log("NEW recipes array: ", JSON.stringify(recipes)); // , null, 2
+  recipes.forEach((it) => { recipes_idx[it.url] = it; }); // Index by URL
 }
 
 /** Set URL handlers for all recipe URL:s.
- * @param app {object} - Express App.
+ * @param app {object} - Express App. (or router ?) on which the URL recipe generating handlers should be set.
+ * @return None
  */
 function url_hdlr_set(app) {
   var urls = [];
-  urls = Object.keys(tmplmap);
-  urls.forEach(function (it) {
-    console.log("Recipe-URL: "+it);
-    app.get(it, preseed_gen); // TODO: it.url
+  //urls = Object.keys(tmplmap);
+  // TODO: Must exist as static !!
+  recipes.forEach(function (r) {
+    console.log("Recipe-URL: "+r.url);
+    app.get(r.url, preseed_gen);
   });
+  
+  //urls.forEach(function (it) {
+  //  console.log("Recipe-URL: "+it);
+  //  app.get(it, preseed_gen);
+  //});
 }
 //////////////////// OS INSTALL Main ///////////////////////
 
@@ -193,21 +261,23 @@ function host_for_request(req, cb) { // UNUSED
   //});
 }
 */
-/** Generate Preseed or KS installation file based on global settings and host facts.
+/** Generate Recipe (e.g. Preseed or KS installation) file based on global settings and host facts.
 * Additionally Information for initial user to create is extracted from local
 * config file (given by JSON filename in setting global.inst.userconfig, e.g. "userconfig": "initialuser.json",).
+* 
 * Multiple URL:s are supported by this handler (e.g.) based on URL mappings for this module:
 * 
 * - /preseed.cfg
 * - /ks.cfg
 * - ... See module for complete list of examples
 * 
-* Each of the URL:s can be associated with a template (multiple URL variants may also share a template).
+* Each of the URL:s will be associated with a template, type label (multiple URL variants can share a template this way).
 * 
 * Derives the format needed from URL path and outputs the Install configuration in
 * valid Preseed or Kickstart format.
-* The URL called for each install is driven by network bootloader (e.g. pxelinux) menu originated
-* kernel command line parameters (e.g. for debian/ubuntu:  url=http://mylineboot:3000/preseed.cfg)
+* The URL called for each OS install is driven by network bootloader (e.g. pxelinux) menu originated
+* kernel command line parameters (e.g. for debian/ubuntu:  url=http://mylineboot:3000/preseed.cfg).
+* However it is the OS installer (not bootloader) that calls this URL.
 * 
 * ## GET Query Parameters supported
 * 
@@ -225,88 +295,75 @@ function host_for_request(req, cb) { // UNUSED
 *             V
 *      Template (e.g. ./tmpl/preseed.cfg.mustache)
 * 
-* #### Request Headers from installers
-*
-* These could be potentially used by generator.
-*
-* Debian Installer req.headers shows (initially)
-*
-*     'user-agent': 'debian-installer',
-*
-* then (later) also:
-*
-*     'user-agent': "Debian APT-HTTP/1.3 (1.6.3)"
-*
-* Redhat/CentOS:
-*
-*     'user-agent': 'anaconda/13.21.229'
-*     'x-anaconda-architecture': 'x86_64',
-*     'x-anaconda-system-release': 'CentOS'
-* 
+
 * # TODO
 * 
 * Create separate mechanisms for global params templating and hostinfo templating.
 */
 function preseed_gen(req, res) {
-  // OLD: Translate ip to name to use for facts file name
-  // Lookup directly by IP
-  var xip = req.query["ip"];
-  var ip = ipaddr_v4(req);
+  var xip = req.query["ip"]; // eXplicit IP
+  var ip = ipaddr_v4(req); // Detect IP
   // TODO: Review osid / oshint concept (and for what all it is used (1. Mirrors, 2. ...)
-  var osid = req.query["osid"] || global.targetos || "ubuntu18";
+  var osid = req.query["osid"] || global.targetos || "ubuntu18"; // TODO: 1) Later. recipe.osid
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
+  // Lookup directly by IP
   var f = hostcache[ip]; // Get facts. Even no facts is ok for new hosts.
   
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
   console.log("Preseed or KS Gen by (full w. qparams) URL: " + req.url + "(ip:"+ip+")"); // osid=
   // OLD location for tmplmap = {}, skip_host_params = {}
-  
-  //console.log(req); // _parsedUrl.pathname OR req.route.path
-  // if (req.url.indexOf('?')) { }
-  //NOT: var ctype = tmplmap[req.url]; // Do not use req.url - contains query parameters
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
+  var recipe = recipes_idx[url]; // Lookup recipe
+  if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return }
   var ctype = url_config_type(url); // tmplmap[req.route.path]; // config type
   // TODO: Allow manually authored kickstart, preseed, etc. to come in here
-  // Look fname up from host inventory parameters. Allow it to be either fixed/literal or template ?
-  var override;
-  if (!ctype) {
-    // Lookup inventory hostparameters
-    // var p = global.hostparams[h.ansible_fqdn]; // f vs. h
-    //if (p.instrecipe) {} // As-is No templating. Send immmediately
-    //else  if (p.insttmpl) {} // Load overriden template 
-    res.end("# Config type (ks, preseed, etc.) could not be derived\n");
-    return;}
-  console.log("Concluded config type: " + ctype + " for url "+req.route.path);
-  // Acquire all params and blend them together for templating.
-  
-  var skip = skip_host_params(url); // skip_host_params[req.route.path];
+  // Look fname up from host inventory parameters (tmpl=) ? Allow it to be either fixed/literal or template ?
+  // Problem: Different for every OS. would need to have as many keys as OS:s
+  // var override;
+  if (!ctype) { res.end("# Config type ('ctype', ks, preseed, etc.) could not be derived\n"); return; }
+  console.log("Concluded config type: '" + ctype + "' for url: "+url);
+  ///////////////////// Params Creation /////////////////////////////////
+  // Acquire all params and blend them together (into single params structure) for templating.
+  // Skipping certain params creation (based on complex conditions) is unnecessary as we can wastefully
+  // just create full params even if template does not use them.
+  // Consider hostparams based solutions
+  // OLD: Generate params, but only if not asked to be skipped
+  //BAD:if (p.instrecipe) {} // As-is No templating. Send immmediately - BAD Because we can anyways use hard template
+  //MAYBE:else  if (p.insttmpl) {} // Load overriden template - BAD Because cannot hard-wire for arbitrary OS
+  //var skip = skip_host_params(url); // skip_host_params[req.route.path];
   var d; // Final template params
-  // Generate params, but only if not asked to be skipped
-  if (!skip && f) { // Added && f because we depend on facts here
+  // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
+  if (f) { // Added && f because we depend on facts here // OLD: !skip &&
+    // If we have facts (registered host), Lookup inventory hostparameters
+    // var p = global.hostparams[f.ansible_fqdn]; // f vs. h
     d = host_params(f, global, ip,  osid); // ctype,
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
-    console.log("Call patch ...");
-    patch_params(d, osid); // Tweaks to params, appending additional lines
+    console.log("Call patch (stage 2 param formulation) ...");
+    // Tweaks to params, appending additional lines
+    patch_params(d, osid);
   }
-  // Dummy params - At minimum have a valid object (w. global params)
+  // Dummy params without f - At minimum have a valid object (w. global params)
+  // Having 
+  // OLD (inside else): d = {httpserver: global.httpserver };
   else {
-    //d = {httpserver: global.httpserver };
-    // NOT ip ?
+    // NOT ip ? Why ???!!!
     d = host_params_dummy(global, osid); // NEW
   }
   // Postpone this check to see if facts (f) are needed at all !
-  if (!d && !skip) {
-    var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+req.route.path+", skip="+skip+", f="+f+")\n";
+  if (!d ) { // && !skip
+    var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+url+",  f="+f+")\n"; // skip="+skip+",
     res.end(msg2); // ${ip}
     console.log(msg2); // ${ip}
     // "Run: nslookup ${ip} for further info on host."
-    //return;
+    return; // We already sent res.end()
   }
-  // Copy "inst" section params for (transition period) compatibility !
+  if (patch_params_custom) { patch_params_custom(d, osid); }
+  // Copy "inst" section params for (transition period ?) compatibility !
   params_compat(d);
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
-  var tmplcont = template_content(ctype); // global.tmpls[ctype];
+  //var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
+  var tmplcont = template_content(url); // NEW: url
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', ..."); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d);
@@ -320,7 +377,10 @@ function preseed_gen(req, res) {
   //res.end(oklines.join("\n"));
   res.end(output);
 }
-
+//console.log(req); // _parsedUrl.pathname OR req.route.path
+// if (req.url.indexOf('?')) { }
+//NOT: var ctype = tmplmap[req.url]; // Do not use req.url - contains query parameters
+  
 /** Do situational and custom patching on params.
 * TODO: Separate these as osid specific plugins, where each plugin can do
 * patching for os. Some plugins could be user written to facilitate particular
@@ -329,6 +389,7 @@ function preseed_gen(req, res) {
 * Add here member d.appendcont to produce completely new Preseed / KS. directives.
 * @param d {object} - Templating params produced originally in host_params()
 * @param osid {string} - linetboot OS id (e.g. ubuntu18, centos6 ...)
+* @return None (Only tweak parms object d passed here)
 */
 function patch_params(d, osid) {
   console.log("Patching by osid:" + osid);
@@ -353,7 +414,7 @@ function patch_params(d, osid) {
  * for dynamic kickstart or preseed (or other recipe), but are NOT known to linetboot by their facts.
  * See host_params() for creating params from facts (for a comparison).
  * @param global {object} - main config
- * @param osid {string} - OS ID label (...)
+ * @param osid {string} - OS ID label, coming usually from recipe URL on kernel command line (E.g. ...?osid=ubuntu18)
  * @return Made-up host params
  */
 function host_params_dummy(global, osid) {
@@ -375,7 +436,7 @@ function host_params_dummy(global, osid) {
   //NOT:d.disk = disk;
   /////////////////////////// Mirror - Copy-paste or simplify 
   d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
-  d.postscript = global.inst.postscript; // TODO: Can we batch copy bunch of props collectively
+  d.postscript = global.inst.postscript; // TODO: Can we batch copy bunch of props collectively (We already do, but see timing order)
   
   return d;
 }
@@ -407,7 +468,8 @@ function params_compat(d) {
 * @param ip - Requesting host's IP Address
 * 
 * @param osid - OS id (, e.g. "ubuntu18", affects mirror choice)
-* @return Parameters (structure, somewhat nested, w. sub-sections net, user) for generating the preseed or ks output.
+* @return Parameters (structure, somewhat nested, w. sub-sections net, user) for generating the OS Install recipe or
+* null to signal immediate termination of recipe generation.
 * TODO: Passing osid may imply ctype (and vice versa)
 */
 // OLD: @param (after ip) ctype - Configuration type (e.g. ks or preseed, see elswhere for complete list)
@@ -427,7 +489,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   ///////////////////////// DISK /////////////////////////////////
   // Disk logic was embedded here
   console.error("Calling disk_params(f) (by:" + f + ")");
-  // var hdisk = require("./hostdisk.js");
+  // var hdisk = require("./hostdisk.js"); // TODO: move
   var disk = disk_params(f);
   // Assemble. TODO: Make "inst" top level
   var d = dclone(global); // { user: dclone(user), net: net};
@@ -451,13 +513,17 @@ function host_params(f, global, ip,  osid) { // ctype,
   return d;
 }
 
-// Configure network
-  // TODO: Take from host facts (f) f.ansible_dns if available !!!
-  // Create netconfig as a blend of information from global network config
-  // and hostinfo facts.
+/** Configure network params for host.
+ * Create netconfig as a blend of information from global network config and hostinfo facts.
+ * TODO:
+ * - Take from host facts (f) f.ansible_dns if available !!!
+ * - Pass (or enable access) to host params, e.g. for network if name override.
+ * - Need to pass also other info (e.g. osid, os hint to make proper decision on interface naming)
+ * 
+*/
 function netconfig(net, f) {
   if (!f) { return net; } // No facts, cannot do overrides
-  var anet = f.ansible_default_ipv4;
+  var anet = f.ansible_default_ipv4; // Ansible Net
   var dns_a = f.ansible_dns; // Has search,nameservers
   net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
   net.nameservers = net.nameservers.join(" "); // Debian: space separated
@@ -468,7 +534,7 @@ function netconfig(net, f) {
   // Account for KS needing nameservers comma-separated
   // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
   net.nameservers_csv = net.nameservers.replace(' ', ',');
-  
+  // TODO: net.nameservers_ssv // Space separated values (?)
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
   // Domain !
@@ -599,7 +665,7 @@ function script_send(req, res) {
   res.type("text/plain");
   // TODO: Create later a smarter data driven solution
   // if (fname == 'preseed_dhcp_hack.sh') { res.send("kill-all-dhcp; netcfg\n"); return; }
-  // TODO: Configurable script directory
+  // Configurable script directory. TODO: Multiple paths, resolve
   var spath = process.env["LINETBOOT_SCRIPT_PATH"] || global.inst.script_path || "./scripts/";
   var fullname = spath + fname;
   if (!fs.existsSync(fullname)) { res.send("# Hmmm ... No such script file.\n"); return; }
@@ -645,18 +711,23 @@ function needs_template(cont) {
   if (tcs.length > 1) { console.error("Ambiguous TEMPLATE_WITH tagging ...."); return null; }
   return tcs[0];
 }
-
+/** Produce a listing of Recipes
+ */
 function recipe_view(req, res) {
   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
   var grid = [hostfld]; // Grid def
-  var keys = Object.keys(tmplmap);
-  var urls = [];
-  keys.forEach((k) => { // k == URL
-    var fld = {name: tmplmap[k],  title: tmplmap[k], type: "text", width: 80, itemTemplate: null};
-    urls.push(k);
+  // var keys = Object.keys(tmplmap);
+  var urls = []; // Add various URL:s from structure
+  // OLD: keys. NEW: recipes.
+  recipes.forEach((k) => { // OLD: k == URL NEW: k == Object 
+    //var fld = {name: tmplmap[k],  title: tmplmap[k], type: "text", width: 80, itemTemplate: null};
+    var fld = {name: k.ctype, title: k.ctype, type: "text", width: 80, itemTemplate: null}
+    // Add to URL:s and Grid cols side-by-side
+    //urls.push(k); // OLD
+    urls.push(k.url);
     grid.push(fld);
   });
-  res.json({status: "ok", grid: grid, urls: urls, data: []});
+  res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes});
 }
 
 module.exports = {
