@@ -336,10 +336,9 @@ function hosts_filter(hostarr, patt, propname) {
   return ha2;
 }
 /** Convert minimal host record (hname,macaddr,ipaddr) to minimal "fake-facts".
- * Fake-facts are greated based on global config (network geared) defaults.
- * The props to allow indexing should be present.
- * Extracts good default values from global (esp. global.net) config.
- * @param h {object} - Minimal host record with hname,macaddr,ipaddr
+ * Fake-facts are created based on main config network setting defaults (in "net" section).
+ * All propseries to allow indexing (mac,ip,hname) should be present.
+ * @param h {object} - Minimal host record with hname,macaddr,ipaddr (And optional bmcipaddr)
  * @param global {object} - Main config with likely-to-be-valid info to create fake facts.
  * 
  */
@@ -421,6 +420,7 @@ function customhost_load(fname, global, iptrans) {
     if (iptrans && it.tempipaddr) { iptrans[it.tempipaddr] = it.ipaddr; }
     host_add(f);
   });
+  return arr;
 }
 
 /** Lookup inventory parameters for a host by facts / hostname.
@@ -448,6 +448,7 @@ module.exports = {
   group_mems_setup: group_mems_setup,
   hosts_filter: hosts_filter,
   customhost_load: customhost_load,
+  host2facts: host2facts,
   facts_load_all: facts_load_all,
   csv_parse: csv_parse,
   csv_parse_data: csv_parse_data,

@@ -89,6 +89,12 @@ var acts = [
     "opts": [],
   },
   {
+    "id": "newhostgen",
+    "title": "Generate fake / stub information for new hosts without any earlier facts or ipmi info (Pass --newhosts)",
+    "cb": newhostgen,
+    "opts": [],
+  },
+  {
     "id": "",
     "title": "",
     "cb": null,
@@ -105,6 +111,7 @@ var clopts = [
   ["s", "save", "Save file (for ops that produce content)"],
   ["", "dest=ARG", "Destination for files for particular op. (facts gather, bootbins, ...)"],
   // ["c", "clean", "Cleanup files Installed by operation (e.g. Boot Binaries)"],
+  ["", "newhosts=ARG", "Newhosts CSV file"],
 ];
 //var em = { // Error Messages
 //  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -364,8 +371,15 @@ function tftpsetup(opts) {
   dirs.forEach(function (pxelindir) {
     mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
   });
+  // BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache)
+  //var tmpl = fs.readFileSync("./tmpl/pc-autoinstall.conf.mustache", 'utf8');
+  // Note: Host specific params remain, see nic_config:
+  // Formulate here: mcfg.net.nameserver_first = mcfg.net.nameservers[0];
+  //var pcauto = Mustache.render(tmpl, mcfg);
+  // fs.writeFileSync( tcfg.root+"/boot/", pcauto, {encoding: "utf8"} );
   
-  /** Create MAC adress files for 
+  
+  /** Create MAC adress files for "pxelinux.cfg"
    * 
    **/
   function mkmacsymlinks(pxelindir, hostarr) {
@@ -674,4 +688,38 @@ function dhcpconf(opts) {
     return fnet;
   }
   
+}
+
+/** Generate new host "fake-facts" and 
+ * Note this implies
+ * - adding hosts to Linetboot "hosts" file.
+ * - Not using the "newhosts" mechanism (as facts don't need to be generated anymore).
+ */
+function newhostgen(opts) {
+  mcfg.fact_path = "/tmp/facts"; // DEBUG
+  mcfg.ipmi.path = "/tmp/facts"; // DEBUG
+  var csvfn = opts.newhosts;
+  if (!mcfg.fact_path) { apperror("No fact_path"); }
+  if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
+  var ipath = mcfg.ipmi.path;
+  var newhosts = hlr.customhost_load(csvfn, mcfg);
+  if (!Array.isArray(newhosts)) { apperror("Could not properly load " + csvfn); }
+  // Note: If username is to be parametrized (by e.g. template), the username MUST be padded to maintain tricky fixed offsets !
+  var userblock = `
+ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
+1                    true    false      false      NO ACCESS
+2   root             true    true       true       ADMINISTRATOR
+`;
+  newhosts.forEach(function (h) {
+    if (!h.hname) { console.log("No hname !", h); return; }
+    var f = hlr.host2facts(h, mcfg);
+    // Write fake facts
+    fs.writeFileSync( mcfg.fact_path + "/" + h.hname, JSON.stringify(f, null, 2), {encoding: "utf8"} );
+    if (!h.bmcipaddr) { apperror("No bmcipaddr in newhost record ! Exiting ..."); }
+    // Write fake IPMI info
+    var ipmi_bn = ipath + "/" + h.hname; // Basename for both files
+    fs.writeFileSync( ipmi_bn+".lan.txt",   "IP Address              : "+h.bmcipaddr+"\n", {encoding: "utf8"} );
+    fs.writeFileSync( ipmi_bn+".users.txt", userblock, {encoding: "utf8"} );
+  });
+  console.log("Wrote generated information to "+mcfg.fact_path+" (facts) "+mcfg.ipmi.path+" (IPMI info)");
 }
