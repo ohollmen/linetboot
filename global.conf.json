@@ -22,7 +22,7 @@
   
     "postscript": "mv_homedir_for_autofs.sh",
     "script_path": "./scripts/",
-    "tmpl_path":   "./tmpl/",
+    "tmpl_path":   "~/.linetboot/tmpl/:./tmpl/",
     "sshkey_path": ""
   
   },
@@ -164,5 +164,5 @@
     ]
   },
   "lboot_setup_module": "./custom.setup.js",
-  "customhostsX": "./newhosts.txt"
+  "customhostsXX": "~/.linetboot/newhosts.txt"
 }
