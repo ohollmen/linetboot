@@ -41,13 +41,20 @@ function menu_macfilename(f) {
   var macfn = "01-" + mac;
   return macfn;
 }
-/** List PXELinux Config directory files.
+function macfilename_to_mac(macfn) {
+  macfn = macfn.substr(3);
+  macfn = macfn.replace(/-/g, ":");
+  macfn = macfn.toLowerCase();
+  return macfn;
+}
+
+/** List PXELinux Config directory MAC-named files.
  */
 function pxelinuxcfg_list(path, extra) {
   var list = fs.readdirSync(path);
   var list2 = [];
   list.forEach(function (it) {
-    console.log("ITEM:"+it);
+    //console.log("ITEM:"+it);
     if (!has_macfile_pattern(it)) { return; } // Skip !
     // Extra info (as Object)
     if (extra) {
@@ -189,6 +196,7 @@ module.exports = {
   // init: init,
   has_macfile_pattern: has_macfile_pattern,
   menu_macfilename: menu_macfilename,
+  macfilename_to_mac: macfilename_to_mac,
   pxelinuxcfg_list: pxelinuxcfg_list,
   bootlabels, bootlabels,
   menu_deflbl: menu_deflbl,
