@@ -266,7 +266,8 @@ menu label Dell M640 Update
 kernel http://{{ httpserver }}/dell_m640/isolinux/SA.1
 # DEBUG=0 quiet ... Also: loglevel=1
 # Share types seen/used: cdrom,nfs,tftp,smbfs (Also http is made to be supported by SA.2(initrd file): bin/start-stage3.sh with addition)
-append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
+# append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
+append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 root=live:CDLABEL=CDROM rootfstype=auto  rd.live.image  rd.writable.fsimg rd.md=0 rd.dm=0 Stage3_type=CDROM DEBUG=0  BUILD=0 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/ share_script=drm_files/apply_bundles.sh share_opts=nolock selinux=0
 
 # OpenSuse ISO Install (and autoinst.xml, also called AutoYaST control files (control-files/) ?
 # There's also linuxrc key-value based text (non-XML) format
@@ -364,3 +365,17 @@ append initrd=http://{{ httpserver }}/freedos1/fdboot.img
 #menu label Diskless Ubuntu18 Client
 #kernel vmlinuz
 #append initrd=/initrd.img root=/dev/nfs nfsroot={{ nfsserver }}:/nfsroot/client-01 ip=dhcp rw
+
+# https://serverfault.com/questions/644793/what-are-the-attributes-required-by-the-component-element-in-windows-unatten
+# https://docs.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2013/ms125692(v=vs.121)?redirectedfrom=MSDN
+# Windows ISO (originally with embedded Autounattend.xml recipe, There's a sample Autounattend.xml template in tmpl/)
+# See FreeBSD Boot for example on ISO based boot
+label win2019
+menu label Windows Server 2019
+linux memdisk
+# Example of Original 4.9GB Media
+#append iso initrd=http://{{ httpserver }}/Win2019_uefi_autoinstall.iso
+append iso initrd=http://{{ httpserver }}/winpe.iso
+# Not likely the below
+#append raw
+
