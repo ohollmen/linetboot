@@ -1,0 +1,47 @@
+@startuml
+skinparam roundcorner 10
+title OS Install Recipe Formulation Steps/Sequence
+
+participant "OS Installer" as Client
+participant "Linetboot\nOSInstall" as HTTP
+participant "Parameter Creation" as Para
+participant "Tmpl Store" as TS
+
+participant "Tmpl Engine" as TE
+
+hnote over Client: Get Network Interface up
+
+Client -> HTTP: Request Recipe (e.g. by URL in kernel command line)
+
+hnote over HTTP: Detect IP Address of client (Host Identity, for facts lookup)
+hnote over HTTP: Detect the kind of Recipe to generate from URL (e.g. /ks.cfg => RH Kickstart)
+hnote over HTTP: Lookup facts or generate "fake-facts" for new hosts (by IP Addr)
+
+HTTP -> Para: Create Parameters
+
+' hnote over Para: Global Main Config\nHost Facts\nNet (global+host)\nDisk (host)\nInitial User\nPackages Repo / Mirror\nOS Hint
+hnote over Para
+* Global Main Config
+* Host Facts
+** Net (global+host)
+** Disk (host)
+** Initial User
+** Packages Repo / Mirror
+** OS Type Hint
+end hnote
+HTTP <- Para: Return Parameters Structure ""{net: {}, ...}""
+
+hnote over HTTP: Complete Parameters (private deep copy)
+
+HTTP -> TS: Get Correct Template for current OS Install (e.g. ks.cfg.tmpl)
+HTTP <- TS:
+
+HTTP -> TE: Generate Templated Output: ""out = TmplEngine.render(tmpl, params)""
+HTTP <- TE: "The Recipe"
+
+Client <- HTTP: Send complete Recipe to OS Installer (in correct format)
+
+hnote over Client: Start OS Installation
+
+footer (C) Olli Hollmen 2020
+@enduml
