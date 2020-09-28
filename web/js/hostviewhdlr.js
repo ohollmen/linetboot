@@ -226,12 +226,15 @@ function tftplist() {
   }
 // Click handler for Boot item reset (to default)
 function defboot_reset(jev) {
-  var macfname = this.dataset.macfname;
+  // var macfname = this.dataset.macfname;
+  var mac = this.dataset.macaddr; // NEW
   // DEBUG:alert("Reset " + macfname);
-  var url = "/bootreset?macfname="+macfname;
+  //var url = "/bootreset?macfname="+macfname;
+  var url = "/bootreset?macaddr="+mac; // NEW
+  // url += "&macaddr="+mac; // Compat
   axios.get(url).then(function (resp) {
     var d = resp.data;
-    if (d.status == "err") { return toastr.error("Error resetting boot for "+macfname+ "\n"+d.msg); }
+    if (d.status == "err") { return toastr.error("Error resetting boot by mac "+mac+ "\n"+d.msg); }
     toastr.info("Successfully reset boot to default menu.");
     //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
     tftplist();

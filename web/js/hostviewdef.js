@@ -268,7 +268,8 @@
    ];
    function reset_defboot(val, item) {
      if (item.issym) { return ""; }
-     return "<a class=\"defboot\" href=\"#\" data-macfname=\""+item.fname+"\">Reset</a>";
+     // OLD:  data-macfname=\""+item.fname NEW:  data-macaddr=\""+item.macaddr
+     return "<a class=\"defboot\" href=\"#\" data-macaddr=\""+item.macaddr+"\">Reset</a>";
    }
    function bootitem_info(val, item) {
      if (item.issym && item.size == 7) { return("<span style=\"color: #AAAAAA\">Default Boot Menu</span>"); }
@@ -291,7 +292,7 @@
      if (!item.filecnt) { return (""); }
      return "<a class=\"mediainfo\" href=\"#\" data-path=\""+item.path+"\">Info</a>";
    }
-   // NEW
+   // Boot Dirs / ISO Media
    var fldinfo_bootmedia = [
      
      {name: "path",      title: "Boot Media Path",  type: "text", width: 80, },
