@@ -1,0 +1,16 @@
+# 1st stage FreeBSD / PCBSD / TrueOS "pxeboot" bootloader Config
+# See: http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/pc-autoinstall.conf
+# To be found/located in install-root-relative path (PXE => TFTP) boot/pc-autoinstall.conf
+# 
+pc_config: http://{{ httpserver }}/cust-install.cfg?mac=%%NIC_MAC%%
+# pc_config: http://{{ httpserver }}/%%NIC_MAC%%.cfg
+# 
+confirm_install: yes
+# Any postinstall command
+shutdown_cmd: shutdown -p now
+############# NIC ###############
+# nic_config: dhcp-all
+nic_config: em0 {{ net.ipaddress }} {{ net.netmask }}
+# If 2 or more, what's delimiter ?
+nic_dns: {{ net.nameserver_first }}
+nic_gateway: {{ net.gateway }}
