@@ -86,7 +86,7 @@ Other good info on configring dnsmasq:
 - [Dealing with Option 93 / vendor-class-identifier](https://www.syslinux.org/archives/2014-October/022683.html)
 - https://forums.fogproject.org/topic/8726/advanced-dnsmasq-techniques
 
-Reload server config by `sudo kill -HUP $DNSMASQ_PID` (Use `ps -ef | grep dnsmasq` to find out pid).
+Reload dnsmasq server config by `sudo kill -HUP $DNSMASQ_PID` (Use `ps -ef | grep dnsmasq` to find out pid).
 
 dnsmasq also has an integrated tftp server that can be turned on with `enable-tftp` (See also `tftp-root` for
 customizing the TFTP root path).
@@ -115,24 +115,6 @@ After getting to IPv4 network view (You may need to "Toggle Advanced Mode" to se
 
 The Next Server and Boot Server are often redundantly set to same value.
 Do not set (checkbox) "Deny BOOTP Requests".
-
-## Notes on PXE related DHCP options
-
-This is by no means a full manual to DHCP options, but these are core DHCP protocol options controlling TFTP boot
-(See your DHCP server on what string-form keyword is used to configure each numeric protocol option):
-
-- 13 - Boot file size (???) - Size of boot file in 512 byte chunks
-- 66 - TFTP (boot) server name (hostname by RFC spec, but it seems implementations allow IP address too, aka "next-server")
-- 67 - TFTP boot program path (resolvable under tftp server root dir.)
-- 128 - TFTP server address (For IP Phone SW load)
-- 150 - TFTP Server address (IPv4 IP address, somewhat overlapping w. 66)
-
-Also a feature introduced later onto TFTP is "options". These options
-may be required by some (BIOS) PXE implementations.
-
-For more on protocol, see [rfc2132 1997](https://tools.ietf.org/html/rfc2132),
-[RFC2939](https://www.iana.org/assignments/bootp-dhcp-parameters/bootp-dhcp-parameters.xhtml),
-[BOOTP (~PXE) Options](http://www.networksorcery.com/enp/protocol/bootp/options.htm)
 
 ------------------------------------------------------------------------
 
@@ -171,8 +153,60 @@ Info Source: https://gerardnico.com/virtualbox/pxe.
 
 # Linetboot configuration
 
-Lineboot Configuration is best started by creating the initial "hosts" file
-( `~/.lineboot/hosts` ).
+## "hosts" Inventory (Ansible-style)
+
+Lineboot Configuration is best started by creating the initial "hosts" (inventory) file
+( `~/.lineboot/hosts` ). The format for this file follows the ansible inventory file format.
+Lines should start with hostname and may be optionally followed by arbitrary `key=value` pairs
+that may have meaning to either linetboot, ansible (internally) or ansible playbooks.
+Linetboot supports a subset of ansible supported features with following notable points:
+
+- host-lines should be fully suppported
+- Concept of "groups" is not currently supported.
+- host-lines should not be duplicated with same host(name) appearing multiple times in same inventory file
+
+Even with these limitations there is a good chance you can share the inventory file with Ansible.
+
+Note: Linetboot wants the whitespace in parameter values to be escaped by the URL escaping (Hex escape, e.g. %20 for space)  conventions.
+However whitespace is rarely needed and the best choice is to simply avoid it.
+
+Example of a small inventory:
+
+```
+# Group tags allowed, but not (currently) supported.
+# As you can see, '#'-comments are supported too.
+[workstations]
+# Host parameters / variables are allowed. Lineboot wants spaces to be escaped by '+',
+# but you rarely have spaces.
+ws-001.comp.com loc=Floor+1 dock=1 nis=west
+ws-002.comp.com loc=Floor+3 ansible_user=mrsmith nis=west
+[fileservers]
+filer-001 nfs=1
+```
+
+While key names for key-value pairs are arbitrary, some names have a special meaning (just as for Ansible) meaning for Lineboot.
+The list on notable ones is:
+
+- loc (sting) - Free form host location Indicator
+- use (string) - Brief Usage description
+- dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts)
+- nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
+
+As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
+would be:
+
+- ansible_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
+- ansible_sudo_pass - Anisble sudo password
+
+Sharing variable names with ansible is okay as long as they have the same conceptual meaning.
+
+### Dynamic population of host key-value params
+
+During server startup it will run a user created custom module, which gets called to do misc setup work.
+One common use for this is to populate host params, for example based on hostname (which often have conventions grouping
+together a set of hosts with similar patterns in name). See Documentation on main config "lboot_setup_module".
+Note: Because these variables are dynamically populated in linetboot runtime data structures, they are not available to ansible.
+If you must have params/vars available to ansible, you must statically populate them in inventory.
 
 ## Main Configuration
 
@@ -183,8 +217,9 @@ Configuration in the main config file `~/.linetboot/global.conf.json` (Currently
 - main.httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
   Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
   This setting is important (and mainly used on) templates (e.g. bootmenu).
-- main.nfsserver - NFS server for special installations that cannot cope with HTTP (E.g. Ubuntu
+- main.nfsserver - NFS file server for special installations that cannot cope with HTTP (E.g. Ubuntu
   18.04 Desktop seems to be crippled with HTTP)
+- main.nfsserver - SMB/Samba/CIFS file server to use for special installations (mostly windows)
 - fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be enabled for install.
 - main.useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
 - main.hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
@@ -194,7 +229,7 @@ Configuration in the main config file `~/.linetboot/global.conf.json` (Currently
 
 ### Section "core" - Essential Linetboot Settings
 
-- maindocroot (str) - The linetboot HTTP server (Express.js) document root for static file delivery
+- maindocroot (str) - The linetboot HTTP server (Express.js) document root for static boot media and OS Install files delivery
 - appname (str) - "Branded" Application name shown in Web frontend of Linetboot
 - hdrbg (str) - Header Background Image URL for frontend "branding"
 - apiena (bool) - N/A
@@ -210,6 +245,9 @@ Configuration in the main config file `~/.linetboot/global.conf.json` (Currently
   - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
   - ntpserver - Network Time Server (hostname)
 
+When new hosts without facts are being installed, Linetboot heavily uses this section to "guess" the good default settings
+for network config.
+
 ### Section "inst" - OS Installation
 
 Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now) that are used on preseed/kickstart templates:
@@ -218,7 +256,8 @@ Installation Environment universal parameters (with fairly obvious meanings, not
 - time_zone - Timezone of hosts (E.g. "America/Los_Angeles")
 - install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
 - postscript - Script to launch at the end of installation
-- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this). This external file should have members:
+- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this).
+    This external file should have members:
   - fullname - full firstname, lastname of user
   - username - login username for user
   - password - login password for user (in clear text for now)
@@ -226,6 +265,15 @@ Installation Environment universal parameters (with fairly obvious meanings, not
   - homedir - Home directory for user
 
 See "net" section above for install network settings (Object with global network base settings).
+
+### Section "ipmi" - Remote Management Info
+
+This section is for BMC based host management and interactivety by IPMI and RedFish (protocols).
+
+- path - Path location for ipmitool collected files (`$hostname.net.users.txt` and `$hostname.net.users.txt`)
+- user - Username for IPMI and Redfish
+- pass - Password for IPMI and Redfish
+- debug - Enable more verbose debug output on remote management ops
 
 ## Linetboot Environment Variables
 
@@ -250,8 +298,24 @@ The instructions here are specifically applicable for Dell servers but flow is l
 - In section "Boot Option Enable/Disable", keep "Integrated NIC 1 ..." enabled - disabling this item does not allow booting from network at all.
 - In "Boot Sequence" you may keep "Integrated NIC 1 ..." at low priority (towards bottom) as request to (PXE) boot via network is likely to be triggered via explicit keypress (e.g. Dell: F12) at the startup.
 
-At this point booting ARM hardware is not supported as PXELinux is Intel X86 w. PXE BIOS -only
-(However You *can* run linetboot on ARM fine, just the machine to netboot/install cannot be ARM based). Supposedly Using Grub 2 with its net booting capabilities (NBP: grubaa64.efi) would be the solution.
+### Support for ARM
+
+Linetboot server will run fine on ARM. At this point booting ARM hardware is not directly supported/tested as
+PXELinux (the lineboot de-facto bootloader) is Intel X86 w. PXE BIOS -only.
+However booting ARM boot clients should be quite feasible with some DIY by following steps:
+
+- Find a suitable ARM bootloader for your ARM CPU and board variant
+- Configure DHCP to recognize your ARM system by its MAC address, assigning it an IP (also in DNS)
+- Assign the ARM bootloader you figured out in first step as bootfile/NBP (e.g.): `filename "..."` 
+
+<!-- (However You *can* run linetboot server on ARM fine, just the machine to netboot/install cannot be ARM based). -->
+
+### Booting EFI/UEFI
+
+Possible solutions (not fully tried):
+- Use Grub 2 with its net booting capabilities (NBP: grubaa64.efi)
+- Use syslinux.efi
+- Use iPXE
 
 ### Interference with iSCSI or FCoE
 
