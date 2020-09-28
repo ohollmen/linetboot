@@ -16,7 +16,7 @@ paths:
         - application/json
       responses:
         200:
-          description: Hosts in Array of objects
+          description: Hosts in Array of Objects
           schema:
             type: array
             items:
@@ -57,15 +57,15 @@ paths:
       responses:
         200:
           description: Respond with Boot Acknowledgement
-  /bootreset?macfname=$macfname:
+  /bootreset?macaddr=$macaddr:
     get:
       summary: Reset a stored "Boot Label" for a host
-      description: Request a host (by MAC filename or auto-detected client IP address) to be reset to default boot (boot menu) instead of "Boot Label" it was given earlier.
+      description: Request a host (by explicitly passed MAC address or auto-detected client IP address) to be reset to default boot (boot menu) instead of "Boot Label" it was given earlier.
       produces:
         - application/json
       responses:
         200:
-          description: Standard Response. Return MAC file listing on sucecss.
+          description: Standard Response. Return MAC file listing on sucecss (e.g. for Client to refresh/redraw listing).
   /installevent/$evtype:
     get:
       summary: Signal a "milestone" event during OS install
