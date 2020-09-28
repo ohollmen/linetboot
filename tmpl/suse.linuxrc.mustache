@@ -1,0 +1,20 @@
+# Suse linuxrc 1st stage OS (auto-) install config
+# See: https://documentation.suse.com/sles/12-SP4/html/SLES-all/Invoking.html#invoking-autoinst
+
+# start_linuxrc_conf
+textmode: 1
+
+# autoyast2: nfs://{{ nfsserver }}/...
+autoyast2: http://{{ httpserver }}/autoinst.xml
+install: http://{{ httpserver }}/opensuse_tw_64
+# install: nfs://{{ nfsserver }}/isomnt/opensuse_tw_64
+# Not needed with "install" (nfs,http)
+# instmode: http
+# NFS based install
+# Should export: /isomnt/opensuse_tw_64 *(ro)
+# server: {{ nfsserver }}
+# serverdir: /isomnt/opensuse_tw_64
+
+# y2confirm:
+
+# end_linuxrc_conf
