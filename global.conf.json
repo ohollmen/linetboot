@@ -2,16 +2,7 @@
   "httpserver": "192.168.1.141:3000",
   "nfsserver" : "192.168.1.141",
   "smbserver" : "192.168.1.141",
-  "debug": 1,
-  "tmplfiles_X": {
-    "preseed": "./tmpl/preseed.cfg.mustache",
-    "ks":      "./tmpl/ks.cfg.mustache",
-    "netif":   "./tmpl/interfaces.mustache",
-    "netw_rh": "./tmpl/sysconfig_network.mustache",
-    "preseed_dt": "./tmpl/preseed.desktop.cfg.mustache",
-    "preseed_mini": "./tmpl/preseed_mini.cfg.mustache"
-  },
-  
+  "debug": 1,  
   "inst": {
     "userconfig": "~/.linetboot/user.conf.json",
     "locale": "en_US.UTF-8",
@@ -36,10 +27,6 @@
     "hdrbg": "https://cms.qz.com/wp-content/uploads/2018/12/tinyturtles.jpg?quality=75&strip=all&w=1600&h=1067",
     "apiena": 1
   },
-  "hostnamesX": [
-    "banana1","cubox-i","odroid-db","odroid-32 k=v",
-    "martta-1001PX","nuc5","nuc7","perlix2"
-  ],
   "groups": [
     {"id": "nuc", "name": "NUCs", "patt": "^nuc"},
     {"id": "odroid", "name": "Odroid:s", "patt": "^odroid"},
@@ -60,7 +47,6 @@
     "desc" : "TFTP and Boot (boot be separate ?)",
     "host": "banana2",
     "ipaddr": "192.168.1.108",
-    "root_old": "/srv/tftp",
     "root": "/var/lib/tftpboot",
     "lintftp" : false,
     "bootfile": "lpxelinux.0",
