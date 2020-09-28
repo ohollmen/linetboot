@@ -6,6 +6,11 @@
     "osi":"OS Installlation"
   },
   "docs" : [
+  	{
+      "title" : "About LinetBoot",
+      "urlpath" : "doc/about.html",
+      "grp":"gen"
+    },
     {
       "title" : "DocIndex README.md",
       "urlpath" : "README.md",
