@@ -178,6 +178,13 @@ sudo mount -o loop /usr/local/iso/ubuntu-18.04.1-server-amd64.iso   /isomnt/ubun
 sudo mount -o loop /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso  /isomnt/centos7/
 # Check that you have Main config "core.maindocroot" set to "/isomnt/"
 ```
+Important note on media directories and their connection to boot menu (pxelinux.cfg/default)
+- The main config core.maindocroot points to boot media "root" directory (default: /isomnt) and this is where kernel:s and initrd:s
+get delivered from (by http) by lineboot
+- As an example the mountpoint directory /isomnt/ubuntu18/ (with loop-mounted ISO) would appear in http URL: http://linetboothost:3000/ubuntu18/
+- The kernel:s and initrd:s are configured in boot menu file in "kernel" and "initrd" (or append initrd=...) directives respectively.
+  The mountpoint directory name must exactly match the name in URL for kernel and initrd loading to work. 
+
 ### Notes about TFTP and DHCP changes
 
 Sharing the traditionally root owned dirs to a "normal" group is potential security risk and you have to evaluate
@@ -195,7 +202,7 @@ Setup TFTP Directory structure (dir structure, bootloader menu and binaries):
 sudo mkdir -p /var/lib/tftpboot/
 # Change TFTP accessible to Linetboot user
 sudo chmod -R g+w /var/lib/tftpboot/
-sudo chgrp -R $USER /var/lib/tftpboot/
+sudo chgrp -R $LINETBOOT_USER_GROUP /var/lib/tftpboot/
 # Create menu and mac address based symlinks.
 # To dry run and only preview menu: node hostsetup.js tftpsetup --dryrun | less
 node hostsetup.js tftpsetup
@@ -236,3 +243,24 @@ node hostsetup.js dhcpconf
 # If you are ready to produce final output, save into actual TFTP directories (Under /pxelinux.cfg/).
 # make default
 -->
+
+## Stage 3 Installation - Get Package Info, SSH Keys and Remote management Info
+
+To use some of the more sophisticated automated Boot and OS Installation features we must have connectivity to BMC - The Baseboard
+management controller (also called just MC) which is able to control host by booting it, setting boot type (e.g. PXE), etc.
+The "Remote Management" info is extracted with an open-source tool "ipmitool", which is able to inquire the BMC info from within host
+(although this requires root rights and thus "become: yes" Ansible feature).
+
+Collecting OS package information is a nice-to have feature, whose usefulness depends on what the lifetime of OS composition on the
+host is. If host is going to be re-imaged with different OS:s every few hours or every few days (e.g in testing), tracking OS packages
+is not very useful. If OS composition is going to stay for weeks or e.g. 2 years (with packages possibly being added and removed), keeping
+track of makages maybe very useful.
+
+All these steps are very fit to be run with Ansible playbooks that are contained with lineboot:
+```
+# Gather Remote management (IPMI) Info from BMC
+ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_sudo_pass=... host=all destpath=$HOME/hostrmgmt"
+# Gather SSH Keys 
+ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_sudo_pass=... host=all keyarchpath="
+```
+
