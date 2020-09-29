@@ -298,7 +298,7 @@ append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd s
 # https://www.trueos.org/handbook/advanced.html
 # http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
 label freebsd12net
-menu label FreeBSD 12 Net Install
+menu label FreeBSD 12 Net ISO Install
 linux memdisk
 #TODO: initrd http://{{ httpserver }}/freebsd12net/freebsd-install/bootonly.iso
 initrd http://{{ httpserver }}/bootonly.iso
@@ -308,17 +308,32 @@ initrd http://{{ httpserver }}/bootonly.iso
 append iso
 
 # FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot, Starting the BTX loader)
+# Installer: PC-SysInstall ("pc-sysinstall" on ISO, written in shell)
 # https://blog.narf.ssji.net/2013/06/pxelinux_openbsd_install/
 # The chainloader modules seems to be pxechain.com, but seems to be
 # have been renamed to pxechn.c32 (syslinux-common)
+# https://www.bsdcan.org/2010/schedule/attachments/142_pc-sysinstall-kris-moore-2010.pdf
+# https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/
+# - Discusses PXE Problems (e.g. mentions pxechn.c32)
+# - Mentions: Now, set DHCP option 17 (path exported on NFS, NFS Root path, no len limit, option root-path "10.0.1.4:/var/tmp/rootfs";)
+# Also do: strings /isomnt/freebsd12/boot/pxeboot | less
 label freebsd12
 menu label FreeBSD 12 (BSD pxeboot)
 # kw "pxe" is specific to NBP. "kernel" leads to loading ok, but "Booting kernel/failed: Invalid argument", "boot" - nothing (!).
 # linux memdisk; initrd http://.../pxeboot; append raw; starts boot but freezes
 kernel pxechn.c32
 #initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
+# Said to work: APPEND images/FreeBSD12-64/boot/pxeboot (https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/)
 initrd ::pxeboot
 # append raw
+
+# OpenBSD - Seems to vary slightly from PCBSD and FreeBSD
+# https://eradman.com/posts/autoinstall-openbsd.html
+# Bootloader (NBP): auto_install -> pxeboot.amd64 (Note: symlink is a must filename triggers auto installation !!!)
+# Config: $tftproot/etc/boot.conf (stty com0 115200\nset tty com0)
+# Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
+# URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
+
 
 # Arch Linux
 # archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)

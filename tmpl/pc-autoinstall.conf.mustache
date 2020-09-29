@@ -9,8 +9,10 @@ confirm_install: yes
 # Any postinstall command
 shutdown_cmd: shutdown -p now
 ############# NIC ###############
-# nic_config: dhcp-all
-nic_config: em0 {{ net.ipaddress }} {{ net.netmask }}
+nic_config: dhcp-all
+# This file should be shared by hosts / installations (if on TFTP)
+# Cannot do someting like:
+# nic_config: em0 {{ net.ipaddress }} {{ net.netmask }}
 # If 2 or more, what's delimiter ?
 nic_dns: {{ net.nameserver_first }}
 nic_gateway: {{ net.gateway }}
