@@ -415,6 +415,8 @@ function customhost_load(fname, global, iptrans) {
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
   arr.forEach(function (it) {
+    // Ensure MAC is always mangled to lower case (Linetboot convention)
+    if (it.macaddr) { it.macaddr = it.macaddr.toLowerCase(); }
     var f = host2facts(it, global);
     if (!f) { console.log("host2facts() made none for "+it.hname); return; }
     if (iptrans && it.tempipaddr) { iptrans[it.tempipaddr] = it.ipaddr; }
