@@ -1,19 +1,39 @@
-[Unit]
 # TEMPLATE_WITH: sysinfo
-# Lineboot systemd startup file. This works very much like
-# starting linetboot by PM2, but has much more appeal to Linux
-# Devops/Admin people and provides the "standard" systemd interface
-# to starting, stopping, restaring and seeing status of Linetboot.
+# # Lineboot systemd service startup file
+# 
+# This works very much like starting linetboot by PM2, but has much
+# more appeal to Linux Devops/Admin people and provides the "standard"
+# systemd interface to starting, stopping, restaring and seeing status
+# of Linetboot.
+# 
+# # Usage
+# 
+# Testing and enabling locally (pass this concrete *file*)
+# - Check syntax: systemd-analyze verify ./linetboot.service
+# - Test this by: systemctl start ./linetboot.service
+# - Enable this by: systemctl enable ./linetboot.service
+[Unit]
+
 Description=Linetboot - Linux Network Boot and Install App
 After=network.target
 
 [Service]
 Type=simple
+# Effective user (run-as)
 User={{ linetuser }}
-# Distro Out-of-Box Node is typically /usr/bin/node
+# Translate to name to prettify ?
+Group={{ linetgroup }}
+# ExecStartPre=...
+# Distro Out-of-Box Node is typically: /usr/bin/node
+# node/nodesource installed one: /usr/local/bin/node
 ExecStart={{{ linetnode }}} {{{ linetapproot }}}/linetboot.js
 WorkingDirectory={{{ linetapproot }}}
+# Logging
+#StandardOutput=file:...
+#StandardError=file:...
+# Simulate Node PM2
 Restart=on-failure
+
 
 [Install]
 WantedBy=multi-user.target
