@@ -372,11 +372,14 @@ function tftpsetup(opts) {
     mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
   });
   // BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache)
-  //var tmpl = fs.readFileSync("./tmpl/pc-autoinstall.conf.mustache", 'utf8');
-  // Note: Host specific params remain, see nic_config:
-  // Formulate here: mcfg.net.nameserver_first = mcfg.net.nameservers[0];
-  //var pcauto = Mustache.render(tmpl, mcfg);
-  // fs.writeFileSync( tcfg.root+"/boot/", pcauto, {encoding: "utf8"} );
+  mkDirByPathSync(tcfg.root+"/boot/");
+  var tmpl = fs.readFileSync("./tmpl/pc-autoinstall.conf.mustache", 'utf8');
+  console.log("Got "+tmpl.length+" B of template");
+  // Note: Host specific params remain (in examples), see nic_config: (changed to univeral "dhcp-all")
+  // Formulate here:
+  mcfg.net.nameserver_first = mcfg.net.nameservers[0];
+  var pcauto = Mustache.render(tmpl, mcfg);
+  fs.writeFileSync( tcfg.root+"/boot/pc-autoinstall.conf", pcauto, {encoding: "utf8"} );
   
   
   /** Create MAC adress files for "pxelinux.cfg"
@@ -556,7 +559,7 @@ function scp_sync(local, remloc, opts, cb) {
   } // if
 */
 /** Have a chicken-n-egg problem:
- * Would be nice to execyte on single host centrally using newtwork interface (e.g. lanplus),
+ * Would be nice to execute on single host centrally using newtwork interface (e.g. lanplus),
  * but contact need to be made to BMC (not host), which is (initially) unknown.
  * It will be hard to sudo on host.
  */
@@ -592,7 +595,7 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
     return curDir;
   }, initDir);
 }
-/** Generate ISC DHCP Configuration with single range of addresses (small scale).
+/** Generate ISC DHCP Configuration with single range of addresses (thus small scale).
  * 
  */
 function dhcpconf(opts) {
@@ -616,7 +619,7 @@ function dhcpconf(opts) {
   var fnet = net_fallback(net);
   // Allow broadcast and subnet to originate from mcfg.net.*, fall back on computed.
   net.broadcast = net.broadcast || fnet.broadcast;
-  // ... for subnet
+  // Same ... for subnet
   net.subnet = net.subnet || fnet.subnet;
   console.log(net);
   ////////////////////////////////////////////////
@@ -631,11 +634,13 @@ function dhcpconf(opts) {
   // NOW: Use hostarr
   hnames = hostarr.map(function (it) { return it.ansible_fqdn; });
   // console.error(hostarr); // Huge
+  ////////////// Create Params /////////////////
   // TODO: Add (temporarily, not de-facto) the NBP if configured
   hostarr.forEach(function (f) {
     var p = hlr.hostparams(f) || {};
     console.log("Params: ", p);
-    if (p.nbp) { f.nbp = p.nbp; }
+    if (p.nbp) { f.nbp = p.nbp; } // Add NBP
+    if (p.nfsroot) { f.nfsroot = p.nfsroot; }
   });
   mcfg.hosts = hostarr;
   var cont = Mustache.render(tmpl, mcfg);
@@ -649,7 +654,7 @@ function dhcpconf(opts) {
     catch (ex) {console.error("Cannot write "+dhcp.conf_path + " - consider sharing it to a group"); process.exit(0); }
     
     fs.writeFileSync(fn, cont); // {encoding: 'utf8'}
-    console.error("Wrote: "+fn);
+    console.error("Wrote to ISC DHCP COnfig file: "+fn);
   }
   else {
     console.log(cont);
@@ -694,10 +699,14 @@ function dhcpconf(opts) {
  * Note this implies
  * - adding hosts to Linetboot "hosts" file.
  * - Not using the "newhosts" mechanism (as facts don't need to be generated anymore).
+ * Run with A CSV file:
+ * ```
+ * node ./hostsetup.js newhostgen --newhosts /my/newhosts.txt
+ * ```
  */
 function newhostgen(opts) {
-  mcfg.fact_path = "/tmp/facts"; // DEBUG
-  mcfg.ipmi.path = "/tmp/facts"; // DEBUG
+  //mcfg.fact_path = "/tmp/facts"; // DEBUG
+  //mcfg.ipmi.path = "/tmp/facts"; // DEBUG
   var csvfn = opts.newhosts;
   if (!mcfg.fact_path) { apperror("No fact_path"); }
   if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
