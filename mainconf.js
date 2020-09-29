@@ -69,7 +69,7 @@ function mainconf_process(global) {
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
   
-  tilde_expand(global.inst, ["script_path", "tmpl_path"]);
+  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig"]);
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
