@@ -67,6 +67,7 @@ var patch_params_custom; // CB
 // Map URL to symbolic template name needed. template names get mapped by global.tmplfiles (Object-map, See main config)
 // {url: ..., ctype: ..., tmpl: "", nopara: ...}
 // The value of the map is "ctype" (for "config type")
+/*
 var tmplmap = {
 // var recipes =[
    "/preseed.cfg": "preseed",
@@ -91,8 +92,10 @@ var tmplmap = {
    //"boot.ipxe": "" // E.g. https://coreos.com/matchbox/docs/latest/network-booting.html
 //];
 };
+*/
 // TODO: Create tmplmap (k-v) here for compat.
 // ctype => tmplfile
+/*
 var tmplfiles = {
     "preseed": "preseed.cfg.mustache",
     "ks":      "ks.cfg.mustache",
@@ -104,6 +107,7 @@ var tmplfiles = {
     "pcbsd2":   "pcinstall.cfg.mustache",
     "win": "", // mime: "text/xml"
 };
+*/
 //var tmpls = {};
 var recipes = [
   {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache"},
@@ -112,8 +116,9 @@ var recipes = [
   {"url":"/interfaces",         "ctype":"netif",      "tmpl":"interfaces.mustache"},
   {"url":"/preseed.desktop.cfg","ctype":"preseed_dt", "tmpl":"preseed.desktop.cfg.mustache"},
   {"url":"/preseed_mini.cfg",   "ctype":"preseed_mini","tmpl":"preseed_mini.cfg.mustache"},
-  {"url":"/boot/pc-autoinstall.conf","ctype":"pcbsd", "tmpl":"pc-autoinstall.conf.mustache"},
-  {"url":"/cust-install.cfg",   "ctype":"pcbsd2",     "tmpl":"pcinstall.cfg.mustache"},
+  // /boot/pc-autoinstall.conf on TFTP ?
+  {"url":"/pc-autoinstall.conf","ctype":"bsd1",      "tmpl":"pc-autoinstall.conf.mustache"},
+  {"url":"/cust-install.cfg",   "ctype":"bsd2",      "tmpl":"pcinstall.cfg.mustache"},
   {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"}
 ];
 var recipes_idx = {};
@@ -361,6 +366,7 @@ function preseed_gen(req, res) {
   if (patch_params_custom) { patch_params_custom(d, osid); }
   // Copy "inst" section params for (transition period ?) compatibility !
   params_compat(d);
+  if (req.query.json) { return res.json(d); }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
   //var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
   var tmplcont = template_content(url); // NEW: url
