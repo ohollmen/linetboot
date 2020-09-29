@@ -647,7 +647,11 @@ function disk_out_winxml(disk) {
   `;
 }
 ////// Scripts and templating //////////////
-
+// Little nodepad type list of scripts
+// 
+var scriptnames = [
+ "http_w_mac.sh", "linetboot.service", "mv_homedir_for_autofs.sh",  "preseed_net_restart.sh",  "sources.list",  "start.cmd"
+];
 /** Send a shell script / commands (or any text content) using HTTP GET.
  * The express URL pattern must be of form: "/scripts/:filename" making filename parameter
  * be available in req.params.filename.
@@ -685,7 +689,8 @@ function script_send(req, res) {
     if (tpc == 'global') { p = global; }
     // Custom ... how to formulate this into more static config ? clone global and add ?
     if (tpc == 'sysinfo') {
-      p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetnode: process.execPath};
+      // process.getgid(); // Need to translate
+      p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p);
@@ -746,5 +751,6 @@ module.exports = {
   script_send: script_send,
   netconfig: netconfig,
   
-  recipe_view: recipe_view
+  recipe_view: recipe_view,
+  scriptnames: scriptnames
 };
