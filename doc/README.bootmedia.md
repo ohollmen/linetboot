@@ -5,7 +5,19 @@
 The lineboot basic boot examples have been all successful using
 plain (non-modified) ISO image content as content to boot.
 This means distribtion ISO authors have generally done good job preparing
-their ISO:s to be PXE bootable. 
+their ISO:s to be PXE bootable. What all gets utilized from boot media and when ?
+
+- **OS kernel** and **Initial RAM disk** - By *bootloader* (lpxelinux.0).
+  - most internet examples insist making a copy of these (e.g. to root of TFTP server),
+  but Linetboot (with the help of lpxelinux.0) 1) Uses HTTP to load these, not TFTP and 2) Uses them *directly* from media
+  (with a little bit longer and "deeper" path though) instead of making a FS cluttering copy of them (with many OS:s clutter will
+  gradually form). 
+- OS Install packages - By OS Installer.
+  - Most OS Distros have a good set (even if not complete set) of packages on ISO image, but some of the "slimmest" distributions
+  leave out the packages altogether out from ISO image and fetch packages from internet repos
+  - These "slim" distributions are often recognizable by \*net\* or \*mini\* in their name *or* by their ISO size - a 100MB ISO
+    is likely to use internet repos and not contain much packages at all on ISO, and a > 900MB is likely to be "self contained" and
+    not use internet repos for install at all (although the models mix too, e.g. for recent updates not contained on ISO).  
 
 ## Downloading ISO Images
 
@@ -21,7 +33,7 @@ Creating and setting up an ISO image repo directory (e.g):
     sudo mkdir iso
     # Facilitate write access to a non-root (service) account
     sudo chown myacct:myacct iso
-    # cd for further downloads ... (see bgelow)
+    # cd for further downloads ... (see below)
     cd iso
 
 Example download:
@@ -65,6 +77,14 @@ Mount images with super user privileges:
     sudo mount -o loop /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso  /isomnt/centos7
     sudo mount -o loop /usr/local/iso/gparted-live-0.31.0-1-amd64.iso   /isomnt/gparted
 
+The corresponding /etc/fstab entries would be (to allow mounts to persist over a boot):
+```
+/usr/local/iso/ubuntu-18.04.1-server-amd64.iso      /isomnt/ubuntu18 iso9660 loop 0 0
+/usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso     /isomnt/centos7  iso9660 loop 0 0
+loop /usr/local/iso/gparted-live-0.31.0-1-amd64.iso /isomnt/gparted  iso9660 loop 0 0
+
+```
+
 Linux kernel always mounts ISO images with loop mount read-only and immutable making boot process
 predictable and repeatable.
 With loop-mount method you never copy the thousands of file contained in a ISO image to
@@ -81,7 +101,7 @@ via HTTP for the http server configured as "httpserver" in lineboot main config.
 ## HTTP delivery
 
 Note that with linetboot all boot and package files (from mounted ISO images) are fetched via HTTP, **not** TFTP.
-Setup your linetboot server "maindocroot" to refer to the ISO mount path (e.g. "/isomnt/")
+Setup your linetboot server "core.maindocroot" to refer to the ISO mount path (e.g. "/isomnt/")
 
 ## Hints on boot name labels
 
@@ -104,11 +124,14 @@ If you can foresee yourself going to wide selection, got with granular long name
 Dell DTK (Dell Deployment Toolkit) ISO:s are available from (e.g.):
 https://www.dell.com/support/article/en-us/sln296511/update-poweredge-servers-with-platform-specific-bootable-iso?lang=en
 
-From model-name links navigate to download page, copy lik address and download to your Linetboot ISO images storage directory. Mount to /isomnt/ dir as loop device (just like other ISO images, e.g.):
+From model-name links navigate to download page, copy lik address and download to your Linetboot ISO images storage directory.
+Mount to /isomnt/ dir as loop device (just like other ISO images, e.g.):
 
     mount -o loop /usr/local/iso/PER640_BOOTABLE_20.07.00.153.iso /isomnt/dell_r640 
 
-These DTK images hard to get fully booting over PXE despite well written (old, 2006) Dell whitepaper (https://www.dell.com/downloads/global/power/ps1q06-20050170-gujarathi-oe.pdf, the problem is OS boots up, but network interface is missing !).
+These DTK images hard to get fully booting over PXE despite well written (old, 2006)
+Dell whitepaper (https://www.dell.com/downloads/global/power/ps1q06-20050170-gujarathi-oe.pdf,
+the problem is OS boots up, but network interface is missing !).
 
 However you can use the images to update firmware by mounting them to remote servers.
 Run NFS server and add/export NFS share on your lineboot host by /etc/exports (e.g.):
