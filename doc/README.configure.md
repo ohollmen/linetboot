@@ -234,6 +234,21 @@ Configuration in the main config file `~/.linetboot/global.conf.json` (Currently
 - hdrbg (str) - Header Background Image URL for frontend "branding"
 - apiena (bool) - N/A
 
+### Section "tftp" - TFTP Settings
+
+Lineboot Admin tool (hostsetup.js) can assist in populating TFTP directories with (boot menu, config subdirs, symlinks etc.)
+config files and bootloader binaries. The settings for "tftp" are:
+
+- host - Remote host where TFTP server operates
+- ipaddr - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file.
+- root - TFTP server data root directory
+- linftp - Do not use this yet. Flag for using launching linetboot internal TFTP server (which can dynamically serve content for menus, etc)
+- bootfile - The bootloader file for configuring DHCP server NBP
+- menutmpl - PXELinux boot menu template file (Used for generating menu by admin tool)
+- menutout - Boot menu timeout (In seconds, parameter used for boot menu generation)
+- menutitle - Boot menu title (TODO) 
+- sync - Flag to sync content (config files, dirs or bootfiles) to remote TFTP server, specified by ipaddr)
+
 ### Section "net" - Install time (and general) Network settings
 
   - netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
