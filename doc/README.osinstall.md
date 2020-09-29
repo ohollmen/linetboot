@@ -56,6 +56,17 @@ work with narrow set of installer versions)
 - Recipe formats not being accurately versioned and documented as declared working with particular version of installer
 - Various bugs in (particular version) of installer
 
+Suggestion from debian wiki to extract preseed config values (use selectively in preseed, not as-is):
+```
+# Install package containing debconf-get-selections
+sudo apt install debconf-utils --no-install-recommends
+# Extract config selections (Needs to run as sudo, try with and without --installer,
+# produces different amount of info, e.g. 1342 vs. 435 lines respectively, latter has most lines "d-i" prefixed)
+sudo debconf-get-selections --installer > someting_like_preseed.cfg
+```
+
+For any preseed file you can run a syntax check by: `debconf-get-selections -c preseed.cfg`
+
 ## Parametrizing Templated Recipes
 
 The current Linetboot Templating engine of choice is Mustache, a logic-less templating engine (https://github.com/janl/mustache.js ).
@@ -122,11 +133,12 @@ hname,macaddr,ipaddr
 test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115
 test-002.mycorp.com,b0:26:30:f8:07:35,192.168.1.116
 ```
-To use admin too newhosts operation yuo *must* add (otherwise optional) column  "bmcipaddr"
+To use admin too newhostgen operation you *must* add (otherwise optional) column  "bmcipaddr":
 ```
 hname,macaddr,ipaddr,bmcipaddr
 test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115,192.168.1.215
 ```
+Note that the order of columns does not matter as long as the data matches headers.
 Based this info lineboot will heuristically generate "fake-facts" for these hosts (based on e.g. global network info) and add these
 in its internal (runtime) host lists, indexes, etc.
 Note: These hosts should not be entered in the inventory "hosts" file.
