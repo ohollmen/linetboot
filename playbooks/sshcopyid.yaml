@@ -6,6 +6,7 @@
 # - https://docs.ansible.com/ansible/latest/modules/synchronize_module.html
 # Also: lookup('vars', Component) ~ vars[Component]
 # hostvars[inventory_hostname][Component]
+# lookup('file', 'pubkeys/foo.com.invalid')
 # Note: All keys may not be copied on the first run (E.g. 3/5 might be copied) !
 # Ansible Concurrency/File synchronization problem (in lineinfile) ?
 # All keys were registered properly and showed in debug: output, but only 3/5 ended
@@ -56,4 +57,16 @@
         # However if string is even one char off it will.
         #regexp: '^{{ pubkey.stdout }}'
         insertafter: EOF
+      delegate_to: localhost
+    # Do we need to also add to known_hosts ?
+    # https://gist.github.com/shirou/6928012
+    - name: Add host to known_hosts    
+      # Also -H name,ipaddr
+      # shell: 'ssh-keyscan -H {{ inventory_hostname }}' >> ~/.ssh/known_hosts ? Ansible known_hosts ?
+      lineinfile:
+        dest: '{{ localuserhome }}/.ssh/known_hosts'
+        create: yes
+        state: present
+        # -p' + ansible_ssh_port + ' Need -H 
+        line: "{{ lookup('pipe', 'ssh-keyscan -t rsa -H ' + inventory_hostname) }}"
       delegate_to: localhost
