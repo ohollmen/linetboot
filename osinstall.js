@@ -738,7 +738,7 @@ function recipe_view(req, res) {
     urls.push(k.url);
     grid.push(fld);
   });
-  res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes});
+  res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes, scriptnames: scriptnames});
 }
 
 module.exports = {
@@ -752,5 +752,5 @@ module.exports = {
   netconfig: netconfig,
   
   recipe_view: recipe_view,
-  scriptnames: scriptnames
+  //scriptnames: scriptnames
 };
