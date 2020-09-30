@@ -51,6 +51,13 @@ var Mustache = require("mustache");
       // Note: Env. HOSTNAME seems to be a problem in Mac
       return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
     }},
+    // Also supports -f fn.txt (safer)
+    {"lbl": "sshcopyid", name: "SSH Copy ID",
+     "tmpl": "sshpass -p $SSHPASS ssh-copy-id {{username}}@{{ hname }}",
+      "cb": function (info, f) {
+      // Note: Env. HOSTNAME seems to be a problem in Mac
+      return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
+    }},
     {lbl: "mac2ip", name: "ISC DHCP Server mac-to-IP mapping",
        tmpl: "host {{ hname }} {\n  hardware ethernet {{ macaddr}};\n  fixed-address {{ ipaddr }};\n}\n",},
     
@@ -92,6 +99,7 @@ function commands_gen(op, hostarr, ps) {
   if (!Array.isArray(hostarr)) { console.log("commands_gen: No host facts array"); return null; }
   // OLD: Generate commands to scalar string var cont by cont += ....
   // NEW: Generate an array of commands to be granularly executed by child_process / ssh, etc.
+  console.log("ps: ", ps);
   var cmds = [];
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
@@ -106,6 +114,8 @@ function commands_gen(op, hostarr, ps) {
       pkglistcmd: plcmd, paths: paths
       
     };
+    // Override for any lower-level handler
+    if (ps) { Object.keys(ps).forEach((k) => { info[k] = ps[k]; } ); }
     var cmdcont, cmd;
     // (Prioritize) Template
     if (op.tmpl) { cmd = Mustache.render(op.tmpl, info); }

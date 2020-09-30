@@ -493,7 +493,8 @@ function gen_allhost_output(req, res) {
   //console.log(getopts_idx[lbl]);
   
   if (!op) { return res.end("# '"+lbl+"' - No such op. in "+genopts_idx+"\n"); }
-  var cmds = hc.commands_gen(op, hostarr, req.query.para);
+  //var cmds = hc.commands_gen(op, hostarr, req.query.para);
+  var cmds = hc.commands_gen(op, hostarr, req.query || {});
   res.end(cmds.join("\n"));
 }
 /** Generate Ubuntu 18 Netplan (via HTTP get /netplan.yaml).

@@ -411,9 +411,9 @@ function tftpsetup(opts) {
   console.log("Setup pxelinux TFTP Dirs under local TFTP root: " + tcfg.root);
   var tftp = tcfg;
   if (tcfg.sync) {
-    
+    var user = tcfg.sync.toString().match(/^[a-z]\w*$/) ? tcfg.sync : "";
     var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
-    scp_sync(tftp.root, remloc, {recursive: 1}, function (err, path) {
+    scp_sync(tftp.root, remloc, {recursive: 1, user: user}, function (err, path) {
       if (err) { apperror("Failed sync." + err); }
     });
   }
@@ -510,8 +510,9 @@ function bootbins(opts) {
   // TODO: Sync / replicate to remote TFTP ?
   // https://unix.stackexchange.com/questions/193368/can-scp-create-a-directory-if-it-doesnt-exist
   if (tftp.sync) {
+    var user = tftp.sync.toString().match(/^[a-z]\w*$/) ? tftp.sync : "";
     var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
-    scp_sync(tftp.root, remloc, {recursive: 1}, function (err, path) {
+    scp_sync(tftp.root, remloc, {recursive: 1, user: user}, function (err, path) {
       if (err) { apperror("Failed sync." + err); }
     });
   }
@@ -528,13 +529,14 @@ function scp_sync(local, remloc, opts, cb) {
   var rec = opts.recursive ? "-r" : "";
   // Strip one path component out of the name
   if (opts.recursive) { remloc = path.dirname(remloc); }
+  if (opts.user) { remloc = opts.user + '@' + remloc; }
   // Assume recursive also as a signal of dir
   // NOT: var slash = opts.recursive ? "/" : "";
   // Do not use -p - could lead to problems
   // DOES_NOT_WORK Not must detect type of source: file/dir
   var cmd = "scp "+rec+" "+local+" "+remloc+"";
   console.log("Try sync: " + cmd);
-  var opts = {};
+  var execopts = {};
   cproc.exec(cmd, {}, function(err, stdout, stderr) {
     if (err) { console.log("Error running sync cmd: "+cmd + " ("+err+")"); return cb(stderr, null); }
     console.log("Copied (successfully) to: " + remloc);
@@ -663,10 +665,11 @@ function dhcpconf(opts) {
   // Sync output to remote server and restart ? Any method used / tried here bases on passwordless SSH (scp,rsync,git)
   // For dnsmasq command could refer to /var/run/dnsmasq.pid
   if (dhcp.sync) {
+    var user = dhcp.sync.toString().match(/^[a-z]\w*$/) ? tftp.sync : "";
     // Copy to server
     var remloc = dhcp.host + ":" +  dhcp.conf_path; // "/tmp/tftp"; // // 
     // SIngle file, non-recursive.
-    scp_sync(dhcp.conf_path+"/dhcpd.conf", remloc, {}, function (err, path) {
+    scp_sync(dhcp.conf_path+"/dhcpd.conf", remloc, {user: user}, function (err, path) {
       if (err) { apperror("Failed sync."); }
       // Restart
       if (dhcp.reloadcmd) {
