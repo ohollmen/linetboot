@@ -64,15 +64,33 @@ sudo apt install debconf-utils --no-install-recommends
 # produces different amount of info, e.g. 1342 vs. 435 lines respectively, latter has most lines "d-i" prefixed)
 sudo debconf-get-selections --installer > someting_like_preseed.cfg
 ```
-
 For any preseed file you can run a syntax check by: `debconf-get-selections -c preseed.cfg`
+
+On Redhat/Centos you can generate kickstart file with graphical UI:
+```
+# Install
+yum install system-config-kickstart
+# Run
+system-config-kickstart
+```
+You can also look for RH/Centos anakonda installer produced kickstart file `anaconda-ks.cfg` (/root/anaconda-ks.cfg).
+
+Validating kickstart:
+```
+yum install pykickstart
+ksvalidator /path/to/kickstart.ks
+```
+
+### References
+- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
+- https://docs.centos.org/en-US/centos/install-guide/Kickstart2/
 
 ## Parametrizing Templated Recipes
 
 The current Linetboot Templating engine of choice is Mustache, a logic-less templating engine (https://github.com/janl/mustache.js ).
 Mustache works as an templating API and it aso has a command-line utility to fill-in templates with parameters being provided
 by a JSON file.  
-You will find plenty of exaples in Linetboot `./tmpl/` subdirectory and from Mustache website. A few "in-a-nutshell" notes on Mustache:
+You will find plenty of examples in Linetboot `./tmpl/` subdirectory and from Mustache website. A few "in-a-nutshell" notes on Mustache:
 
 - The template delimiters are `{{` and `}}` (`{{{` and '}}}' to prevent any default escapings, see further elaboration below)
 - Fill in a simple var on top-level of params (member "httpurl"): `{{ httpurl }}` or one step from deeper from the structure by
