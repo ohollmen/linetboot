@@ -300,7 +300,7 @@ append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd s
 # http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
 label freebsd12net
 menu label FreeBSD 12 Net ISO Install
-linux memdisk
+linux /memdisk
 #TODO: initrd http://{{ httpserver }}/freebsd12net/freebsd-install/bootonly.iso
 initrd http://{{ httpserver }}/bootonly.iso
 # Original example from BSD discussion board has BOTH "iso raw". In https://wiki.syslinux.org/wiki/index.php?title=MEMDISK
@@ -355,7 +355,7 @@ sysappend 3
 #   - 1.2/FD12CD.iso
 label freedos1
 menu label FreeDOS 1.0
-kernel memdisk
+kernel /memdisk
 append initrd=http://{{ httpserver }}/freedos1/fdboot.img
 
 # Diskless client
@@ -388,7 +388,7 @@ append initrd=http://{{ httpserver }}/freedos1/fdboot.img
 # See FreeBSD Boot for example on ISO based boot
 label win2019
 menu label Windows Server 2019
-linux memdisk
+linux /memdisk
 # Example of Original 4.9GB Media
 #append iso initrd=http://{{ httpserver }}/Win2019_uefi_autoinstall.iso
 append iso initrd=http://{{ httpserver }}/winpe.iso
