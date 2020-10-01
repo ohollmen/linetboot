@@ -60,7 +60,11 @@ var Mustache = require("mustache");
     }},
     {lbl: "mac2ip", name: "ISC DHCP Server mac-to-IP mapping",
        tmpl: "host {{ hname }} {\n  hardware ethernet {{ macaddr}};\n  fixed-address {{ ipaddr }};\n}\n",},
-    
+    {lbl: "ibmacset", name: "Set IB Mac Addresses",
+      inittmpl: "# export IBCREDS=ibuser:ibpass; export IBAPIURL=https://ib.mycomp.com/wapi/v2.10",
+       // {"ipv4addrs+": {"ipv4addr": "..."}} may add whole new object
+       tmpl: "curl -v -k  -u $IBCREDS -X POST $IBAPIURL'/wapi/v1.2/fixedaddress' -h 'Content-Type: application/json' "+
+         "-d '{\"ipv4addr\": \"{{{ ipaddr }}}\", \"mac\": \"{{{ macaddr }}}\"}' ",},
   ];
 var genopts_idx;
 
@@ -101,6 +105,12 @@ function commands_gen(op, hostarr, ps) {
   // NEW: Generate an array of commands to be granularly executed by child_process / ssh, etc.
   console.log("ps: ", ps);
   var cmds = [];
+  if (op.inittmpl) {
+    var ip = {currhname: process.env['HOSTNAME']}; // Init params
+    var initout = Mustache.render(op.inittmpl, ip);
+    if (initout) { cmds.push(initout); }
+  }
+  
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cont += "# No package list command for os\n"; return; }
