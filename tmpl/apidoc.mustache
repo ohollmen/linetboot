@@ -2,7 +2,8 @@
 <p>{{ info.description }}</p>
 <p>Most API URL:s respond with following JSON top-level structure:</p>
 <pre><code>
-# API Call Success
+# API Call Success (data: Data relevant to the API, could be Array (typical for multiple entries) or
+# Object (typical for single entry or a array collection w. meta data nested into an object).
 {"status":"ok", "data": ...};
 # API Call Failure
 {"status":"err", "msg":"Failed to ... (human readable reason for failure)"};
