@@ -326,52 +326,72 @@ function tftpsetup(opts) {
   var dirs = [tcfg.root+"/pxelinux.cfg/", tcfg.root+"/efi32/pxelinux.cfg/", tcfg.root+"/efi64/pxelinux.cfg/"];
   var efidirs = [tcfg.root+"/efi32/", tcfg.root+"/efi64/"]; // TODO: topdirs, add tcfg.root+"/boot/" (BSD)
   var pxelindir = tcfg.root+"/pxelinux.cfg/";
-  //var ok = mkdir(pxelindir);
-  //if (!ok) { process.exit(1);}
-  dirs.forEach(function (pxelindir) {
-    var ok = mkdir(pxelindir);
-    if (!ok) { process.exit(1);}
+  //////////////// Create /pxelinux.cfg/ basedir(s) ///////////////////
+  var ok = mkdir(dirs[0]);
+  if (!ok) { apperror("Could not create pxelinux.cfg"); }
+  efidirs.forEach(function (dir) {
+    var ok = mkdir(dir);
+    if (!ok) { apperror("Could noty create: "+dir); }
   });
   // Note recursive: ... only works with node > 10.12.0
-  function mkdir(pxelindir) {
-    if (!fs.existsSync(pxelindir)) {
-      console.log("dir "+pxelindir+" does not exist, try creating ...");
+  function mkdir(dir) {
+    if (!fs.existsSync(dir)) {
+      console.log("dir "+dir+" does not exist, try creating ...");
       try {
-        //fs.mkdirSync(pxelindir, {recursive: true});
-        mkDirByPathSync(pxelindir); // Compat (for older node)
+        //fs.mkdirSync(dir, {recursive: true});
+        mkDirByPathSync(dir); // Compat (for older node)
       } catch (ex) {
-        console.log("Could not make dir "+pxelindir+": " + ex); return ""; // process.exit();
+        console.log("Could not make dir "+dir+": " + ex); return ""; // process.exit();
       }
     }
-    else { console.log("Dir "+pxelindir+" seems to already exist."); }
-    return pxelindir;
+    else { console.log("Dir "+dir+" seems to already exist."); }
+    return dir;
   } // mkdir
   if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
   //////////////////////// Create default menu (named "default")
   // TODO: Dry-run
   if (opts.dryrun) { tcfg.dryrun = 1; }
+  // Same menu to pxelinx.cfg
   var cont = tboot.bootmenu_save(tcfg, mcfg, "vesamenu.c32", null);
-  if (opts.dryrun) { console.log("# Dryrun mode - preview boot menu content\n"+cont); process.exit(1); }
+  if (opts.dryrun) { console.log("# Dryrun mode - preview boot menu content:\n"+cont); process.exit(1); }
   /////////////////// Individual host links ////////////////
+  // Need to change directory to be able to create relateive symlink
+  //var orgdir = process.cwd();
+  //console.log("Original dir: " + orgdir);
+  //process.chdir( tcfg.root ); // Throws
+  
   //console.log(cfg.hostarr);
   // Make "default" symlinks to efi32/ and efi64/ (refer to dirs[0]/default)
+  efidirs.forEach((efidir) => {
+     var ep = efidir+"pxelinux.cfg";
+     if (fs.existsSync(ep)) { return; }
+     try { fs.symlinkSync("../pxelinux.cfg/", ep, 'dir'); } catch (ex) { apperror(ex.toString()); }
+  }) // forEach
+  /*
+  var ep0 = fs.existsSync(efidirs[0]+"pxelinux.cfg");
+  if (!ep0) {
   try {
-    // OLD
-    var linkfile = dirs[1]+"default";
-    fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
-    // NEW: fs.symlinkSync(dirs[0], efidirs[0]+"pxelinux.cfg/");
-  } catch (ex) { console.log(ex.toString()); }
+    fs.symlinkSync("../pxelinux.cfg/", efidirs[0]+"pxelinux.cfg", 'dir');
+  } catch (ex) { apperror(ex.toString()); }
+  }
+  var ep1 = fs.existsSync(efidirs[1]+"pxelinux.cfg");
+  if (!ep1) {
   try {
-    // OLD
-    var linkfile = dirs[2]+"default";
-    fs.symlinkSync(dirs[0]+"default", linkfile); // 3rd: type
-    // NEW: fs.symlinkSync(dirs[0], efidirs[1]+"pxelinux.cfg/");
-  } catch (ex) { console.log(ex.toString()); }
+    fs.symlinkSync("../pxelinux.cfg/", efidirs[1]+"pxelinux.cfg", 'dir');
+    
+  } catch (ex) { apperror(ex.toString()); }
+  }
+  */
+  
+  // Back to original dir !
+  //process.chdir( orgdir );
+  
   // TODO: Only in /pxelinux.cfg, make **dir** symlinks for others above
-  dirs.forEach(function (pxelindir) {
-    mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
-  });
-  // BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache)
+  //dirs.forEach(function (pxelindir) {
+    //mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
+    mkmacsymlinks(dirs[0], cfg.hostarr);
+  //});
+  //////// BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache) ////
   mkDirByPathSync(tcfg.root+"/boot/");
   var tmpl = fs.readFileSync("./tmpl/pc-autoinstall.conf.mustache", 'utf8');
   console.log("Got "+tmpl.length+" B of template");
@@ -518,8 +538,9 @@ function bootbins(opts) {
     });
   }
 }
-/** Sync by SSH scp (Local path to remote path)
+/** Sync by SSH scp or rsync (Local path to remote path)
  * Not in case or direcrory source, caller should append a trailing slash to path.
+ * scp has limitations in copying symbolic links. Use rsync for these cases.
  * @param local {string} - Local path (scp compatible source path)
  * @param remloc {string} - Remote server and path in format server:/path/to/dest/
  * @param cb {function} - Callback to call after asyncronous file sync.
@@ -528,15 +549,18 @@ function bootbins(opts) {
 function scp_sync(local, remloc, opts, cb) {
   opts = opts || {};
   var rec = opts.recursive ? "-r" : "";
-  // Strip one path component out of the name
-  if (opts.recursive) { remloc = path.dirname(remloc); }
+  // For "scp" Strip one path component out of the name
+  if (opts.scp && opts.recursive) { remloc = path.dirname(remloc); }
+  if (!opts.scp && !local.match(/\/$/)) { local += "/"; }
   if (opts.user) { remloc = opts.user + '@' + remloc; }
   // Assume recursive also as a signal of dir
   // NOT: var slash = opts.recursive ? "/" : "";
-  // Do not use -p - could lead to problems
+  // Do not use -p - could lead to problems w. scp
   // DOES_NOT_WORK Not must detect type of source: file/dir
-  var cmd = "scp "+rec+" "+local+" "+remloc+"";
-  console.log("Try sync: " + cmd);
+  // rsync: a = rlptgoD, keep rlp (may strip p=perms,  t=times, g=group, o=owner, D=devices)
+  var cmd = "rsync -rlpv "+local+" "+remloc+"";
+  if (opts.scp) { cmd = "scp "+rec+" "+local+" "+remloc+""; }
+  console.log("Try sync by: " + cmd);
   var execopts = {};
   cproc.exec(cmd, {}, function(err, stdout, stderr) {
     if (err) { console.log("Error running sync cmd: "+cmd + " ("+err+")"); return cb(stderr, null); }
