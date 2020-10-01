@@ -454,7 +454,8 @@ function bootbins(opts) {
     ["/usr/lib/syslinux/modules/bios/vesamenu.c32", "vesamenu.c32"],
     // pxechn (for chainloading "pxeboot", see menu)
     ["/usr/lib/syslinux/modules/bios/pxechn.c32", "pxechn.c32"],
-    // 
+    // Note: memdisk needs to be refereed with abs path /memdisk (for efi32/efi64)
+    // or a compat link(s) needs to be setup in efi32/efi64 (memdisk => ../memdisk)
     ["/usr/lib/syslinux/memdisk","memdisk"],
     // 
     ["/usr/lib/SYSLINUX.EFI/efi32/syslinux.efi", "efi32/syslinux.efi"],
@@ -468,14 +469,14 @@ function bootbins(opts) {
     ["/usr/lib/syslinux/modules/efi32/libutil.c32",  "efi32/libutil.c32"],
     ["/usr/lib/syslinux/modules/efi32/vesamenu.c32", "efi32/vesamenu.c32"],
     ["/usr/lib/syslinux/modules/efi32/menu.c32",     "efi32/menu.c32"],
-    
+    ["/usr/lib/syslinux/modules/efi32/pxechn.c32",   "efi32/pxechn.c32"],
     // EFI 64
     ["/usr/lib/syslinux/modules/efi64/ldlinux.e64",  "efi64/ldlinux.e64"],
     ["/usr/lib/syslinux/modules/efi64/libcom32.c32", "efi64/libcom32.c32"],
     ["/usr/lib/syslinux/modules/efi64/libutil.c32",  "efi64/libutil.c32"],
     ["/usr/lib/syslinux/modules/efi64/vesamenu.c32", "efi64/vesamenu.c32"],
     ["/usr/lib/syslinux/modules/efi64/menu.c32",     "efi64/menu.c32"],
-    
+    ["/usr/lib/syslinux/modules/efi64/pxechn.c32",   "efi64/pxechn.c32"],
     //["/usr/lib/syslinux/modules/bios/", ""],
     
     // iPXE (package ipxe)
