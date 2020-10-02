@@ -58,7 +58,7 @@ var acts = [
   },
   {
     "id": "tftpsetup",
-    "title": "Create Bootmenu (based on Lineboot main Config) and symlinks into TFTP Directories (w/o executables)",
+    "title": "Create Bootmenu (based on Linetboot main Config) and MAc-file symlinks into TFTP Directories (w/o executables)",
     "cb": tftpsetup,
     "needfacts": 1,
     "opts": [],
@@ -95,11 +95,19 @@ var acts = [
     "opts": [],
   },
   {
+    "id": "loopmounts",
+    "title": "Discover all current loop mounts and output in /etc/fstab format (default, to mount at boot, or as commands by --cmds)",
+    "cb": loopmounts,
+    "opts": [],
+  },
+  /*
+  {
     "id": "",
     "title": "",
     "cb": null,
     "opts": [],
   },
+  */
 ];
 var clopts = [
   ["h", "host=ARG+", "Hostname or multiple full hostnames (given w. multiple -h args)"],
@@ -112,6 +120,7 @@ var clopts = [
   ["", "dest=ARG", "Destination for files for particular op. (facts gather, bootbins, ...)"],
   // ["c", "clean", "Cleanup files Installed by operation (e.g. Boot Binaries)"],
   ["", "newhosts=ARG", "Newhosts CSV file"],
+  ["", "cmds", "Output loop mount commands"],
 ];
 //var em = { // Error Messages
 //  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -759,4 +768,29 @@ ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
     fs.writeFileSync( ipmi_bn+".users.txt", userblock, {encoding: "utf8"} );
   });
   console.log("Wrote generated information to "+mcfg.fact_path+" (facts) "+mcfg.ipmi.path+" (IPMI info)");
+}
+
+/** Generate loopmounts in /etc/fstab format (Linux ONLY, i.e. not BSD variants).
+ */
+function loopmounts(opts) {
+  var procmnt = "/proc/mounts";
+  var tmpls = {"cmds": "{{#loops}}mount -o loop '{{{ img }}}' {{{ mntpt }}}\n{{/loops}}",
+    "fstab": "{{#loops}}{{{ img }}} {{{ mntpt }}} iso9660 loop 0 0\n{{/loops}}"};
+  var fmt = opts.cmds ? "cmds" : "fstab"; // Format: mount commands or /etc/fstab
+  // See all /dev/loopN entries. Note: *all* these exist on FS.
+  if (!fs.existsSync(procmnt)) { apperror("Cannot find: "+procmnt+". Not on Linux ?"); }
+  var data = fs.readFileSync(procmnt, 'utf8');
+  var flds = ["dev", "mntpt", "fstype", "opts", "c1", "c2"];
+  var arr = hlr.csv_parse_data(data, {hdr: flds, sep: /\s+/, });
+  arr = arr.filter((r) => { return r.dev.match(/\/loop\d+$/) });
+  async.map(arr, function (dfitem, cb) {
+    tboot.getlosetup(dfitem.dev, function (err, imgfull) {
+      if (err) { return cb(err, null); }
+      dfitem.img = imgfull; // Store Image
+      cb(null, imgfull);
+    });
+  }, function (err, res) { // oncomplete
+    if (err) { return apperror("Failed interrogating losetup"); }
+    console.log(Mustache.render(tmpls[fmt], {loops: arr}));
+  });
 }
