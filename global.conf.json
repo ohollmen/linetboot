@@ -13,8 +13,9 @@
   
     "postscript": "mv_homedir_for_autofs.sh",
     "script_path": "./scripts/",
+    "tmpl_path_dev":   "./tmpl/:~/.linetboot/tmpl/",
     "tmpl_path":   "~/.linetboot/tmpl/:./tmpl/",
-    "sshkey_path": ""
+    "sshkey_path": "~/.linetboot/sshkeys/"
   
   },
   
@@ -91,7 +92,15 @@
     "ifdefault": "eno1np0",
     "ntpserver": "ntp.example.com"
   },
-  
+  "ldap": {
+    "desc":"LDAP Settings for auth and user info",
+    "host": "",
+    "binddn": "CN=Linetboot Admin,OU=ServiceAccounts,OU=Users,OU=Accounts,DC=Company,DC=com",
+    "bindpass": "j5r0Ck5",
+    "userbase": "OU=Users,OU=Accounts,DC=Company,DC=com",
+    "scope": "sub",
+    "unattr": ""
+  },
   
   "targetos": "/ubuntu14",
   "useurlmapping": false,
