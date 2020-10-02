@@ -54,6 +54,7 @@ append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda2
 # From internet: Could not boot: Invalid argument, Could not boot image: Invalid argument
 # http://omniboot.org/txt/memtest8.pdf
 # http://forum.ipxe.org/showthread.php?tid=7937 has memtest.0 link: http://boot.ipxe.org/memtest.0
+# Does NOT Boot with efi64/syslinux.efi
 label memtest
 menu label  Memory Test (memtest86)
 # This would be HTTP path
@@ -70,6 +71,7 @@ kernel http://{{ httpserver }}/gparted/live/memtest
 
 # GpartEd (https://gparted.org/livepxe.php)
 # This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support. Works always with Dell servers.
+# Certified to Boot with efi64/syslinux.efi
 label gparted
 menu label GpartEd Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/gparted/live/vmlinuz
@@ -79,7 +81,8 @@ append initrd=http://{{ httpserver }}/gparted/live/initrd.img boot=live config c
 # Clonezilla Live PXE
 # Example almost directly from https://clonezilla.org/livepxe.php
 # ...but converted to Linetboot HTTP context.
-# TODO: Convert to current mainstream iso loop mount scheme 
+# TODO: Convert to current mainstream iso loop mount scheme
+# Certified to Boot with efi64/syslinux.efi (net/dhcp problems)
 label clonezilla
 menu label Clonezilla Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/clzilla/live/vmlinuz
@@ -156,7 +159,7 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # Seems file / URL path downloaded is "user-data"
 # Needs also file (in same path): "meta-data: instance-id: focal-autoinstall
 # Seems loop-mounted dir is not accepted url=... must be an ISO file.
-#label localinst_ps20
+#label ubuntu2004
 #menu label Install Ubuntu 20.04 Server (TODO: Automated)
 #kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
 # append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp autoinstall
@@ -166,7 +169,7 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # MAY NEED: root=/dev/ram0 ramdisk_size=1500000
 # Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
 
-label localinst_ps18
+label ubuntu1804
 menu label Install Ubuntu 18.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux
 #kernel ubuntu-installer/amd64/linux
@@ -179,7 +182,7 @@ append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
 
-label localinst_ps14
+label ubuntu1404
 menu label Install Ubuntu 14.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/linux
 #kernel ubuntu-installer/amd64/linux
@@ -195,7 +198,7 @@ append initrd=http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/
 
 # ISO: CentOS-6.10-x86_64-netinstall.iso (at ... http://isoredirect.centos.org/centos/6/isos/x86_64/)
 # Mirror: http://mirrors.sonic.net/centos/6.10/os/x86_64/ http://mirror.centos.org/centos/6.10/os/x86_64/
-label localinst_centos6
+label centos6
 menu label Install CentOS 6 (Full Automated)
 kernel http://{{ httpserver }}/centos6/images/pxeboot/vmlinuz
 # devfs=nomount
@@ -208,7 +211,7 @@ append initrd=http://{{ httpserver }}/centos6/images/pxeboot/initrd.img auto=tru
 # https://projects.theforeman.org/issues/4506 .. on  ksdevice=bootif network kssendmac
 # http://forum.ipxe.org/showthread.php?tid=5445
 # https://docs.oracle.com/cd/E92593_01/E64608/html/ol-bootcfg-file.html - Info about UEFI Based PXE clients menu format
-label localinst_centos7
+label centos7
 menu label Install CentOS 7 (Full Automated)
 # method=http://mirror.centos.org/centos/7/os/x86_64/
 # Note: Centos 7 says: 'method=' is deprecated. Using 'repo=http://...' instead. --noipv6 should be supported.
@@ -280,10 +283,11 @@ append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399
 # https://en.opensuse.org/SDB:PXE_boot_installation
 # http://mirror.sfo12.us.leaseweb.net/opensuse/tumbleweed/iso/openSUSE-Tumbleweed-NET-x86_64-Snapshot20191221-Media.iso
 label opensuse_tw_64
-menu label OpenSUSE 64 bit
+menu label OpenSUSE Thumbleweed 64 bit Net Install
 kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
 # EXAMPLE: append initrd=boot/initrd-life64 isofrom_device=nfs:10.0.0.254:/srv/nfs/ isofrom_system=/openSUSE-Edu-li-f-e.x86_64-42.1.1.iso
 # ALT:  http://download.opensuse.org/tumbleweed/repo/oss/
+# Certified to Boot with efi64/syslinux.efi
 append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts install=http://download.opensuse.org/factory/repo/oss/
 
 # FreeBSD (12) bootonly.iso (Network installer)
