@@ -341,12 +341,12 @@ initrd ::pxeboot
 # https://wiki.archlinux.org/index.php/PXE
 # https://www.archlinux.org/download/
 label arch2019
-menu label Arch Linux 2019-12
-kernel http://{{ httpserver }}/arch2019/arch/boot/x86_64/vmlinuz
+menu label Arch Linux (Live Console, No Auto Install)
+kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz
 # INITRD also allowed instead of append initrd=. Allows multiple vals per https://wiki.archlinux.org/index.php/PXE
-initrd http://{{ httpserver }}/arch2019/arch/boot/intel_ucode.img,http://{{ httpserver }}/arch2019/arch/boot/amd_ucode.img,http://{{ httpserver }}/arch2019/arch/boot/x86_64/archiso.img
-# initrd=http://{{ httpserver }}/arch2019/arch/boot/x86_64/archiso.img
-append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/arch2019/
+initrd http://{{ httpserver }}/archlinux/arch/boot/intel_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
+# initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
+append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
 sysappend 3
 
 # FreeDOS
