@@ -216,6 +216,7 @@ function app_init() { // global
   app.get("/apidoc", apidoc);
   app.get("/recipes",  osinst.recipe_view);
   
+  app.get("/diskinfo",  osinst.diskinfo);
   //////////////// Load Templates ////////////////
   
   fact_path = process.env["FACT_PATH"] || global.fact_path;
@@ -1668,3 +1669,37 @@ function media_info(req, res) {
     res.json({status: "ok", data: loopinfo});
   }
 }
+
+function ldaptest(req,res) {
+  var ldc = global.ldap;
+  var q = req.query;
+  var client = ldap.createClient({ url: 'ldap://' + ldc.host, strictDN: false});
+  var lds = {base: ldc.userbase, scope: ldc.scope, filter: ldc.unattr+"="+q.uname};
+  client.bind(ldc.binddn, ldc.bindpass, function(err, res) {
+
+    if (err) { throw "Error binding connection: " + err; }
+    console.log("Connected to: " + ldc.host);
+    var ents = [];
+    client.search(lds.base, lds, function (err, res) {
+      if (err) { throw "Error searching: " + err; }
+      res.on('searchReference', function(referral) {
+        console.log('referral: ' + referral.uris.join());
+      });
+      res.on('end', function (result) {
+        console.log("Final result:"+res);
+        console.log(JSON.stringify(ents, null, 2));
+        console.log(ents.length + " Results for " + lds.filter);
+        //process.exit(0);
+        res.json({status: "ok", data: ents});
+      });
+      res.on('searchEntry', function(entry) {
+        // console.log('entry: ' + JSON.stringify(entry.object, null, 2));
+        ents.push(entry.object);
+      });
+      //console.log("Got res:"+res);
+      //console.log(JSON.stringify(res));
+    });
+  
+  });
+}
+
