@@ -344,10 +344,12 @@ initrd ::pxeboot
 # archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)
 # https://wiki.archlinux.org/index.php/PXE
 # https://www.archlinux.org/download/
+# Note arch 2020 Changes kernel from arch/boot/x86_64/vmlinuz to arch/boot/x86_64/vmlinuz-linux
 label arch2019
 menu label Arch Linux (Live Console, No Auto Install)
-kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz
+kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 # INITRD also allowed instead of append initrd=. Allows multiple vals per https://wiki.archlinux.org/index.php/PXE
+# What is /archlinux/arch/boot/x86_64/initramfs-linux.img ?
 initrd http://{{ httpserver }}/archlinux/arch/boot/intel_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
 # initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
