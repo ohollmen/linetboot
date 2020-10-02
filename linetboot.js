@@ -1623,49 +1623,48 @@ function media_info(req, res) {
       if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
       var rec = csv.filter((it) => { return it.Mounted == q.mid; })[0]; // MOT: "/isomnt/"+
       if (!rec) { return cb("No Entry found by:"+q.mid, null); }
-      console.log(rec);
+      // console.log(rec);
       loopdev = rec.Filesystem;
       cb(null, rec.Filesystem); // Pass rec ? w. all info !
     });
     //cb(null, 1); // TEST ONLY
   }
-  // Problematic: newer losetup (part of util-linux) has completely different opts (e.g. Ubu18: 2.31.1)
-  // RH 6 version does not even support --version (!)
-  // Resides in /sbin/losetup in old RH and new Ubuntu (in all Linux)
-  // losetup --list
-  // losetup --list --noheadings -O BACK-FILE /dev/loop3
-  // Common: sudo losetup /dev/loop3 (But requires sudo on RH ! ... or ugo+s)
-  function getlosetup(cb) {
-    console.log("Continue by: " + loopdev);
-    //var cmd = "losetup --list --noheadings -O BACK-FILE "+ loopdev;
-    var cmd = "losetup "+ loopdev;
-    var legpatt = /\(([^)]+)\)/; // Legacy (compatible) output pattern
-    //0 &&
-    cproc.exec(cmd, function (err, stdout, stderr) {
-      if (err) { return cb("Failed losetup: " + err, null); }
-      var m = stdout.match(legpatt);
-      if (!m) { return cb("No Image matched in "+stdout, null); }
-      imgfull = m[1];
-      return cb(null, m[1]);
+  
+  // Adapter callback to adapt the cb-only signature to more sophisticated loopdev,cb signature.
+  function getlosetup_wrap(cb) {
+    // Adapt also the callback ?
+    // grab outer-function-local loopdev
+    tboot.getlosetup(loopdev, function (err, __imgfull) {
+      if (err) { return cb(err, null); }
+      imgfull = __imgfull; // outer-function-loca limgfull
+      cb(null, __imgfull);
     });
   }
   // Stat image ?
-  function imagestat(cb) {
+  function imagestat(cb) { // imgfull, 
+    console.log("Continue by imgfull: " + imgfull);
     var stats;
     try { stats = fs.statSync(imgfull); } catch (ex) { return cb(ex.toString(), null); }
-    var size = stats.size;
-    console.log("Size: "+size);
+    //var size = stats.size;
+    console.log("imagestat: Size: "+stats.size);
     cb(null, stats.size);
   }
-  // Data Driven: async.eachSeries(arr, func, complcb) // async.waterfall([f1, f2], complcb): 1st: cb only
+  // Data Driven: async.eachSeries(arr, func, complcb)
+  // Funcs:       async.waterfall([f1, f2], complcb): 1st: cb only, further data, cb
+  /////////////////////////////////////////////////////
   var loopdev = "";
   var imgfull = "";
   console.log("Will lookup (df) mounts by: " + q.mid);
-  // series: signatures always cb (only!)
-  async.series([ getdf, getlosetup, imagestat ], function (err, result) {
+  // series: signature is always cb (only!)
+  
+  async.series([ getdf, getlosetup_wrap, imagestat ], oncomplete);
+  // NOT good ! oncomplete Only gets the data of last of the waterfall functions !
+  //async.waterfall([ getdf, getlosetup, imagestat ], oncomplete);
+  function oncomplete (err, result) {
     if (err) { jr.msg += "Failed async.series: " + err; console.log("Error: "+jr.msg); return res.json(jr); }
     //imgfull = result[1];
     var loopinfo = { "dev": result[0], "img": result[1], "size": result[2]};
+    console.log(loopinfo);
     res.json({status: "ok", data: loopinfo});
-  });
+  }
 }

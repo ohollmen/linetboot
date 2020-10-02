@@ -192,6 +192,38 @@ function bootmenu_link_default(tcfg, macfname) {
   
 }
 
+//////////////////////////////// BOOT MEDIA ///////////////////////////////
+
+var cproc   = require('child_process');
+
+/** Resolve the original image for a loop mount.
+ * Call linuc "losetup" command in clunky, but legacy compatible way here.
+ * 
+ * ## Problematic Legacy
+ * - newer losetup (part of util-linux) has completely different opts (e.g. Ubu18: 2.31.1)
+ * - RH 6 version does not even support --version (!)
+ * - Resides in /sbin/losetup in old RH and new Ubuntu (in all Linux)
+ losetup --list
+ losetup --list --noheadings -O BACK-FILE /dev/loop3
+ Common: sudo losetup /dev/loop3 (But requires sudo on RH ! ... or ugo+s)
+ * @param loopdev {string} - Loop device name (e.g. /dev/loop6)
+ * @param cb {function} - Function to call after resolving image
+*/
+function getlosetup(loopdev, cb) { // TODO: (loopdev, cb)
+  //console.log("Continue by loopdev: " + loopdev);
+  //var cmd = "losetup --list --noheadings -O BACK-FILE "+ loopdev;
+  var cmd = "losetup "+ loopdev;
+  var legpatt = /\(([^)]+)\)/; // Legacy (compatible) output pattern
+  //0 &&
+  cproc.exec(cmd, function (err, stdout, stderr) {
+    if (err) { return cb("Failed losetup: " + err, null); }
+    var m = stdout.match(legpatt);
+    if (!m) { return cb("No Image matched in "+stdout, null); }
+    //imgfull = m[1]; // Suppress
+    return cb(null, m[1]);
+  });
+}
+
 module.exports = {
   // init: init,
   has_macfile_pattern: has_macfile_pattern,
@@ -202,5 +234,7 @@ module.exports = {
   menu_deflbl: menu_deflbl,
   bootlbl2bootitem: bootlbl2bootitem,
   bootmenu_save: bootmenu_save,
-  bootmenu_link_default: bootmenu_link_default
+  bootmenu_link_default: bootmenu_link_default,
+  // Boot Media
+  getlosetup: getlosetup
 };
