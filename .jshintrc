@@ -1,0 +1,11 @@
+{
+  "esversion": 6,
+  "sub": true,
+  "undef": true,
+  "multistr": true,
+  "bitwise": true,
+  "curly": true,
+  "node": true,
+  "loopfunc": true
+  
+}
