@@ -31,6 +31,7 @@ var cproc   = require('child_process');
 var async   = require('async');
 var bodyParser = require('body-parser');
 var axios   = require("axios");
+var ldap    = require('ldapjs'); // Opt ?
 // Configurations
 // var nb      = require("./netboot.json"); // Not used.
 //var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || "./global.conf.json";
@@ -47,7 +48,9 @@ var tboot    = require("./tftpboot.js");
 var redfish  = require("./redfish.js");
 var osinst   = require("./osinstall.js");
 var mc       = require("./mainconf.js");
-
+var osdisk   = require("./osdisk.js");
+//console.log("linetboot-osinst", osinst);
+//console.log("linetboot-osdisk", osdisk);
 var global = {};
 global.tmpls = {}; // cached
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
@@ -59,7 +62,7 @@ var port = 3000; // TODO: Config
 var fact_path;
 var hostcache = {};
 var hostarr = [];
-
+var ldconn; var ldbound;
 app.use(bodyParser.json({limit: '1mb'}));
 
 /** Initialize Application / Module with settings from global conf.
@@ -94,7 +97,7 @@ function app_init() { // global
   // Test with /ubuntu/md5sum.txt (Works ok)
   // NOTE: express.static(usr, path, conf) can take 3rd conf parameter w.
   // "setHeaders": function (res,path,stat) {}
-  
+  osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
   var logger = function (res,path,stat) {
     console.log("Sent file in path: " + path + " w. stat:");
     console.log(stat); // Stat Object
@@ -215,8 +218,8 @@ function app_init() { // global
   app.get("/mediainfo", media_info);
   app.get("/apidoc", apidoc);
   app.get("/recipes",  osinst.recipe_view);
-  
-  app.get("/diskinfo",  osinst.diskinfo);
+  app.get("/ldaptest",  ldaptest);
+  app.get("/diskinfo",  osdisk.diskinfo);
   //////////////// Load Templates ////////////////
   
   fact_path = process.env["FACT_PATH"] || global.fact_path;
@@ -290,6 +293,15 @@ function app_init() { // global
   // Init osinst AFTER loading hosts, iptrans, custom module
   var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user};
   osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null));
+  // LDAP (when not explicitly disabled)
+  var ldc = global.ldap;
+  if (ldc && (ldc.host && !ldc.disa)) {
+    ldconn = ldap.createClient({ url: 'ldap://' + ldc.host, strictDN: false});
+    console.log("Bind. conf:", ldc);
+    
+    return http_start();
+  }
+  http_start();
 }
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
 //app.all('/', function(req, res, next) {
@@ -304,6 +316,7 @@ function app_init() { // global
 app.use(function (req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
+  if (1) { console.log("ldconn:", ldconn); }
   var s; // Stats
   console.log("app.use: URL:" + req.url);
   // 
@@ -329,9 +342,12 @@ app.use(function (req, res, next) {
 
 
 app_init();
-app.listen(port, function () {
-  console.log("Linux Network Installer app listening on host:port http://localhost:"+port+" OK"); // ${port}
-});
+
+function http_start() {
+  app.listen(port, function () {
+    console.log("Linux Network Installer app listening on host:port http://localhost:"+port+" OK"); // ${port}
+  });
+}
 
 /** Deep clone any data structure.
 * @param data {object} - Root of the data structure to clone (deep copy)
@@ -1670,29 +1686,45 @@ function media_info(req, res) {
   }
 }
 
+/** LDAP Connection test.
+ * global ldconn; ldbound;
+ * Init: check (ldc.host !ldc.disa), do client inst and async bind.
+ * Request: in app.use MW check if (ldbound and !sess) { block...}
+ * On client. In onpageload check session. Take router into use. Check router middleware
+
+ */
 function ldaptest(req,res) {
+  //var ldap = require('ldapjs');
+  var jr = {status: "err", msg: ""};
   var ldc = global.ldap;
   var q = req.query;
-  var client = ldap.createClient({ url: 'ldap://' + ldc.host, strictDN: false});
-  var lds = {base: ldc.userbase, scope: ldc.scope, filter: ldc.unattr+"="+q.uname};
-  client.bind(ldc.binddn, ldc.bindpass, function(err, res) {
-
+  
+  ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
     if (err) { throw "Error binding connection: " + err; }
-    console.log("Connected to: " + ldc.host);
+    ldbound = 1;
+    console.log("Bound/Connected to: " + ldc.host, bres);
     var ents = [];
-    client.search(lds.base, lds, function (err, res) {
+    //  ldc.unattr+
+    var lds = {base: ldc.userbase, scope: ldc.scope, filter: "(sAMAccountname="+q.uname+")"};
+    lds.filter = "("+ldc.unattr+"="+q.uname+")";
+    console.log("Search: ", lds);
+    client.search(lds.base, lds, function (err, ldres) {
       if (err) { throw "Error searching: " + err; }
-      res.on('searchReference', function(referral) {
+      ldres.on('searchReference', function(referral) {
         console.log('referral: ' + referral.uris.join());
       });
-      res.on('end', function (result) {
-        console.log("Final result:"+res);
+      ldres.on('end', function (result) {
+        console.log("Final result:"+ldres);
         console.log(JSON.stringify(ents, null, 2));
         console.log(ents.length + " Results for " + lds.filter);
         //process.exit(0);
-        res.json({status: "ok", data: ents});
+        return res.json({status: "ok", data: ents});
       });
-      res.on('searchEntry', function(entry) {
+      ldres.on('error', function(err) {
+        console.error('error: ' + err.message);
+        res.json({status: "err", msg: "Search error: "+err.message});
+      });
+      ldres.on('searchEntry', function(entry) {
         // console.log('entry: ' + JSON.stringify(entry.object, null, 2));
         ents.push(entry.object);
       });
@@ -1700,6 +1732,5 @@ function ldaptest(req,res) {
       //console.log(JSON.stringify(res));
     });
   
-  });
+  }); // bind
 }
-

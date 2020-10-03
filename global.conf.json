@@ -94,12 +94,13 @@
   },
   "ldap": {
     "desc":"LDAP Settings for auth and user info",
-    "host": "",
+    "disa": 1,
+    "host": "ldap.mycomp.com",
     "binddn": "CN=Linetboot Admin,OU=ServiceAccounts,OU=Users,OU=Accounts,DC=Company,DC=com",
     "bindpass": "j5r0Ck5",
     "userbase": "OU=Users,OU=Accounts,DC=Company,DC=com",
     "scope": "sub",
-    "unattr": ""
+    "unattr": "sAMAccountName"
   },
   
   "targetos": "/ubuntu14",
