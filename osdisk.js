@@ -1,9 +1,28 @@
+/** @file
+ * # Refs
+https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-setup-diskconfiguration
+https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825686(v=win.10)
+https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701(v=win.10)
+https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825702(v=win.10)
+*/
 var Mustache = require("mustache");
 // NOTE: Loading osinstall.js here on top shows it's
 // module.exports (== osinst) as empty (object) !!!
 // See console.log() below. Must load during init() ... osinst shows ok.
 var osinst; // = require("./osinstall.js");
 var hostcache;
+
+
+// Set lbl == WINRE with typeid = ...
+// Set lbl == Windows letter = C, global installto = N
+// Stub for Windows server partitioning.
+var winpart = [
+  //{size_mb: 500, type: "Primary", typeid: "de94bba4-06d1-4d40-a16a-bfd50179d6ac", fmt: "NTFS", lbl:"WINRE"}, 
+  { size_mb: 500, type: "Primary", fmt: "NTFS", lbl: "System"},
+  // {size_mb: 128, type: "MSR", fmt: "FAT32"},
+  { size_mb: 0, type: "Primary", fmt: "NTFS", lbl: "Windows"},
+];
+
 //console.log("osdisk-OSINTALL", osinst);
 // Created for the sole purpose of late-loading osinstall
 function init(mcfg, hdls) {
@@ -202,7 +221,7 @@ function partsize(part) {
  */
 function disk_out_winxml(ansparr) {
   // Should embed CreatePartitions and ModifyPartitions
-  var dconf = `<DiskConfiguration>
+  var dconf = `            <DiskConfiguration>
                 <Disk wcm:action="add">
                   <CreatePartitions>
                     {{{ confs }}}
@@ -216,20 +235,20 @@ function disk_out_winxml(ansparr) {
                 <WillShowUI>OnError</WillShowUI>
             </DiskConfiguration>
   `;
-  var cpart = `<CreatePartition wcm:action="add">
+  var cpart = `            <CreatePartition wcm:action="add">
                             <Order>{{ seq }}</Order>
                             <Type>EFI</Type>
                             <Size>{{ size_mb }}</Size>
                             
-  </CreatePartition>
+            </CreatePartition>
   `;
-  var mpart = `<ModifyPartition wcm:action="add">
+  var mpart = `            <ModifyPartition wcm:action="add">
                             {{#fmt}}<Format>{{ fmt }}</Format>{{/fmt}}
                             {{#lbl}}<Label>{{ lbl }}</Label>{{/lbl}}
                             <Order>{{ seq }}</Order>
                             <PartitionID>{{ seq }}</PartitionID>
                             <!-- <TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID> -->
-  </ModifyPartition>
+              </ModifyPartition>
   `;
   //var disk2 = dclone(disk);
   var para = {};
