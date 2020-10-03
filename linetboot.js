@@ -298,10 +298,15 @@ function app_init() { // global
   if (ldc && (ldc.host && !ldc.disa)) {
     ldconn = ldap.createClient({ url: 'ldap://' + ldc.host, strictDN: false});
     console.log("Bind. conf:", ldc);
-    
-    return http_start();
+    ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
+      if (err) { throw "Error binding connection: " + err; }
+      console.log("Bound/Connected to: " + ldc.host); // , bres
+      ldbound = 1;
+      return http_start();
+    }); // bind
+    // return;
   }
-  http_start();
+  else { http_start(); }
 }
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
 //app.all('/', function(req, res, next) {
@@ -1695,20 +1700,19 @@ function media_info(req, res) {
  */
 function ldaptest(req,res) {
   //var ldap = require('ldapjs');
-  var jr = {status: "err", msg: ""};
+  var jr = {status: "err", msg: "LDAP Search failed."};
   var ldc = global.ldap;
   var q = req.query;
   
-  ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
-    if (err) { throw "Error binding connection: " + err; }
-    ldbound = 1;
-    console.log("Bound/Connected to: " + ldc.host, bres);
+  
+    
     var ents = [];
     //  ldc.unattr+
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: "(sAMAccountname="+q.uname+")"};
+    if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     lds.filter = "("+ldc.unattr+"="+q.uname+")";
     console.log("Search: ", lds);
-    client.search(lds.base, lds, function (err, ldres) {
+    ldconn.search(lds.base, lds, function (err, ldres) {
       if (err) { throw "Error searching: " + err; }
       ldres.on('searchReference', function(referral) {
         console.log('referral: ' + referral.uris.join());
@@ -1732,5 +1736,5 @@ function ldaptest(req,res) {
       //console.log(JSON.stringify(res));
     });
   
-  }); // bind
+  
 }
