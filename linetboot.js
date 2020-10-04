@@ -1802,6 +1802,7 @@ function login(req, res) {
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
   if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
+  var ents = [];
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
     ldres.on('searchReference', function(referral) {
