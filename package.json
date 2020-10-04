@@ -9,13 +9,14 @@
     "body-parser": "1.18.3",
     "dns": "0.2.2",
     "express": "4.16.4",
+    "express-session": "1.17.1",
     "js-yaml": "^3.13.1",
-    "ldapjs": "^2.2.0",
+    "ldapjs": "2.2.0",
     "mustache": "3.0.1",
-    "node-getopt": "^0.3.2",
+    "node-getopt": "0.3.2",
     "node-ssh": "5.1.2",
     "ping": "0.2.2",
-    "ssh2": "^0.8.9"
+    "ssh2": "0.8.9"
   },
   "devDependencies": {
     "jshint": "2.9.7",
