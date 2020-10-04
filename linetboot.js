@@ -1795,10 +1795,12 @@ function ldaptest(req,res) {
 function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
   var q = req.query;
+  var ldc = global.ldap;
   //console.log(JSON.stringify(req.body));
   //console.log(JSON.stringify(req.query));
   if (!q.username) { jr.msg += "No username"; return res.json(jr); }
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
+  if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
