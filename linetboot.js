@@ -26,6 +26,7 @@
 var Mustache = require("mustache");
 var fs      = require("fs");
 var express = require('express');
+var session = require('express-session');
 var yaml    = require('js-yaml');
 var cproc   = require('child_process');
 var async   = require('async');
@@ -73,7 +74,6 @@ function app_init() { // global
   /** Modules */
   app.set('json spaces', 2);
   var user;
-  
   
   
   ///////////////////////////
@@ -134,12 +134,15 @@ function app_init() { // global
   if (!fs.existsSync(maindocroot)) { console.error("Main docroot '"+maindocroot+"' does not exist"); process.exit(1); }
   // Main docroot
   app.use(express.static(maindocroot)); // e.g. /var/www/html/ or /isomnt/ (from global config)
-  // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distors that need bare ISO image (non-mounted).
+  // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
   // TODO: global.core.addroot
   app.use(express.static("/isoimages"));
   app.use('/web', express.static('web')); // Host Inventory
   ///////////// Dynamic content URL:s (w. handlers) //////////////
   ////////////////////// Installer ///////////////////////////////////
+  
+  
+  function sethandlers() {
   // preseed_gen - Generated preseed and kickstart shared handler
   // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   osinst.url_hdlr_set(app); // NEW (driven by recipe selections)
@@ -207,7 +210,7 @@ function app_init() { // global
   app.get("/dockerenv", dockerenv_info);
   app.get("/config", config_send);
   app.get("/install_boot", installrequest);
-  app.get("/bootreset", bootreset); // Createa after tftplist
+  app.get("/bootreset", bootreset); // Created after tftplist
   
   app.get("/tftplist", tftp_listing);
   
@@ -220,6 +223,7 @@ function app_init() { // global
   app.get("/recipes",  osinst.recipe_view);
   app.get("/ldaptest",  ldaptest);
   app.get("/diskinfo",  osdisk.diskinfo);
+ } // sethandlers
   //////////////// Load Templates ////////////////
   
   fact_path = process.env["FACT_PATH"] || global.fact_path;
@@ -293,6 +297,33 @@ function app_init() { // global
   // Init osinst AFTER loading hosts, iptrans, custom module
   var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user};
   osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null));
+  // Session
+  // resave: true, saveUninitialized: true, store: MemoryStore (default) cookie.maxAge, genid: (req) => {}
+  // http://expressjs.com/en/resources/middleware/session.html
+  //var MemoryStore = require('memorystore')(session)
+  var sesscfg = {
+    "secret": "keyboard cat xx",
+    resave: true,
+    "saveUninitialized": true,
+    
+    //unset: 'destroy',
+    "cookie": {
+      path: '/',
+      maxAge: 600000,
+      //"secure": false, // "auto"
+      //domain:'127.0.0.1:3000',
+      httpOnly: true,
+      sameSite: true,
+    },
+    //store: "MemoryStore" // session.MemoryStore
+  }; // httpOnly: false
+  console.log("Set up sessions ...", JSON.stringify(sesscfg, null, 2));
+  
+  app.set('trust proxy', 1);
+  app.use(session(sesscfg));
+  // Must reside after session
+  app.use(linet_mw);
+  sethandlers();
   // LDAP (when not explicitly disabled)
   var ldc = global.ldap;
   if (ldc && (ldc.host && !ldc.disa)) {
@@ -318,10 +349,19 @@ function app_init() { // global
 
 // Simple logging for select (Install package related) HTTP requests.
 // See also app.all()
-app.use(function (req, res, next) {
+
+function linet_mw(req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
-  if (1) { console.log("ldconn:", ldconn); }
+  if (1) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
+  //req.session.num++;
+  // 
+  if (req.session && !req.session.qs) { console.log("NO qs, resetting."); req.session.qs = []; }
+  console.log("sess: ", req.session);
+  //console.log("hdrs: ", req.headers); // rawHeaders:
+  console.log("cookie: ", req.headers.cookie);
+  console.log("req.sessionID: ", req.sessionID);
+  console.log("SS: ", (req.sessionStore ? "present" : "absent"));
   var s; // Stats
   console.log("app.use: URL:" + req.url);
   // 
@@ -343,7 +383,7 @@ app.use(function (req, res, next) {
   //res.header("Access-Control-Allow-Headers", "X-Requested-With");
   
   next();
-});
+}
 
 
 app_init();
@@ -1703,9 +1743,9 @@ function ldaptest(req,res) {
   var jr = {status: "err", msg: "LDAP Search failed."};
   var ldc = global.ldap;
   var q = req.query;
-  
-  
-    
+  req.session.cnt =  req.session.cnt ?  req.session.cnt + 1 : 0;
+  if (req.session && req.session.qs) { console.log("Adding: "+q.uname); req.session.qs.push(q.uname); }
+  if (!ldconn || !ldbound) { jr.msg += "No Connection"; jr.qs = req.session; return res.json(jr); }
     var ents = [];
     //  ldc.unattr+
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: "(sAMAccountname="+q.uname+")"};
@@ -1719,7 +1759,7 @@ function ldaptest(req,res) {
       });
       ldres.on('end', function (result) {
         console.log("Final result:"+ldres);
-        console.log(JSON.stringify(ents, null, 2));
+        //console.log(JSON.stringify(ents, null, 2));
         console.log(ents.length + " Results for " + lds.filter);
         //process.exit(0);
         return res.json({status: "ok", data: ents});
