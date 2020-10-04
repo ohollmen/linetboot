@@ -325,9 +325,13 @@ function app_init() { // global
   app.use(linet_mw);
   sethandlers();
   // LDAP (when not explicitly disabled)
+  // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
   var ldc = global.ldap;
+  
   if (ldc && (ldc.host && !ldc.disa)) {
-    ldconn = ldap.createClient({ url: 'ldap://' + ldc.host, strictDN: false});
+    var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
+    ldcopts.reconnect = true;
+    ldconn = ldap.createClient(ldcopts);
     console.log("Bind. conf:", ldc);
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
       if (err) { throw "Error binding connection: " + err; }
@@ -335,6 +339,14 @@ function app_init() { // global
       ldbound = 1;
       return http_start();
     }); // bind
+    // ldapjs Error: read ECONNRESET
+    // https://github.com/ldapjs/node-ldapjs/issues/318
+    // npm:pool2
+    ldconn.on('error', function(err) {
+      console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect, err);
+      // client.unbind();
+      // client.destroy(); // calls unbind
+    });
     // return;
   }
   else { http_start(); }
@@ -1743,12 +1755,12 @@ function ldaptest(req,res) {
   var jr = {status: "err", msg: "LDAP Search failed."};
   var ldc = global.ldap;
   var q = req.query;
-  req.session.cnt =  req.session.cnt ?  req.session.cnt + 1 : 0;
+  req.session.cnt =  req.session.cnt ?  req.session.cnt + 1 : 1;
   if (req.session && req.session.qs) { console.log("Adding: "+q.uname); req.session.qs.push(q.uname); }
   if (!ldconn || !ldbound) { jr.msg += "No Connection"; jr.qs = req.session; return res.json(jr); }
     var ents = [];
-    //  ldc.unattr+
-    var lds = {base: ldc.userbase, scope: ldc.scope, filter: "(sAMAccountname="+q.uname+")"};
+    //  +
+    var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.uname+")"};
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     lds.filter = "("+ldc.unattr+"="+q.uname+")";
     console.log("Search: ", lds);
@@ -1761,7 +1773,6 @@ function ldaptest(req,res) {
         console.log("Final result:"+ldres);
         //console.log(JSON.stringify(ents, null, 2));
         console.log(ents.length + " Results for " + lds.filter);
-        //process.exit(0);
         return res.json({status: "ok", data: ents});
       });
       ldres.on('error', function(err) {
@@ -1775,6 +1786,75 @@ function ldaptest(req,res) {
       //console.log("Got res:"+res);
       //console.log(JSON.stringify(res));
     });
-  
-  
+}
+/** 
+ */
+function login(req, res) {
+  var jr = {status: "err", msg: "Auth Failed."};
+  var q = req.query;
+  //console.log(JSON.stringify(req.body));
+  //console.log(JSON.stringify(req.query));
+  if (!q.username) { jr.msg += "No username"; return res.json(jr); }
+  if (!q.password) { jr.msg += "No password"; return res.json(jr); }
+  var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
+  ldconn.search(lds.base, lds, function (err, ldres) {
+    if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
+    ldres.on('searchReference', function(referral) {
+      console.log('referral: ' + referral.uris.join());
+    });
+    // result, result.status
+    ldres.on('end', function (result) {
+      console.log("Final result:"+ldres);
+      //console.log(JSON.stringify(ents, null, 2));
+      console.log(ents.length + " Results for " + lds.filter);
+      if (ents.length < 1) { jr.msg += "No users by "+q.username; return res.json(jr);}
+      if (ents.length > 1) { jr.msg += "Multiple users by "+q.username + " (ambiguous)"; return res.json(jr);}
+      if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
+      var uent = ents[0];
+      console.log("Authenticated successfully: "+q.username);
+      ldconn.bind(uent.dn, q.passwd, function(err, bres) {
+        if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
+        // TODO: Refine
+        req.session.user = uent;
+        return res.json({status: "ok", data: uent});
+        // client.unbind(function(err) {})
+      });
+    });
+    res.on('searchReference', function(referral) {
+      console.log('referral: ' + referral.uris.join());
+    });
+    ldres.on('error', function(err) {
+      console.error('error: ' + err.message);
+      jr.msg += "Search error: "+err.message;
+      res.json(jr);
+    });
+    ldres.on('searchEntry', function(entry) {
+      // console.log('entry: ' + JSON.stringify(entry.object, null, 2));
+      ents.push(entry.object);
+    });
+    //console.log("Got res:"+res);
+    //console.log(JSON.stringify(res));
+  });
+}
+/*
+events.js:167
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: read ECONNRESET
+    at TCP.onStreamRead (internal/stream_base_commons.js:111:27)
+Emitted 'error' event at:
+    at Socket.onSocketError (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/ldapjs/lib/client/client.js:964:12)
+    at Socket.emit (events.js:182:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+
+process.on('uncaughtException') // 17 mins ?
+*/
+
+function userent(req, res) {
+  var jr = {status : "err", msg : "No Autheticated User Found."};
+  if (!req.session || !req.session.user) { return res.json(jr); }
+  res.json({status: "ok", data: req.session.user});
 }
