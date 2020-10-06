@@ -30,7 +30,7 @@
     "jquery-ui-dist": "1.12.1",
     "jsgrid": "1.5.3",
     "mustache": "3.0.1",
-    "router66": "1.0.2",
+    "router66": "1.0.4",
     "showdown": "1.2.2",
     "toastr": "2.1.4",
     "wolfy87-eventemitter": "5.2.9"

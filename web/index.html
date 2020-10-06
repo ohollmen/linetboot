@@ -128,6 +128,7 @@
 #doccontent { padding: 20px; }
 /* Combo needed to keep static sidebar (assigned dynamically by: el.classList.add("...")) */
 .doccontent_shifter {margin-left: 330px;Xmargin-top: 20px;}
+/* Ok in tabs, but centers */
 .sidebar_static { float: left; }
 
 /* For accordion headers */
@@ -136,6 +137,8 @@
 #sidebar ul { border-radius: 5px; }
 /* Counteract bootstrap (?) not showing links (hover: #23527c) */
 a:link { color: #203090; }
+
+#routerdiv {margin: 0; padding: 0; border : 0; }
   </style>
 </head>
 <!--
@@ -148,16 +151,27 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <!-- glyphicon-home -->
   <h1><i id="index" class="glyphicon glyphicon-check" > </i> <span id="appname" style="font-weight: bold;">Linetboot Hosts Inventory</span></h1>
 </div>
-<nav>
-<ul style="display:none">
-<li><a href="#">Hosts Information</a></li>
-<li><a href="#">OS Packages</a></li>
-<li><a href="#">Generated Content</a></li>
-<li><a href="#">About</a></li>
+<nav id="nav">
+<ul styleX="display:none">
+<li><a href="#basicinfo">Hosts Information</a></li>
+<li><a href="#reports">Reports</a></li>
+<li><a href="#groups">Groups</a></li>
+<li><a href="#remoteviews">Remote ...</a></li>
+<li><a href="#hostkeys">HostKeys</a></li>
+<li><a href="#pkgstats">Package Check</a></li>
+<li><a href="#genoutput">Generated Content</a></li>
+<li><a href="#docsview">Docs/About</a></li>
+<li><a href="#dockerenv">Docker Env</a></li>
+<li><a href="#bootinst">Boot/Install</a></li>
+<li><a href="#logout">Logout</a></li>
 </ul>
 </nav>
 
-<div id="tabs">
+<div id="routerdiv" styleX="display: none"></div>
+
+<div id="tabs"></div>
+<!--
+<div id="tabsXX" style="display:none">
   <ul>
     <li><a href="#tabs-1">Networking</a></li>
     <li><a href="#tabs-2">Hardware</a></li>
@@ -175,12 +189,11 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     <li><a href="#tabs-65">Output Fmts</a></li>
     <li><a href="#tabs-67">Hostkeys</a></li>
     <li><a href="#tabs-68">PkgStat</a></li>
-    <!--<li><a href="#tabs-7">About ...</a></li> -->
+    
     <li><a href="#tabs-8">Docs, About</a></li>
     <li><a href="#tabs-9">Docker Env</a></li>
     <li><a href="#tabs-10">Boot/Install</a></li>
   </ul>
-  <!-- -->
   <div id="tabs-1"><div id="jsGrid_net"></div></div>
   <div id="tabs-2"><div id="jsGrid_hw"></div></div>
   <div id="tabs-3"><div id="jsGrid_dist"></div></div>
@@ -189,25 +202,29 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="tabs-6"><div id="jsGrid_rmgmt">No Remote management being used.</div></div>
   <div id="tabs-63"></div>
   <div id="tabs-64"><h3>Host Load probe</h3>
-  <!-- glyphicon-refresh / glyphicon-hourglass -->
-    <!--<input type="button" id="proberun" value="Reload">-->
-    
-    <!--<button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>-->
+ 
     <div id="jsGrid_loadprobe"></div>
   </div>
-  <!-- <h3>Collective (all hosts) Outputs</h3> -->
+  
   <div id="tabs-65"></div>
   <div id="tabs-67"><div id="jsGrid_sshkeys"></div></div>
   <div id="tabs-68"><div id="jsGrid_pkgstat"></div></div>
-  <!--<div id="tabs-7"></div> -->
+  
   <div id="tabs-8"></div>
   <div id="tabs-9"></div>
   <div id="tabs-10"></div>
 </div>
+-->
 <!-- END OF id="tabs" -->
+<!-- <h3>Collective (all hosts) Outputs</h3> -->
+<!--<li><a href="#tabs-7">About ...</a></li> -->
+<!--<div id="tabs-7"></div> old about -->
 
-<div id="tabs2"></div>
-
+<!-- From Host Load probe -->
+ <!-- glyphicon-refresh / glyphicon-hourglass -->
+    <!--<input type="button" id="proberun" value="Reload">-->
+    
+    <!--<button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>-->
 
 <div id="dialog" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
@@ -241,18 +258,18 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>DNS Servers: {{ dns }}</li>
 </ul>
 </script>
-<!-- Tabs -->
-<div id="dockerimg" title="Docker Images" todo="for {{ hn }}">
+<!-- Dialogs -->
+<div id="dockerimg" title="Docker Images" todo="for {{ hn }}" data-info="Docker Dialog">
   <div id="jsGrid_dockerimg_d" class="fwgrid"></div>
 </div>
 
-<div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}">
+<div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}" data-info="NFS Dialog">
   <div id="jsGrid_nfs" class="fwgrid"></div>
 </div>
 
-<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject"></div>
+<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
 
-<div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}" hint=""></div>
+<div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}"  data-info="Boot Image Dialog"></div>
 
 <script id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
@@ -369,6 +386,11 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <div id="{{{ gridid }}}"></div>
 </script>
 
+<!-- TODO: simplecanvas (Similar to simplegrid) ciid = canvas info id -->
+<script id="simplecanvas" type="text/template">
+  <h3>{{{ name }}}</h3>
+  <canvas id="{{{ canvasid }}}" data-ciid=""></canvas>
+</script>
 <script id="reports" type="text/template">
 <!--<div id="jsGrid_pkg"></div>-->
      <h3>Packages</h3>
@@ -405,6 +427,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <label style="width: 150px;">Boot Label</label><select id="bootlbl" name="bootlbl" ></select><br>
 <label style="width: 150px;">Host(s)</label><select id="hname" name="hname" multiple="multiple" size="5" style="width: 200px"></select><br>
 <input type="button" id="bootreqsubmit" value="Send Request">
+<!--
 <hr>
 <h4>PXELinux Registered Boot Entries</h4>
 <div id="jsGrid_pxelinux"></div>
@@ -414,7 +437,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <h4>Install Recipes</h4>
 <div id="jsGrid_recipes"></div>
-
+-->
 </script>
 
 <script id="mitmpl" type="text/template">
@@ -425,6 +448,18 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li><label style="width: 150px;">Image Size:</label> {{{ size }}}</li>
 </ul>
 </script>
+
+<script id="loginform" type="text/template">
+<h3>Lineboot Login</h3>
+
+<p>Use your network pasword to log in:</p>
+<form Xmethod="get" Xaction="/login">
+<label style="width: 150px;">Username</label><input type="text"     id="username" name="username" ><br>
+<label style="width: 150px;">Password</label><input type="password" id="password" name="password" minlength="8"><br>
+<input type="button" id="loginbut" value="Login" >
+</form>
+</script>
+
 
 </body>
 </html>

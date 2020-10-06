@@ -20,7 +20,9 @@ function simplegrid_cd(ev, an) {
 /** Display Hosts in Groups (in mutiple grids)
  */
 function hostgroups(ev, act) {
-  var elsel = act.elsel;
+  var elsel = ev.routepath ? "routerdiv" : act.elsel;
+  //console.log("Generate into: " + elsel);
+  $('#' + elsel).html(''); // Clear
   axios.get(act.url).then(function (resp) { // '/groups'
     grps = resp.data; // AoOoAoO...
     if (!grps || !grps.length) { $('#' + elsel).html("No groups in this system"); return; }
@@ -56,9 +58,9 @@ function rmgmt(ev, act) {
 
 /** Do network geared probing for DNS, ping, SSH
  */
-function probeinfo() {
-  //console.log("Launch Probe ...");
-  axios.get('/nettest').then(function (resp) {
+function probeinfo(ev, act) {
+  toastr.info("Running Network Probe ... Please Wait ...");
+  axios.get(act.url).then(function (resp) { // '/nettest'
     var pinfo = resp.data.data;
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { alert("No Net Probe data"); return; }
@@ -69,7 +71,7 @@ function probeinfo() {
 /** Load Process and Uptime Information.
  */
 function loadprobeinfo(event, act) {
-  //console.log("Launch Probe ...");
+  toastr.info("Running Load Probe ... Please Wait ...");
   axios.get(act.url).then(function (resp) {
     var pinfo = resp.data.data;
     // console.log("Probe data: ", pinfo);
@@ -83,7 +85,8 @@ function loadprobeinfo(event, act) {
 /** Display archived (and restorable) hostkeys.
  */
 function sshkeys(ev, act) {
-  // console.log("Launch SSH KeyInfo ...");
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  rapp.templated(act.tmpl, act, tgtid);
   axios.get(act.url).then(function (resp) { // '/ssh/keylist'
     var pinfo = resp.data.data;
     //console.log("SSH Key data: ", pinfo);
@@ -98,6 +101,8 @@ function sshkeys(ev, act) {
 */
 function pkgstat(jev, act) {
   // console.log("Launch Pkg stat ...");
+  var tgtid = jev.viewtgtid;
+  rapp.templated("simplegrid", act, tgtid);
   // Params to pass
   
   var url = act.url + "?"; // encodeURIComponent()
@@ -119,15 +124,11 @@ function pkgstat(jev, act) {
 
 // Output Gen
 function outfmts(ev, act) {
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   axios.get('/allhostgen').then(function (resp) {
     var outtypes = resp.data || [];
     var tpara = {outtypes: outtypes};
-    //var otmpl = document.getElementById("outputs").innerHTML;
-    //var olistout = Mustache.render(otmpl, tpara);
-    //olistout += '';
-    //document.getElementById("tabs-65").innerHTML = olistout;
-    document.getElementById(act.elsel).innerHTML = rapp.templated('outputs', tpara);
-    
+    rapp.templated('outputs', tpara, tgtid);
     $('.outitem').click(function (ev) {
       var frame = document.getElementById("cmdoutput");
       //console.log(ev.target);
@@ -139,14 +140,15 @@ function outfmts(ev, act) {
 }
 
 function dockercat_show(ev, act) {
-  
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   axios.get("/dockerenv").then(function (resp) {
     var d = resp.data;
     if (!d || !d.data) { return $('#denvinfo').html("No Docker Env. Info"); }
     //console.log(d.data);
     // Late-Templating (after we have data)
     var cont = rapp.templated("dockercat", d.data);
-    $('#'+act.elsel).html(cont); // Redo with results of late-templating (w. d.data)
+    // act.elsel
+    $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
     // Docker sync ops
     $(".docksync").click(function (jev) {
@@ -168,6 +170,7 @@ function dockercat_show(ev, act) {
 
 function showdocindex (ev, act) {
   // Mimick flow from docindex_main.js
+  if (ev.routepath) { rapp.templated("docs", null, "routerdiv"); }
   var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1, acc: 0});
   docIndex.ondocchange = function (docurl) {
     console.log("DOC-CHANGE: "+docurl);
@@ -176,7 +179,7 @@ function showdocindex (ev, act) {
   var url = act.idxurl || act.url || "/docindex.json";
   //if () {}
   //console.log("Staring load: "+ url);
-  $.getJSON(url).done(function (d) { 
+  $.getJSON(url).done(function (d) {
     //console.log("Completed load: "+ url);
     //console.log(d);
     cfg.initdocs(d);
@@ -188,13 +191,17 @@ function showdocindex (ev, act) {
  * 
  */
 function bootgui(ev, act) {
-  var cont = rapp.templated("bootreq");
-  $('#'+act.elsel).html(cont);
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  //var cont =
+  rapp.templated("bootreq", {}, tgtid);
+  // $('#'+act.elsel).html(cont);
+  
   // UI Setup
-  //function boot_select_setup() {
-  webview.addoptions(datasets["cfg"].bootlbls, $("#bootlbl").get(0), {});
-  webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
-  //}
+  function boot_select_setup() {
+    webview.addoptions(datasets["cfg"].bootlbls, $("#bootlbl").get(0), {});
+    webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
+  }
+  boot_select_setup();
   $("#bootreqsubmit").click(function (jev) {
     var para =  {"bootlbl": $("#bootlbl").val(), "hname": $("#hname").val()[0]};
     console.log(para);
@@ -204,17 +211,18 @@ function bootgui(ev, act) {
       if (d.status == "err") { return toastr.error("Failed to complete request "+ d.msg); }
       var summ = d.msgarr ? d.msgarr.map.join("\n") : "";
       toastr.info("Sent boot/install request successfully\n"+summ);
-      tftplist(); // Refresh
+      tftplist(); // Refresh (IFF on same view)
     }).catch(function (err) { console.log(err); });
   }); // 
-  tftplist();
-  medialist();
-  recipes();
+  // Legacy (single view)
+  //tftplist(ev, act);
+  //medialist(ev, act);
+  //recipes(ev, act);
   // {params: para}
   
 }
 // In a separate tab, make this to an action handler, not merely event
-function tftplist() {
+function tftplist(ev, act) {
   // TODO: "Join" with hostname here or server side ?
   axios.get("/tftplist").then(function (resp) {
     var d = resp.data;
@@ -237,11 +245,12 @@ function defboot_reset(jev) {
     if (d.status == "err") { return toastr.error("Error resetting boot by mac "+mac+ "\n"+d.msg); }
     toastr.info("Successfully reset boot to default menu.");
     //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
-    tftplist();
+    //tftplist(); // Now on separate tab
   }).catch(function (ex) { toastr.error(ex.toString()); });
   return false;
 }
-function medialist() {
+function medialist(ev, act) {
+  // TODO: Why do we not template here ?
   axios.get("/medialist").then(function (resp) {
     var d = resp.data;
     console.log(d);
@@ -259,7 +268,8 @@ function medialist() {
         console.log(d);
         //return;
         // Dialog "pattern"
-        document.getElementById('midialog').innerHTML = rapp.templated("mitmpl", d.data);
+        //document.getElementById('midialog').innerHTML =
+        rapp.templated("mitmpl", d.data, 'midialog');
         var dopts2 = {modal: true, width: 500, height: 200};
         //$( "#midialog" ).html(output); // NOT needed
         $( "#midialog" ).dialog(dopts2);
@@ -293,5 +303,47 @@ function recipes() {
     
     showgrid("jsGrid_recipes", data, fis);
   }).catch(function (err) { console.log(err); });
+}
+
+function loginform(ev, act) {
+  if (!ev.viewtgtid) { console.log("Routing Failed to set target view"); return; }
+  rapp.templated(act.tmpl, act, ev.viewtgtid);
+  $("#nav").hide();
+  $("#loginbut").click(function () {
+    var p = {username: $("#username").val(), password: $("#password").val()};
+    var pp = {}; // POST params
+    axios.get("/login", {params: p}).then( function (resp) {
+      var d = resp.data;
+      console.log("Response:", d);
+      if (d.status == "err") { toastr.error("Login Failed: " + d.msg); return; }
+      if (!d.data) { toastr.error("userinfo Missing"); return; }
+      if (!d.data.username) { toastr.error("username Missing (in userinfo)"); return; }
+      toastr.info("Login Success");
+      // or call whole init/initapp ?
+      //var u = datasets.cfg.user = {};
+      datasets.cfg.username = d.data.username;
+      location.hash = "basicinfo";
+      $("#nav").show();
+    }).catch(function (ex) { console.log("Error in login: "+ex.toString()); } );
+    return false;
+  });
+}
+function logout(ev, act) {
+  $("#"+ev.viewtgtid).html('');
+  
+  // {params: p}
+  axios.get("/logout").then( function (resp) {
+    var d = resp.data;
+    if (d.status == "err") { toastr.error("Logout Failed: " + d.msg); return; }
+    //$("#"+ev.viewtgtid).html()
+    toastr.info('Logged out Successfully');
+    $("#nav").hide();
+    // Only the form is no going to help
+    //rapp.templated("loginform", act, ev.viewtgtid);
+    var a2 = tabloadacts.filter((an) => { return an.path == "loginform"; })[0];
+    loginform(ev, a2);
+    
+  }).catch(function (ex) { console.log("Error in logout: "+ex.toString()); } );
+  
 }
 //////////// Dialog handlers ////////////////////

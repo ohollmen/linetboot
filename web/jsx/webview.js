@@ -486,6 +486,7 @@ function list(arr, opts) {
 * - **hdrattr** - Title Header attr in the elements of outer arr
 * - **hdrcb** - Title Header attr generation callback (gets passed item in outer array)
 * - **subitemsattr** - Sub items attribute
+* - **accord** - Comply to JQuery UI Accordion structure
 *
 * For inner lists, all the options for webview.list() are applicable.
 *
@@ -497,7 +498,9 @@ function list(arr, opts) {
        {name: "Group 2", items: [{},{}]}
      ]; 
      var opts = {divid: "accordion", hdrattr: ""}
-     webview.multilist(arr, opts);
+     var mlcont = webview.multilist(arr, opts);
+     $("#accordion").html(mlcont);
+     
 *
 * ### CSS Recommendations
 *
@@ -512,6 +515,7 @@ function multilist(arr, opts) {
   opts = opts || {divid: "multilist"};
   opts.ldiv = true;
   var cont = "";
+  var acc = opts.accord;
   // Naive implementation and does not account for items needing escaping
   // (all in the interest of performance and simplicity)
   function makeattrs (ats) {
@@ -526,7 +530,7 @@ function multilist(arr, opts) {
   arr.forEach(function (it) {
     if (opts.hdrcb) { cont += "<h3>"+opts.hdrcb(it)+"</h3>\n"; }
     else if (opts.hdrattr) { cont += "<h3>"+it[opts.hdrattr]+"</h3>\n"; }
-    //cont += "  <div>\n"; // TODO leave class (or other attr) clue to have
+    //if (acc) { cont += "  <div>\n"; }// TODO leave class (or other attr) clue to have
                          // callers to be able to add attrs !!!
     var itemarr = it[opts.subitemsattr]; // 
     // Try to give a debug friendly clue on what is missing
@@ -534,27 +538,41 @@ function multilist(arr, opts) {
       cont += "<p>No items in '"+opts.subitemsattr+"' (Add correct subitemsattr)</p>";
     }
     else { cont += webview.list(itemarr, opts); }
-    //cont += "  </div>\n";
+    //if (acc) { cont += "  </div>\n"; }
   });
   cont += "</div>\n";
   return cont;
 }
 /** Create JQuery tabs compliant HTML skeleton for tab-items passed.
 * TODO: nodiv (e.g. generate inside existing div)
+* @param arr {array} - Array of tab nodes
+* @param divid {string} - Create wrapping div with id for tabs HTML structure
+*     (e.g. "tabs" by JQuery example)
+* @param opts {object} - Options for creating tabs HTML
+* Options in opts:
+* - nodiv - Do not create wrapping div element despite passing divid
+* - idattr - Get link href id and tab id from named object propert/attribute (Default: "id")
+* @todo: option wrapdivid (instead of 2nd param and nodiv option).
 */
 function tabs(arr, divid, opts) {
-  opts = opts || {};
+  opts = opts || {idattr: "id"};
   var nodiv = opts.nodiv || !divid || 0;
   var cont = nodiv ? "" : "<div id=\"#"+ divid +"\" >\n";
   var cgen = opts.cgen || null;
+  var ida = opts.idattr || 'id';
   cont += "<ul>\n";
   arr.forEach(function (it) {
-    cont += "  <li><a href=\"#"+it.id+"\">"+it.name+"</a></li>\n";
+    if (!it[ida]) { return; }
+    cont += "  <li><a href=\"#"+it[ida]+"\">"+it.name+"</a></li>\n";
   });
   cont += "</ul>\n";
   arr.forEach(function (it) {
-    cont += "  <div id=\""+it.id+"\">\n";
-    // Fill-up Callback ?
+    if (!it[ida]) { return; }
+    // Tab content template info (to process later)
+    var tmplinfo = "";
+    if (it.tmpl) { tmplinfo = "data-tmpl=\""+it.tmpl+"\""; }
+    cont += "  <div id=\""+it[ida]+"\" "+tmplinfo+">\n";
+    // Fill-up Callback ? Elem id to get content from ?
     if (it.cont) { cont += it.cont; }
     else if (cgen) { cont += cgen(it, opts); }
     cont += "  </div>\n";

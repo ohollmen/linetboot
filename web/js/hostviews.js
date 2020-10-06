@@ -255,26 +255,69 @@ function ansirun(jev) {
   });
   return false;
 }
-// TODO: Make these more action-like ? title => name
+
+function tabsetview(ev, act) {
+  function gettabinfo(elsel) {
+    var ti = tabloadacts.filter((it) => { return it.elsel == elsel; })[0];
+    return ti;
+  }
+  if (!act.tabs) { return alert("Action using tabsetview should have 'tabs'" + JSON.stringify(act)); }
+  if (!Array.isArray(act.tabs)) { return alert("tabs should be an array"); }
+  //alert("tabsetview: Create tabset: "+act.tabs.join(', '));
+  
+  //function tabs_get(tabselarr) {
+  var tabs = tabloadacts.filter((ti) => {
+    //console.log("Find "+ti.elsel+" from ", act.tabs);
+    // Auto filters missing entries (?!)
+    return act.tabs.includes(ti.elsel);
+    });
+  //  return tabs;
+  //}
+  console.log("tabsetview: Got "+tabs.length + " items for tabs");
+  //return;
+  //act.tabs.forEach((ti) => {});
+  // Setup router div to contain tab structure
+  $('#routerdiv').html("<div id=\"tabsnest\"></div>");
+  $('#tabsnest').html( webview.tabs(tabs, null, {idattr: "elsel"}) );
+  $( "#tabsnest" ).tabs({active: 1});
+  $( "#tabsnest" ).tabs({ activate: ontabactivate });
+  $( "#tabsnest" ).tabs("option", "active", 0 );
+  // Set click handler !
+  
+}
+
+// Converted to more action-like: title => name
 // Note: template might be of early (at tab creation) or late (at data load) type.
-// For now late templated should have tmpl: .. to false val and do templating themselves.
+// For now late templated should have tmpl: .. to false val and do templating themselves (because early templating is automatic by tmpl).
+// Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
 var tabloadacts = [
+  {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
   {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net"}, // url: "/list" (All 3)
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw"},
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
-  {"name": "Packages",    "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null},
-  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null},
+  //NONEED: {"name": "Reports", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview},
+  {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
+  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null, path: "groups"},
+  {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt"},
   {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
   {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", 
     uisetup: function () { $('.rfop').click(on_docker_info); } },
-  {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null},
-  {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys"},
-  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat"},
-  //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null},
-  {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json"},
-  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv"},
-  {"name": "Boot/Install","elsel": "tabs-10", "tmpl":"bootreq", hdlr: bootgui, url: ""},
+  {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
+  {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", path: "hostkeys"}, // DUAL
+  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats"}, //DUAL
+  //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
+  {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
+  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
+  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
+  // Sub Tabs
+  {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq", hdlr: bootgui, url: "", path: ""},
+  {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
+  {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist",  gridid: "jsGrid_bootmedia", path: ""},
+  {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes, url: "/recipes",  gridid: "jsGrid_recipes", path: ""},
+  {"name": "Login",   "elselXX": "tabs-14", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
+  // logout
+  {"name": "Logout",   "elselXX": "tabs-14", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
 ];
 
 
@@ -285,44 +328,70 @@ var dopts = {modal: true, width: 600, // See min,max versions
 // MUST have separate custom opts (wide grid)
 // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
+//////////////////// Tabs and Grids ////////////////////////
+// ui has: newTab, newPanel, oldTab, oldPanel
+function ontabactivate( event, ui ) {
+  //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
+  var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
+  console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
+  // Do event forwarding ?
+  var an = tabloadacts_idx[tgt]; // "#"+
+  if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
+  // Load template ? 
+  if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
+  // if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
+  console.log(an);
+  //console.log(event);
+  event.viewtgtid = an.elsel; // Target View ID
+  // TODO: Dispatch like a route handler
+  if (an.hdlr) { an.hdlr(event, an); }
+}
 
-window.onload = function () {
-  // TODO: Navigation
-  // var acts_menu = acts.filter((it) => { return it.menu; });
-  //$('nav').html( webview.list(acts_menu, {titleattr: "name"}) );
-  // Setup Tabs *Dynamically*
-  ////$('#tabs2').html( webview.tabs(tabloadacts, null, {}) );
+function inittabcontent(tabs) {
+  // Populate tab templated (or literal) content (run before .tabs() ?)
+  tabs.forEach((titem) => { /// INEFFECTIVE
+    //console.log("Loop:"+titem.name);
+    if (!titem.tsel) { return; }
+    // rapp.templated(); // document.getElementById ?
+    console.log("Setting template for:"+titem.tsel);
+    document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl
+  });
+}
+function tabui_setup(tabs) {
+  $('#tabs').html( webview.tabs(tabs, null, {idattr: "elsel"}) );
   // TODO: use disabled: [] as needed
   $( "#tabs" ).tabs({active: 1}); //  ... active will NOT load if already def. tab by default (e.g. 0)
   ////$( "#tabs2" ).tabs({active: 1});
-  // Populate tab templated (or literal) content (run before .tabs() ?)
-  tabloadacts.forEach((titem) => {
-    if (titem.tsel) {
-      // rapp.templated(); // document.getElementById ?
-      document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl
-      
-    }
+  inittabcontent(tabs); // NOT EFFECTIVE
+  $( "#tabs" ).tabs({ activate: ontabactivate });
+  $("#nav").hide();
+}
+function acts_rmitem(acts, attr, val) {
+  var remok = 0;
+  for (var i = 0;i<acts.length;i++) {
+    var n = acts[i];
+    if (n[attr]== val) { acts.splice(i, 1); remok = 1; break; }
+  }
+  //return acts; // NO need for caller to store
+  return remok;
+}
+function acts_uidisable(actitems) {
+  var cfg = datasets["cfg"];
+  if (!cfg) { alert("No config dataset."); }
+  var dis = cfg.disabled;
+  if (!dis) { return alert("disabled setting is completely absent"); }
+  if (!dis.length) { console.log("Nothing to disable"); return; }
+  if (!Array.isArray(dis)) { return alert("disabled ... not an Array"); }
+  // Do not check acts_rmitem() return values strictly as items may already be removed.
+  dis.forEach((fstr) => {
+    if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); }
+    if (fstr == 'groups')    { acts_rmitem(actitems, "path", "groups"); }
+    if (fstr == 'dockerenv') { acts_rmitem(actitems, "path", "dockerenv"); }
+    if (fstr == 'hostkeys')  { acts_rmitem(actitems, "path", "hostkeys"); }
+    if (fstr == 'pkgstats')  { acts_rmitem(actitems, "path", "pkgstats"); }
   });
-  $( "#tabs" ).tabs({
-    // ui has: newTab, newPanel, oldTab, oldPanel
-    activate: function( event, ui ) {
-      //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
-      var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
-      console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
-      // Do event forwarding ?
-      var an = tabloadacts_idx[tgt]; // "#"+
-      if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
-      // Load template ?
-      if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
-      console.log(an);
-      //console.log(event);
-      // TODO: Dispatch as an route handler
-      //an.cb();
-      if (an.hdlr) { an.hdlr(event, an); }
-    }
-  });
-  //var dataurls = ["/list", "/groups", "/hostpkgcounts", "/hostrmgmt", "/nettest", "/ssh/keylist"];
-  // Also 2nd {params: {}}
+}
+// Also 2nd {params: {}}
   // {id: "docindex", url: "/docindex.json"}
   var dnodes = [
     {id: "hostlist", url: "/list"},
@@ -331,20 +400,37 @@ window.onload = function () {
     {id: "aprofs", url: "/anslist/prof"},
     {id: "cfg", url: "/config"},
   ];
-  // Outdated / Redundant
-  //data_load('/anslist/play', 'aplays');
-  //data_load('/anslist/prof', 'aprofs');
+
+window.onload = function () {
+  
+  
+  // Data Load
   var dl = new DataLoader(dnodes, {dstore: datasets});
   dl.load(initapp);
-  //axios.get('/list').then(initapp)
-  //.catch(function (error) { console.log(error); });
+  
   function initapp (response) {
+    var cfg = datasets["cfg"] || {};
+    var tabui = cfg.tabui;
+    // TODO: Navigation, e.g. var acts_menu = acts.filter((it) => { return it.menu; });
+  //$('nav').html( webview.list(acts_menu, {titleattr: "name"}) );
+  /////////////// Setup Tabs (Dynamic) ////////////////////
+  var tabs = tabloadacts.filter((ti) => { return ti.elsel; });
+  acts_uidisable(tabs);
+  if (tabui) { tabui_setup(tabs); }
+  else { } // .sidebar_static Style changes (float ...)
+  /////////////// Router / routable acts ///////////////////
+  var acts = tabloadacts.filter((ti) => { return ti.path; });
+  // Can we do async preroute-op ?
+  function preroute(ev, act) {
+    console.log("Routing: "+act.name+" ('"+location.hash+"')");
+    if (!datasets.cfg.username) { location.hash = "loginform";  } // return;
+    event.viewtgtid = "routerdiv";
+  }
+  var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
+  router.add(acts);
     // Page Branding
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
-    //console.log(response);
-    // db.hosts = response.data;
-    //datasets["hostlist"] = response.data;
     db.hosts = datasets["hostlist"];
     // Immediate grids
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
@@ -369,24 +455,25 @@ window.onload = function () {
     // Docker
     ee.on("on_dockerimg_done", function (d) { $("#dockerimg").dialog(dopts_grid); });
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
-    
+    toastr.info("Grids loaded");
     // Shared data (/list), different views
     //$( "#tabs" ).tabs( "option", "event", "activate" ); // NA
     
     //$( "#tabs" ).tabs( "load", 1 );
     // https://stackoverflow.com/questions/17967902/trigger-tab-activate-function-jquery-ui-tabs
-    $( "#tabs" ).tabs("option", "active", 0 ); // Required trans. Does not trigger if 0, but does with 1 (!)
-    //showgrid("jsGrid_net",  datasets["hostlist"], fldinfo.net); // Initial show. Could trigger tab change
-    //showgrid("jsGrid_dist", datasets["hostlist"], fldinfo.dist);
-    //showgrid("jsGrid_hw",   datasets["hostlist"], fldinfo.hw);
-    toastr.info("Grids loaded");
+    
+    if (tabui) { $( "#tabs" ).tabs("option", "active", 0 ); } // Required trans. Does not trigger if 0, but does with 1 (!)
+   
     
     
     // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
-    $(".hostcell").click(on_host_click);
-    
-    
+    $(".hostcell").click(on_host_click); // TODO: Move to specific UI:s
+    // Activate Router
+    if (!tabui) {
+      router.start();
+      location.hash = "basicinfo"; // ~defpath
+    }
   } // initapp
   
   
@@ -396,8 +483,8 @@ window.onload = function () {
     // shiftKey, metaKey, ctrlKey
     //if (ev.originalEvent.charCode == 98) { console.log("Got key"); }
     //if (ev.which == 80 && e.ctrlKey) { console.log("ctrl + p pressed"); }
-    if ((ev.which == 13 || ev.which == 10) && ev.ctrlKey) { ansishow(); }
-    return false;
+    if ((ev.which == 13 || ev.which == 10) && ev.ctrlKey) { ansishow(); return false; }
+    return true;
   });
   
   
@@ -406,19 +493,6 @@ window.onload = function () {
   // Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://192.168.1.141:4243/v1.24/images/json. (Reason: CORS header \u2018Access-Control-Allow-Origin\u2019 missing).
   
 };
-
-
-
-
-// OLD: Tab populating handlers
-    //pkg_stats(); // #tabs-4 Only now trigger fetch of pkg stats
-    //hostgroups();// #tabs-5
-    //rmgmt();     // #tabs-6  Was Unused: response.data
-    //probeinfo(); // #tabs-63 Launches HTTP
-    //outfmts();   // #tabs-65
-    //sshkeys();   // #tabs-67 Launches HTTP (NO UI setup)
-    //tabloadacts.forEach(function (it) { it.cb(); });
-    // Dialog options (moved to bigger scope)
 
 /////// Packages //////////////
 var color = Chart.helpers.color;
@@ -456,17 +530,19 @@ function chartdata(pkginfo, cdata, prop, cmap) {
       //console.log(JSON.stringify(p2)); // Cyclic
     } // onCC
     
-/** load and Chart package statistics
+/** Load and chart package statistics
 * https://www.chartjs.org/docs/latest/axes/cartesian/linear.html
 */
-function pkg_stats() {
+function pkg_stats(ev, act) {
   // Param: prop (for stat), label/name, scaling, canvas sel.
   var gscale = 1000;
-  axios.get('/hostpkgcounts').then(function (response) {
-    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    var data = response.data.data;
+  // Routing event ?
+  if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
+  axios.get('/hostpkgcounts').then(function (resp) {
+    if (resp.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
+    var data = resp.data.data;
     var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}]};
-    createchart(data, "Packages", "pkgcnt", 'canvas_pkg'); // response
+    createchart(data, "Packages", "pkgcnt", 'canvas_pkg');
   } )
   .catch(function (error) { console.log(error); });
   
@@ -475,15 +551,11 @@ function pkg_stats() {
     if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
     var data = response.data.data;
     var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}]};
-    createchart(data, "CPU:s", "numcpus", 'canvas_cpu'); // response
+    createchart(data, "CPU:s", "numcpus", 'canvas_cpu');
   } )
   .catch(function (error) { console.log(error); });
   // Uses global: cmap, global scales, outer: gscale
-  function createchart(data, label, prop, canvasid) { // response
-    //if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    //function dclone(d) { return JSON.parse(JSON.stringify(d)); }
-    //var data = response.data.data; // console.log(response.data.data);
-    
+  function createchart(data, label, prop, canvasid) {
     // label: null displays as :"null" (). See legend: { display: false} below.
     var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
     // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
@@ -511,26 +583,7 @@ function pkg_stats() {
   
 
 
-/** UNUSED Load dataset
-* 
-* data_load('/people', 'users'); // Store to datasets['users']
-* data_load('/people', 'users', {grid: "jsGrid_users", gridflds: gridflds});
-*/
-function data_load(url, id, array, opts) {
-  if (!url) { throw "data_load: No URL"; }
-  axios.get(url).then(function (response) {
-    var info = response.data;
-    
-    if (!Array.isArray(info) && info.data) { info = info.data; } // Heuristic assumption
-    if (!Array.isArray(info)) { console.log("Warning: final dataset is non-array ... not sure if this is okay (!) ..."); }
-    console.log("Dataset ('"+id+"'):", info);
-    if (!info || !info.length) { alert("No data from "+ url); return; }
-    if (id && datasets) { datasets[id] = info; }
-    //if (opts && opts.grid && opts.gridflds ) { showgrid(opts.grid, info, opts.gridflds); }
-    // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
-  })
-  .catch(function (error) { console.log(error); });
-}
+
 /** fetch docker info and pass tu UI-geared callback.
 * @param hname {string} - Hostname
 * @param gridsel {string} - Selector (id, "#...") for grid (TODO: dialogsel)
