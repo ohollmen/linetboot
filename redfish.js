@@ -42,7 +42,18 @@ function sysid(f) {
   if (f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { return "System.Embedded.1"; }
   return "1";
 }
-
+/** Generate redfish IPMI config based on global and host settings.
+ * Let hostparams.bmccreds (In format user:pass) override global credentials.
+ */
+function gencfg(ipmicfg, hostparams) {
+  var cfg = {user: ipmicfg.user, pass: ipmicfg.pass, testurl: ipmicfg.testurl};
+  if (hostparams.bmccreds) {
+    var up = hostparams.bmccreds.split(/:/);
+    cfg.user = up[0];
+    cfg.pass = up[1];
+  }
+  return cfg;
+}
 var isbodymeth = {"post":1, "put":1, "patch":1, };
 /** Construct an RedFish operation.
  * @param opid {string} - an operation registered in ops structure of redfish module.
@@ -128,5 +139,6 @@ module.exports = {
   sysid: sysid,
   RFOp: RFOp,
   ops_idx: ops_idx,
-  basicauth: basicauth
+  basicauth: basicauth,
+  gencfg: gencfg
 };
