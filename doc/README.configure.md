@@ -115,6 +115,16 @@ After getting to IPv4 network view (You may need to "Toggle Advanced Mode" to se
 
 The Next Server and Boot Server are often redundantly set to same value.
 Do not set (checkbox) "Deny BOOTP Requests".
+The above servers can be set on **network level** or **host level**. Out of the Internal fields (e.g. as dealt with in REST API)
+on the host level config the following fields in "ipv4addrs" section are relevant or need to be set.
+
+- host - The hostname (This will be always filled, this is called "name" in API parameters and the outer JSON section of "ipv4addrs")
+- ipv4addr - The IP Address (This could be static or fixed-dynamic or used for both - host PXE boots with dynamic address,
+     but gets configred with static address at the time of OS install, UI: "IPv4 Address")
+- mac - MAC Adrress by which this host record gets looked up during PXE boot (UI: "MAC Address")
+- configure_for_dhcp - Must be set to get correct address at PXE boot (**Important !**, UI: "DHCP" checkbox)
+
+Note: Does host record "Updates" => "Protected" (checkbox) need to be turned off ?
 
 ------------------------------------------------------------------------
 
@@ -191,6 +201,7 @@ The list on notable ones is:
 - use (string) - Brief Usage description
 - dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts)
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
+- bmccreds (string) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
@@ -198,7 +209,7 @@ would be:
 - ansible_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
 - ansible_sudo_pass - Anisble sudo password
 
-Sharing variable names with ansible is okay as long as they have the same conceptual meaning.
+Sharing variables / variable names with ansible is okay as long as they have the same conceptual meaning.
 
 ### Dynamic population of host key-value params
 
@@ -327,11 +338,29 @@ However booting ARM boot clients should be quite feasible with some DIY by follo
 
 ### Booting EFI/UEFI
 
-Possible solutions (not fully tried):
+#### Bootloader
+
+Possible bootloader solutions (not fully tried):
 - Use Grub 2 with its net booting capabilities (NBP: grubaa64.efi)
-- Use syslinux.efi
+- Use syslinux.efi (Separate binaries for efi32,efi64, seems to support also http)
 - Use iPXE
 
+#### Hardware Settings
+
+Besides enabling Disk EFI Boot you need to "Enable UEFI Network Stack" (Dell Term in BIOS settings)
+References:
+- https://www.dell.com/community/Laptops-General-Read-Only/How-to-make-Precision-5510-XPS13-XPS15-boot-from-network/td-p/5044315
+- Google: loading memdisk failed no such file or directory
+
+#### UEFI HTTP Settings
+
+For each network device (e.g. 1...4). (Dell) BIOS Explains: "When this setting is Enabled, the BIOS will create a UEFI boot option
+for the HTTP sevice."
+May be also seen (in server BIOS) as: "UEFI PXE Settings" 1..4, Enabled/Disable, set enabled for network interface you plan to use 
+
+Other notable settings:
+- System BIOS Settings => Boot Settings => UEFI Boot Settings => Unavailable: Windows Boot Manager
+- System BIOS Settings => System Security => SECURE BOOT => Secure Boot: Enabled/Disabled
 ### Interference with iSCSI or FCoE
 
 The PXE boot-time error "PXE-E51: No DHCP or proxyDHCP offers were received" can be caused by
