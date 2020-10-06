@@ -82,7 +82,7 @@ function app_init() { // global
   console.log("Choosing mainconf: " + globalconf);
   global = mc.mainconf_load(globalconf);
   user = mc.user_load(global);
-  //mc.env_merge(global);
+  mc.env_merge(global);
   mc.mainconf_process(global);
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
@@ -226,6 +226,8 @@ function app_init() { // global
   app.get("/login",  login);
   
   app.get("/userent",  userent);
+  
+  app.get("/logout",  logout);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -346,9 +348,16 @@ function app_init() { // global
     // https://github.com/ldapjs/node-ldapjs/issues/318
     // npm:pool2
     ldconn.on('error', function(err) {
-      console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect, err);
+      // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563
+      // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563\u0000
+      console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
       // client.unbind();
       // client.destroy(); // calls unbind
+      ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
+        var msg = "Re-bind after connection error: ";
+        if (err) { console.log(msg + "Failed to re-bind: " + err); return; }
+        console.log(msg + "Seems re-binding succeeded OK");
+      });
     });
     // return;
   }
@@ -370,15 +379,17 @@ function linet_mw(req, res, next) {
   //var extension = path.extname(filename);
   if (1) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
   //req.session.num++;
-  // 
+  
   if (req.session && !req.session.qs) { console.log("NO qs, resetting."); req.session.qs = []; }
+  if (0) {
   console.log("sess: ", req.session);
   //console.log("hdrs: ", req.headers); // rawHeaders:
   console.log("cookie: ", req.headers.cookie);
   console.log("req.sessionID: ", req.sessionID);
   console.log("SS: ", (req.sessionStore ? "present" : "absent"));
+  }
   var s; // Stats
-  console.log("app.use: URL:" + req.url);
+  console.log("app.use: "+req.method+":" + req.url);
   // 
   if (req.url.match("^(/ubuntu1|/centos|/gparted|/boot)")) {
     // Stat the file
@@ -1180,7 +1191,7 @@ function host_pkg_stats(req, res) {
     return {name: pnn,  title: pn, type: "text", width: 50,};
   });
   gdef.unshift(hostfld);
-  var root = process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
+  var root = global.pkglist_path; // process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
   var arr = [];
   hostarr.forEach(function (f) { // map ?
     var hn = f.ansible_fqdn;
@@ -1424,12 +1435,20 @@ function config_send(req, res) {
   var dock = global.docker;
   var core = global.core;
   var tftp = global.tftp;
+  var web  = global.web;
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
   // Core
   if (core && core.appname) { cfg.appname = core.appname; }
   if (core && core.hdrbg)   { cfg.hdrbg = core.hdrbg; } // BG Image
   if (tftp && tftp.menutmpl) { cfg.bootlbls = tboot.bootlabels(tftp.menutmpl); }
+  // Disable
+  cfg.disabled = global.disabled;
+  // GUI
+  if (web && (typeof web.tabui !== "undefined")) { cfg.tabui = web.tabui; }
+  else { cfg.tabui = 1; } // Legacy default
+  // Current sess
+  cfg.username = req.session.user ? req.session.user.username : "";
   res.json(cfg);
 }
 
@@ -1796,15 +1815,21 @@ function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
   var q = req.query;
   var ldc = global.ldap;
-  //console.log(JSON.stringify(req.body));
-  //console.log(JSON.stringify(req.query));
+  
+  console.log(JSON.stringify(req.body));
+  console.log(JSON.stringify(req.query));
+  console.log("Start Login, ldconn: "+ ldconn);
   if (!q.username) { jr.msg += "No username"; return res.json(jr); }
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
+  if (!ldc)        { jr.msg += "No LD Config"; return res.json(jr); }
+  if (ldc.simu) { req.session.user = {username: "nobody"}; return res.json({status: "ok", data: {username: "nobody"}});}
   if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
+  console.log("Query by: ", lds);
   var ents = [];
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
+    
     ldres.on('searchReference', function(referral) {
       console.log('referral: ' + referral.uris.join());
     });
@@ -1822,6 +1847,7 @@ function login(req, res) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         // TODO: Refine
         req.session.user = uent;
+        uent.username = uent[ldc.unattr];
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
       });
@@ -1863,4 +1889,11 @@ function userent(req, res) {
   var jr = {status : "err", msg : "No Autheticated User Found."};
   if (!req.session || !req.session.user) { return res.json(jr); }
   res.json({status: "ok", data: req.session.user});
+}
+
+function logout(req, res) {
+  var jr = {status : "err", msg : "Logout Failed."};
+  if (!req.session || !req.session.user) { jr.msg += "User session not found !"; return res.json(jr); }
+  req.session.user = null;
+  res.json({status: "ok", data: null});
 }
