@@ -33,3 +33,12 @@ Fall back onto whatever is supported.
 #### Q: I'm installing Dell iDRAC firmware update and get "Failed to start firmware update. Possible reason may be that Local Configuration using RACADM is disabled." - What's up with this ?
 A: You could try installing newer BIOS update first - this helps in some cases.
 Also adjusting iDRAC Settings => Services => Local Configuration => "Disable iDRAC ..." to "Disabled" helps.
+
+#### Q: I try to loopmount, but get an error: mount: could not find any free loop device, what's this?
+
+A: The loop mount "slots" have a corresponding device file in the file system. When there are no more numbered loop mount device
+files left , this error triggers. Create more loop device files by:
+```
+# -m640 - perms, b special blod dev, 7 = major (every loopN device), 8 = minor (match N in loopN) 
+sudo mknod -m640 /dev/loop8 b 7 8
+```
