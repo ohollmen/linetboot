@@ -49,7 +49,7 @@ function user_load(global) {
 */
 function mainconf_process(global) {
   // Validate config section presence (for mandatory sections)
-  var sectnames = ["core", "tftp", "ipmi", "probe", "net"]; // "ansible", "docker"
+  var sectnames = ["core", "tftp", "ipmi", "probe", "net", "inst"]; // "ansible", "docker"
   sectnames.forEach(function (sn) {
     // TODO: Check for real object !
     if (!global[sn]) { console.error("Main Config Section "+sn+" missing. Exiting ..."); process.exit(1); }
@@ -57,7 +57,7 @@ function mainconf_process(global) {
   });
   //////// "~" (HOME) expansion //////////////////
   // ... for config convenience (top-level & some sects ?)
-  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts"];
+  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path"];
   tilde_expand(global, top_paths);
   var home = process.env['HOME'];
   //top_paths.forEach(function (pk) {
@@ -69,12 +69,37 @@ function mainconf_process(global) {
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
   
-  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig"]);
+  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path"]);
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
     //if (dkr.config)  { dkr.config  = dkr.config.replace('~', home); }
     //if (dkr.catalog) { dkr.catalog = dkr.catalog.replace('~', home); }
+  }
+  // Detect completeness of various configs and mark things that are not in use as disabled.
+  // Use these to customize Web UI. Aim to use UI terms for ease at that end (and aim to sync terminology in time)
+  // IPMI: See if dir exists and if any info collected
+  var dis = global.disabled = [];
+  if (!fs.existsSync(global.ipmi.path) || hasnofiles(global.ipmi.path)) { dis.push('ipmi'); }
+  // Docker see if both files exist
+  if (!fs.existsSync(global.docker.config) || !fs.existsSync(global.docker.catalog)) { dis.push("dockerenv"); }
+  // Groups
+  if (!global.groups || !global.groups.length) { dis.push("groups"); } // dyngroups
+  // Output formats ??
+  // if () {}
+  // Hostkeys
+  if (!fs.existsSync(global.inst.sshkey_path) || hasnofiles(global.inst.sshkey_path)) { dis.push("hostkeys"); }
+  // PkgStat (pkgstats). Which directory ?
+  if (!global.pkglist_path || !fs.existsSync(global.pkglist_path) || hasnofiles(global.pkglist_path) ) { dis.push("pkgstats"); }
+  // Flags for docs disa ? Do not enable
+  // Reporting (in flux for transition to tabs) "reports"
+  //if (global.web && !global.web.reports) { dis.push("reports"); }
+  function hasnofiles(dir) {
+    if (!dir) { return 1; }
+    var files;
+    try { files = fs.readdirSync(dir); } catch (ex) { return 1; };
+    if (files.length > 1) { return 0; }
+    return 1;
   }
 }
 
@@ -94,7 +119,10 @@ function env_merge(global) {
   if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path = process.env["LINETBOOT_TMPL_PATH"]; }
   // RMGMT_PATH
   if (process.env["RMGMT_PATH"])            { global.ipmi.path = process.env["RMGMT_PATH"]; }
+  // 
+  if (process.env["LINETBOOT_PKGLIST_PATH"]) { global.pkglist_path = process.env["LINETBOOT_PKGLIST_PATH"]; }
   
+  if (process.env["LINETBOOT_LDAP_SIMU"]) { global.ldap.simu = process.env["LINETBOOT_LDAP_SIMU"]; }
   // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
 }
 function tilde_expand(obj, keyarr) {
