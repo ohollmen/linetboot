@@ -59,6 +59,7 @@
     "sync": 1
   },
   "rmgmt_path": "~/hostrmgmt",
+  "pkglist_path": "~/hostpkginfo",
   "ipmi": {
     "desc": "Remote Management (redfish and IPMI)",
     "path": "~/hostrmgmt",
@@ -102,7 +103,7 @@
     "scope": "sub",
     "unattr": "sAMAccountName"
   },
-  
+  "web": {"reports": 1, "tabui": 1},
   "targetos": "/ubuntu14",
   "useurlmapping": false,
   "remote": {
