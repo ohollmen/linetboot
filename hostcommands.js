@@ -113,7 +113,7 @@ function commands_gen(op, hostarr, ps) {
   
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
-    if (!plcmd) { cont += "# No package list command for os\n"; return; }
+    if (!plcmd) { cmds.push("# No package list command for os\n"); return; }
     // Parameters for host (for CB-based or template based command generation)
     // Actually this is a mix of module context and host context params
     var info = {
