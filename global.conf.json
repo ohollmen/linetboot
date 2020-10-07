@@ -101,7 +101,8 @@
     "bindpass": "j5r0Ck5",
     "userbase": "OU=Users,OU=Accounts,DC=Company,DC=com",
     "scope": "sub",
-    "unattr": "sAMAccountName"
+    "unattr": "sAMAccountName",
+    "idletout": 3000
   },
   "web": {"reports": 1, "tabui": 1},
   "targetos": "/ubuntu14",
