@@ -8,7 +8,7 @@
      return value + "<img src=\"img/"+img+"\" class=\"osicon\">"; // 
    }
    function rotcell(value, item) {
-     if (typeof value == 'undefined' || value == "") { return "??"; }
+     if (typeof value == 'undefined' || value === "") { return "??"; }
      if (value == "1") { return("HDD");}
      return "SSD";
    }
@@ -185,7 +185,7 @@
    /* Can be shared on any view having item.hname */
    function redfish_cell(val, item) {
      if (item.uptime && !item.hasrm) { return "-"; } // No Rmgmt info. Misbehaved when shared.
-     if (item.rmhname != undefined && !item.ipaddr) { return "-"; }
+     if ((item.rmhname !== undefined) && !item.ipaddr) { return "-"; }
      return "<a class=\"rfop\" data-hname=\""+item.hname+"\" data-op='info' Xhref=\"/rf/info/"+item.hname+"\" data-tgt=\"rfdialog\">Info</a>" + '';
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"?pxe\">PXE Boot</a>" +
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"\">Reboot</a>";
@@ -300,10 +300,43 @@
      {name: "status",    title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
      {name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
    ];
+   function uname_cell(val, item) {
+     return "<a class=\".unamecell\" data-uid=\""+item.uid+"\">"+val+"</a>";
+   }
+   var ldinfo_ldad = [
+    // itemTemplate: ...
+    {name: "givenName", title: "First Name", type: "text", width: 40, visible: false},
+    {name: "sn", title: "Last Name", type: "text", width: 40, visible: false},
+    {name: "displayName", title: "Name", type: "text", width: 100, itemTemplate: uname_cell},
+    {name: "sAMAccountName", title: "Username", type: "text", width: 40},
+    //{name: "uid", title: "Username (UNIX)", type: "text", width: 40, visible: false},
+    {name: "mail", title: "Email Address", type: "text", width: 100},
+    //{name: "title", title: "title", type: "text", width: 60},
+    {name: "employeeNumber", title: "Emp #", type: "text", width: 40, visible: false},
+    {name: "division", title: "Division", type: "text", width: 40},
+    //{name: "telephoneNumber", title: "Phone", type: "text", width: 100, visible: false},
+    // Locality
+    {name: "streetAddress", title: "Street Address", type: "text", width: 40, visible: false},
+    {name: "l", title: "City/Town", type: "text", width: 40, visible: false},
+    {name: "st", title: "State/County", type: "text", width: 40, visible: false},
+    {name: "co", title: "Country", type: "text", width: 40},
+    // Needs parsing (;)
+    //{name: "postalAddress", title: "Complete Post Address", type: "text", width: 40, visible: false},
+    {name: "postalCode", title: "Area/Zip", type: "text", width: 40, visible: false},
+    // Manager
+    {name: "manager", title: "Manager", type: "text", width: 40, visible: false},
+    //{name: "memberOf", title: "Member of", type: "text", width: 40, visible: false},
+    // POSIX:
+    //{name: "homeDirectory", title: "Home Directory", type: "text", width: 40, visible: false},
+    //{name: "gecos"          title: "Description", type: "text", width: 200, visible: false},
+    //{name: "uidNumber"      title: "UID Num.", type: "text", width: 30, visible: false},
+    //{name: "gidNumber"      title: "GID Num.", type: "text", width: 30, visible: false},
+    //{name: "loginShell"     title: "Shell", type: "text", width: 80, visible: false},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
-      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia
+      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad
    };
    

@@ -318,6 +318,8 @@ var tabloadacts = [
   {"name": "Login",   "elselXX": "tabs-14", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
   // logout
   {"name": "Logout",   "elselXX": "tabs-14", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
+  // Directory  (TODO: composite templating)
+  {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
 ];
 
 
@@ -375,13 +377,17 @@ function acts_rmitem(acts, attr, val) {
   //return acts; // NO need for caller to store
   return remok;
 }
+
+// TODO: Make into reusable by passing disable-list
 function acts_uidisable(actitems) {
   var cfg = datasets["cfg"];
   if (!cfg) { alert("No config dataset."); }
   var dis = cfg.disabled;
+  //////
   if (!dis) { return alert("disabled setting is completely absent"); }
+  if (!Array.isArray(dis)) { console.log("Disable-list not in an array"); return;}
   if (!dis.length) { console.log("Nothing to disable"); return; }
-  if (!Array.isArray(dis)) { return alert("disabled ... not an Array"); }
+  //if (!Array.isArray(dis)) { return alert("disabled ... not an Array"); }
   // Do not check acts_rmitem() return values strictly as items may already be removed.
   dis.forEach((fstr) => {
     if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); }

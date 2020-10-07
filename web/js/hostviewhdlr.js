@@ -346,4 +346,30 @@ function logout(ev, act) {
   }).catch(function (ex) { console.log("Error in logout: "+ex.toString()); } );
   
 }
+
+function showpeople(ev, act) {
+  rapp.templated("simplegrid", act, ev.viewtgtid);
+  axios.get("/ldaptest").then(function (resp) {
+    // Populate AoO to grid
+    var d = resp.data;
+    if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
+    if (!d.data) { return toastr.error("No Data Found."); }
+    if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
+    var uarr = d.data;
+    showgrid(act.gridid, d.data, fldinfo.ldad);
+    // if (cb) { cb(d.data); }
+    // Need to index or populate id / sequence numbers
+    var idx = {};
+    d.data.forEach((it) => { idx[it.uid] = it; });
+    $('.unamecell').click(function () {
+     var un = this.dataset.uid;
+     var e = idx[un];
+     //var e = 1;
+     console.log(e);
+     alert(e);
+     
+     //rapp.templated("lduser", , app.gridid);
+    });
+  }).catch (function (ex) { console.log(ex); });
+}
 //////////// Dialog handlers ////////////////////

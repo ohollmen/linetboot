@@ -336,6 +336,7 @@ function app_init() { // global
   if (ldc && (ldc.host && !ldc.disa)) {
     var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
     ldcopts.reconnect = true;
+    if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
     ldconn = ldap.createClient(ldcopts);
     console.log("Bind. conf:", ldc);
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
