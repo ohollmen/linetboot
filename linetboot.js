@@ -351,7 +351,14 @@ function app_init() { // global
     ldconn.on('error', function(err) {
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563\u0000
-      console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
+      // console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
+      console.log('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
+       //console.log("Conn (at error):", ldconn);
+       console.log("Destroying existing client:"+ldconn);
+       ldconn.destroy();
+       ldconn = null;
+       ldconn = ldap.createClient(ldcopts);
+       if (!ldconn) { console.log("Could not create LDAP client."); return; }
       // client.unbind();
       // client.destroy(); // calls unbind
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
