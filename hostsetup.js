@@ -192,6 +192,7 @@ function hostsetup (opts) {
   return;
   
   // NOTE: CANNOT load facts w/o facts (TODO: Create mini facts just enough to ping) ?
+  // TODO: Create an inventory-only (hostname based) ping/nslookup.
   // Ping hosts ? extract facts ?
   var hostarr = hlr.facts_load_all();
   console.log(cfg.hostarr.length + " facts gathered.");
@@ -242,10 +243,13 @@ function hostsetup (opts) {
         //process.exit(1);
       } // cb(err, null);
       // console.log(stdout);
+      if (opts.dest) { console.log("Destination was overriden from command line to: " + opts.dest);}
       console.log("Gathered (or tried to gather) facts into path: " + mcfg.fact_path);
       // Clean up bad facts
       var badcnt = badfact_cleanup(mcfg);
       console.log("Removed " + badcnt + " bad facts files.");
+      console.log("If path above is not your configured fact location copy them by (e.g.)\ncp -r "+mcfg.fact_path+" ~/hostinfo/");
+      console.log("... and restart lineboot server to pick up the new facts.");
       process.exit(0);
       //return cb(null, stat);
     });
