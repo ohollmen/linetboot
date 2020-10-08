@@ -47,7 +47,7 @@ function rmgmt(ev, act) {
     // console.log("Remote Mgmt data: ", rmgmt_data);
     if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
     var hr = 0; // Has remote management
-    if (!rmgmt_data.filter((it) => {return it.ipaddr}).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
+    if (!rmgmt_data.filter((it) => {return it.ipaddr; }).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
     showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
     // $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); // UI Setup
     //$("jsGrid_rmgmt .rfop").click(); // Dedicate
@@ -171,7 +171,7 @@ function dockercat_show(ev, act) {
 function showdocindex (ev, act) {
   // Mimick flow from docindex_main.js
   if (ev.routepath) { rapp.templated("docs", null, "routerdiv"); }
-  var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1, acc: 0});
+  var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1 });
   docIndex.ondocchange = function (docurl) {
     console.log("DOC-CHANGE: "+docurl);
     // location.hash = '#nop';
@@ -186,7 +186,7 @@ function showdocindex (ev, act) {
   })
   .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
   // axios.get(url).then((resp) => { cfg.initdocs(resp.data); })
-};
+}
 /** Show Boot Options and allow set "next boot".
  * 
  */
@@ -349,27 +349,36 @@ function logout(ev, act) {
 
 function showpeople(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
-  axios.get("/ldaptest").then(function (resp) {
-    // Populate AoO to grid
-    var d = resp.data;
-    if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
-    if (!d.data) { return toastr.error("No Data Found."); }
-    if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
-    var uarr = d.data;
-    showgrid(act.gridid, d.data, fldinfo.ldad);
-    // if (cb) { cb(d.data); }
-    // Need to index or populate id / sequence numbers
-    var idx = {};
-    d.data.forEach((it) => { idx[it.uid] = it; });
-    $('.unamecell').click(function () {
-     var un = this.dataset.uid;
-     var e = idx[un];
-     //var e = 1;
-     console.log(e);
-     alert(e);
-     
-     //rapp.templated("lduser", , app.gridid);
-    });
-  }).catch (function (ex) { console.log(ex); });
+  $("#"+ev.viewtgtid).prepend("<input type=\"text\" id=\"uname\" name=\"uname\"><input type=\"button\" id=\"sbutt\" value=\"Search\" >\n");
+  function search(p) {
+    
+    axios.get("/ldaptest", {params: p}).then(function (resp) {
+      // Populate AoO to grid
+      var d = resp.data;
+      if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
+      if (!d.data) { return toastr.error("No Data Found."); }
+      if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
+      var uarr = d.data;
+      showgrid(act.gridid, d.data, fldinfo.ldad);
+      // if (cb) { cb(d.data); }
+      // Need to index or populate id / sequence numbers
+      var idx = {};
+      d.data.forEach((it) => { idx[it.uid] = it; });
+      $('.unamecell').click(function () {
+        var un = this.dataset.uid;
+        var e = idx[un];
+        //var e = 1;
+        console.log(e);
+        alert(e);
+        
+        //rapp.templated("lduser", , app.gridid);
+      });
+      
+    }).catch (function (ex) { console.log(ex); });
+  } // search
+  $('#sbutt').click(function () {
+    var p = {uname: $("#uname").val()};
+    search(p);
+  });
 }
 //////////// Dialog handlers ////////////////////
