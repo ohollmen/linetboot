@@ -363,8 +363,10 @@ function showpeople(ev, act) {
       // if (cb) { cb(d.data); }
       // Need to index or populate id / sequence numbers
       var idx = {};
-      d.data.forEach((it) => { idx[it.uid] = it; });
+      d.data.forEach((it) => { idx[it.sAMAccountName] = it; });
+      console.log("Assign click hdlr");
       $('.unamecell').click(function () {
+        console.log("Calling click hdlr");
         var un = this.dataset.uid;
         var e = idx[un];
         //var e = 1;
@@ -372,6 +374,7 @@ function showpeople(ev, act) {
         alert(e);
         
         //rapp.templated("lduser", , app.gridid);
+        return false;
       });
       
     }).catch (function (ex) { console.log(ex); });

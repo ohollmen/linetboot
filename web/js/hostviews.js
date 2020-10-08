@@ -321,7 +321,21 @@ var tabloadacts = [
   // Directory  (TODO: composite templating)
   {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
 ];
-
+var dialogacts = [
+  {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
+];
+// TODO: griddialog / entdialog
+function gendialog(act) {
+  // Create even the element to which to create dialog ?
+  if (!act.url) {   return; }
+  // Most dialogs have data ...
+  var axopts = {params: null};
+  if (act.pmaker) { axopts.params = act.pmaker(); } // TODO: pass ....
+  axios.get(act.url).then(function (resp) {
+    
+  })
+  .catch(function (ex) { console.log(""); });
+}
 
 var tabloadacts_idx = {};
 tabloadacts.forEach(function (it) { tabloadacts_idx[it.elsel] = it; });
@@ -430,6 +444,7 @@ window.onload = function () {
   function preroute(ev, act) {
     console.log("Routing: "+act.name+" ('"+location.hash+"')");
     if (!datasets.cfg.username) { location.hash = "loginform";  } // return;
+    // Need to override in action for e.g. dialog (e.g. viewid)
     event.viewtgtid = "routerdiv";
   }
   var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
