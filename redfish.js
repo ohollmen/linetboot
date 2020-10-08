@@ -20,15 +20,19 @@
  * - Choosing appropriate "ResetType" (preference order could be set by module)
  * - Get to know "PowerState"
  * - 
+ * # References
+ * - https://www.tzulo.com/crm/knowledgebase/47/IPMI-and-IPMITOOL-Cheat-sheet.html
+ * - https://docs.oracle.com/cd/E24707_01/html/E24528/z400000c1016683.html
  */
 var axios = require("axios");
 // TODO: Embed templating fragment for {{ sysid }} ?
 var ops = [
-    {"id":"boot",  "m": "post",  url: "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset", msg: {"ResetType": "PowerCycle", } },
-    {"id":"info",  "m": "get",   url: "/redfish/v1/Systems/System.Embedded.1/"},
-    {"id":"setpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "Pxe"}} },
-    {"id":"unsetpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "None"}} },
-    {"id":"fwinv", "m": "get",   url: "/redfish/v1/UpdateService/FirmwareInventory"}, // Also multipart POST to upload (Note ETag)
+    {"id":"boot",  "m": "post",  url: "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset", msg: {"ResetType": "PowerCycle", }, "ipmi": "chassis power cycle"}, // chassis power reset
+    {"id":"info",  "m": "get",   url: "/redfish/v1/Systems/System.Embedded.1/", "ipmi": "lan print 1"}, // IPMI: not very informative host itself
+    {"id":"setpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "Pxe"}}, "ipmi": "chassis bootdev pxe" },
+    {"id":"unsetpxe","m": "patch", url: "/redfish/v1/Systems/System.Embedded.1/", msg: {"Boot": {"BootSourceOverrideTarget": "None"}} , "ipmi": "chassis bootdev disk"}, // safe or disk ?
+    // Also multipart POST to upload (Note ETag)
+    {"id":"fwinv", "m": "get",   url: "/redfish/v1/UpdateService/FirmwareInventory", "ipmi": ""}, // Do not use with IPMI
     // "m":"post", url: UpdateService/Actions/UpdateService.SimpleUpdate} // SW URL in body
 ];
 var ops_idx = {}; ops.forEach(function (op) { ops_idx[op.id] = op; });
@@ -69,6 +73,7 @@ function RFOp(opid, conf) {
   this.url = op.url;
   this.msg = op.msg ? JSON.parse(JSON.stringify(op.msg)) : null; // Copy !
   this.conf = conf; // TODO: utilize !
+  this.ipmi = op.ipmi;
 }
 /** Add ("register") operation. */
 RFOp.add = function (op) {
@@ -125,6 +130,42 @@ RFOp.prototype.request = function(host, auth) {
   else { axios[meth](rfurl, reqopts).then(this.succ).catch(this.err); }
 };
 
+/** Make a BMC Request but with IPMI (Instead of RedFish).
+ * TODO:
+ * - Simulate axios response and error objects (members: ...)
+ * - Test
+ * See (old): ipmi.js / ipmi_cmd()
+ */
+RFOp.prototype.request_ipmi = function(host, auth) {
+  var msg = "";
+  var basecmd = "ipmitool —I lanplus -H '" +host+ "' -U '"+auth.user+"' -P '"+auth.user+"' ";
+  if (!this.ipmi) { msg = "IPMI command not found for op: "+ this.op; console.log(msg); return this.err({}); }
+  var ipmifullcmd = basecmd + this.ipmi; // Add ipmi sub command
+  //if (rmgmt.enckey ) { ipmifullcmd += " -x " +rmgmt.enckey+" "; }
+  function mk_ax_resp(iserr) {
+    var r = {status: iserr, message: ""};
+    // In error response is in member response
+    // NOTE: error should have .toString() method
+    //if (iserr) { r = {response: r}; } // toString: function () { return this.message; }
+    return r;
+  }
+  var run = cproc.exec(ipmifullcmd, function (err, stdout, stderr) {
+    if (err) {
+      msg += "Problem with ipmitool run:" + err;
+      console.log(msg);
+      //console.log(stderr);
+      //return res.json(jr);
+      // Simulate axios promise response ?
+      var r = mk_ax_resp(1);
+      return this.err(r);
+    }
+    
+    console.log("Executed IPMI command successfully: " + stdout);
+    //return res.json({status: "ok", data: {"msgarr": msgarr}});
+    var r = mk_ax_resp(0);
+    return this.succ(r);
+  });
+};
 // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
   function basicauth(obj) {
     // [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues.
