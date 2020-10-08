@@ -1840,7 +1840,7 @@ function login(req, res) {
   if (req.body.username) { q = req.body; } // Object.keys(req.body).length
   console.log(JSON.stringify(req.body));
   console.log(JSON.stringify(req.query));
-  console.log("Start Login, ldconn: "+ ldconn);
+  
   if (!q.username) { jr.msg += "No username"; return res.json(jr); }
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
   if (!ldc)        { jr.msg += "No LD Config"; return res.json(jr); }
@@ -1852,7 +1852,8 @@ function login(req, res) {
   var ents = [];
   // For every auth, grab a fresh connection
   var ldcopts = ldcopts_by_conf(ldc);
-  var ldconn = ldap.createClient(ldcopts);
+  var ldconn2 = ldap.createClient(ldcopts); // Bind conn.
+  console.log("Start Login, local ldconn2: "+ ldconn2);
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
     
@@ -1869,13 +1870,13 @@ function login(req, res) {
       if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
       var uent = ents[0];
       console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
-      ldconn.bind(uent.dn, q.passwd, function(err, bres) {
+      ldconn2.bind(uent.dn, q.passwd, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         // TODO: Refine
         console.log("Bind-ent: ", uent);
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
-        ldconn.destroy();
+        ldconn2.destroy();
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
       });
