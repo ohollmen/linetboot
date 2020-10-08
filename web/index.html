@@ -129,6 +129,7 @@
 /* Combo needed to keep static sidebar (assigned dynamically by: el.classList.add("...")) */
 .doccontent_shifter {margin-left: 330px;Xmargin-top: 20px;}
 /* Ok in tabs, but centers in router mode (routerdiv). Is clearly needed to pull doc next to sidebar (w/o break) */
+/* https://css-tricks.com/clearfix-a-lesson-in-web-development-evolution/ */
 .sidebar_static { float: left; }
 
 /* For accordion headers */
@@ -166,7 +167,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li><a href="#logout">Logout</a></li>
 </ul>
 </nav>
-
+<br style="clear: both;">
 <div id="routerdiv" styleX="display: none"></div>
 
 <div id="tabs"></div>
