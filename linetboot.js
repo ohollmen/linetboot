@@ -334,14 +334,16 @@ function app_init() { // global
   var ldc = global.ldap;
   
   if (ldc && (ldc.host && !ldc.disa)) {
-    var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
-    ldcopts.reconnect = true;
-    if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
+    //var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
+    //ldcopts.reconnect = true;
+    //if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
+    var ldcopts = ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
     console.log("Bind. conf:", ldc);
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
       if (err) { throw "Error binding connection: " + err; }
-      console.log("Bound/Connected to: " + ldc.host); // , bres
+      var d2 = new Date(); // toISOString()
+      console.log(d2.toISOString()+" Initially Bound/Connected to: " + ldc.host + " as "+ldc.binddn); // , bres
       ldbound = 1;
       return http_start();
     }); // bind
@@ -349,27 +351,36 @@ function app_init() { // global
     // https://github.com/ldapjs/node-ldapjs/issues/318
     // npm:pool2
     ldconn.on('error', function(err) {
+      var d2 = new Date(); // toISOString()
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563\u0000
       // console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
-      console.log('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
-       //console.log("Conn (at error):", ldconn);
-       console.log("Destroying existing client:"+ldconn);
-       ldconn.destroy();
-       ldconn = null;
-       ldconn = ldap.createClient(ldcopts);
-       if (!ldconn) { console.log("Could not create LDAP client."); return; }
+      console.log(d2.toISOString() + ' LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
+      //console.log("Conn (at error):", ldconn);
+      console.log("Destroying existing client:"+ldconn);
+      ldconn.destroy();
+      ldconn = null;
+      ldconn = ldap.createClient(ldcopts);
+      if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
       // client.unbind();
       // client.destroy(); // calls unbind
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
+        // 
         var msg = "Re-bind after connection error: ";
         if (err) { console.log(msg + "Failed to re-bind: " + err); return; }
         console.log(msg + "Seems re-binding succeeded OK");
+        return;
       });
     });
     // return;
   }
   else { http_start(); }
+}
+function ldcopts_by_conf(ldc) {
+  var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
+  ldcopts.reconnect = true;
+  if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
+  return ldcopts;
 }
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
 //app.all('/', function(req, res, next) {
@@ -1789,13 +1800,15 @@ function ldaptest(req,res) {
   if (req.session && req.session.qs) { console.log("Adding: "+q.uname); req.session.qs.push(q.uname); }
   if (!ldconn || !ldbound) { jr.msg += "No Connection"; jr.qs = req.session; return res.json(jr); }
     var ents = [];
+    var d1 = new Date();
     //  +
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.uname+")"};
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     lds.filter = "("+ldc.unattr+"="+q.uname+")";
-    console.log("Search: ", lds);
+    console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
-      if (err) { throw "Error searching: " + err; }
+      var d2 = new Date();
+      if (err) { throw d2.toISOString()+" Error searching: " + err; }
       ldres.on('searchReference', function(referral) {
         console.log('referral: ' + referral.uris.join());
       });
@@ -1823,7 +1836,8 @@ function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
   var q = req.query;
   var ldc = global.ldap;
-  
+  // if (req.method == '') {}
+  if (req.body.username) { q = req.body; } // Object.keys(req.body).length
   console.log(JSON.stringify(req.body));
   console.log(JSON.stringify(req.query));
   console.log("Start Login, ldconn: "+ ldconn);
@@ -1835,6 +1849,9 @@ function login(req, res) {
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
   console.log("Query by: ", lds);
   var ents = [];
+  // For every auth, grab a fresh connection
+  var ldcopts = ldcopts_by_conf(ldc);
+  var ldconn = ldap.createClient(ldcopts);
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+username+": " + err; return res.json(jr);  }
     
@@ -1843,19 +1860,20 @@ function login(req, res) {
     });
     // result, result.status
     ldres.on('end', function (result) {
-      console.log("Final result:"+ldres);
+      console.log("Final (user search) result:"+ldres);
       //console.log(JSON.stringify(ents, null, 2));
       console.log(ents.length + " Results for " + lds.filter);
       if (ents.length < 1) { jr.msg += "No users by "+q.username; return res.json(jr);}
       if (ents.length > 1) { jr.msg += "Multiple users by "+q.username + " (ambiguous)"; return res.json(jr);}
       if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
       var uent = ents[0];
-      console.log("Authenticated successfully: "+q.username);
+      console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
       ldconn.bind(uent.dn, q.passwd, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         // TODO: Refine
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
+        ldconn.destroy();
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
       });
@@ -1866,6 +1884,7 @@ function login(req, res) {
     ldres.on('error', function(err) {
       console.error('error: ' + err.message);
       jr.msg += "Search error: "+err.message;
+      ldconn.destroy();
       res.json(jr);
     });
     ldres.on('searchEntry', function(entry) {
