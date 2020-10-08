@@ -6,6 +6,14 @@
   "bitwise": true,
   "curly": true,
   "node": true,
-  "loopfunc": true
+  "loopfunc": true,
+  "globals": {
+    "$": true,
+    "document": true,
+    "alert": true,
+    "toastr": true,
+    "showgrid": true,
+    "axios": true
+  }
   
 }
