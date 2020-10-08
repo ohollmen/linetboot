@@ -1845,7 +1845,8 @@ function login(req, res) {
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
   if (!ldc)        { jr.msg += "No LD Config"; return res.json(jr); }
   if (ldc.simu) { req.session.user = {username: "nobody"}; return res.json({status: "ok", data: {username: "nobody"}});}
-  if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
+  // OLD: Gets now created here.
+  // if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
   console.log("Query by: ", lds);
   var ents = [];
@@ -1871,6 +1872,7 @@ function login(req, res) {
       ldconn.bind(uent.dn, q.passwd, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         // TODO: Refine
+        console.log("Bind-ent: ", uent);
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
         ldconn.destroy();
@@ -1911,7 +1913,8 @@ Emitted 'error' event at:
 
 process.on('uncaughtException') // 17 mins ?
 */
-
+/** /userent
+ * */
 function userent(req, res) {
   var jr = {status : "err", msg : "No Autheticated User Found."};
   if (!req.session || !req.session.user) { return res.json(jr); }
