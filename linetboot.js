@@ -1468,6 +1468,7 @@ function config_send(req, res) {
   else { cfg.tabui = 1; } // Legacy default
   // Current sess
   cfg.username = req.session.user ? req.session.user.username : "";
+  cfg.unattr = global.ldap ? global.ldap.unattr : "";
   res.json(cfg);
 }
 
