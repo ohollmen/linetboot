@@ -227,8 +227,18 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     
     <!--<button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>-->
 
+<!-- Dialogs -->
 <div id="dialog" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
+<div id="dockerimg" title="Docker Images" todo="for {{ hn }}" data-info="Docker Dialog">
+  <div id="jsGrid_dockerimg_d" class="fwgrid" comm="Unused"></div>
+</div>
+
+<div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}" data-info="NFS Dialog">
+  <div id="jsGrid_nfs" class="fwgrid"></div>
+</div>
+<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
+<div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}"  data-info="Boot Image Dialog"></div>
 
 <script id="singlehost" type="text/template">
 <h3>Host {{ hname }}</h3>
@@ -259,18 +269,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>DNS Servers: {{ dns }}</li>
 </ul>
 </script>
-<!-- Dialogs -->
-<div id="dockerimg" title="Docker Images" todo="for {{ hn }}" data-info="Docker Dialog">
-  <div id="jsGrid_dockerimg_d" class="fwgrid"></div>
-</div>
 
-<div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}" data-info="NFS Dialog">
-  <div id="jsGrid_nfs" class="fwgrid"></div>
-</div>
-
-<div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
-
-<div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}"  data-info="Boot Image Dialog"></div>
 
 <script id="rmgmtusers" type="text/template" title="Remote User Info">
 <h3>Remote Management Users on {{ hname }}</h3>
