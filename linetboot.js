@@ -337,15 +337,21 @@ function app_init() { // global
     //var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
     //ldcopts.reconnect = true;
     //if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
+    
+    var ldccc =    {bindmsg: "Initial binding.", cb: function () { http_start(); }};
+    var ldccc_re = {bindmsg: "Re-bind after connection error.",};
+    // function ld_conn(ldc, ldccc) {
     var ldcopts = ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
-    console.log("Bind. conf:", ldc);
+    //console.log("Bind. conf:", ldc);
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
       if (err) { throw "Error binding connection: " + err; }
       var d2 = new Date(); // toISOString()
       console.log(d2.toISOString()+" Initially Bound/Connected to: " + ldc.host + " as "+ldc.binddn); // , bres
       ldbound = 1;
-      return http_start();
+      // Note: pay attention to this in a reusable version
+      return http_start(); // Hard
+      //if (ldccc.cb) { ldccc.cb(); }   // generic
     }); // bind
     // ldapjs Error: read ECONNRESET
     // https://github.com/ldapjs/node-ldapjs/issues/318
@@ -356,18 +362,19 @@ function app_init() { // global
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563\u0000
       // console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
       console.log(d2.toISOString() + ' LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
+      console.log("Try not to renew connection (return as-is)"); return;
       //console.log("Conn (at error):", ldconn);
       // Pattern:
       //2020-10-09T00:07:59.639Z LDAP connection error. reconnect = true: Error: read ECONNRESET
       //Destroying existing client:[object Object]
       //2020-10-09T00:07:59.640Z LDAP connection error. reconnect = true: Error [ERR_STREAM_DESTROYED]: Cannot call write after a stream was destroyed
       //console.log("Destroying existing client:"+ldconn);
-      //ldconn.destroy();
+      //ldconn.destroy(); // calls unbind
       //ldconn = null;
+      // ld_conn(ldc, ldccc_re);
+      
       ldconn = ldap.createClient(ldcopts);
-      if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
-      // client.unbind();
-      // client.destroy(); // calls unbind
+      //if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
         // 
         var msg = "Re-bind after connection error: ";
@@ -375,9 +382,10 @@ function app_init() { // global
         console.log(msg + "Seems re-binding succeeded OK");
         return;
       });
+      
     });
     // return;
-  }
+  } // if ldc ...
   else { http_start(); }
 }
 function ldcopts_by_conf(ldc) {
