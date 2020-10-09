@@ -357,9 +357,13 @@ function app_init() { // global
       // console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
       console.log(d2.toISOString() + ' LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
       //console.log("Conn (at error):", ldconn);
-      console.log("Destroying existing client:"+ldconn);
-      ldconn.destroy();
-      ldconn = null;
+      // Pattern:
+      //2020-10-09T00:07:59.639Z LDAP connection error. reconnect = true: Error: read ECONNRESET
+      //Destroying existing client:[object Object]
+      //2020-10-09T00:07:59.640Z LDAP connection error. reconnect = true: Error [ERR_STREAM_DESTROYED]: Cannot call write after a stream was destroyed
+      //console.log("Destroying existing client:"+ldconn);
+      //ldconn.destroy();
+      //ldconn = null;
       ldconn = ldap.createClient(ldcopts);
       if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
       // client.unbind();
@@ -1874,7 +1878,7 @@ function login(req, res) {
       ldconn2.bind(uent.dn, q.passwd, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         // TODO: Refine
-        console.log("Bind-ent: ", uent);
+        console.log("Bind-Success: user-dn: ", uent.dn);
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
         ldconn2.destroy();
