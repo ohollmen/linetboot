@@ -8,10 +8,14 @@
 *
 *     # List Boot / OS Install Options
 *     node ./linet.js listos
+*     # List available hosts
+*     node ./linet.js listhosts
 *     # Inquire Info on host
 *     node ./linet.js info -h host-032.company.com
 *     # Request next-boot way of booting (e.g. OS Install)
 *     node ./linet.js install -h host-032.company.com -l memtest
+*     # Set next-boot to happen via PXE
+*     node ./linet.js setpxe -h  host-032.company.com
 *     # Boot host
 *     node ./linet.js boot -h host-032.company.com
 */
@@ -19,7 +23,7 @@
 var ops = [
   {
     "id": "listos",
-    "title": "Get info on OS:s available for install",
+    "title": "List OS:s available for install (and other boot items)",
     "url": "/config/",
     "pretext": "OS Boot/Install options (to use with -l, --bootlbl):",
     "posttext": `To initiate next-time (pxe) boot to one of these boot/install choices, run:
@@ -46,12 +50,13 @@ var ops = [
   },
   {
     "id": "install",
-    "title": "Request Boot or Install of a host with (one of valid) bootlbl. Use -h host -b bootlbl.",
+    "title": "Request Boot or Install of a host with (one of valid) bootlbl. Use params: -h host -b bootlbl.",
     cb: install,
   },
   {
     "id": "boot",
-    "title": "Boot host passed by -h. Use -p to boot PXE (leading to special boot, e.g. OS Install)",
+    "title": "Boot host passed by -h.",
+    // Use -p to boot PXE (leading to special boot, e.g. OS Install)
     cb: boot,
   },
   {
@@ -72,15 +77,29 @@ var clopts = [
 ];
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
+var fs     = require("fs");
 var async  = require("async");
 var axios  = require("axios");
 var Getopt = require("node-getopt"); // getopt ?
+// OPTIONAL main config (can guide in setting LINETBOOT_URL)
+var mcfg_name = process.env["HOME"]+"/.linetboot/global.conf.json";
+var mcfg;
+var debug = 0;
+//console.log("look for: "+mcfg_name);
+if (fs.existsSync(mcfg_name)) { mcfg = require(mcfg_name); }
+if (!cfg.httphost) {
+  console.error("No (env.) LINETBOOT_URL found (e.g. http://linet.my.corp.com:3000");
+  if (mcfg && mcfg.httpserver) {
+    console.log("By your detected main config it looks like it might be:\n  http://"+mcfg.httpserver+"\n");
+    console.log("If that looks right, try (setting in shell):\n  export LINETBOOT_URL=http://"+mcfg.httpserver+"\n");
+  }
+  //console.log();
+  process.exit(1);
+}
 
-if (!cfg.httphost) { console.error("No (env.) LINETBOOT_URL found (e.g. http://linet.my.corp.com:3000"); process.exit(1); }
 if (cfg.httphost.match(/\/+$/)) { cfg.httphost = cfg.httphost.replace(/\/+$/, ''); }
 // console.log("ARGV:", process.argv);
-var argv2 = process.argv.slice(2)
+var argv2 = process.argv.slice(2);
 // console.log("ARGV2:", argv2);
 
 var op = argv2.shift();
@@ -103,13 +122,27 @@ function usage(msg) {
   console.log("Command Line Options");
   var help = clopts.map((on) => {return " - -"+on[0]+ " (--"+on[1]+") - " + on[2];}).join("\n");
   console.log(help);
+  // TODO: Small example sequence like the one in top comment
+  var instseq = `Example Commands in likely usage sequence:
+     # List Boot / OS Install Options
+     node ./linet.js listos
+     # List available hosts
+     node ./linet.js listhosts
+     # Inquire Info on host
+     node ./linet.js info -h host-032.company.com
+     # Request next-boot way of booting (e.g. OS Install)
+     node ./linet.js install -h host-032.company.com -l memtest
+     # Set next-boot to happen via PXE
+     node ./linet.js setpxe -h  host-032.company.com
+     # Boot host
+     node ./linet.js boot -h host-032.company.com`;
   process.exit();
 }
 function help() {
   usage("");
 }
 /** Get (RedFish) Info on host (info) Boot it (boot) or set Boot mode to PXE (setpxe).
-* Options must have 'host' (one or hosts more hosts to boot), and may have 'pxe' (Boot by PXE)
+* Options must have 'host' (one or hosts more hosts to boot), OLD: and may have 'pxe' (Boot by PXE)
 */
 function boot(opts) {
   var rmgmtop = opts.op; // "info", "boot" or "setpxe" Use: opts.op;
@@ -123,7 +156,7 @@ function boot(opts) {
   async.map(opts.host, bmcop, function (err, ress) {
     if (err) { console.log(rmgmtop +" Error"+err); return 1;} // Boot/Info/SetPXE
     console.log(rmgmtop+" Success ...");
-    console.log(JSON.stringify(ress, null, 2));
+    //if (debug > 1) { console.log(JSON.stringify(ress, null, 2)); }
     return 0;
   });
   function bmcop(hn, cb) {
@@ -139,7 +172,7 @@ function boot(opts) {
       return cb(null, d.data); // OK
     }).catch(function (ex) {
       console.log("Encountered Error (host: "+hn+"): "+ ex);
-      cb(ex.toString(), null)
+      cb(ex.toString(), null);
     });
   }
 }
@@ -150,25 +183,39 @@ function boot(opts) {
 */
 // TODO: Can we (only) set to boot pxe the next time (not actually boot).
 function install(opts) {
-  var url = cfg.httphost + "/install_boot?";
-  if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h )!"); }
-  if (!opts.bootlbl) { return usage("No bootlbl parameter to indicate boot item."); }
+  var rmgmtop = opts.op;
+  //var url = cfg.httphost + "/install_boot?";
+  var baseurl = cfg.httphost + "/install_boot?";
+  if (!opts.host || !opts.host.length) { return usage("No hosts given (by -h / --host)!"); }
+  if (!opts.bootlbl) { return usage("No Boot Label parameter (-l / --bootlbl) to indicate boot / install menu item."); }
   // TODO: Support multiple hosts (with async.map())
-  var hn = opts.host[0]; url += "hname="+hn;
-  var bl = opts.bootlbl; url += "&bootlbl="+bl;
-  console.log("Calling: "+url);
-  // TODO: async.map(opts.host, (d, cb) => {}, ...) for multiple hosts
+  async.map(opts.host, inst_host, function (err, ress) {
+    if (err) { console.log(rmgmtop +" Error"+err); return 1;}
+    console.log(rmgmtop+" Request Success ...");
+    //if (debug > 1) { console.log(JSON.stringify(ress, null, 2)); }
+    return 0;
+  });
+  function inst_host(hn, cb) {
+  //var hn = opts.host[0]; // Obsolete
+  var url = baseurl + "hname="+hn + "&bootlbl=" + opts.bootlbl;
+  //var bl = opts.bootlbl;
+  //url += "&bootlbl="+bl;
+  
+  if (debug) { console.log("Calling: "+url); }
   axios.get(url).then(function (resp) {
     var d = resp.data;
     if (d.status == 'err') {
-      console.error("Error: "+d.msg);
+      console.error("Error("+hn+"): "+d.msg);
       
-      return; }
-    console.log(d); // DEBUG
+      return cb("Error("+hn+"): "+d.msg, null); }
+    //console.log(d); // DEBUG
     console.log("Successfully submitted boot or install request for host: "+hn);
+    return cb(null, d);
   }).catch(function (ex) {
     console.log("Error during Linetboot boot / install call: "+ex);
+    return cb("Error during Linetboot boot / install call: "+ex, null);
   });
+  } // inst_host
 }
 /** List Boot Options (listos) or list hosts (listhosts).
 * 
