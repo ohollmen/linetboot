@@ -301,7 +301,7 @@
      {name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
    ];
    function uname_cell(val, item) {
-     return "<a class=\".unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</a>";
+     return "<a class=\"unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</a>";
    }
    var ldinfo_ldad = [
     // itemTemplate: ...
