@@ -1966,9 +1966,12 @@ function ib_set_addr(req, res) {
       var f = hostcache[it.name]; // By name (it.ipv4addrs[0].ipv4addr)
       if (!f) { return null; } // Non registered host in result set (by pattern)
       var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}]; // 
-      var o = {method: 'PUT', url: ibconf.url+"/"+it._ref, ipv4addrs: addrs};
+      var o = {method: 'PUT', url: ibconf.url+"/"+it._ref, data:{ipv4addrs: addrs}};
       return o;
-    });
+    }).filter((it) => { return it; });
+    var cmds = [];
+    if (req.query.cmds) { aout = aout.map((it) => { return "curl -X PUT -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' "+it.url; }); }
     res.json({status: "ok", data: aout});
+    
   }).catch(function (ex) { console.log(ex); jr.msg += ex.toString(); return res.json(jr); });
 }
