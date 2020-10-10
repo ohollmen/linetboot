@@ -364,7 +364,7 @@ function app_init() { // global
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563\u0000
       // console.warn('LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
       console.log(d2.toISOString() + ' LDAP connection error. reconnect = '+ldcopts.reconnect + ": " + err);
-      console.log("Try not to renew connection (return as-is)"); return;
+      if (!ldc.rebindonerror) { console.log("Try not to renew connection (return as-is)"); return; }
       //console.log("Conn (at error):", ldconn);
       // Pattern:
       //2020-10-09T00:07:59.639Z LDAP connection error. reconnect = true: Error: read ECONNRESET
@@ -375,7 +375,7 @@ function app_init() { // global
       //ldconn = null;
       // ld_conn(ldc, ldccc_re);
       
-      ldconn = ldap.createClient(ldcopts);
+      //ldconn = ldap.createClient(ldcopts);
       //if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
         // 
@@ -1959,6 +1959,7 @@ function ib_set_addr(req, res) {
     if (!Array.isArray(d)) { jr.msg += "Response not in array"; return res.json(jr); }
     // PUT Messages (configure_for_dhcp)
     var aout = d.map((it) => {
+      // Handle single (f, it) // Either or ?
       var ipi = it.ipv4addrs;
       if (!ipi) { return null; }
       if (ipi.length > 1) { return null; }
@@ -1971,7 +1972,7 @@ function ib_set_addr(req, res) {
     }).filter((it) => { return it; });
     var cmds = [];
     if (req.query.cmds) {
-      var txt = aout.map((it) => { return "curl -X PUT -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+it.url+"'"; }).join("\n");
+      var txt = "export IBCREDS=jsmith:o35cR\n"+aout.map((it) => { return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+it.url+"'"; }).join("\n");
       return res.end(txt);
     }
     res.json({status: "ok", data: aout});
