@@ -334,9 +334,12 @@ function logout(ev, act) {
   // {params: p}
   axios.get("/logout").then( function (resp) {
     var d = resp.data;
-    if (d.status == "err") { toastr.error("Logout Failed: " + d.msg); return; }
-    //$("#"+ev.viewtgtid).html()
-    toastr.info('Logged out Successfully');
+    // NO: return; 
+    if (d.status == "err") { toastr.error("Logout Failed: " + d.msg); }
+    else {
+      //$("#"+ev.viewtgtid).html()
+      toastr.info('Logged out Successfully');
+    }
     $("#nav").hide();
     // Only the form is no going to help
     //rapp.templated("loginform", act, ev.viewtgtid);
@@ -349,7 +352,7 @@ function logout(ev, act) {
 
 function showpeople(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
-  $("#"+ev.viewtgtid).prepend("<input type=\"text\" id=\"uname\" name=\"uname\"><input type=\"button\" id=\"sbutt\" value=\"Search\" >\n");
+  $("#"+ev.viewtgtid).prepend(rapp.templated("searchui"));
   function search(p) {
     
     axios.get("/ldaptest", {params: p}).then(function (resp) {
