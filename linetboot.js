@@ -228,6 +228,8 @@ function app_init() { // global
   app.get("/userent",  userent);
   
   app.get("/logout",  logout);
+  
+  app.get("/setaddr",  ib_set_addr);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -1940,4 +1942,31 @@ function logout(req, res) {
   if (!req.session || !req.session.user) { jr.msg += "User session not found !"; return res.json(jr); }
   req.session.user = null;
   res.json({status: "ok", data: null});
+}
+
+function ib_set_addr(req, res) {
+  var jr = {status: "err", msg: "Could not query IB."};
+  var ibconf = global.iblox;
+  if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
+  var url = ibconf.url + "/record:host?name~="+ibconf.hpatt;
+  console.log("Query: "+url);
+  var bauth = redfish.basicauth(ibconf);
+  var getpara = {headers: {Authorization: "Basic "+bauth}}
+  axios.get(url, getpara).then(function (resp) {
+    var d = resp.data;
+    if (!Array.isArray(d)) { jr.msg += "Response not in array"; return res.json(jr); }
+    // PUT Messages (configure_for_dhcp)
+    var aout = d.map((it) => {
+      var ipi = it.ipv4addrs;
+      if (!ipi) { return null; }
+      if (ipi.length > 1) { return null; }
+      // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
+      var f = hostcache[it.name]; // By name (it.ipv4addrs[0].ipv4addr)
+      if (!f) { return null; } // Non registered host in result set (by pattern)
+      var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress}];
+      var o = {method: 'PUT', url: ibconf.url+"/"+it._ref, ipv4addrs: addrs};
+      return o;
+    });
+    res.json({status: "ok", data: aout});
+  }).catch(function (ex) { console.log(ex); res.json(jr); });
 }
