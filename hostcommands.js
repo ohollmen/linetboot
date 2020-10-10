@@ -63,7 +63,7 @@ var Mustache = require("mustache");
     {lbl: "ibmacset", name: "Set IB Mac Addresses",
       inittmpl: "# export IBCREDS=ibuser:ibpass; export IBAPIURL=https://ib.mycomp.com/wapi/v2.10",
        // {"ipv4addrs+": {"ipv4addr": "..."}} may add whole new object
-       tmpl: "curl -v -k  -u $IBCREDS -X POST $IBAPIURL'/wapi/v1.2/fixedaddress' -h 'Content-Type: application/json' "+
+       tmpl: "curl -v -k  -u $IBCREDS -X POST $IBAPIURL'/wapi/v1.2/fixedaddress' -H 'Content-Type: application/json' "+
          "-d '{\"ipv4addr\": \"{{{ ipaddr }}}\", \"mac\": \"{{{ macaddr }}}\"}' ",},
   ];
 var genopts_idx;
