@@ -374,16 +374,23 @@ function app_init() { // global
       //ldconn.destroy(); // calls unbind
       //ldconn = null;
       // ld_conn(ldc, ldccc_re);
-      
+      // Even this fails in time w. error (connection seems to lose it's binding, that shows in authentication search phase: Start Login, local ldconn2: [object Object]):
+      // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563
       //ldconn = ldap.createClient(ldcopts);
       //if (!ldconn) { console.log("Could not create new post-error LDAP client."); return; }
+      // TODO: Try to re-bind with delay
+      var rbw = ldc.rebindwait || 5000;
+      console.log(new Date().toISOString()+ " Rebind, but wait: "+rbw);
+      seTimeout(function () {
+        console.log(new Date().toISOString()+ " Rebinding after wait.");
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
         // 
-        var msg = "Re-bind after connection error: ";
+        var msg = new Date().toISOString()+" Re-bind after connection error: ";
         if (err) { console.log(msg + "Failed to re-bind: " + err); return; }
         console.log(msg + "Seems re-binding succeeded OK");
         return;
       });
+      }, rbw);
       
     });
     // return;
@@ -1323,8 +1330,8 @@ function host_reboot(req, res) {
   if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
   
-  
-  var rfop = new redfish.RFOp(p.op, ipmiconf).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  var ipmiconf2 = redfish.gencfg(ipmiconf, hlr.hostparams(f));
+  var rfop = new redfish.RFOp(p.op, ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
   if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   rfop.debug = 1;
   console.log("Constructed RFOp", rfop);
@@ -1334,7 +1341,7 @@ function host_reboot(req, res) {
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   //rfop
-  rfop.request(rmgmt.ipaddr, ipmiconf);
+  rfop.request(rmgmt.ipaddr, ipmiconf2);
   return;
   //var meth = rfop.m; //var meth = ops[p.op];
   //if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
@@ -1564,9 +1571,10 @@ function installrequest(req, res) {
     var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
     if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
     // Instantiate by IPMI Config (shares creds)
-    var rfop = new redfish.RFOp("setpxe", global.ipmi).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+    var ipmiconf2 = redfish.gencfg(global.ipmi, hlr.hostparams(f));
+    var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
     // Call host by MC ip address
-    rfop.request(rmgmt.ipaddr, global.ipmi);
+    rfop.request(rmgmt.ipaddr, ipmiconf2);
     // TODO: Decorate these with better message extraction
     function hdl_redfish_succ(resp) {
       return res.json({status: "ok", data: {"msgarr": msgarr}});
@@ -1581,8 +1589,14 @@ function installrequest(req, res) {
   else if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
-    var ent = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
-    console.log("HAS-RMGMT:", ent);
+    var rmgmt = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
+    if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
+    console.log("HAS-RMGMT:", rmgmt);
+    /* NEW: ...
+    var ipmiconf2 = redfish.gencfg(global.ipmi, hlr.hostparams(f));
+    var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+    rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2);
+    */
     // ipmitool lan print 1   ipmitool user list 1 chassis power status mc info  Reset BMC: mc reset cold [chassis] power soft
     // chassis bootparam set bootflag pxe
     var pxecmd = "chassis bootdev pxe"; // "lan print 1". Also options=persistent
@@ -1692,10 +1706,11 @@ function bootreset(req, res) {
   
   
   // TODO: Call Redfish to make patch to {BootSourceOverrideTarget: "None"}
-  var rfop = new redfish.RFOp("setpxe", ipmicfg).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  var ipmiconf2 = redfish.gencfg(ipmicfg, hlr.hostparams(f));
+  var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
   // We can do this because message is cloned for this instance. Basically becomes "unset-PXE"
   rfop.msg.Boot.BootSourceOverrideTarget = "None"; // None => Cancel
-  rfop.request(rmgmt.ipaddr, ipmicfg);
+  rfop.request(rmgmt.ipaddr, ipmiconf2);
   // Reload new data like in tftp_listing() ?
   function hdl_redfish_succ(resp) {
     var list = tboot.pxelinuxcfg_list(tcfg.root+ "/pxelinux.cfg/", 1); // 1=??
@@ -1939,7 +1954,7 @@ function userent(req, res) {
 
 function logout(req, res) {
   var jr = {status : "err", msg : "Logout Failed."};
-  if (!req.session || !req.session.user) { jr.msg += "User session not found !"; return res.json(jr); }
+  if (!req.session || !req.session.user) { jr.msg += "User session not found (Did session expire ?)!"; return res.json(jr); }
   req.session.user = null;
   res.json({status: "ok", data: null});
 }
