@@ -46,8 +46,11 @@ function sysid(f) {
   if (f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { return "System.Embedded.1"; }
   return "1";
 }
-/** Generate redfish IPMI config based on global and host settings.
+/** Generate redfish IPMI config based on global **and** host settings.
  * Let hostparams.bmccreds (In format user:pass) override global credentials.
+ * Usage (e.g.): `redfish.gencfg(ipmicfg, hostparams[f.ansible_fqdn])`
+ * @param ipmicfg {object) - IPMI config
+ * @param hostparams {object} - Host key-value parameters from 'hosts' (inventory) file.
  */
 function gencfg(ipmicfg, hostparams) {
   var cfg = {user: ipmicfg.user, pass: ipmicfg.pass, testurl: ipmicfg.testurl};
