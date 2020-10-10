@@ -427,8 +427,8 @@ function customhost_load(fname, global, iptrans) {
 
 /** Lookup inventory parameters for a host by facts / hostname.
  * Using this allows changing hostloader implementation w/o breaking callers.
- * @param f {object} - Ansible facts for host
- * @return Host parameters object
+ * @param f {object} - Ansible facts for host (OR exact hostname to lookup params by)
+ * @return Host parameters object 
  */
 function hostparams(f) {
   if (!f) { console.log("No facts (and hostname) for looking up hostparams"); return null; }
