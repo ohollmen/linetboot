@@ -1934,18 +1934,15 @@ function login(req, res) {
       var uent = ents[0];
       console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
       var ldc_user = {binddn: uent.dn, bindpass: q.password};
-      // TODO: ldconn_bind_cb(ldc_user, ldconn2, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } search(ldconn); });
-      ldconn2.bind(uent.dn, q.password, function(err, bres) {
+      // TODO:
+      ldconn_bind_cb(ldc_user, ldconn, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } user_bind_ok(ldconn, uent); });
+      /*
+      ldconn.bind(uent.dn, q.password, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
         console.log("bind-extra-res:"+bres);
-        // TODO: Refine
-        console.log("Bind-Success: user-dn: ", uent.dn);
-        req.session.user = uent;
-        uent.username = uent[ldc.unattr];
-        ldconn2.destroy(); // Should call ldconn2.unbind()
-        return res.json({status: "ok", data: uent});
-        // client.unbind(function(err) {})
+        //user_bind_ok(ldconn);
       });
+      */
     });
     res.on('searchReference', function(referral) {
       console.log('referral: ' + referral.uris.join());
@@ -1965,6 +1962,16 @@ function login(req, res) {
   });
   
   } // search
+  function user_bind_ok(ldconn, uent) {
+    // TODO: Refine
+        console.log("Bind-Success: user-dn: ", uent.dn);
+        req.session.user = uent;
+        uent.username = uent[ldc.unattr];
+        console.log("Closing auth-bind-only connection");
+        ldconn.destroy(); // Should call ldconn2.unbind()
+        return res.json({status: "ok", data: uent});
+        // client.unbind(function(err) {})
+  }
 }
 /*
 events.js:167
