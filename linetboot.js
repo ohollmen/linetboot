@@ -345,7 +345,7 @@ function app_init() { // global
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
-    ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Bind err: "+err; }ldbound = 1; http_start(); });
+    ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
     /*
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
@@ -361,6 +361,7 @@ function app_init() { // global
     // ldapjs Error: read ECONNRESET
     // https://github.com/ldapjs/node-ldapjs/issues/318
     // npm:pool2
+    console.log(new Date().toISOString()+" Register initial ldconn error handler");
     ldconn.on('error', function(err) {
       var d2 = new Date(); // toISOString()
       // error: 000004DC: LdapErr: DSID-0C090A69, comment: In order to perform this operation a successful bind must be completed on the connection., data 0, v4563
@@ -386,13 +387,13 @@ function app_init() { // global
       console.log(new Date().toISOString()+ " Rebind, but wait: "+rbw);
       setTimeout(function () {
         console.log(new Date().toISOString()+ " Rebinding after wait.");
-      ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
-        // 
-        var msg = new Date().toISOString()+" Re-bind after connection error: ";
-        if (err) { console.log(msg + "Failed to re-bind: " + err); return; }
-        console.log(msg + "Seems re-binding succeeded OK");
-        return;
-      });
+        ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
+          // 
+          var msg = new Date().toISOString()+" Re-bind after connection error: ";
+          if (err) { console.log(msg + "Failed to re-bind: " + err); return; }
+          console.log(msg + "Seems re-binding succeeded OK");
+          return;
+        });
       }, rbw);
       
     });
@@ -1909,10 +1910,10 @@ function login(req, res) {
   // For every auth, grab a fresh connection
   var ldcopts = ldcopts_by_conf(ldc);
   var ldconn2 = ldap.createClient(ldcopts); // Bind conn.
-  console.log("Start Login, local ldconn2: "+ ldconn2);
+  console.log("Start Login, local ldconn2: "+ ldconn2 + " ldconn"+ ldconn);
   // Bind ldconn2 with main creds here (to not rely on main conn)
-  // ldconn_bind_cb(ldc, ldconn2, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } return search(ldconn); });
-  search(ldconn);
+  ldconn_bind_cb(ldc, ldconn2, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
+  //search(ldconn); // old
   // 
   function search(ldconn) {
   
