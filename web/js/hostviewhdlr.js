@@ -368,7 +368,7 @@ function showpeople(ev, act) {
       var idx = {};
       d.data.forEach((it) => { idx[it.sAMAccountName] = it; });
       console.log("Assign click hdlr");
-      $('.unamecell').click(function () {
+      $('.unamecell').click(function (jev) {
         console.log("Calling click hdlr");
         var un = this.dataset.uid;
         var e = idx[un];
@@ -376,7 +376,10 @@ function showpeople(ev, act) {
         console.log(e);
         alert(e);
         
-        //rapp.templated("lduser", , app.gridid);
+        var out = rapp.templated("lduser", e); // app.gridid
+        console.log(out);
+        // var act = 
+        //gendialog(act);
         return false;
       });
       
