@@ -1909,10 +1909,10 @@ function login(req, res) {
   var ents = [];
   // For every auth, grab a fresh connection
   var ldcopts = ldcopts_by_conf(ldc);
-  var ldconn2 = ldap.createClient(ldcopts); // Bind conn.
-  console.log("Start Login, local ldconn2: "+ ldconn2 + " ldconn"+ ldconn);
-  // Bind ldconn2 with main creds here (to not rely on main conn)
-  ldconn_bind_cb(ldc, ldconn2, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
+  var ldconn = ldap.createClient(ldcopts); // Bind conn.
+  console.log("Start Login, local ldconn: "+ ldconn ); // + " ldconn"+ ldconn
+  // Bind ldconn with main creds here (to not rely on main conn)
+  ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
   //search(ldconn); // old
   // 
   function search(ldconn) {
@@ -1968,7 +1968,7 @@ function login(req, res) {
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
         console.log("Closing auth-bind-only connection");
-        ldconn.destroy(); // Should call ldconn2.unbind()
+        ldconn.destroy(); // Should call ldconn.unbind()
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
   }
