@@ -374,10 +374,10 @@ function showpeople(ev, act) {
         var e = idx[un];
         //var e = 1;
         console.log(e);
-        alert(e);
+        //alert(e);
         
-        var out = rapp.templated("lduser", e); // app.gridid
-        console.log(out);
+        //var out = rapp.templated("lduser", e); // app.gridid
+        //console.log(out);
         var act = tabloadacts.filter((a) => { return a.path == "uent"; })[0];
         if (!act) { console.log("No Action"); return; }
         jev.viewdata = e;

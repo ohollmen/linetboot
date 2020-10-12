@@ -342,9 +342,10 @@ function gendialog(ev, act) {
   .catch(function (ex) { console.log(""); });
   function showdialog(data) {
     if (!act.dialogid) { return alert("No dialog indicated");}
-    var out = rapp.templated(act.tmpl, data, ""); // act.dialogid
+    //var out =
+    rapp.templated(act.tmpl, data, act.dialogid); // 
     var dopts = {modal: true, width: 500, height: 200};
-    $("#"+act.dialogid).html(out);
+    //$("#"+act.dialogid).html(out);
     $("#"+act.dialogid).dialog(dopts);
   }
 }
