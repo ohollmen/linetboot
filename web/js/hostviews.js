@@ -320,21 +320,31 @@ var tabloadacts = [
   {"name": "Logout",   "elselXX": "tabs-14", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
   // Directory  (TODO: composite templating)
   {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
+  {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
 ];
 // TODO: griddialog / entdialog
-function gendialog(act) {
+function gendialog(ev, act) {
   // Create even the element to which to create dialog ?
   if (!act.url) {   return; }
   // Most dialogs have data ...
   var axopts = {params: null};
   if (act.pmaker) { axopts.params = act.pmaker(); } // TODO: pass ....
+  if (ev.viewdata) { showdialog(ev.viewdata); }
   axios.get(act.url).then(function (resp) {
-    
+    var d = resp.data;
+    showdialog(d);
   })
   .catch(function (ex) { console.log(""); });
+  function showdialog(data) {
+    if (!act.dialogid) { return alert("No dialog indicated");}
+    var out = rapp.templated(act.tmpl, data, ""); // act.dialogid
+    var dopts = {modal: true, width: 500, height: 200};
+    $("#"+act.dialogid).html(out);
+    $("#"+act.dialogid).dialog(dopts);
+  }
 }
 
 var tabloadacts_idx = {};

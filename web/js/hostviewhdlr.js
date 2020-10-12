@@ -378,8 +378,10 @@ function showpeople(ev, act) {
         
         var out = rapp.templated("lduser", e); // app.gridid
         console.log(out);
-        // var act = 
-        //gendialog(act);
+        var act = tabloadacts.filter((a) => { return a.path == "uent"; })[0];
+        if (!act) { console.log("No Action"); return; }
+        jev.viewdata = e;
+        gendialog(jev, act);
         return false;
       });
       
