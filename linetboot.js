@@ -345,7 +345,9 @@ function app_init() { // global
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
+    ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
+    /*
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
       if (err) { throw "Error binding connection: " + err; }
       var d2 = new Date(); // toISOString()
@@ -355,6 +357,7 @@ function app_init() { // global
       return http_start(); // Hard
       //if (ldccc.cb) { ldccc.cb(); }   // generic
     }); // bind
+    */
     // ldapjs Error: read ECONNRESET
     // https://github.com/ldapjs/node-ldapjs/issues/318
     // npm:pool2
@@ -381,7 +384,7 @@ function app_init() { // global
       // TODO: Try to re-bind with delay
       var rbw = ldc.rebindwait || 5000;
       console.log(new Date().toISOString()+ " Rebind, but wait: "+rbw);
-      seTimeout(function () {
+      setTimeout(function () {
         console.log(new Date().toISOString()+ " Rebinding after wait.");
       ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
         // 
@@ -403,6 +406,29 @@ function ldcopts_by_conf(ldc) {
   if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
   return ldcopts;
 }
+// Bind LDAP Connection and call an (optional) cb
+// @param ldc {object} - LDAP Connection config (with "binddn" and "bindpass", e.g. from main config, see docs)
+// @param ldconn {object} - LDAP client / connection to bind
+// @param cb {function} - Optional callback function to call with err,ldconn
+// Passing cb is highly recommended, otherwise errors are handled by throwing an exception.
+function ldconn_bind_cb(ldc, ldconn, cb) {
+  cb = cb || function (err, data) {
+    if (err) { throw "Error Bindng (no explicit cb): "+ err; }
+    console.log("No further/explicit cb to call, but bound successfully as "+ldc.binddn);
+  };
+  if (!ldconn) { return cb("No LD Connection to bind", null); }
+  ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
+      if (err) { return cb(err, null); } // throw "Error binding connection: " + err;
+      var d2 = new Date(); // toISOString()
+      console.log(d2.toISOString()+" Bound to: " + ldc.host + " as "+ldc.binddn); // , bres
+      //ldbound = 1;
+      // Note: pay attention to this in a reusable version
+      //return http_start(); // Hard
+      //if (ldccc.cb) { ldccc.cb(); }   // generic
+      return cb(null, ldconn); // No need: if (cb) {}
+    }); // bind
+}
+
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
 //app.all('/', function(req, res, next) {
 //  console.log("Setting CORS ...");
@@ -1884,6 +1910,12 @@ function login(req, res) {
   var ldcopts = ldcopts_by_conf(ldc);
   var ldconn2 = ldap.createClient(ldcopts); // Bind conn.
   console.log("Start Login, local ldconn2: "+ ldconn2);
+  // Bind ldconn2 with main creds here (to not rely on main conn)
+  // ldconn_bind_cb(ldc, ldconn2, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } return search(ldconn); });
+  search(ldconn);
+  // 
+  function search(ldconn) {
+  
   ldconn.search(lds.base, lds, function (err, ldres) {
     if (err) { jr.msg +=  "Error searching user"+q.username+": " + err; return res.json(jr);  }
     
@@ -1900,13 +1932,16 @@ function login(req, res) {
       if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
       var uent = ents[0];
       console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
-      ldconn2.bind(uent.dn, q.passwd, function(err, bres) {
+      var ldc_user = {binddn: uent.dn, bindpass: q.password};
+      // TODO: ldconn_bind_cb(ldc_user, ldconn2, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } search(ldconn); });
+      ldconn2.bind(uent.dn, q.password, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
+        console.log("bind-extra-res:"+bres);
         // TODO: Refine
         console.log("Bind-Success: user-dn: ", uent.dn);
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
-        ldconn2.destroy();
+        ldconn2.destroy(); // Should call ldconn2.unbind()
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
       });
@@ -1927,6 +1962,8 @@ function login(req, res) {
     //console.log("Got res:"+res);
     //console.log(JSON.stringify(res));
   });
+  
+  } // search
 }
 /*
 events.js:167
