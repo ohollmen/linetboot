@@ -1887,12 +1887,14 @@ function ldaptest(req,res) {
       //console.log(JSON.stringify(res));
     });
 }
-/** 
+/** Login to application by performing LDAP authentication and app level authorization.
+ * Uses main config core.authusers (Array) to authorize users to use linetboot app.
  */
 function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
   var q = req.query;
   var ldc = global.ldap;
+  var cc = global.core;
   // if (req.method == '') {}
   if (req.body.username) { q = req.body; } // Object.keys(req.body).length
   console.log(JSON.stringify(req.body));
@@ -1902,6 +1904,13 @@ function login(req, res) {
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
   if (!ldc)        { jr.msg += "No LD Config"; return res.json(jr); }
   if (ldc.simu) { req.session.user = {username: "nobody"}; return res.json({status: "ok", data: {username: "nobody"}});}
+  // Authorization
+  if (!cc || !cc.authusers) { jr.msg += "No 'core' Config for authorization"; return res.json(jr); }
+  if (!Array.isArray(cc.authusers)) { jr.msg += "Authorized users (core.authusers) not in array"; return res.json(jr);  }
+  if (!cc.authusers.includes(q.username)) {
+    console.log("user '"+q.username +"' not in list", cc.authusers);
+    jr.msg += "user "+q.username+" not Authorized !"; return res.json(jr);
+  }
   // OLD: Gets now created here.
   // if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
   var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.username+")"};
@@ -1962,6 +1971,7 @@ function login(req, res) {
   });
   
   } // search
+  // Send final success response
   function user_bind_ok(ldconn, uent) {
     // TODO: Refine
         console.log("Bind-Success: user-dn: ", uent.dn);
