@@ -1,9 +1,29 @@
 /** @file
+ * # OS Install Disk Related Functionality
+ * 
+ * ## Lineboot Disk Definition Format
+ * 
+ * Describes a set of disk partitions:
+ * 
+ * - size_mb (number) - Partition Size in millions on bytes (Mib, ~megabytes)
+ * - type - Partition type (ptype ? partype ?)
+ *   - BIOS/MBR: "Primary" / "Extended" / "Logical"
+ *   - EFI/GPT: "Primary" (default value)
+ *   - EFI/GPT Special: Windows has also types "MSR","EFI" for GPT
+ * - fmt - File system type (format, TODO: fstype, Windows uses upper case, e.g. "NTFS", "FAT32")
+ * - lbl - Partition or filesystem label
+ * - extend - Expand partition to take up remaining space (expand ?)
+ * 
  * # Refs
 https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-setup-diskconfiguration
 https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825686(v=win.10)
-https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701(v=win.10)
-https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825702(v=win.10)
+https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701(v=win.10) - BIOS/mbr
+https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825702(v=win.10) - EFI/gpt
+* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825205(v=win.10) - BIOS/mbr - More than 4
+* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825675(v=win.10) - More than 4 (refs to type=0x27)
+* https://social.technet.microsoft.com/Forums/windows/en-US/e2463292-e2c5-4896-97ea-58a2443b6ec6/what-is-type-id-inside-windows-aik-20-under-modify-and-how-to-use-type-id?forum=w7itproinstall
+* 
+* Windows part typeid: 0x27 does not receive drive letter
 */
 var Mustache = require("mustache");
 // NOTE: Loading osinstall.js here on top shows it's
@@ -16,13 +36,94 @@ var hostcache;
 // Set lbl == WINRE with typeid = ...
 // Set lbl == Windows letter = C, global installto = N
 // Stub for Windows server partitioning.
-var winpart = [
-  //{size_mb: 500, type: "Primary", typeid: "de94bba4-06d1-4d40-a16a-bfd50179d6ac", fmt: "NTFS", lbl:"WINRE"}, 
+var winparts = [
+  // EFI Only typeid: "de94bba4-06d1-4d40-a16a-bfd50179d6ac",
+  { size_mb: 500, type: "Primary",  fmt: "NTFS", lbl:"WINRE"},
+  // Universal. For BIOS (this is 1st part) lbl:WINRE, type:MSR stuff goes here
+  // For EFI (Autounattend.xml) by doc and examples type: EFI, fmt: "FAT32"
   { size_mb: 500, type: "Primary", fmt: "NTFS", lbl: "System"},
-  // {size_mb: 128, type: "MSR", fmt: "FAT32"},
-  { size_mb: 0, type: "Primary", fmt: "NTFS", lbl: "Windows"},
+  { size_mb: 128, type: "MSR",     fmt: ""}, // FAT32 ?
+  { size_mb: 0,   type: "Primary", fmt: "NTFS", lbl: "Windows"}, // extend: true
+];
+var linparts = [
+  { size_mb: 250, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // 512
+  // Linux distros seemt to agree on the mpt: "/boot/efi"
+  { size_mb: 200, type: "Primary",  fmt: "vfat", lbl:"", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
+  // mpt: biosboot usable w. KS as-is
+  { size_mb: 1,   type: "Primary",  fmt: "biosboot",     lbl:"biosboot", mpt: "biosboot"}, // "BIOS Boot" EFI/GPT 1 MiB
+  { size_mb: 16000,type: "Primary",     fmt: "swap", lbl:"swap", mpt: "swap"}, // RH+KS wants mpt: "swap"
+  { size_mb: 32000,type: "Primary",  fmt: "ext4", lbl:"root", mpt: "/", extend: true},
+  
 ];
 
+/** Try to create simple Linux disk layout with root partition and swap plus mandatory extra parts.
+ * Mandatory extra parts include parts like "EFI System" and RH conventional "/boot" part.
+ * 
+ * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/s2-diskpartrecommend-x86
+ * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-disk-partitioning-setup-x86
+ * Dir /sys/firmware/EFI indicates EFI Boot
+ */
+function lindisk_layout_create(btype, ostype) {
+  var parts = dclone(linparts);
+  // Debian/Ubuntu - delete boot
+  if (ostype.match(/(ubu|deb)/)) { parts.splice(0, 1); }
+  // MBR => Delete EFI
+  if (btype == 'mbr') {
+    // Just mark extend
+    
+    parts = parts.filter(non_efi);
+    
+  }
+  // Non-EFI
+  function non_efi(p) { return (p.mpt != "biosboot") && (p.mpt != "/boot/efi"); }
+  // TODO: Make into reusable. On linux / KS Not sure if extend is needed ?
+  function check_extended(parts) {
+    var ext = {size_mb: 1, type: "Extended", fmt: null, lbl: "", extend: true};
+    
+    // If > 4, nest at offset 3
+    if (parts.length > 4) { parts.splice(3, 1, ext); }
+  }
+  return parts;
+}
+
+/** Create recommended fresh layout of Windows disk for cases BIOS or EFI.
+ * Boot types BIOS / EFI map to disk partition table types mbr (Master Boot Record) / gpt (GUID Partition Table)
+ * @param btype {string} - Boot mechanism type bios/efi (No default)
+ * @return Disk layout (array of objects)
+ */
+function windisk_layout_create(btype) {
+  var oktypes = {mbr: "mbr", gpt: "gpt", bios: "mbr", "efi": "gpt"};
+  if (!oktypes[btype]) { console.log("Not a valid btype: "+btype+"(Use: "+Object.keys(oktypes).join(",")+")"); return null; }
+  btype = oktypes[btype];
+  var myparts = dclone(winparts);
+  if (btype == 'mbr') {
+    // Simplify for BIOS
+    myparts.splice(0, 1); // shift()
+    // What used to be [2] is now [1]
+    myparts.splice(1, 1);
+    console.log(myparts);
+  }
+  // efi
+  else {
+    // lbl == WINRE
+    myparts[0].typeid = "de94bba4-06d1-4d40-a16a-bfd50179d6ac"; // "Utility partition"
+    // Search p.lbl == 'System' ?
+    var sysp = myparts[1];
+    // var sysp = myparts.filter((p) => { return p.lbl == 'System'; });
+    sysp.type = 'EFI'; // Override 'Primary'
+    sysp.fmt  = 'FAT32';
+  }
+  // Windows Main part (Win oddity: letter: 'C'). Last in all: extend: true
+  var wp = myparts.filter((p) => { return p.lbl == "Windows"; })[0];
+  if (!wp) { console.log("Could not find lbl: 'Windows' part (must-have)."); return null; }
+  wp.letter = 'C';
+  wp.extend = true;
+  var i = 1;
+  // Assign seq numbers
+  myparts.forEach ((p) => {p.seq = i; i++; } );
+  return myparts;
+}
+function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 //console.log("osdisk-OSINTALL", osinst);
 // Created for the sole purpose of late-loading osinstall
 function init(mcfg, hdls) {
@@ -203,7 +304,49 @@ function partsize(part) {
   }
   return 0; // Fallback
 }
-  
+
+////////////////////////// Windows disk partitioning ////////////////////////
+
+// Templates embed CreatePartitions and ModifyPartitions
+  var tmpls = {};
+  // To take partials into use {{{ cpart }}} => {{#parr}}{{> cpart }}{{/parr}}
+  // {{{ cpart }}}   {{{ mpart }}}
+  //var dconf =
+  tmpls.dconf = `            <DiskConfiguration>
+                <Disk wcm:action="add">
+                  <CreatePartitions>
+          
+          {{#parr}}{{> cpart }}{{/parr}}
+                  </CreatePartitions>
+                  <ModifyPartitions>
+          
+          {{#parr}}{{> mpart }}{{/parr}}
+                  </ModifyPartitions>
+                  <DiskID>0</DiskID>
+                  <WillWipeDisk>true</WillWipeDisk>
+                </Disk>
+                <WillShowUI>OnError</WillShowUI>
+            </DiskConfiguration>
+  `;
+  //var cpart =
+  tmpls.cpart = `            <CreatePartition wcm:action="add">
+                            <Order>{{ seq }}</Order>
+                            <Type>{{ type }}</Type>
+                            {{^extend}}<Size>{{ size_mb }}</Size>{{/extend}}
+                            {{#extend}}<Extend>{{ extend }}</Extend>{{/extend}}
+            </CreatePartition>
+  `;
+  //var mpart =
+  tmpls.mpart = `            <ModifyPartition wcm:action="add">
+                            {{#fmt}}<Format>{{ fmt }}</Format>{{/fmt}}
+                            {{#lbl}}<Label>{{ lbl }}</Label>{{/lbl}}
+                            <Order>{{ seq }}</Order>
+                            <PartitionID>{{ seq }}</PartitionID>
+                            {{#typeid}}<TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID>{{/typeid}}
+                            {{#letter}}<Letter>{{ letter }}</Letter>{{/letter}}
+              </ModifyPartition>
+  `;
+
 /** Generate contents of Windows Autounattend.xml DiskConfiguration -> Disk section.
  * 
  * "DiskConfiguration" Subsections:
@@ -219,56 +362,65 @@ function partsize(part) {
  *   - Label: WinRE, System, Windows
  * TODO: Pass single linetboot disk structure, iterate it twice for XML format
  */
-function disk_out_winxml(ansparr) {
-  // Should embed CreatePartitions and ModifyPartitions
-  var dconf = `            <DiskConfiguration>
-                <Disk wcm:action="add">
-                  <CreatePartitions>
-                    {{{ confs }}}
-                  </CreatePartitions>
-                  <ModifyPartitions>
-                    {{{ mods }}}
-                  </ModifyPartitions>
-                  <DiskID>0</DiskID>
-                  <WillWipeDisk>true</WillWipeDisk>
-                </Disk>
-                <WillShowUI>OnError</WillShowUI>
-            </DiskConfiguration>
-  `;
-  var cpart = `            <CreatePartition wcm:action="add">
-                            <Order>{{ seq }}</Order>
-                            <Type>EFI</Type>
-                            <Size>{{ size_mb }}</Size>
-                            
-            </CreatePartition>
-  `;
-  var mpart = `            <ModifyPartition wcm:action="add">
-                            {{#fmt}}<Format>{{ fmt }}</Format>{{/fmt}}
-                            {{#lbl}}<Label>{{ lbl }}</Label>{{/lbl}}
-                            <Order>{{ seq }}</Order>
-                            <PartitionID>{{ seq }}</PartitionID>
-                            <!-- <TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID> -->
-              </ModifyPartition>
-  `;
+function disk_out_winxml(parr) {
+  
   //var disk2 = dclone(disk);
   var para = {};
   // Populate Win. specific attrs, w. right units, etc.
   // p.size_mb = Math.floor(p.size_bysect / 1000000);
-  var xconts = {"confs": "", "mods":""};
-  ansparr.forEach((p) => {
+  var xconts = {"cpart": "", "mpart":"", parr: parr};
+  /*
+  parr.forEach((p) => {
     
-    xconts.confs += Mustache.render(cpart, p);
+    xconts.cpart += Mustache.render(tmpls.cpart, p);
   });
-  ansparr.forEach((p) => {
+  parr.forEach((p) => {
     
-    xconts.mods += Mustache.render(mpart, p);
+    xconts.mpart += Mustache.render(tmpls.mpart, p);
   });
-  var cont = Mustache.render(dconf, xconts);
-  console.log(cont);
+  var cont = Mustache.render(tmpls.dconf, xconts);
+  */
+  // Partials
+  var cont = Mustache.render(tmpls.dconf, xconts, tmpls);
+  //console.log(cont);
   return cont;
+}
+/** generate disk output in KS (Typical of RH, Centos) format.
+ * https://dark.ca/2009/08/03/complex-partitioning-in-kickstart/
+ */
+function disk_out_ks(parr) {
+  var comps = ["# Parts should have --asprimary --fstype --label --size (size unit: MiB)"];
+  var drive = "sda";
+  comps.push("bootloader --location=mbr");
+  comps.push("zerombr");
+  comps.push("clearpart --drives="+drive+" --all --initlabel");
+  parr.forEach((p) => {
+    // --asprimary does not hurt on EFI. Consider: swap --recommended
+    var pdef = "part "+p.mpt+" "+(p.type.toLowerCase() == 'primary' ? "--asprimary " : "");
+    pdef += "";
+    pdef += p.fmt ? " --fstype=\""+p.fmt +"\"": "";
+    pdef += p.lbl ? " --label=\"" +p.lbl +"\"": "";
+    // --maxsize= could limit the growth. --ondisk could refere to disk/by-id/...
+    // Seems --size=... and --grow can coexist (and must per doc - size is min size)
+    pdef += p.size_mb ? " --size="+p.size_mb : "";
+    if (p.fmt == 'swap') { pdef += " --recommended"; } // Ok with size ?
+    else if (p.extend) { pdef += " --grow"; }
+    
+    comps.push(pdef);
+  });
+  // Needed for EFI, etc ? What if these are already prepared by above ?
+  // Would add also (IBM) PRePBoot
+  //comps.push("reqpart --add-boot");
+  return comps.join("\n") + "\n";
 }
 module.exports = {
   init: init,
   disk_params: disk_params,
-  diskinfo: diskinfo // Handler
+  diskinfo: diskinfo, // Handler
+  // Windows
+  disk_out_winxml: disk_out_winxml,
+  windisk_layout_create: windisk_layout_create,
+  disk_out_ks: disk_out_ks,
+  lindisk_layout_create: lindisk_layout_create,
+  tmpls: tmpls
 };
