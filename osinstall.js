@@ -341,6 +341,8 @@ function preseed_gen(req, res) {
   //MAYBE:else  if (p.insttmpl) {} // Load overriden template - BAD Because cannot hard-wire for arbitrary OS
   //var skip = skip_host_params(url); // skip_host_params[req.route.path];
   var d; // Final template params
+  if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
+  
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
@@ -355,7 +357,7 @@ function preseed_gen(req, res) {
   // Having 
   // OLD (inside else): d = {httpserver: global.httpserver };
   else {
-    // NOT ip ? Why ???!!!
+    // NOT ip ? Why ???!!! Could be of some use even if facts were not gotten by it.
     d = host_params_dummy(global, osid); // NEW
   }
   // Postpone this check to see if facts (f) are needed at all !
@@ -375,7 +377,7 @@ function preseed_gen(req, res) {
   var tmplcont = template_content(url); // NEW: url
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', ..."); // tmplfname = '"+tmplfname+"'
-  var output = Mustache.render(tmplcont, d);
+  var output = Mustache.render(tmplcont, d, d.partials);
   // Post-process (weed comments and empty lines out )
   var line_ok = function (line) { return !line.match(/^#/) && !line.match(/^\s*$/); };
   var oklines = output.split(/\n/).filter(line_ok);
@@ -485,6 +487,7 @@ function params_compat(d) {
 function host_params(f, global, ip,  osid) { // ctype,
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
+  var hps = hlr.hostparams(f) || {};
   if (anet.address != ip) {
     var msg = "# Hostinfo IP and detected ip not in agreement\n";
     res.end(msg); // NOTE NO res !!!!!!
@@ -498,13 +501,26 @@ function host_params(f, global, ip,  osid) { // ctype,
   ///////////////////////// DISK /////////////////////////////////
   // Disk logic was embedded here
   console.error("Calling disk_params(f) (by:" + f + ")");
-  // var hdisk = require("./hostdisk.js"); // TODO: move
   var disk = osdisk.disk_params(f);
+  console.log("HPS:",hps);
+  // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
+  // dtype is no more passed here.
+  var parts; var partials;
+  if (osid.match('^win')) {
+    var ptt = hps["ptt"] || 'mbr';
+    parts = osdisk.windisk_layout_create(ptt);
+    console.log("Generated parts for osid: "+osid+" pt: "+pt);
+    //d.parts = parts;
+    partials = osdisk.tmpls; // TODO: merge, not override !
+  }
   // Assemble. TODO: Make "inst" top level
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
   d.user = user; // global (as-is). TODO: Create password_hashed
   d.disk = disk; // Gets put to data structure here, but template decides to use or not.
+  // Win
+  d.parr = d.parts = parts; // TODO: Fix to singular naming
+  d.partials = partials;
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
@@ -513,11 +529,15 @@ function host_params(f, global, ip,  osid) { // ctype,
   var choose_mirror = function (m) {
     return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
   };
-  var mirror = global.mirrors.filter(choose_mirror)[0];
-  if (!mirror) { console.log("No Mirror"); return null; } // NOT Found ! Hope we did not match many either.
-  console.log("Found Mirror("+osid+"):", mirror);
-  mirror = dclone(mirror); // NOTE: This should already be a copy ?
-  if (global.mirrorhost) { mirror.hostname = global.mirrorhost; } // Override with global
+  var mirror = global.mirrors.filter(choose_mirror)[0]; // NOT: Set {} by default
+  if (!mirror) {
+    console.log("No Mirror"); // return null;
+  } // NOT Found ! Hope we did not match many either.
+  else {
+    console.log("Found Mirror("+osid+"):", mirror);
+    mirror = dclone(mirror); // NOTE: This should already be a copy ?
+  }
+  if (global.mirrorhost && mirror) { mirror.hostname = global.mirrorhost; } // Override with global
   d.mirror = mirror;
   return d;
 }
