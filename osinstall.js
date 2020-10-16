@@ -508,7 +508,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   console.log("HPS:",hps);
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
-  var parts; var partials;
+  var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
   // TODO: Merge these, figure out lin/win (different signature !)
   if (osid.match('^win')) {
@@ -517,6 +517,7 @@ function host_params(f, global, ip,  osid) { // ctype,
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
+    instpartid = parts.length; // Because of 1-based numbering length will be correct
   }
   if (osid.match('^suse')) {
     //var ptt = hps["ptt"] || 'mbr';
@@ -533,6 +534,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming
   d.partials = partials;
+  d.instpartid = instpartid;
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
