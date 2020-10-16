@@ -2021,15 +2021,17 @@ function ib_set_addr(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
   var ibconf = global.iblox;
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
-  var url = ibconf.url + "/record:host?name~=" + ibconf.hpatt;
-  console.log("Query: "+url);
+  var url_h = ibconf.url + "/record:host?";
+  console.log("Query: "+url_h);
   var bauth = redfish.basicauth(ibconf);
   var getpara = {headers: {Authorization: "Basic "+bauth}};
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
   var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return hp.ibsync; });
   
   console.log("getpara: ", getpara);
-  axios.get(url, getpara).then(function (resp) {
+  ibhs_fetch(syncarr);
+  /*
+  axios.get(url_h+"name~=" + ibconf.hpatt, getpara).then(function (resp) {
     var d = resp.data;
     if (!Array.isArray(d)) { jr.msg += "Response not in array"; return res.json(jr); }
     console.log(d.length + " Hosts ret from IB");
@@ -2041,18 +2043,12 @@ function ib_set_addr(req, res) {
       return ipmac_gen(f, ibh);
     }).filter((it) => { return it; });
     
-    if (req.query.cmds) {
-      //var cmds = [];
-      var txt = "#!/bin/bash\n# Import IP/MAC Info to IB.\nexport IBCREDS=jsmith:o35cR\n"+aout.map((it) => {
-        var puturl = it.url; // Works as change is on host level
-        // // it.ipv4addrs[0].
-        return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
-      }).join("\n");
-      return res.end(txt);
-    }
+    if (req.query.cmds) { return ipmac_cmds_gen(aout); }
     res.json({status: "ok", data: aout});
     
   }).catch(function (ex) { console.log(ex); jr.msg += ex.toString(); return res.json(jr); });
+  */
+  ///////////////////////////////
   function ipmac_gen(f, ibh) {
     var ipi = ibh.ipv4addrs;
       if (!ipi) { return null; }
@@ -2064,5 +2060,33 @@ function ib_set_addr(req, res) {
       // URL with ibh._ref works because this is host level change. Network level: ipi[0]._ref
       var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}};
       return o;
+  }
+  function ipmac_cmds_gen(aout) {
+    //var cmds = [];
+      var txt = "#!/bin/bash\n# Import IP/MAC Info to IB.\nexport IBCREDS=jsmith:o35cR\n"+aout.map((it) => {
+        var puturl = it.url; // Works as change is on host level
+        // // it.ipv4addrs[0].
+        return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
+      }).join("\n");
+      return res.end(txt);
+  }
+  function ibh_fetch(f, cb) {
+    axios.get(url_h+"name="+f.ansible_fqdn, getpara).then((resp) => {
+      if (resp.status != 200) { return cb("Non-200 status:" + res.status, null); }
+      if (!resp.data) { return cb("No data in IB host resp.", null); }
+      // Looking good
+      var ibh = resp.data;
+      var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
+      if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
+      var o = ipmac_gen(f, ibh);
+      return cb(null, o); // resp.data
+    }).catch((ex) => { return cb(ex, null); });
+  }
+  // Async fetch of IB hosts
+  function ibhs_fetch(syncarr) {
+    async.map(syncarr, ibh_fetch, function (err, ress) {
+      if (err) { jr.msg += "async.map error:"+err; console.log(jr.msg); return res.json(jr); }
+      ipmac_cmds_gen(ress);
+    });
   }
 }
