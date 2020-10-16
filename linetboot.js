@@ -2026,7 +2026,7 @@ function ib_set_addr(req, res) {
   var bauth = redfish.basicauth(ibconf);
   var getpara = {headers: {Authorization: "Basic "+bauth}};
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
-  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return hp.ibsync; });
+  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return h.ansible_fqdn && hp.ibsync; });
   console.log(syncarr.length + " Hosts for IB op.");
   console.log("getpara: ", getpara);
   ibhs_fetch(syncarr);
@@ -2072,6 +2072,7 @@ function ib_set_addr(req, res) {
   }
   function ibh_fetch(f, cb) {
     if (!f) { return cb("ibh_fetch: No facts (from async.map arr).", null);  }
+    if (!f.ansible_fqdn) { return cb("ibh_fetch: facts missing FQDN", null);  }
     axios.get(url_h+"name="+f.ansible_fqdn, getpara).then((resp) => {
       if (resp.status != 200) { return cb("Non-200 status:" + res.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
@@ -2080,17 +2081,20 @@ function ib_set_addr(req, res) {
       if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
       if (ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
       var ibh = ibharr[0];
-      if (!ibh) { return cb("No ibh for host: "+f.ansible_fqdn, null); }
-      var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
-      if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
+      if (!ibh) { return cb(null, null); } // Happens, let happen. old: "No ibh for host: "+f.ansible_fqdn
+      // No double lookup (and causes: async.map error:axios exception:TypeError: Cannot read property 'ansible_fqdn' of undefined)
+      //var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
+      //if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
       var o = ipmac_gen(f, ibh);
       return cb(null, o); // resp.data
-    }).catch((ex) => { return cb(ex, null); });
+    }).catch((ex) => { return cb("axios exception:"+ex, null); });
   }
   // Async fetch of IB hosts
   function ibhs_fetch(syncarr) {
     async.map(syncarr, ibh_fetch, function (err, ress) {
       if (err) { jr.msg += "async.map error:"+err; console.log(jr.msg); return res.json(jr); }
+      // Filter out faulty
+      ress = ress.filter((it) => { return it; });
       ipmac_cmds_gen(ress);
     });
   }
