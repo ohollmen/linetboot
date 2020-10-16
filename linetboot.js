@@ -2026,31 +2026,23 @@ function ib_set_addr(req, res) {
   var bauth = redfish.basicauth(ibconf);
   var getpara = {headers: {Authorization: "Basic "+bauth}};
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
-  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(f); return hp.ibsync; });
+  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return hp.ibsync; });
   
   console.log("getpara: ", getpara);
   axios.get(url, getpara).then(function (resp) {
     var d = resp.data;
     if (!Array.isArray(d)) { jr.msg += "Response not in array"; return res.json(jr); }
     console.log(d.length + " Hosts ret from IB");
-    // PUT Messages (ipv4addr, configure_for_dhcp). it = IB Host
-    var aout = d.map((it) => {
-      // Handle single (f, it) // Either or ?
-      var ipi = it.ipv4addrs;
-      if (!ipi) { return null; }
-      if (ipi.length > 1) { return null; }
-      // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
-      var f = hostcache[it.name]; // By name (it.ipv4addrs[0].ipv4addr)
-      if (!f) { console.log("No facts by: "+it.name); return null; } // Non registered host in result set (by pattern)
-      if (ipi[0].ipv4addr != f.ansible_default_ipv4.address) { console.log("IP address conflict IB vs. Ans. Skipping..."); return null; }
-      var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}];
-      // URL with it._ref works because this is host level change. Network level: ipi[0]._ref
-      var o = {method: 'PUT', url: ibconf.url+"/"+it._ref, data: {ipv4addrs: addrs}};
-      return o;
+    // PUT Messages (ipv4addr, configure_for_dhcp). ibh = IB Host
+    var aout = d.map((ibh) => {
+      var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
+      if (!f) { console.log("No facts by: "+ibh.name); return null; } // Non registered host in result set (by pattern)
+      // Handle single (f, ibh) // Either or ?
+      return ipmac_gen(f, ibh);
     }).filter((it) => { return it; });
-    var cmds = [];
+    
     if (req.query.cmds) {
-      
+      //var cmds = [];
       var txt = "#!/bin/bash\n# Import IP/MAC Info to IB.\nexport IBCREDS=jsmith:o35cR\n"+aout.map((it) => {
         var puturl = it.url; // Works as change is on host level
         // // it.ipv4addrs[0].
@@ -2061,4 +2053,16 @@ function ib_set_addr(req, res) {
     res.json({status: "ok", data: aout});
     
   }).catch(function (ex) { console.log(ex); jr.msg += ex.toString(); return res.json(jr); });
+  function ipmac_gen(f, ibh) {
+    var ipi = ibh.ipv4addrs;
+      if (!ipi) { return null; }
+      if (ipi.length > 1) { return null; }
+      // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
+      
+      if (ipi[0].ipv4addr != f.ansible_default_ipv4.address) { console.log("IP address conflict IB vs. Ans. Skipping..."); return null; }
+      var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}];
+      // URL with ibh._ref works because this is host level change. Network level: ipi[0]._ref
+      var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}};
+      return o;
+  }
 }
