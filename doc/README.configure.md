@@ -202,12 +202,13 @@ The list on notable ones is:
 - dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts)
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
 - bmccreds (string) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
+- ptt (string) - partition table type "mbr" - Master Boot Record / "gpt" - GUID Partition table
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
 
 - ansible_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
-- ansible_sudo_pass - Anisble sudo password
+- ansible\_sudo\_pass - Anisble sudo password
 
 Sharing variables / variable names with ansible is okay as long as they have the same conceptual meaning.
 
@@ -262,14 +263,14 @@ config files and bootloader binaries. The settings for "tftp" are:
 
 ### Section "net" - Install time (and general) Network settings
 
-  - netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
-  - gateway - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
-  - namesearch - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
-  - nameservers - DNS nameservers in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
-  - domain - Domainname suffix for local network (E.g. "veryclose.net").
-  - dev - The default network interface name for the OS being installed (E.g. "eno1")
-  - ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
-  - ntpserver - Network Time Server (hostname)
+- netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
+- gateway - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
+- namesearch - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
+- nameservers - DNS nameservers in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
+- domain - Domainname suffix for local network (E.g. "veryclose.net").
+- dev - The default network interface name for the OS being installed (E.g. "eno1")
+- ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
+- ntpserver - Network Time Server (hostname)
 
 When new hosts without facts are being installed, Linetboot heavily uses this section to "guess" the good default settings
 for network config.
@@ -282,7 +283,7 @@ Installation Environment universal parameters (with fairly obvious meanings, not
 - time_zone - Timezone of hosts (E.g. "America/Los_Angeles")
 - install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
 - postscript - Script to launch at the end of installation
-- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT_USER_CONF overrides this).
+- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT\_USER\_CONF overrides this).
     This external file should have members:
   - fullname - full firstname, lastname of user
   - username - login username for user
@@ -290,7 +291,7 @@ Installation Environment universal parameters (with fairly obvious meanings, not
   - groups - The OS groups user should be member of
   - homedir - Home directory for user
 
-See "net" section above for install network settings (Object with global network base settings).
+See also "net" section above for install network settings (Object with global network base settings).
 
 ### Section "ipmi" - Remote Management Info
 
@@ -301,16 +302,29 @@ This section is for BMC based host management and interactivety by IPMI and RedF
 - pass - Password for IPMI and Redfish
 - debug - Enable more verbose debug output on remote management ops
 
+### Section "ldap" - LDAP Authentication settings
+
+- disa - Force disabling LDAP authentication/connectivity (e.g. temporarily) even if config is complete and working (0/1)
+- host - LDAP Server host (add port to end if needed, e.g. "myhost:8389")
+- binddn - Bind DN (Distinguished name) for user that LDAP connection is bound as (must be authorized to do searches)
+- bindpass - LDAP Bind password for the user
+- userbase - base to seacrh users from (LDAP authentication always involves user search as a first step)
+- scope - LDAP search scope (base, one, sub). You likely want "sub" here.
+- unattr - Username attribute for your LDAP schema (AD: "sAMAccountName", Typical OpenLDAP: "uid")
+- idletout - Idle timeout for LDAP API
+- rebindonerror - Rebind if error occurs on connection (Default: 1)
+- rebindwait - Wait delay for binding after client API has encountered and is reconnecting (Default: 5000)
+
 ## Linetboot Environment Variables
 
 Environment Variables that can override settings in main config:
 
-- FACT_PATH - Ansible facts path (main.fact_path). Must contain JOSN facts files named by hostname (without *.json suffix).
-- PKGLIST_PATH - Path with host package list files.
-- LINETBOOT_GLOBAL_CONF - Full path to lineboot config file (No corresponding main conf var for obvious reasons).
-- LINETBOOT_USER_CONF - OS Install Default User config JSON (See example initialuser.json)
-- LINETBOOT_IPTRANS_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
-- LINETBOOT_SSHKEY_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
+- FACT\_PATH - Ansible facts path (main.fact\_path). Must contain JSON facts files named by hostname (without *.json suffix).
+- PKGLIST\_PATH - Path with host package list files.
+- LINETBOOT\_GLOBAL\_CONF - Full path to lineboot config file (No corresponding main conf var for obvious reasons).
+- LINETBOOT\_USER\_CONF - OS Install Default User config JSON (See example initialuser.json)
+- LINETBOOT\_IPTRANS\_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
+- LINETBOOT\_SSHKEY\_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
 
 ------------------------------------------------------------------------
 
@@ -361,6 +375,7 @@ May be also seen (in server BIOS) as: "UEFI PXE Settings" 1..4, Enabled/Disable,
 Other notable settings:
 - System BIOS Settings => Boot Settings => UEFI Boot Settings => Unavailable: Windows Boot Manager
 - System BIOS Settings => System Security => SECURE BOOT => Secure Boot: Enabled/Disabled
+
 ### Interference with iSCSI or FCoE
 
 The PXE boot-time error "PXE-E51: No DHCP or proxyDHCP offers were received" can be caused by
