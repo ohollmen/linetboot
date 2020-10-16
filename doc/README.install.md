@@ -254,13 +254,30 @@ The "Remote Management" info is extracted with an open-source tool "ipmitool", w
 Collecting OS package information is a nice-to have feature, whose usefulness depends on what the lifetime of OS composition on the
 host is. If host is going to be re-imaged with different OS:s every few hours or every few days (e.g in testing), tracking OS packages
 is not very useful. If OS composition is going to stay for weeks or e.g. 2 years (with packages possibly being added and removed), keeping
-track of makages maybe very useful.
+track of packages maybe very useful.
 
-All these steps are very fit to be run with Ansible playbooks that are contained with lineboot:
+All these steps are very fit to be run with Ansible playbooks that are contained with lineboot (playbooks/):
 ```
 # Gather Remote management (IPMI) Info from BMC
 ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_sudo_pass=... host=all destpath=$HOME/hostrmgmt"
 # Gather SSH Keys 
 ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_sudo_pass=... host=all keyarchpath="
 ```
+## Sharing Linetboot Installations between multiple application instances
 
+Deploy Lineboot (Using install instructions) to single shared location. This location (git clone/checkout dir) could be for example be
+`/usr/local/lineboot` or `/opt/linetboot`. It could be also individual users homedir with open read access to the lineboot dir.
+Each installation, based on individual user accounts can then have its own ~/.linetboot config dir, it's own facts dir and other
+needed directories. The combination of main config and environment variables can be used to customize each instance while still
+sharing the codebase (separate accounts still recommended to differentiate config dirs and env. variables).
+
+## Updating Linetboot
+
+To update Linetboot with latest changes from Git(Hub), run following in the lineboot Git project dir.
+```
+# Update
+git pull
+# Update Dependencies
+npm install
+cd web; yarn update; cd ..
+```
