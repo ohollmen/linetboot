@@ -2075,7 +2075,10 @@ function ib_set_addr(req, res) {
       if (resp.status != 200) { return cb("Non-200 status:" + res.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
       // Looking good
-      var ibh = resp.data;
+      var ibharr = resp.data;
+      if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
+      if (!ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
+      var ibn = ibharr[0];
       var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
       if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
       var o = ipmac_gen(f, ibh);
