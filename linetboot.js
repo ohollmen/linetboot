@@ -2071,6 +2071,7 @@ function ib_set_addr(req, res) {
       return res.end(txt);
   }
   function ibh_fetch(f, cb) {
+    if (!f) { return cb("ibh_fetch: No facts.", null);  }
     axios.get(url_h+"name="+f.ansible_fqdn, getpara).then((resp) => {
       if (resp.status != 200) { return cb("Non-200 status:" + res.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
