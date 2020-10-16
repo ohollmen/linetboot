@@ -1,6 +1,10 @@
 
 // OS/Version view ?
 function osview_guisetup() {
+  // 3x views. Now in more specific location
+  $(".hostcell").click(on_host_click);
+  // 1x (osview)
+  // Need this (to avoid trigger multiple times): $(".drinfo").off("click"); ???
   $(".drinfo").click(on_docker_info);
   $(".nfsinfo").click(on_docker_info);
 }
@@ -9,10 +13,12 @@ function osview_guisetup() {
  * 
  */
 function simplegrid_cd(ev, an) {
-  document.getElementById(an.elsel).innerHTML = contbytemplate(an.tmpl, an);
+  //document.getElementById(an.elsel).innerHTML =
+  contbytemplate(an.tmpl, an, an.elsel);
   // Extract fldinfo label from 
   var m = an.gridid.match(/^jsGrid_(\w+)/);
   if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
+  var d = datasets["hostlist"];
   showgrid(an.gridid,  datasets["hostlist"], fldinfo[m[1]]);
   if (an.uisetup) { an.uisetup(); } // TODO: Params ? (see rapp)
 }
@@ -372,10 +378,8 @@ function showpeople(ev, act) {
         console.log("Calling click hdlr");
         var un = this.dataset.uid;
         var e = idx[un];
-        //var e = 1;
+        if (!e) { alert("No data looked up (locally)"); return; }
         console.log(e);
-        //alert(e);
-        
         //var out = rapp.templated("lduser", e); // app.gridid
         //console.log(out);
         var act = tabloadacts.filter((a) => { return a.path == "uent"; })[0];
