@@ -2027,7 +2027,7 @@ function ib_set_addr(req, res) {
   var getpara = {headers: {Authorization: "Basic "+bauth}};
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
   var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return hp.ibsync; });
-  
+  console.log(syncarr.length + " Hosts for IB op.");
   console.log("getpara: ", getpara);
   ibhs_fetch(syncarr);
   /*
@@ -2071,14 +2071,14 @@ function ib_set_addr(req, res) {
       return res.end(txt);
   }
   function ibh_fetch(f, cb) {
-    if (!f) { return cb("ibh_fetch: No facts.", null);  }
+    if (!f) { return cb("ibh_fetch: No facts (from async.map arr).", null);  }
     axios.get(url_h+"name="+f.ansible_fqdn, getpara).then((resp) => {
       if (resp.status != 200) { return cb("Non-200 status:" + res.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
       // Looking good
       var ibharr = resp.data;
       if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
-      if (!ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
+      if (ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
       var ibh = ibharr[0];
       if (!ibh) { return cb("No ibh for host: "+f.ansible_fqdn, null); }
       var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
