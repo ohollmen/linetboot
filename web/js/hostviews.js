@@ -261,8 +261,8 @@ function tabsetview(ev, act) {
     var ti = tabloadacts.filter((it) => { return it.elsel == elsel; })[0];
     return ti;
   }
-  if (!act.tabs) { return alert("Action using tabsetview should have 'tabs'" + JSON.stringify(act)); }
-  if (!Array.isArray(act.tabs)) { return alert("tabs should be an array"); }
+  if (!act.tabs) { return alert("tabsetview: Action using tabsetview should have 'tabs'" + JSON.stringify(act)); }
+  if (!Array.isArray(act.tabs)) { return alert("tabsetview: tabs should be an array"); }
   //alert("tabsetview: Create tabset: "+act.tabs.join(', '));
   
   //function tabs_get(tabselarr) {
@@ -292,10 +292,10 @@ function tabsetview(ev, act) {
 // Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
 var tabloadacts = [
   {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
-  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net"}, // url: "/list" (All 3)
-  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw"},
+  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", uisetup: osview_guisetup}, // url: "/list" (All 3)
+  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw", uisetup: osview_guisetup},
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
-  //NONEED: {"name": "Reports", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview},
+  //NONEED: {"name": "Reports", "path":"XXXXXXXX", tabs: ["tabs-X","tabs-Y","tabs-Z"], hdlr: tabsetview},
   {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
   {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null, path: "groups"},
   {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
@@ -327,8 +327,8 @@ var dialogacts = [
 ];
 // TODO: griddialog / entdialog
 function gendialog(ev, act) {
-  // Create even the element to which to create dialog ?
-  
+  // Create even the element (w. unique id) to which to create dialog ?
+  // var uniid = new Date().foo()+"_"+act.path; // No act.dialogid ?
   // Most dialogs have data ...
   var axopts = {params: null};
   if (act.pmaker) { axopts.params = act.pmaker(); } // TODO: pass ....
@@ -336,7 +336,7 @@ function gendialog(ev, act) {
   if (!act.url) {   return; }
   axios.get(act.url).then(function (resp) {
     var d = resp.data;
-    if (!d) {}
+    if (!d) { return alert("No data from server for dialog !"); }
     showdialog(d);
   })
   .catch(function (ex) { console.log(""); });
@@ -365,10 +365,11 @@ function ontabactivate( event, ui ) {
   console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
   // Do event forwarding ?
   var an = tabloadacts_idx[tgt]; // "#"+
+  // TODO: var an = rapp.findtabact(acts, tgt);
   if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
   // Load template ? 
-  if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
-  // if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
+  //if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
+  if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
   console.log(an);
   //console.log(event);
   event.viewtgtid = an.elsel; // Target View ID
@@ -489,7 +490,7 @@ window.onload = function () {
     // Docker
     ee.on("on_dockerimg_done", function (d) { $("#dockerimg").dialog(dopts_grid); });
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
-    toastr.info("Grids loaded");
+    //toastr.info("Grids loaded"); // Outdated
     // Shared data (/list), different views
     //$( "#tabs" ).tabs( "option", "event", "activate" ); // NA
     
@@ -502,7 +503,7 @@ window.onload = function () {
     
     // Hook Only after grid(s) created
     // $(".hostname").click(function (ev) {
-    $(".hostcell").click(on_host_click); // TODO: Move to specific UI:s
+    //$(".hostcell").click(on_host_click); // NEW: Moved to specific UI setup
     // Activate Router
     if (!tabui) {
       router.start();
