@@ -2078,7 +2078,8 @@ function ib_set_addr(req, res) {
       var ibharr = resp.data;
       if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
       if (!ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
-      var ibn = ibharr[0];
+      var ibh = ibharr[0];
+      if (!ibh) { return cb("No ibh for host: "+f.ansible_fqdn, null); }
       var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
       if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
       var o = ipmac_gen(f, ibh);
