@@ -122,7 +122,10 @@ var recipes = [
   // /boot/pc-autoinstall.conf on TFTP ?
   {"url":"/pc-autoinstall.conf","ctype":"bsd1",      "tmpl":"pc-autoinstall.conf.mustache"},
   {"url":"/cust-install.cfg",   "ctype":"bsd2",      "tmpl":"pcinstall.cfg.mustache"},
-  {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"}
+  {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"},
+  // Suse / Yast
+  {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"}, // ctype: "*yast*" ?
+  // {"url":"/control-files/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"},
 ];
 var recipes_idx = {};
 // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
@@ -342,7 +345,7 @@ function preseed_gen(req, res) {
   //var skip = skip_host_params(url); // skip_host_params[req.route.path];
   var d; // Final template params
   if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
-  
+  if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
@@ -506,10 +509,19 @@ function host_params(f, global, ip,  osid) { // ctype,
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
   var parts; var partials;
+  var ptt = hps["ptt"] || 'mbr';
+  // TODO: Merge these, figure out lin/win (different signature !)
   if (osid.match('^win')) {
-    var ptt = hps["ptt"] || 'mbr';
+    
     parts = osdisk.windisk_layout_create(ptt);
-    console.log("Generated parts for osid: "+osid+" pt: "+pt);
+    console.log("Generated parts for osid: "+osid+" pt: "+ptt);
+    //d.parts = parts;
+    partials = osdisk.tmpls; // TODO: merge, not override !
+  }
+  if (osid.match('^suse')) {
+    //var ptt = hps["ptt"] || 'mbr';
+    parts = osdisk.lindisk_layout_create(ptt, 'suse');
+    console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
