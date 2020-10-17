@@ -12,6 +12,54 @@ The sequence of booting installer and installing an OS with netinstall:
 -->
 ![Boot Diagram](doc/netbootseq.png "Boot Sequence Diagram")
 
+# What is Linetboot ?
+
+Lineboot is ...
+
+- PXE Boot and OS Installation Orchestration central
+- DHCP and TFTP Server management system (Lineboot can provide configurations and setup for these)
+- Hi-Performance HTTP Based OS Install media server
+- Host Asset Inventory system - View hosts Network,Hardware and OS/version info and keep track of packages installed on OS
+- Host Asset statistics reporting system
+- Small scale real-time (snapshot based) host monitoring system (shows network reachability, DNS status, SSH-reachability)
+- IPMI, iDRAC and RedFish Remote management system
+- SSH Host keys Inventory - enabling archiving and restoration of SSH hostkeys when hosts get re-imaged
+- a bunch of documentation and hints to help you in any (non-Linetboot) DIY PXE related project
+
+Any of these features can be disabled to use only subset of features.
+There is a special synergy between Ansible and Linetboot on multiple fromts (explained better in the documentation, see below).
+
+Lineboot can be made to manage:
+
+- Home/Office: Office Workstations, Diskless Workstations, Home network computers
+- DB Servers, Web servers
+- Compute Clusters, Build Farms 
+- Bottom line: any computers accessible with Ansible
+
+Linetboot is written in Javascript and Node.js, which is one of the best languages / runtimes to create high-performing network based
+concurrently tasking aplications.
+
+## What does Lineboot Run on ?
+
+- Ubuntu / Debian (Tested on x86 and ARM)
+- RedHat/Centos (tested on RH 6 and VMWare hosted Centos 7)
+- MacOS (BSD UNIX)
+- Likely in any Linux distro that has node.js available
+
+Install and config instructions aim to advice on the minute config differences needed on various platforms
+(Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
+
+-------------------------------------------------
+
+## Systems Linetboot Collaborates with
+
+- DHCP Server - PXE Bootload process starts here
+- TFTP Server - Hosts 1st stage bootloaders
+- LDAP Directory (Optional) - Used for optional authentication
+
+If you used Lineboot only as Asset Inventory, the DHCP and and TFTP would be needed.
+
+<!--
 
 # Overview of Network boot and Install Subsystems
 
@@ -36,9 +84,11 @@ Web server has dual roles:
 - Deliver static files like ...:
   - Kernel images, Initial ramdisk and filesystem images (to boot the system)
   - OS software packages (during the OS install)
-- Generate dynamically installation configurations for OS installers (basically instructions to automate the install) in the format that particular OS flavor prefers:
-  - In Debian family of OS:s a format called "Preseed" is used
-  - In RedHat family of OS:s a format called "kickstart" is used
+- Generate dynamically OS installers "install-recipes":
+  - Debian/Ubuntu "Preseed"
+  - RedHat/Centos "kickstart"
+  - FreeBSD 
+  - Windows Autounattend.xml
 
 linetboot and its dependencies can be installed plainly with git and npm (Node.js ecosystem package installer).
 
@@ -52,8 +102,12 @@ Various OS ISO images are used for various purposes:
 
 For latter purpose most OS:s allow network boot, although many of them also have bugs in installation process when doing the network install).
 
-The mount points of ISO images are symlinked (or alternatively URL-mapped) to be accessible by the HTTP server (viat the web server "document root").
+The mount points of ISO images are symlinked (or alternatively URL-mapped) to be accessible by the HTTP server (via the web server "document root").
 
+
+-->
+
+<!--
 ## Hostinfo (Facts) DB
 
 Hostinfo DB is not a real DB server, but just filesystem based JSON document (file) collection gathered by Ansible fact gathering process. The steps to collect this info are:
@@ -80,10 +134,12 @@ If you have problems getting ansible running on linetboot machine, the hostinfo 
     rsync ~/hostinfo admuser@boothost:/home/admuser/hostinfo
 
 Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info). Hosts outside this list will not be counted in from the hostinfo directory.
+-->
 
-For further info see documents for:
+For further info see Lineboot documentation for:
 
 - [Installation Pre-requisites](doc/README.prereq.md "Installation Pre-requisites for all related SW")
+- [Lineboot Installation](doc/README.install.md "Linetboot Installation (Divided to Stage 1,2,3)")
 - [Configuring Linetboot and related systems](doc/README.configure.md "Configuring Linetboot and all related SW")
 - [Administering Boot media (ISO images)](doc/README.bootmedia.md "ISO Bootmedia")
 - [Authoring and configuring Bootmenu](doc/README.bootmenu.md "Configuring Boot menu")
@@ -92,109 +148,5 @@ For further info see documents for:
 - [Boot media (ISO:s)](doc/README.bootmedia.md "Boot media and Bootable ISO Images")
 - [Boot menu](doc/README.bootmenu.md "Configuring PXELinux Boot Menu Items")
 
--------------------------------------------------------------------------------------------------
 
-# Using raw ISO CD/DVD
-
-Create an ISO images "repo" directory:
-
-    
-
-Download ISO Images
-
-    # (e.g. from from http://cdimage.ubuntu.com/releases/14.04.5/release/ and http://cdimage.ubuntu.com/releases/18.04.1/release/)
-    wget http://releases.ubuntu.com/14.04/ubuntu-14.04.5-server-amd64.iso
-    #wget http://cdimage.ubuntu.com/releases/14.04.5/release/ubuntu-14.04.5-server-amd64+mac.iso
-    wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
-    wget https://osdn.net/frs/redir.php?m=constant&f=clonezilla%2F71563%2Fclonezilla-live-2.6.3-7-amd64.iso
-
-Create loop-back mountpoints
-
-    sudo mkdir -p /isomnt/ubuntu14 /isomnt/ubuntu18 /isomnt/centos6 /isomnt/centos7 /isomnt/gparted
-    ls -al /isomnt/
-
-mount CD/DVD Images (*.iso) as aloopback mount under /isomnt by sequence:
-
-    sudo mount -o loop ubuntu-14.04.5-server-amd64.iso /isomnt/ubuntu14
-    sudo mount -o loop ubuntu-18.04.1-server-amd64.iso /isomnt/ubuntu18
-    sudo mount -o loop CentOS-6.10-x86_64-minimal.iso  /isomnt/centos6
-    sudo mount -o loop gparted-live-0.31.0-1-amd64.iso /isomnt/gparted
-    sudo mount -o loop clonezilla-live-2.6.3-7-amd64.iso /isomnt/clzilla
-    # sudo mkdir -p /isomnt/centos6
-    # sudo mount -o loop CentOS-6.6-x86_64-netinstall.iso /isomnt/centos6
-    # As an excercise ... add Centos ... :-)
-    # Mirror index page that shows mirror links to download dirs (with ISO images in dir listing)
-    # http://isoredirect.centos.org/centos/7/isos/x86_64/
-    # http://repos.lax.quadranet.com/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-DVD-1810.iso (DVD, 4.5 GB)
-    # http://repos.lax.quadranet.com/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso (Minimal, ~970MB)
-    # http://isoredirect.centos.org/centos/6/isos/x86_64/
-    # http://repos.lax.quadranet.com/centos/6.10/isos/x86_64/CentOS-6.10-x86_64-minimal.iso (Minimal, ~425MB)
-
-
-Downloading and mounting ISO images (in addition to some other things) can be handled by menuinit.js script.
-
-Referring to CD/DVD content, add symlinks for installer boot kernels and ramdisks.
-We'll add everything under /var/www/html/ (Seems to exist in both Debian/RH based distros).
-
-    # Prepare boot/ directories under web server document root.
-    sudo mkdir -p /var/www/html/boot/
-    cd /var/www/html/boot/
-    sudo mkdir -p ubuntu14/ ubuntu18/ centos6/ centos7/ gparted/
-    ls -al /var/www/html/boot
-
-
-To serve mirror content with Apache/NginX, or to just avoid url mapping with linetboot, create a symlink to CDROM image root from Ubuntu/Debian default www document root:
-
-    cd /var/www/html
-    ln -s /isomnt/ubuntu18 ubuntu18
-    ln -s /isomnt/ubuntu14 ubuntu14
-    ln -s /isomnt/centos6 centos6
-    ln -s /isomnt/centos7 centos7
-    ln -s /isomnt/gparted gparted
-
-A hint for choosing the CD/DVD Image: for example Ubuntu release new "patch versions" of the CD/DVD image regularly (when enough
-updates have cumulated), that are labeled with new "dot-version" at the end of official release version. For example "18.04.1" would be the
-first patch release update after launch of "18.04". This appears in the CD/DVD image name. Choose the highest version to minimize the amount
-of update downloads after install.
-
-
-# Additional Topics
-
-## Debian Installer Preseed examples
-
-In Ubuntu/Debian CD/DVD images: $CDROOT/preseed (Note: these are not very comprehensive examples). Google for "Preseed example".
-
-## Boot Kernels and Initramdisk images on ISO images
-
-The answers to "wheres's the kernel and init ramdisk for boot of particular OS" can be quickly gotten by find utility,
-but just to speed up the process and to provide confirmation, here are the *likely* path locations for boot kernel
-and intial ramdisk:
-
-Gparted:
-- $ROOT/live/vmlinuz
-- $ROOT/live/initrd.img
-Ubuntu (14.04, 18.04):
-- $ROOT/install/netboot/ubuntu-installer/amd64/linux
-- $ROOT/install/netboot/ubuntu-installer/amd64/initrd.gz
-Centos (6, 7):
-- $ROOT/images/pxeboot/vmlinuz
-- $ROOT/images/pxeboot/initrd.img
-- Also $ROOT/isolinux/ has these (for ISO/CD boot)
-
-Symlink to these files from respective $DOCROOT/boot/$OSID/ directory.
-
-
-## TODO
-
-- Discover a good, comprehensive kernel+initrd combo w. good basic set of utilities (e.g. fdisk, ...) for local disk boot that may
-act as a recovery or diagnostics toolkit for machine (Although full boot to Gparted would compensate for this) ... when first partition
-mount fails and boot leads to single user mode.
-  - Ubuntu 18 basic kernel+initrd are not great in this respect (e.g. fdisk,cfdisk,gfdisk missing)
-  - Try using Gparted kernel+initrd
-- See the possibility to use Centos netinstall (e.g. CentOS-6.6-x86_64-netinstall.iso) for boot and have minimal edition
-  (e.g. CentOS-6.10-x86_64-minimal.iso) on the server, of course versions fully matching
-  - See https://www.tecmint.com/centos-6-netinstall-network-installation/  refers: http://mirror.liquidtelecom.com/centos/6.10/os/x86_64/
-- Create systemd startup file for linetboot
-- Rename main config from ...global... to linetboot.
-- Create a automatic logic to lookup custom configs, templates from dir ~/.linetboot
 
