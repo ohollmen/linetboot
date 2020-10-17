@@ -282,13 +282,31 @@ append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399
 # https://doc.opensuse.org/projects/autoyast/
 # https://en.opensuse.org/SDB:PXE_boot_installation
 # http://mirror.sfo12.us.leaseweb.net/opensuse/tumbleweed/iso/openSUSE-Tumbleweed-NET-x86_64-Snapshot20191221-Media.iso
+# https://documentation.suse.com/sles/12-SP4/html/SLES-all/Invoking.html
+# Here we should use:
+# - autoyast=http://{{ httpserver }}/ w. linuxrc containing net config
+# - autoyast2=http://{{ httpserver }}/ for linuxrc auto net config (See above link)
+# https://documentation.suse.com/sles/11-SP4/html/SLES-all/cha-deployment-autoinst.html
+# Note with comprehensive ISO the install here should be:
+# - install=http://{{ httpserver }}/install/suse-enterprise/
+# - Do not use inet source install=http://download.opensuse.org/factory/repo/oss/
+# Note: top dir (on ISO) varies between Sles and Opensuse
+# https://github.com/digital-wonderland/packer-templates/blob/master/openSUSE-13.1_x86_64/http/autoinst.xml
+# OpenSUSE Leap and TW have packages in /x86_64/, /noarch/ and metadata in /repodata/
+# https://doc.opensuse.org/projects/autoyast/
 label opensuse_tw_64
 menu label OpenSUSE Thumbleweed 64 bit Net Install
 kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
 # EXAMPLE: append initrd=boot/initrd-life64 isofrom_device=nfs:10.0.0.254:/srv/nfs/ isofrom_system=/openSUSE-Edu-li-f-e.x86_64-42.1.1.iso
 # ALT:  http://download.opensuse.org/tumbleweed/repo/oss/
 # Certified to Boot with efi64/syslinux.efi
-append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts install=http://download.opensuse.org/factory/repo/oss/
+append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts textmode=1 install=http://{{ httpserver }}/opensuse_tw_64/ autoyast2=http://{{ httpserver }}/autoinst.xml
+
+label opensuse15
+menu label OpenSUSE 15.2 Leap (DVD)
+kernel http://{{ httpserver }}/opensuse152/boot/x86_64/loader/linux
+# console=ttyS0 showopts
+append initrd=http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd  textmode=1  install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
 # FreeBSD (12) bootonly.iso (Network installer)
 # One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
