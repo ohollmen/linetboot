@@ -22,6 +22,7 @@ https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-an
 * https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825205(v=win.10) - BIOS/mbr - More than 4
 * https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825675(v=win.10) - More than 4 (refs to type=0x27)
 * https://social.technet.microsoft.com/Forums/windows/en-US/e2463292-e2c5-4896-97ea-58a2443b6ec6/what-is-type-id-inside-windows-aik-20-under-modify-and-how-to-use-type-id?forum=w7itproinstall
+* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701%28v%3dwin.10%29#example-automatically-install-the-default-partition-configuration
 * 
 * Windows part typeid: 0x27 does not receive drive letter
 */
@@ -43,7 +44,7 @@ var winparts = [
   // For EFI (Autounattend.xml) by doc and examples type: EFI, fmt: "FAT32"
   { size_mb: 500, type: "Primary", fmt: "NTFS", lbl: "System"},
   { size_mb: 128, type: "MSR",     fmt: ""}, // FAT32 ?
-  { size_mb: 0,   type: "Primary", fmt: "NTFS", lbl: "Windows"}, // extend: true
+  { size_mb: 0,   type: "Primary", fmt: "NTFS", lbl: "Windows", mpt: "C", extend: true}, // 
 ];
 var linparts = [
   { size_mb: 250, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // 512
@@ -66,7 +67,7 @@ var linparts = [
 function lindisk_layout_create(btype, ostype) {
   var parts = dclone(linparts);
   // Debian/Ubuntu - delete boot
-  if (ostype.match(/(ubu|deb)/)) { parts.splice(0, 1); }
+  if (ostype && ostype.match(/(ubu|deb)/)) { parts.splice(0, 1); }
   // MBR => Delete EFI
   if (btype == 'mbr') {
     // Just mark extend
@@ -116,10 +117,10 @@ function windisk_layout_create(btype) {
   // Windows Main part (Win oddity: letter: 'C'). Last in all: extend: true
   var wp = myparts.filter((p) => { return p.lbl == "Windows"; })[0];
   if (!wp) { console.log("Could not find lbl: 'Windows' part (must-have)."); return null; }
-  wp.letter = 'C';
-  wp.extend = true;
+  //wp.letter = wp.mpt; // 'C'; Now handled by "mpt": "C"
+  // wp.extend = true;
   var i = 1;
-  // Assign seq numbers
+  // Assign seq numbers (1-based)
   myparts.forEach ((p) => {p.seq = i; i++; } );
   return myparts;
 }
@@ -210,7 +211,7 @@ function diskinfo(req, res) {
     if ((memtot/disktot) > 0.20) { rootsize = 0.80 * disktot; }
     // Assemble / Set final figures
     disk.rootsize = rootsize;
-    disk.swapsize = (disktot - rootsize - disk.bootsize - 1000); // Need to schrink a bit further.
+    disk.swapsize = (disktot - rootsize - disk.bootsize - 1000); // Need to shrink a bit further.
     console.error("Calculated Disk Plan:", disk);
     
     return disk;
@@ -343,10 +344,26 @@ function partsize(part) {
                             <Order>{{ seq }}</Order>
                             <PartitionID>{{ seq }}</PartitionID>
                             {{#typeid}}<TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID>{{/typeid}}
-                            {{#letter}}<Letter>{{ letter }}</Letter>{{/letter}}
+                            {{#mpt}}<Letter>{{ mpt }}</Letter>{{/mpt}}
               </ModifyPartition>
   `;
-
+tmpls.yastdrive = `
+  <partitioning config:type="list">
+    <drive>
+      <device>/dev/sda</device>
+      <partitions config:type="list">
+        {{#parr}}{{> yastpart }}{{/parr}}
+      </partitions>
+    </drive>
+  </partitioning>
+`;
+tmpls.yastpart = `
+    <partition>
+      <filesystem config:type="symbol">{{ fmt }}</filesystem>
+      <size>{{ size_mb }}M</size>
+      {{#mpt}}<mount>{{{ mpt }}}</mount>{{/mpt}}
+    </partition>
+`;
 /** Generate contents of Windows Autounattend.xml DiskConfiguration -> Disk section.
  * 
  * "DiskConfiguration" Subsections:
@@ -385,6 +402,12 @@ function disk_out_winxml(parr) {
   //console.log(cont);
   return cont;
 }
+function disk_out_yast(parr) {
+  var xconts = { parr: parr };
+  var cont = Mustache.render(tmpls.yastdrive, xconts, tmpls);
+  return cont;
+}
+
 /** generate disk output in KS (Typical of RH, Centos) format.
  * https://dark.ca/2009/08/03/complex-partitioning-in-kickstart/
  */
@@ -413,6 +436,51 @@ function disk_out_ks(parr) {
   //comps.push("reqpart --add-boot");
   return comps.join("\n") + "\n";
 }
+/** Output disk in "d-i partman-auto/expert_recipe" format.
+ * Refs:
+ * https://www.bishnet.net/tim/blog/2015/01/29/understanding-partman-autoexpert_recipe/
+ * d-i/debian-installer/doc/devel/partman-auto-recipe.txt
+ */
+function disk_out_partman(parr) {
+  // root :: (???)
+  var cont = "boot-root :: ";
+  var hasboot = 0; // Has boot-flagged partition  $bootable{ } - Allow only single
+  var comps = ["boot-root :: "];
+  parr.forEach((p) => {
+    // Number triplet:
+    // - Min
+    // - Priority
+    // - Max (-1 = no maximum - extend ?)
+    // Consider parr.length (e.g. 4) to derive perc ?
+    var perc = 100 / parr.length; // Equal percentages to use as prio (But note: max will cap prio to 0)
+    var tri = [ p.size_mb, Math.floor(p.size_mb + perc), p.size_mb ];
+    if (p.extend) { tri[2] = -1; } // No maximum / extend. Imply tri[1] ?
+    // Modify priority / weight tri[1]
+    // Non-extN (low-level) partition - do not prioritize for growth
+    if (!p.fmt.match(/^ext/) && !p.extend) { tri[1] = p.size_mb; }
+    var pdef = tri.join(" ");
+    
+    //pdef += p.size_mb ? " --size="+p.size_mb : "";
+    pdef += (p.type.toLowerCase() == 'primary' ? " $primary{ } " : "");
+    // Derive $bootable{ } - Allow only single (see hasboot) !
+    if (((p.mpt == '/') || (p.mpt == '/boot')) && !hasboot ) { pdef += " $bootable{ }"; }
+    
+    //pdef += p.lbl ? " --label=\"" +p.lbl +"\"": "";
+    // --maxsize= could limit the growth. --ondisk could refere to disk/by-id/...
+    // Seems --size=... and --grow can coexist (and must per doc - size is min size)
+    
+    if (p.fmt == 'swap') { pdef += " method{ swap } format{ }"; }
+    else {
+      pdef += " method{ format } format{ }";
+      pdef += p.fmt ? " use_filesystem{ } filesystem{ "+p.fmt +" }": "";
+      pdef += p.mpt ? " mountpoint{ "+p.mpt+" }" : "";
+    }
+    //pdef += " ";
+    pdef += " .\n";
+    comps.push(pdef);
+  });
+  return comps.join("\n") + "\n";
+}
 module.exports = {
   init: init,
   disk_params: disk_params,
@@ -421,6 +489,8 @@ module.exports = {
   disk_out_winxml: disk_out_winxml,
   windisk_layout_create: windisk_layout_create,
   disk_out_ks: disk_out_ks,
+  disk_out_partman: disk_out_partman,
+  disk_out_yast: disk_out_yast,
   lindisk_layout_create: lindisk_layout_create,
   tmpls: tmpls
 };
