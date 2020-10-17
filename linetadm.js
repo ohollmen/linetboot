@@ -778,7 +778,8 @@ ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
  */
 function loopmounts(opts) {
   var procmnt = "/proc/mounts";
-  var tmpls = {"cmds": "{{#loops}}mount -o loop '{{{ img }}}' {{{ mntpt }}}\n{{/loops}}",
+  var tmpls = {
+    "cmds": "{{#loops}}mount -o loop '{{{ img }}}' {{{ mntpt }}}\n{{/loops}}",
     "fstab": "{{#loops}}{{{ img }}} {{{ mntpt }}} iso9660 loop 0 0\n{{/loops}}"};
   var fmt = opts.cmds ? "cmds" : "fstab"; // Format: mount commands or /etc/fstab
   // See all /dev/loopN entries. Note: *all* these exist on FS.
