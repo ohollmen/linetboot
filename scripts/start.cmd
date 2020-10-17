@@ -7,7 +7,7 @@
 
 :: echo "Hello and welcome to Windows install"
 :: Note: after WInPE boots the main drive seems to be x:
-:: and active dir seems to be \windows\system32
+:: and active dir seems to be x:\windows\system32
 dir x:\
 :: Detect devices and load drivers (\windows\system32\wpeinit.exe)
 wpeinit.exe
@@ -21,14 +21,18 @@ net use I: \\{{ smbserver }}\isomnt /user:user pass
 :: TODO: cd to another dir before downloading Autounattend.xml ?
 :: cd x:\
 I:\wget.exe http://{{httpserver}}/Autounattend.xml
+dir x:\windows\system32\*.xml
 :: Run installer from network drive
 :: Pops up a "Windows Setup" dialog with lang, time/curr fmts and KB settings
 :: and button to proceed (Next). Does not seem to run A..xml
 :: (even is in same but not current dir) as the settings are in
 :: A...xml
-:: Accepts /unattend:filename option
+:: setup.exe Accepts /unattend:filename option
 :: Autounattend.xml from Samba drive
-I:\win2019\setup.exe /unattend:i:\win2019\Autounattend.xml
-::  Autounattend.xml from Lineboot (may be host-tailored)
+:: 1) From within loop mount (ro)
+:: I:\win2019\setup.exe /unattend:I:\win2019\Autounattend.xml
+:: 2) From top of Samba drive (modifiable)
+I:\win2019\setup.exe /unattend:I:\Autounattend.xml
+:: 3) Autounattend.xml from Lineboot (may be host-tailored)
 :: I:\win2019\setup.exe /unattend:x:\windows\system32\Autounattend.xml
 :: If run from x:\ rename setup.exe.orig
