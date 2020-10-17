@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile
+  xmlns="http://www.suse.com/1.0/yast2ns"
+  xmlns:config="http://www.suse.com/1.0/configns">
+  {{> yastdrive }}
+   <scripts>
+    <pre-scripts>
+      <script>
+        <interpreter>shell</interpreter>
+        <filename>start.sh</filename>
+        <source>
+        <![CDATA[
+#!/bin/sh
+echo "Starting installation"
+exit 0
+
+]]>
+
+        </source>
+      </script>
+    </pre-scripts>
+  </scripts>
+</profile>
