@@ -65,6 +65,9 @@ var Mustache = require("mustache");
        // {"ipv4addrs+": {"ipv4addr": "..."}} may add whole new object
        tmpl: "curl -v -k  -u $IBCREDS -X POST $IBAPIURL'/wapi/v1.2/fixedaddress' -H 'Content-Type: application/json' "+
          "-d '{\"ipv4addr\": \"{{{ ipaddr }}}\", \"mac\": \"{{{ macaddr }}}\"}' ",},
+    {lbl: "ibqueryhost", name: "Lookup IB Host Info",
+      inittmpl: "# export IBCREDS=ibuser:ibpass; export IBAPIURL=https://ib.mycomp.com/wapi/v2.10",
+       tmpl: "curl -v -k  -u $IBCREDS -X POST $IBAPIURL'/wapi/v1.2/record:host?name="+info.hname+"'  "+" ",},
   ];
 var genopts_idx;
 
