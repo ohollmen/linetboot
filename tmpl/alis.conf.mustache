@@ -1,0 +1,126 @@
+# Arch Linux Install Script (alis) configuration file
+#
+# Some values are preceded by a ! character, this means that the value is ignored.
+# Some keys accept a single value others accept multiple values as annotated in the comments.
+#
+# Read the Arch Linux wiki pages to learn more about the variables values.
+# https://github.com/picodotdev/alis/blob/master/README.md
+
+# init
+KEYS="us"
+LOG="false"
+
+# partition
+DEVICE="/dev/sda !/dev/nvme0n1 !/dev/mmcblk0" # sata nvme mmc (single)
+DEVICE_TRIM="true" # If DEVICE supports TRIM
+# LVM="true" # true if use LVM for partitioning
+# LUKS - Linux Unified Key Setup (disk encryption)
+#LUKS_PASSWORD="archlinux" # LUKS encryption key, if LVM will be user LVM on LUKS. Empty for not use LUKS/encryption. Warning: change it!
+#LUKS_PASSWORD_RETYPE="archlinux"
+FILE_SYSTEM_TYPE="ext4 !btrfs !xfs" # (single)
+SWAP_SIZE="!2048 !4096 !8192" # (single, in megabytes)
+# Custom for fully automated
+PARTITION_MODE="!auto custom !manual"
+PARTITION_CUSTOM_PARTED_UEFI="mklabel gpt mkpart ESP fat32 1MiB 512MiB mkpart root $FILE_SYSTEM_TYPE 512MiB 100% set 1 esp on"
+PARTITION_CUSTOM_PARTED_BIOS="mklabel msdos mkpart primary ext4 4MiB 512MiB mkpart primary $FILE_SYSTEM_TYPE 512MiB 100% set 1 boot on"
+PARTITION_CUSTOMMANUAL_BOOT="!/dev/sda1 !/dev/nvme0n1p1 !/dev/mmcblk0p1"
+PARTITION_CUSTOMMANUAL_ROOT="!/dev/sda2 !/dev/nvme0n1p2 !/dev/mmcblk0p2"
+
+# network_install
+WIFI_INTERFACE=""
+WIFI_ESSID=""
+WIFI_KEY=""
+WIFI_HIDDEN=""
+PING_HOSTNAME="mirrors.kernel.org"
+
+# install (precede with ! for not install)
+# Reflector ~ Mirror. https://wiki.archlinux.org/index.php/reflector See: /etc/pacman.d/mirrorlist
+REFLECTOR="false"
+# E.g. France,Germany,Spain
+REFLECTOR_COUNTRIES=("Spain")
+PACMAN_MIRROR="https://mirrors.kernel.org/archlinux/\$repo/os/\$arch"
+KERNELS="!linux-lts !linux-lts-headers !linux-hardened !linux-hardened-headers !linux-zen !linux-zen-headers" # Additional kernels and headers (multiple)
+KERNELS_COMPRESSION="!gzip !bzip2 !lzma !xz !lzop lz4"
+KERNELS_PARAMETERS="" # eg. iommu=soft
+
+# display driver
+DISPLAY_DRIVER="!intel !amdgpu !ati !nvidia !nvidia-lts !nvidia-dkms !nvidia-390xx !nvidia-390xx-lts !nvidia-390xx-dkms !nouveau" # (single)
+KMS="true"
+FASTBOOT="true"
+FRAMEBUFFER_COMPRESSION="false"
+DISPLAY_DRIVER_DDX="false"
+VULKAN="false"
+DISPLAY_DRIVER_HARDWARE_ACCELERATION="false"
+DISPLAY_DRIVER_HARDWARE_ACCELERATION_INTEL="!intel-media-driver !libva-intel-driver" # (single)
+
+# config
+TIMEZONE="/usr/share/zoneinfo/{{{ time_zone }}}"
+LOCALES=("en_US.UTF-8 UTF-8")
+LOCALE_CONF=("LANG=en_US.UTF-8" "LANGUAGE=en_US:en")
+KEYMAP="KEYMAP=us"
+KEYLAYOUT="us"
+KEYMODEL=""
+KEYVARIANT=""
+KEYOPTIONS=""
+FONT=""
+FONT_MAP=""
+HOSTNAME="{{ net.hostname }}"
+ROOT_PASSWORD="{{{ user.password }}}" # Root user password. Warning: change it!
+ROOT_PASSWORD_RETYPE="archlinux"
+
+# user
+USER_NAME="{{{ user.username }}}"
+USER_PASSWORD="{{{ user.password }}}" # Main user password. Warning: change it!
+USER_PASSWORD_RETYPE="{{{ user.password }}}"
+ADDITIONAL_USERS=() # eg. ("user1=password1" "user2=password2")
+
+SYSTEMD_HOMED="false" # (note: "true" value requires interactivity to set user password)
+SYSTEMD_HOMED_STORAGE="directory !fscrypt !luks !cifs !subvolume"
+SYSTEMD_HOMED_CIFS_DOMAIN=""
+SYSTEMD_HOMED_CIFS_SERVICE=""
+
+# mkinitcpio
+HOOKS="base !udev !usr !resume !systemd !btrfs keyboard autodetect modconf block !net !dmraid !mdadm !mdadm_udev !keymap !consolefont !sd-vconsole !encrypt !lvm2 !sd-encrypt !sd-lvm2 fsck filesystems"
+
+# bootloader
+BOOTLOADER="!grub !refind systemd" # (single)
+
+# desktop
+DESKTOP_ENVIRONMENT="!gnome !kde !xfce !mate !cinnamon !lxde !i3-wm !i3-gaps" # (single)
+
+# packages (all multiple)
+# !firefox !chromium !apache !nginx !curl !wget !filezilla !sshfs !openssh !transmission-gtk !transmission-qt !amule !geary !thunderbird !empathy !kopete !polari !konversation !liferea !hugo !gnome-boxes
+PACKAGES_PACMAN_INTERNET=""
+# !gthumb !gimp !imagemagick !krita !inkscape !blender !cmus !vlc !easytag !ardour !audacity !ffmpeg !gnome-phone-manager !kdeconnect !gstreamer !gst-plugins-good !gst-plugins-bad !gst-plugins-ugly !bluez !bluez-utils
+PACKAGES_PACMAN_MULTIMEDIA=""
+# !gnome-initial-setup !gnome-extra !code !eclipse-java !intellij-idea-community-edition !gradle !maven !lz4 !meld !dosfstools !ntfs-3g !exfat-utils
+PACKAGES_PACMAN_UTILITIES=""
+# !libreoffice-fresh !calligra !discount !lyx !vim !calibre
+PACKAGES_PACMAN_DOCUMENTS_AND_TEXT=""
+PACKAGES_PACMAN_SECURITY="!rsync !gnupg !keepassxc"
+PACKAGES_PACMAN_SCIENCE="!geogebra !octave"
+PACKAGES_PACMAN_OTHERS="!klavaro !tmux"
+# !jdk-openjdk !python !dotnet-sdk !php !rust !go !virtualbox !docker !ansible !vagrant
+PACKAGES_PACMAN_DEVELOPER=""
+PACKAGES_PACMAN_CUSTOM=""
+
+AUR="!yay !aurman"
+
+PACKAGES_AUR_INTERNET="!dropbox"
+PACKAGES_AUR_MULTIMEDIA=""
+PACKAGES_AUR_UTILITIES=""
+PACKAGES_AUR_DOCUMENTS_AND_TEXT="!wps-office"
+PACKAGES_AUR_SECURITY="!freefilesync"
+PACKAGES_AUR_SCIENCE=""
+PACKAGES_AUR_OTHERS="!gnucash"
+PACKAGES_AUR_DEVELOPER=""
+PACKAGES_AUR_CUSTOM=""
+
+PACKAGES_PACMAN="$PACKAGES_PACMAN_INTERNET $PACKAGES_PACMAN_MULTIMEDIA $PACKAGES_PACMAN_UTILITIES $PACKAGES_PACMAN_DOCUMENTS_AND_TEXT $PACKAGES_PACMAN_SECURITY $PACKAGES_PACMAN_SCIENCE $PACKAGES_PACMAN_OTHERS $PACKAGES_PACMAN_DEVELOPER $PACKAGES_PACMAN_CUSTOM"
+PACKAGES_AUR="$PACKAGES_AUR_INTERNET $PACKAGES_AUR_MULTIMEDIA $PACKAGES_AUR_UTILITIES $PACKAGES_AUR_DOCUMENTS_AND_TEXT $PACKAGES_AUR_SECURITY $PACKAGES_AUR_SCIENCE $PACKAGES_AUR_OTHERS $PACKAGES_AUR_DEVELOPER $PACKAGES_AUR_CUSTOM"
+
+# systemd
+SYSTEMD_UNITS="" # eg. "ufw.service nginx.service" to enable, "!uwf.service !nginx.service" to disable
+
+#reboot
+REBOOT="true"
