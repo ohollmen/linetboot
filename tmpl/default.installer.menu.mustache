@@ -56,7 +56,7 @@ append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda2
 # http://forum.ipxe.org/showthread.php?tid=7937 has memtest.0 link: http://boot.ipxe.org/memtest.0
 # Does NOT Boot with efi64/syslinux.efi
 label memtest
-menu label  Memory Test (memtest86)
+menu label  Memory Test (memtest86, Live)
 # This would be HTTP path
 #kernel http://{{ httpserver }}/memtest86+.bin
 #kernel http://{{ httpserver }}/memtest86+.elf
@@ -69,6 +69,11 @@ kernel http://{{ httpserver }}/gparted/live/memtest
 # TFTP Path
 #kernel memtest86+
 
+# http://www.wonkity.com/~wblock/docs/html/pxe.html
+label hdt
+menu label HDT - Hardware Detection tool
+kernel hdt.c32
+
 # GpartEd (https://gparted.org/livepxe.php)
 # This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support. Works always with Dell servers.
 # Certified to Boot with efi64/syslinux.efi
@@ -77,6 +82,16 @@ menu label GpartEd Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/gparted/live/vmlinuz
 append initrd=http://{{ httpserver }}/gparted/live/initrd.img boot=live config components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs
 
+# TODO: System Rescue CD (https://www.system-rescue.org/Download/)
+# systemrescue-7.00-amd64.iso
+# https://www.system-rescue.org/manual/PXE_network_booting/
+# label sysresccd
+# menu label System Rescue CD (Live)
+# kernel http://{{ httpserver }}/sysresccd/boot/x86_64/vmlinuz
+# INITRD sysresccd/boot/intel_ucode.img,sysresccd/boot/amd_ucode.img,sysresccd/boot/x86_64/sysresccd.img
+# NOT: append initrd=http://{{ httpserver }}/sysresccd copytoram setkmap=us
+# APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/ checksum
+# SYSAPPEND 3
 
 # Clonezilla Live PXE
 # Example almost directly from https://clonezilla.org/livepxe.php
@@ -107,12 +122,12 @@ append initrd=http://{{ httpserver }}/clzilla/live/initrd.img boot=live username
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html - Initrd mechanics
 # https://www.cyberciti.biz/tips/10-boot-time-parameters-you-should-know-about-the-linux-kernel.html
 label ubuntu18dt
-menu label Ubuntu 18 Desktop (32bit) Live (No Auto-Install)
+menu label Ubuntu MATE 18 Desktop (32bit, Live)
 kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
 # fetch=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs toram 
 # url=http://{{ httpserver }}/ubuntu18dt/preseed/ubuntu-mate.seed
 # 1) Working config for NFS dependent setup (Mounts NFS server:/ubu/inst/root under /cdrom)
-# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
+append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
 # 2) HTTP Only (Use preseed: /preseed.desktop.cfg which contains a "redirect url"
 # (d-i live-installer/net-image installer directive) for FS image casper/filesystem.squashfs)
 # - ip: Recommended: ip=dhcp (Also: ip=append, ip=frommedia)
@@ -132,11 +147,11 @@ kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
 # /casper or /casper/filesystem.squashfs (or permutations with http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs
 # Causes: run-init: current directory on the same filesystem as the root: error 0
 # Try possibly similar to: root=squash:http://192.168.9.10:5248/images/ubuntu/amd64/ga-18.04/bionic/daily/squashfs
-append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
+# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
 
 # MATE 20.04 Conservative config, mimick 18.X Working NFS install
 label ubuntu20dt
-menu label Ubuntu MATE 20 Desktop (64bit) Live (No Auto-Install)
+menu label Ubuntu MATE 20 Desktop (64bit, Live)
 kernel http://{{ httpserver }}/ubuntu20dt/casper/vmlinuz
 append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
 
@@ -279,7 +294,7 @@ append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399
 # In linuxrc kw param autoyast=http://.../profiles/ tells the location of XML file(s))
 # https://lizards.opensuse.org/2014/01/29/network-boot-live-iso/
 # https://doc.opensuse.org/projects/YaST/SLES11/autoinstall/invoking_autoinst.html
-# https://doc.opensuse.org/projects/autoyast/
+# https://doc.opensuse.org/projects/autoyast/ - Good detailed doc on autoyast
 # https://en.opensuse.org/SDB:PXE_boot_installation
 # http://mirror.sfo12.us.leaseweb.net/opensuse/tumbleweed/iso/openSUSE-Tumbleweed-NET-x86_64-Snapshot20191221-Media.iso
 # https://documentation.suse.com/sles/12-SP4/html/SLES-all/Invoking.html
@@ -295,7 +310,7 @@ append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399
 # OpenSUSE Leap and TW have packages in /x86_64/, /noarch/ and metadata in /repodata/
 # https://doc.opensuse.org/projects/autoyast/
 label opensuse_tw_64
-menu label OpenSUSE Thumbleweed 64 bit Net Install
+menu label OpenSUSE Thumbleweed 64 bit Mini/Net (Auto-Install)
 kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
 # EXAMPLE: append initrd=boot/initrd-life64 isofrom_device=nfs:10.0.0.254:/srv/nfs/ isofrom_system=/openSUSE-Edu-li-f-e.x86_64-42.1.1.iso
 # ALT:  http://download.opensuse.org/tumbleweed/repo/oss/
@@ -303,7 +318,7 @@ kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
 append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts textmode=1 install=http://{{ httpserver }}/opensuse_tw_64/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
 label opensuse15
-menu label OpenSUSE 15.2 Leap (DVD)
+menu label OpenSUSE 15.2 Leap (DVD, Auto-Install)
 kernel http://{{ httpserver }}/opensuse152/boot/x86_64/loader/linux
 # console=ttyS0 showopts
 append initrd=http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd  textmode=1  install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
@@ -321,12 +336,12 @@ append initrd=http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd  tex
 # https://www.trueos.org/handbook/advanced.html
 # http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
 label freebsd12net
-menu label FreeBSD 12 Net ISO Install
+menu label FreeBSD 12 Net ISO Install (by memdisk)
 linux /memdisk
 #TODO: initrd http://{{ httpserver }}/freebsd12net/freebsd-install/bootonly.iso
 initrd http://{{ httpserver }}/bootonly.iso
 # Original example from BSD discussion board has BOTH "iso raw". In https://wiki.syslinux.org/wiki/index.php?title=MEMDISK
-# these are given as exclusive
+# these are given as exclusive. mfsBSD ISO works with append iso
 # ORIG: append iso raw
 append iso
 
@@ -345,10 +360,19 @@ menu label FreeBSD 12 (BSD pxeboot)
 # kw "pxe" is specific to NBP. "kernel" leads to loading ok, but "Booting kernel/failed: Invalid argument", "boot" - nothing (!).
 # linux memdisk; initrd http://.../pxeboot; append raw; starts boot but freezes
 kernel pxechn.c32
+# Per https://wiki.syslinux.org/wiki/index.php?title=Pxechn.c32 this should work
 #initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
 # Said to work: APPEND images/FreeBSD12-64/boot/pxeboot (https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/)
+# Passes control to bootloader, but it crashes. No extra log items in TFTP
 initrd ::pxeboot
 # append raw
+
+# Ver 3: https://forums.freebsd.org/threads/pxe-boot-server.74328/
+# Note: This is effectively only a slight variant of "kernel pxechn.c32" + "initrd ::pxeboot" ... same kind of crash
+#label freebsd12pxe
+#menu label FreeBSD 12 with PXE keyword
+#pxe pxeboot
+
 
 # OpenBSD - Seems to vary slightly from PCBSD and FreeBSD
 # https://eradman.com/posts/autoinstall-openbsd.html
@@ -357,20 +381,38 @@ initrd ::pxeboot
 # Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
 # URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
 
+# mfsBSD
+label mfsbsd
+menu label mfsBSD (Live)
+kernel memdisk
+#initrd http://{{ httpserver }}//images/mfsbsd/mfsbsd.gz raw
+initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
+append iso
 
 # Arch Linux
 # archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)
 # https://wiki.archlinux.org/index.php/PXE
 # https://www.archlinux.org/download/
 # Note arch 2020 Changes kernel from arch/boot/x86_64/vmlinuz to arch/boot/x86_64/vmlinuz-linux
-label arch2019
+# https://www.forbes.com/sites/jasonevangelho/2019/06/10/arch-linux-os-challenge-2-alternatives-install-gui-script-easy/#3089c7ef4d94
+#   https://github.com/picodotdev/alis - Arch Linux Install Script
+# Arch Linux Challenge: https://docs.google.com/document/d/1kWQRBDL_N0CImPV5t0W2xj7bsAFcZOLmRsf-kX-eR9M/edit#heading=h.kk1966kbedef
+# See also: https://github.com/wrzlbrmft/arch-install
+label archlinux
 menu label Arch Linux (Live Console, No Auto Install)
 kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 # INITRD also allowed instead of append initrd=. Allows multiple vals per https://wiki.archlinux.org/index.php/PXE
 # What is /archlinux/arch/boot/x86_64/initramfs-linux.img ?
-initrd http://{{ httpserver }}/archlinux/arch/boot/intel_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd_ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
-# initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/archiso.img
+# Fixed "_" to "-" in intel-ucode.img, amd-ucode.img and x86_64/archiso.img => x86_64/initramfs-linux.img
+initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
+# initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
+sysappend 3
+
+label archlinux_auto
+menu label Arch Linux (Full Auto Install)
+initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
+append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/ script=http://{{ httpserver }}/scripts/arch_alis_run.sh
 sysappend 3
 
 # FreeDOS
@@ -378,7 +420,7 @@ sysappend 3
 #   - 1.1/fd11src.iso
 #   - 1.2/FD12CD.iso
 label freedos1
-menu label FreeDOS 1.0
+menu label FreeDOS 1.0 (Live)
 kernel /memdisk
 append initrd=http://{{ httpserver }}/freedos1/fdboot.img
 
