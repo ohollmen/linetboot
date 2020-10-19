@@ -1,6 +1,7 @@
 {
   "fullname": "John Smith",
   "username": "jsmith",
+  "uidnum": 1000,
   "password": "s3Cr3T",
   "groups": ["sudo","adm", "plugdev", "cdrom"],
   "homedir" : "/home_install/jsmith"
