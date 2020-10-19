@@ -3,16 +3,76 @@
 <profile
   xmlns="http://www.suse.com/1.0/yast2ns"
   xmlns:config="http://www.suse.com/1.0/configns">
+  <global>
+    <activate config:type="boolean">true</activate>
+    <append></append>
+    <timeout config:type="integer">10</timeout>
+    <boot_mbr>true</boot_mbr>
+    <suse_btrfs config:type="boolean">false</suse_btrfs>
+    <terminal>console</terminal>
+  </global>
+  <general>
+    <mode>
+      <confirm config:type="boolean">true</confirm>
+      <final_reboot config:type="boolean">true</final_reboot>
+    </mode>
+    <self_update config:type="boolean">false</self_update>
+  </general>
+  <keyboard>
+    <keymap>english-us</keymap>
+  </keyboard>
+  <language>
+    <language>en_US</language>
+    <languages>en_US</languages>
+  </language>
+  <timezone>
+    <hwclock>UTC</hwclock>
+    <timezone>{{{ time_zone }}}</timezone>
+  </timezone>
+  
   {{> yastdrive }}
-   <scripts>
-    <pre-scripts>
+  <firewall>
+    <enable_firewall config:type="boolean">false</enable_firewall>
+    <start_firewall  config:type="boolean">false</start_firewall>
+  </firewall>
+  <groups config:type="list">
+    <group>
+      <gid>{{{ user.uidnum }}}</gid>
+      <groupname>users</groupname>
+      <userlist/>
+    </group>
+  </groups>
+  <users config:type="list">
+    <user>
+      <user_password>{{{ user.password }}}</user_password>
+      <username>root</username>
+    </user>
+    <user>
+      <username>{{{ user.username }}}</username>
+      <user_password>{{{ user.password }}}</user_password>
+      <fullname>{{{ user.fullname }}}</fullname>
+      <uid>{{{ user.uidnum }}}</uid>
+      <gid>{{{ user.uidnum }}}</gid>
+      <home>{{{ user.homedir }}}</home>
+      <password_settings>
+        <expire/>
+        <flag/>
+        <inact>-1</inact>
+        <max>99999</max>
+        <min>0</min>
+        <warn>7</warn>
+      </password_settings>
+      <shell>/bin/bash</shell>
+    </user>
+  </users>
+  <scripts>
+    <pre-scripts config:type="list">
       <script>
-        <interpreter>shell</interpreter>
         <filename>start.sh</filename>
-        <source>
-        <![CDATA[
+        <source><![CDATA[
 #!/bin/sh
 echo "Starting installation"
+wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
 exit 0
 
 ]]>
@@ -20,5 +80,39 @@ exit 0
         </source>
       </script>
     </pre-scripts>
+
+    <chroot-scripts config:type="list">
+      <script>
+        <chrooted config:type="boolean">true</chrooted>
+        <filename>end.sh</filename>
+        <source><![CDATA[
+#!/bin/sh
+echo "Starting installation"
+wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
+exit 0
+]]>
+
+        </source>
+      </script>
+      <script>
+        <chrooted config:type="boolean">true</chrooted>
+	<filename>{{{ postscript }}}</filename>
+        <location>http://{{{ httpserver }}}/scripts/{{{ postscript }}}</location>
+      </script>
+    </chroot-scripts>
   </scripts>
+  <software>
+    <packages config:type="list">
+      <package>openssh</package>
+      <package>python3</package>
+    </packages>
+    <do_online_update config:type="boolean">false</do_online_update>
+  </software>
+  <bootloader>
+    <loader_type>grub2</loader_type>
+  </bootloader>
+  <ssh_import>
+    <import config:type="boolean">true</import>
+    <copy_config config:type="boolean">true</copy_config>
+  </ssh_import>
 </profile>
