@@ -29,12 +29,17 @@ Lineboot is ...
 Any of these features can be disabled to use only subset of features.
 There is a special synergy between Ansible and Linetboot on multiple fromts (explained better in the documentation, see below).
 
-Lineboot can be made to manage:
+Lineboot can be made to perform/organize/manage:
 
 - Home/Office: Office Workstations, Diskless Workstations, Home network computers
 - DB Servers, Web servers
-- Compute Clusters, Build Farms 
-- Bottom line: any computers accessible with Ansible
+- Compute Clusters, Build Farms
+- Mix of the previous
+- Distro Hopping (e.g. by live booting to "OS-of-the-day")
+- Run memtest x86 via PXE on any (x86) computer on network
+- Operate (boot) Clonezilla client via PXE (and connect to clonezilla image server, making live CD:s obsolete)
+- Maintan any network PC:s with Gparted live booted via PXE (partition, change partition layout, resize, fix filesystems)
+- Bottom line: apply above on any computers accessible with Ansible (for ansible "facts" gathering)
 
 Linetboot is written in Javascript and Node.js, which is one of the best languages / runtimes to create high-performing network based
 concurrently tasking aplications.
@@ -43,8 +48,8 @@ concurrently tasking aplications.
 
 - Ubuntu / Debian (Tested on x86 and ARM)
 - RedHat/Centos (tested on RH 6 and VMWare hosted Centos 7)
-- MacOS (BSD UNIX)
-- Likely in any Linux distro that has node.js available
+- MacOS (effectively BSD UNIX, tested on MacOS "High Sierra")
+- Likely in any Linux distro (or UNIX-like OS) that has node.js available
 
 Install and config instructions aim to advice on the minute config differences needed on various platforms
 (Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
