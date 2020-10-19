@@ -136,7 +136,10 @@ function app_init() { // global
   app.use(express.static(maindocroot)); // e.g. /var/www/html/ or /isomnt/ (from global config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
   // TODO: global.core.addroot
-  app.use(express.static("/isoimages"));
+  //app.use(express.static("/isoimages"));
+  if (global.core.addroot && Array.isArray(global.core.addroot)) {
+    global.core.addroot.forEach((root) => { app.use(express.static(root)); });
+  }
   app.use('/web', express.static('web')); // Host Inventory
   ///////////// Dynamic content URL:s (w. handlers) //////////////
   ////////////////////// Installer ///////////////////////////////////
@@ -1494,7 +1497,7 @@ function dockerenv_info(req, res) {
 }
 
 /** Send misc/select key-value pairs of config information to frontend.
- * Config info is taken from global config structure.
+ * Config info is taken or derived from global config structure.
  */
 function config_send(req, res) {
   var cfg = {docker: {}, core: {}, bootlbls: []};
@@ -1517,6 +1520,8 @@ function config_send(req, res) {
   // Current sess
   cfg.username = req.session.user ? req.session.user.username : "";
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
+  // OS/Version view columns
+  if (web && web.xtabs) { cfg.xtabs = web.xtabs; }
   res.json(cfg);
 }
 
@@ -2015,7 +2020,8 @@ function logout(req, res) {
 }
 /** Set addr info in IB ()
  * URL Options:
- * - cmds - Set true to produce commands
+ * - cmds - Set true to produce commands (default)
+ * TODO: Create correspnding validation and view
  */
 function ib_set_addr(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
@@ -2049,6 +2055,8 @@ function ib_set_addr(req, res) {
   }).catch(function (ex) { console.log(ex); jr.msg += ex.toString(); return res.json(jr); });
   */
   ///////////////////////////////
+  /** Generate IP/MAC change record with info to submit to
+   */
   function ipmac_gen(f, ibh) {
     var ipi = ibh.ipv4addrs;
       if (!ipi) { return null; }
@@ -2082,7 +2090,7 @@ function ib_set_addr(req, res) {
       if (ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
       var ibh = ibharr[0];
       if (!ibh) { console.log("No IB Info for: "+f.ansible_fqdn); return cb(null, null); } // Happens, let happen. old: "No ibh for host: "+f.ansible_fqdn
-      // No double lookup (and causes: async.map error:axios exception:TypeError: Cannot read property 'ansible_fqdn' of undefined)
+      // No double lookup or shadowing (and causes: async.map error:axios exception:TypeError: Cannot read property 'ansible_fqdn' of undefined)
       //var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
       //if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
       var o = ipmac_gen(f, ibh);
