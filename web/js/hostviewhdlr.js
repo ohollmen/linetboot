@@ -176,6 +176,7 @@ function dockercat_show(ev, act) {
 
 function showdocindex (ev, act) {
   // Mimick flow from docindex_main.js
+  //var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   if (ev.routepath) { rapp.templated("docs", null, "routerdiv"); }
   var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1 });
   docIndex.ondocchange = function (docurl) {
@@ -204,7 +205,9 @@ function bootgui(ev, act) {
   
   // UI Setup
   function boot_select_setup() {
-    webview.addoptions(datasets["cfg"].bootlbls, $("#bootlbl").get(0), {});
+    var bootlbls = datasets["cfg"].bootlbls; // id, name. Should do rapp.dclone()
+    bootlbls = bootlbls.map((bi) => { return {id: bi.id, name: bi.id + " - " + bi.name}; }); // Effective clone
+    webview.addoptions(bootlbls, $("#bootlbl").get(0), {}); // datasets["cfg"].bootlbls
     webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
   }
   boot_select_setup();
