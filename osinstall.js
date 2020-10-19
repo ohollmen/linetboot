@@ -57,7 +57,7 @@ var Mustache = require("mustache");
 var hlr    = require("./hostloader.js"); // file_path_resolve
 var osdisk = require("./osdisk.js");
 
-console.log("OSINTALL-osdisk", osdisk);
+// console.log("OSINTALL-osdisk", osdisk);
 
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 // https://stackabuse.com/using-global-variables-in-node-js/
@@ -126,6 +126,7 @@ var recipes = [
   // Suse / Yast
   {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"}, // ctype: "*yast*" ?
   // {"url":"/control-files/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"},
+  {"url":"/alis.conf",       "ctype":"arch",       "tmpl":"alis.conf.mustache"},
 ];
 var recipes_idx = {};
 // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
@@ -142,9 +143,9 @@ function url_config_type(url) {
 }
 // DEPRECATED
 // url ~ req.route.path
-function skip_host_params(url) {
-  return _skip_host_params[url];
-}
+//function skip_host_params(url) {
+//  return _skip_host_params[url];
+//}
 // Wrapper for getting template content
 function template_content(url) {
   //return tmpls[ctype]; // OLD/Cached: global.tmpls
