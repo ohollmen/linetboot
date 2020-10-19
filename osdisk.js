@@ -46,10 +46,11 @@ var winparts = [
   { size_mb: 128, type: "MSR",     fmt: ""}, // FAT32 ?
   { size_mb: 0,   type: "Primary", fmt: "NTFS", lbl: "Windows", mpt: "C", extend: true}, // 
 ];
+// /boot/efi FS Recommends: Suse: FAT32 (vfat ?)
 var linparts = [
   { size_mb: 250, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // 512
   // Linux distros seemt to agree on the mpt: "/boot/efi"
-  { size_mb: 200, type: "Primary",  fmt: "vfat", lbl:"", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
+  { size_mb: 200, type: "Primary",  fmt: "fat32", lbl:"", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
   // mpt: biosboot usable w. KS as-is
   { size_mb: 1,   type: "Primary",  fmt: "biosboot",     lbl:"biosboot", mpt: "biosboot"}, // "BIOS Boot" EFI/GPT 1 MiB
   { size_mb: 16000,type: "Primary",     fmt: "swap", lbl:"swap", mpt: "swap"}, // RH+KS wants mpt: "swap"
@@ -347,10 +348,17 @@ function partsize(part) {
                             {{#mpt}}<Letter>{{ mpt }}</Letter>{{/mpt}}
               </ModifyPartition>
   `;
+// https://github.com/digital-wonderland/packer-templates/blob/master/openSUSE-13.1_x86_64/http/autoinst.xml
+// <initialize config:type="boolean">true</initialize>
+// <use>all</use> MUST Have (per Yast)
+// Note: fat32 may not be valid (per doc) btrfs, ext*, fat, xfs, swap
 tmpls.yastdrive = `
   <partitioning config:type="list">
     <drive>
       <device>/dev/sda</device>
+      <initialize config:type="boolean">true</initialize>
+      <disklabel>msdos</disklabel>
+      <use>all</use>
       <partitions config:type="list">
         {{#parr}}{{> yastpart }}{{/parr}}
       </partitions>
@@ -360,8 +368,9 @@ tmpls.yastdrive = `
 tmpls.yastpart = `
     <partition>
       <filesystem config:type="symbol">{{ fmt }}</filesystem>
-      <size>{{ size_mb }}M</size>
+      {{^extend}}<size>{{ size_mb }}M</size>{{/extend}}{{#extend}}<size>max</size>{{/extend}}
       {{#mpt}}<mount>{{{ mpt }}}</mount>{{/mpt}}
+      <label>{{{ lbl }}}</label>
     </partition>
 `;
 /** Generate contents of Windows Autounattend.xml DiskConfiguration -> Disk section.
