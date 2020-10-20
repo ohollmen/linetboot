@@ -9,6 +9,7 @@
     "keymap": "us",
     "time_zoneXX": "US/Pacific",
     "time_zone": "America/Los_Angeles",
+    "partreuse": 0,
     "install_recommends": true,
   
     "postscript": "mv_homedir_for_autofs.sh",
