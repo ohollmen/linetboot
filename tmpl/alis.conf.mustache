@@ -18,6 +18,7 @@ DEVICE_TRIM="true" # If DEVICE supports TRIM
 #LUKS_PASSWORD="archlinux" # LUKS encryption key, if LVM will be user LVM on LUKS. Empty for not use LUKS/encryption. Warning: change it!
 #LUKS_PASSWORD_RETYPE="archlinux"
 FILE_SYSTEM_TYPE="ext4 !btrfs !xfs" # (single)
+# Arch convention is to use swap-file (not swap-partition)
 SWAP_SIZE="!2048 !4096 !8192" # (single, in megabytes)
 # Custom for fully automated
 PARTITION_MODE="!auto custom !manual"
@@ -66,7 +67,7 @@ FONT=""
 FONT_MAP=""
 HOSTNAME="{{ net.hostname }}"
 ROOT_PASSWORD="{{{ user.password }}}" # Root user password. Warning: change it!
-ROOT_PASSWORD_RETYPE="archlinux"
+ROOT_PASSWORD_RETYPE="{{{ user.password }}}"
 
 # user
 USER_NAME="{{{ user.username }}}"
