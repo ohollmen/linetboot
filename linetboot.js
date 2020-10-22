@@ -233,6 +233,8 @@ function app_init() { // global
   app.get("/logout",  logout);
   
   app.get("/setaddr",  ib_set_addr);
+  // cloud-init/subiquity/curtin
+  app.get("/meta-data",  ubu20_meta_data);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -447,7 +449,7 @@ function ldconn_bind_cb(ldc, ldconn, cb) {
 function linet_mw(req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
-  if (1) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
+  if (0) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
   //req.session.num++;
   
   if (req.session && !req.session.qs) { console.log("NO qs, resetting."); req.session.qs = []; }
@@ -467,7 +469,7 @@ function linet_mw(req, res, next) {
     try { s = fs.statSync("/isomnt" + req.url); }
     catch (ex) { msg = "404 - FAIL";  } // console.log("URL/File: " + req.url + " ");
     if (!msg && s) { msg = s.size; }
-    console.log("URL/StaticFile: " + req.url + " " + msg); 
+    //console.log("URL/StaticFile: " + req.url + " " + msg);
   }
   // If one of the boot/install actions ... do ARP
   //var bootact = {"/preseed.cfg":1, "/ks.cfg":1, }; // "":1, "":1, "":1,
@@ -680,6 +682,7 @@ function gen_allhost_output(req, res) {
 *      sudo netplan apply
 * 
 * @todo Convert netmask to CIDR notation.
+* @todo Make Reusable and http/express request agnostic to use part of ubuntu 20
 * See also: https://netplan.io/examples
 */
 function netplan_yaml(req, res) {
@@ -688,6 +691,7 @@ function netplan_yaml(req, res) {
   // Content-Disposition: ... Would pop up save-as
   //var fn = "01-netcfg.yaml";
   // res.set('Content-Disposition', "attachment; filename=\""+fn+"\"");
+  var q = req.query || {};
   var xip = req.query["ip"];
   var ip = osinst.ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
@@ -695,49 +699,54 @@ function netplan_yaml(req, res) {
   if (!f) { console.log("# No Facts found for IP Address '"+ip+"' (or maybe mac ?).\n");  } // ${ip} return;
   // Validate gotten cache artifact (TODO: Move into respective wrapper)
   if (f && !f.ansible_architecture) { console.log("WARNING: Facts gotten from cache, but no expected props present"); }
-  if (f) { console.log("Using cached facts ..."); }
-  // Dummy facts with all set to false (for fallback to global)
+  if (f) { console.log("netplan_yaml: Using cached facts ..."); }
+  // Dummy facts with all set to false (for fallback to global settings)
   var f_dummy = {"ansible_default_ipv4": {}, "ansible_dns": null};
   var d = f || f_dummy;
-  // Base netplan stub (to fill out)
-  var np = {"version": 2, "renderer": "networkd", "ethernets": {} };
+  var gnet = global.net; // Main Config net settings
+  // function netplan_gen(d, gnet, q, ip) { // opts for ip and q.netif
+  /////////////////////////// Base netplan stub (to fill out) /////////////////////
+  // Fixate interface name at this point (e.g. "netname"), rename at end ?
+  var np = {"version": 2, "renderer": "networkd", "ethernets": {
+    //"netname": {
+    //  addresses: [], gateway4: "", nameservers: {search:[], addresses: []}
+    //}
+  } };
   //# See also "ansible_em1" based on lookup to:
   //# iface.alias
   //# See: "ansible_fqdn" => hostname
   // iface has: alias, address, gateway
-  var iface_a = d["ansible_default_ipv4"]; // # iface_a = Ansible interface (definition)
+  var iface_a = d.ansible_default_ipv4; // iface_a = Ansible interface (definition)
   console.log("iface_a: "+JSON.stringify(iface_a, null, 2));
   //if (!iface_a) { res.end("No ansible_default_ipv4 network info for ip = "+ip+"\n"); }
-  var ifname = iface_a["alias"] || global.net["ifdefault"] || "eno1"; // TODO: global["ifdefault"]
+  // Prioritize interface name from query params (q.netif)
+  var ifname = q.netif || iface_a.alias || gnet.ifdefault || "eno1"; // IF-name
   // Interface Info.  TODO: Create /dec CIDR mask for "addresses" out of "netmask"
-  var address = (iface_a["address"] ? iface_a["address"] : ip);
-  var netmask = iface_a["netmask"] || global.net.netmask;
+  var address = (iface_a.address ? iface_a.address : ip);
+  var netmask = iface_a.netmask || gnet.netmask;
   var dec = netmask2CIDR(netmask); // netmask2cidr(netmask);
   if (dec) { address += "/"+dec; }
-  var iface = { // Netplan
+  var iface = { // Netplan interface (this gets assigned to if-name)
     "addresses": [ address ], // Assume single
-    "gateway4": (iface_a["gateway"] ? iface_a["gateway"] : global.net["gateway"]) // # Netplan interface
-    
+    "gateway4": (iface_a.gateway ? iface_a.gateway : gnet.gateway),
+    "nameservers": null // {search: null, addresses: null}
   };
   // Add /dec mask here based on "netmask"
-  var dns_a = d["ansible_dns"]; // global["namesearch"] // NEW: Fallback to global
+  var dns_a = d["ansible_dns"]; // gnet.namesearch // NEW: Fallback to gnet below
   //console.log("dns_a: "+JSON.stringify(dns_a, null, 2));
-  //console.log("global.net: "+JSON.stringify(global.net, null, 2));
+  //console.log("gnet: "+JSON.stringify(gnet, null, 2));
   // console.log("Found Ansible DNS Info: "+dns_a);
-  // Namesearch Info (servers, search suffixes).
-  //var ns = {};
-  //var ns_search = ns.search = ;
-  //var ns_addresses = ns.addresses = ;
-  
-  var ns = {
-    "search":    (dns_a && dns_a["search"] ? dns_a["search"] : global.net.namesearch),
-    "addresses": (dns_a && dns_a["nameservers"] ? dns_a["nameservers"] : global.net.nameservers)
+  var ns = { // Name search Info (DNS, search suffixes)
+    "search":    (dns_a && dns_a["search"]      ? dns_a["search"] : gnet.namesearch),
+    "addresses": (dns_a && dns_a["nameservers"] ? dns_a["nameservers"] : gnet.nameservers)
   };
   // Exception for misleading systemd DNS server "127.0.0.53"
-  if (ns.addresses[0] == '127.0.0.53') { ns.addresses = global.net.nameservers; }
+  if (ns.addresses[0] == '127.0.0.53') { ns.addresses = gnet.nameservers; }
   //console.log("ns as JSON: "+JSON.stringify(ns));
-  iface["nameservers"] = ns;
+  iface.nameservers = ns;
   np["ethernets"][ifname] = iface; // Assemble (ethernets branch) !
+  //  return np;
+  //}
   //# Unofficial, but helpful (at netplan root)
   var custom = 0; // Custom props (for debugging, etc)
   if (custom) {
@@ -748,11 +757,12 @@ function netplan_yaml(req, res) {
   //iface["netmask"] = iface_a["netmask"];
   }
   var nproot = {"network": np}; // Netplan (root) - Complete
+  /////////////////////////////////////////////////////////////////////////////////
   // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8')); // From
   // To YAML
   var ycfg = {
     'styles': { '!!null': 'canonical' }, // dump null as ~
-    'sortKeys': true
+    //'sortKeys': true
   };
   // YAMLException: unacceptable kind of an object to dump [object Undefined]
   // Known workaround: JSON.parse(JSON.stringify(obj)) https://github.com/nodeca/js-yaml/issues/76
@@ -795,6 +805,11 @@ function netplan_yaml(req, res) {
         .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
   }
 }
+/** Generate Ubuntu 20 subiquity meta-data file */
+function ubu20_meta_data(req, res) {
+  res.end("instance-id: focal-autoinstall\n");
+}
+
 /** generate API doc out of swagger API doc.
  * Swagger apidoc structure has several weaknesses for logic-less templating (e.g Mustache, google ctemplate)
  * and has to be transformed to less quirky formats in many parts of structure.
