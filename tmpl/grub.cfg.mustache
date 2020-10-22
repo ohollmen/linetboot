@@ -1,0 +1,50 @@
+# Grub PXE Info
+# Ubuntu
+# - Google: ubuntu grub pxe package
+# - http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
+# - https://wiki.ubuntu.com/UEFI/PXE-netboot-install
+# - https://wiki.ubuntu.com/UEFI/SecureBoot/PXE-IPv6
+# - https://c-nergy.be/blog/?p=13334
+# - https://wiki.up-community.org/Enable_PXE_boot - shows grubnetx64.efi.signed can be used w/o rename
+# - https://docs.openstack.org/ironic/pike/install/configure-pxe.html - Multi-distro tutorial, introduce
+#     concept of config dispatching by IP address, Talks all 3 bootloaders: pxelinux, grub2, iPXE
+# RH/Centos/OL
+# - https://docs.oracle.com/en/operating-systems/oracle-linux/7/install/ol7-install-pxe-boot-uefi.html
+# - Packages:
+#   - grub2-efi shim
+# Suse:
+# - packages: grub2-x86_64-efi shim
+#
+# Essential info on grub.cfg:
+# - for normal boot, the lines kernel (or linux), initrd or append can be pasted verbatim to grub.cfg
+#   to corresponding lines. "linux" in grub.cfg is the whole kernel command line, not only kernel file
+#   (like pxelinux kernel + append combined)
+#  - grub.cfg linux: Like pxelinx : (linux or kernel) + append
+#  - grub.cfg initrd: Like pxelinux initrd, but initrd should never be left as part of kernel line (?).
+# Bootloader file availability:
+# - Possible Files: bootx64.efi ???
+# - http://archive.ubuntu.com/ubuntu/dists/trusty/main/uefi/grub2-amd64/current/grubnetx64.efi.signed
+# - packages:
+# - Package shim-signed shimx64.efi.signed (NOT:shim.efi.signed) (rename to) => bootx64.efi
+# - Package grub-efi-amd64-signed grubnetx64.efi.signed (rename to - optional) => grubx64.efi
+# - package grub-common has unicode.pf2 (grub/fonts/unicode.pf2)
+# - Package grub-imageboot - important for booting ISO/raw images
+set menu_color_normal=white/black
+set menu_color_highlight=black/light-gray
+set default 0
+set timeout=10
+
+menuentry "Ubuntu 18 Server Non-auto" {
+  set gfxpayload=keep
+  linux http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux gfxpayload=800x600x16,800x600 --- quiet
+  initrd http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz
+}
+
+menuentry 'Centos 7 Auto Install' {
+  echo "Loading Centos kernel"
+  # linuxefi efi/vmlinuz inst.repo=http://10.0.0.11/OSimage/OL7 inst.ks.sendmac inst.ks=http://10.0.0.11/ksfiles/ol7_cfg.ks
+  linuxefi http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+  echo "Loading Centos initrd"
+  initrdefi http://{{ httpserver }}/centos7/images/pxeboot/initrd.img
+  echo "Booting installation kernel"
+}
