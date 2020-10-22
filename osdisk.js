@@ -27,6 +27,7 @@ https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-an
 * Windows part typeid: 0x27 does not receive drive letter
 */
 var Mustache = require("mustache");
+var yaml  = require('js-yaml'); // subiquity
 // NOTE: Loading osinstall.js here on top shows it's
 // module.exports (== osinst) as empty (object) !!!
 // See console.log() below. Must load during init() ... osinst shows ok.
@@ -49,15 +50,27 @@ var winparts = [
 // /boot/efi FS Recommends: Suse: FAT32 (vfat ?)
 var linparts = [
   { size_mb: 250, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // 512
-  // Linux distros seemt to agree on the mpt: "/boot/efi"
-  { size_mb: 200, type: "Primary",  fmt: "fat32", lbl:"", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
+  // Linux distros seem to agree on the mpt: "/boot/efi"
+  // NEW: Added lbl: ESP
+  { size_mb: 200, type: "Primary",  fmt: "fat32", lbl:"ESP", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
   // mpt: biosboot usable w. KS as-is
   { size_mb: 1,   type: "Primary",  fmt: "biosboot",     lbl:"biosboot", mpt: "biosboot"}, // "BIOS Boot" EFI/GPT 1 MiB
   { size_mb: 16000,type: "Primary",     fmt: "swap", lbl:"swap", mpt: "swap"}, // RH+KS wants mpt: "swap"
   { size_mb: 32000,type: "Primary",  fmt: "ext4", lbl:"root", mpt: "/", extend: true},
   
 ];
-
+/** Derive from partitions what kind of partition table is in use.
+ * The need for this may go away if we store partitions in wrapping object where ptable type is already
+ * indicates.
+ * @param parr - Array of paritions.
+ */
+function ptable_derive(parr) {
+  var m = parr.filter((p) => { return (p.type == 'MSR') || (p.fmt == 'biosboot') || (p.lbl == 'biosboot'); });
+  return m.length ? "gpt" : "mbr";
+}
+function is_esp(p) {
+  return (p.mpt && p.mpt.match(/\befi$/) || (p.type == 'ESP') || (p.type == 'EFI'));
+}
 /** Try to create simple Linux disk layout with root partition and swap plus mandatory extra parts.
  * Mandatory extra parts include parts like "EFI System" and RH conventional "/boot" part.
  * 
@@ -68,7 +81,7 @@ var linparts = [
 function lindisk_layout_create(btype, ostype) {
   var parts = dclone(linparts);
   // Debian/Ubuntu - delete boot
-  if (ostype && ostype.match(/(ubu|deb)/)) { parts.splice(0, 1); }
+  if (ostype && ostype.match(/^(ubu|deb)/)) { parts.splice(0, 1); }
   // MBR => Delete EFI
   if (btype == 'mbr') {
     // Just mark extend
@@ -451,10 +464,8 @@ function disk_out_ks(parr) {
  * d-i/debian-installer/doc/devel/partman-auto-recipe.txt
  */
 function disk_out_partman(parr) {
-  // root :: (???)
-  var cont = "boot-root :: ";
   var hasboot = 0; // Has boot-flagged partition  $bootable{ } - Allow only single
-  var comps = ["boot-root :: "];
+  var comps = []; // DO NOT Include name **here**, e.g. "boot-root :: "
   parr.forEach((p) => {
     // Number triplet:
     // - Min
@@ -468,8 +479,9 @@ function disk_out_partman(parr) {
     // Non-extN (low-level) partition - do not prioritize for growth
     if (!p.fmt.match(/^ext/) && !p.extend) { tri[1] = p.size_mb; }
     var pdef = tri.join(" ");
-    
-    //pdef += p.size_mb ? " --size="+p.size_mb : "";
+    // Additional format indicator here (e.g. "ext3", "linux-swap") ?
+    if (p.fmt == 'swap') { pdef += " linux-swap"; }
+    else { pdef += " "+p.fmt; }
     pdef += (p.type.toLowerCase() == 'primary' ? " $primary{ } " : "");
     // Derive $bootable{ } - Allow only single (see hasboot) !
     if (((p.mpt == '/') || (p.mpt == '/boot')) && !hasboot ) { pdef += " $bootable{ }"; }
@@ -485,10 +497,108 @@ function disk_out_partman(parr) {
       pdef += p.mpt ? " mountpoint{ "+p.mpt+" }" : "";
     }
     //pdef += " ";
-    pdef += " .\n";
+    pdef += " .";
     comps.push(pdef);
   });
   return comps.join("\n") + "\n";
+}
+
+// Reassemble partman string as preseed embeddable, line continuum chars included.
+    function partman_esc_multiline(out) {
+      //var comps = out.split(/\.\s+/);
+      //if (!comps[comps.length-1]) { comps.pop(); }
+      //console.log("Comps:", comps);
+      //return comps.join(".\\\n") + " .";
+      out = out.replace(/\.\n/g, ".\\\n"); out = out.replace(/\.\\\n$/, ".\n"); // Strip last '\'
+      return out;
+    }
+    
+/** Output disk in parted format.
+ * Used by e.g. alis.
+ * 
+ */
+function disk_out_parted(parr) {
+  var parttypes = {"mbr": "msdos", "gpt":"gpt"};
+  var type = ptable_derive(parr);
+  // parted uses gpt/msdos
+  var comps = ["mklablel "+parttypes[type]];
+  var idx1 = 1;
+  var curroff = (type == "mbr" ? 4 : 1); // Start offset (Arch/alis)
+  parr.forEach((p) => {
+    var pdef = "mkpart";
+    // This should say "ESP" for "EFI system partition
+    if ((type == 'gpt') && is_esp(p)) { pdef += " ESP"; }
+    else { pdef += (p.type.toLowerCase() == 'primary') ? " primary" : ""; }
+    pdef += " "+p.fmt;
+    // Start, End (!!)
+    pdef +=  " " + curroff + "MiB";
+    curroff += p.size_mb;
+    
+    // Note: End of prev should be beginning of new (Or 100% for last-only (??))
+    if (p.extend) { pdef += " 100%"; }
+    else { pdef +=  " " +curroff + "MiB"; }
+    // NOT: Then MAX ? Either 512MiB or 100% in (alis 2 part) examples
+    // NOT: else { pdef += " 512MiB"; }
+    // Label ?
+    if (p.lbl) { pdef += " name " + idx1 + " "+p.lbl+""; }
+    comps.push(pdef);
+    if (p.fmt == 'swap') { comps.push("set "+idx1+ " swap on"); }
+    idx1++;
+  });
+  comps.push("set 1 "+(type == 'gpt' ? 'esp' : 'boot')+" on");
+  // Swap
+  
+  return comps.join(" ");
+}
+/** Create Ubuntu 20 subiquity YAML "storage.config" section (Array of Objects).
+ * This is by far the most indirect, yet linearly presented format (one step beyond MS Autounattend.xml "DiskConfiguration" section).
+ * - Each partition has 3 different entities associated with it (classified by "type"-attribute):
+ *   - partition, format (refers to partition, aka. volume: ...), mount (refers to format)
+ * - All of above types are are presented in linear array (!)
+ * - Additionalyy the disk / partition table (type: disk) is presented in the same linear array (typically as first item)
+ * ### References
+ * https://ubuntu.com/server/docs/install/autoinstall-reference
+ * https://askubuntu.com/questions/1244293/how-to-autoinstall-config-fill-disk-option-on-ubuntu-20-04-automated-server-in
+ * https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py - disk schema allowed vals
+ */
+function disk_out_subiquity(parr) {
+  var parttypes = {"mbr": "msdos", "gpt":"gpt"}; // subiquity uses msdos (dos), not "mbr"
+  var type = ptable_derive(parr);
+  var mytype = parttypes[type];
+  // parted uses gpt/msdos.So does ubiquity
+  var comps = [{ type: "disk", id: "disk-sda", ptable: mytype, path: "/dev/sda", preserve: false, name: '', grub_device: false, // true ?
+     wipe: "superblock"
+     }]; // "mklablel "+
+  var idx1 = 1;
+  parr.forEach((p) => {
+    // subiquity partition (sp)
+    // Should not be on part-level: wipe: "superblock", ?
+    var sp = {type: "partition", id: "partition-sda"+idx1, device: "disk-sda",  preserve: false, number: 1,
+       //size: p.size_mb*1000000,  flag: "boot",
+       //grub_device: true,
+    };
+    // Add optionals
+    sp.size = p.extend ? -1 : p.size_mb*1000000;
+    // flag: bios_grub
+    if (idx1 == 1) { sp.flag = "boot"; } // TODO: REVIEW p.lbl == "biosboot"
+    if (idx1 == 1) { sp.grub_device = true; }
+    comps.push(sp);
+    // subiquity format
+    var sf = {type: "format", id: "format-"+idx1,  volume: "partition-sda"+idx1, fstype: p.fmt, preserve: false, };
+    comps.push(sf);
+    // subiquity mount
+    var sm = {type: "mount", device: "format-"+idx1, path: p.mpt,  id: "mount-"+idx1};
+    if (p.mpt) { comps.push(sm); } // If mountable
+    idx1++;
+  });
+  console.log(comps);
+  // YAML ! //'sortKeys': true
+  var ycfg = {
+    'styles': { '!!null': 'canonical' }, // dump null as ~
+  };
+  var ycont = yaml.safeDump(comps, ycfg);
+  //
+  return ycont;
 }
 module.exports = {
   init: init,
@@ -496,10 +606,14 @@ module.exports = {
   diskinfo: diskinfo, // Handler
   // Windows
   disk_out_winxml: disk_out_winxml,
+  // TODO: layouts: {lin: lindisk_layout_create, win: windisk_layout_create}
   windisk_layout_create: windisk_layout_create,
+  lindisk_layout_create: lindisk_layout_create,
   disk_out_ks: disk_out_ks,
   disk_out_partman: disk_out_partman,
   disk_out_yast: disk_out_yast,
-  lindisk_layout_create: lindisk_layout_create,
+  disk_out_parted: disk_out_parted,
+  disk_out_subiquity: disk_out_subiquity,
+  partman_esc_multiline: partman_esc_multiline,
   tmpls: tmpls
 };
