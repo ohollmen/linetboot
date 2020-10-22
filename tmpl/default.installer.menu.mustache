@@ -166,6 +166,10 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 
 # Ubuntu Server 20.04
 # Relies on completely new subiquity installer ("live-installer") and YAML autoinstall mechanism (non-preseed).
+# Seems to not work without special kernel options on 2GB RAM machines
+# - No settings: ("79% 717 MB ... (initramfs) wget: short write: No space left on device")
+# - root=/dev/ram0 ramdisk_size=1500000 Freeze at "System time synchronized"
+# - root=/dev/ram0 ramdisk_size=1650000 At time settings: Out of memory (cloud-init), but continues for ~ 10 lines
 # https://ubuntu.com/server/docs/install/autoinstall-quickstart
 # https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
 # OLDER: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
@@ -174,25 +178,26 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # Seems file / URL path downloaded is "user-data"
 # Needs also file (in same path): "meta-data: instance-id: focal-autoinstall
 # Seems loop-mounted dir is not accepted url=... must be an ISO file.
-#label ubuntu2004
-#menu label Install Ubuntu 20.04 Server (TODO: Automated)
-#kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
-# append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp autoinstall
-# url=http://{{ httpserver }}/isoimages/ubuntu-20.04-live-server-amd64.iso
-# ds=nocloud-net\;s=http://{{ httpserver }}/
+label ubuntu2004
+menu label Install Ubuntu 20.04 Server (TODO: Automated)
+kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
+# Note: add kenel param autoinstall. Should not need /isoimages (as it's an added root)
+append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso ds=nocloud-net\;seedfrom=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
 # NONEED(?): priority=critical auto=true interface=auto ipv6.disable=1
 # MAY NEED: root=/dev/ram0 ramdisk_size=1500000
 # Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
+# "s" seems to be alias for "seedfrom"
 
 label ubuntu1804
 menu label Install Ubuntu 18.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux
-#kernel ubuntu-installer/amd64/linux
 # Must have: "auto=true" (Not only "auto", which may be sufficient for older distros)
 # --
-# priority=critical (works alternate to hostname...,domain... below) Another: debconf/priority=high
+# Default: priority=critical (works alternate to hostname...,domain... below)
+# Another: debconf/priority=high
+# Debugging install and show components: install debconf/priority=medium 
 # hostname=unassigned-hostname domain=unassigned-domain
-append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=medium auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
