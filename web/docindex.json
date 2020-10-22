@@ -32,8 +32,13 @@
       "grp":"ins"
     },
     {
-      "title" : "Configuration",
+      "title" : "Configuration - Prerequisites",
       "urlpath" : "doc/README.configure.md",
+      "grp":"ins"
+    },
+    {
+      "title" : "Configuration - Linetboot",
+      "urlpath" : "doc/README.linetbootconf.md",
       "grp":"ins"
     },
     {
