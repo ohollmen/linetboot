@@ -18,21 +18,21 @@ ipconfig.exe
 net use I: \\{{ smbserver }}\isomnt /user:user pass
 :: Launch wget and get Autounttend.xml from http ?
 :: (Win binary avail. (e.g.) https://eternallybored.org/misc/wget/ - EXE)
-:: TODO: cd to another dir before downloading Autounattend.xml ?
-:: cd x:\
-I:\wget.exe http://{{httpserver}}/Autounattend.xml
-dir x:\windows\system32\*.xml
+:: Note: If you get "Access is denied", make sure wget.exe is executable at
+:: samba drive end (chmod a+x wget.exe)
+I:\wget.exe http://{{httpserver}}/Autounattend.xml -O X:\Autounattend.xml
+dir X:\*.xml
 :: Run installer from network drive
 :: Pops up a "Windows Setup" dialog with lang, time/curr fmts and KB settings
 :: and button to proceed (Next). Does not seem to run A..xml
 :: (even is in same but not current dir) as the settings are in
 :: A...xml
 :: setup.exe Accepts /unattend:filename option
-:: Autounattend.xml from Samba drive
-:: 1) From within loop mount (ro)
+:: Autounattend.xml from various sources
+:: 1) From within samba server side loop mount (ro)
 :: I:\win2019\setup.exe /unattend:I:\win2019\Autounattend.xml
 :: 2) From top of Samba drive (modifiable)
-I:\win2019\setup.exe /unattend:I:\Autounattend.xml
-:: 3) Autounattend.xml from Lineboot (may be host-tailored)
-:: I:\win2019\setup.exe /unattend:x:\windows\system32\Autounattend.xml
+:: I:\win2019\setup.exe /unattend:I:\Autounattend.xml
+:: 3) Autounattend.xml downloaded from Lineboot (may be host-tailored)
+I:\win2019\setup.exe /unattend:X:\Autounattend.xml
 :: If run from x:\ rename setup.exe.orig
