@@ -6,6 +6,11 @@
 # Read the Arch Linux wiki pages to learn more about the variables values.
 # https://github.com/picodotdev/alis/blob/master/README.md
 
+# This file is mildly modified from original for Linetboot
+# (https://github.com/ohollmen/linetboot) to get PXE install working
+# (See https://github.com/ohollmen/linetboot/blob/master/scripts/arch_alis_run.sh
+# for the "glue" of making this happen)
+
 # init
 KEYS="us"
 LOG="false"
@@ -14,18 +19,24 @@ LOG="false"
 DEVICE="/dev/sda !/dev/nvme0n1 !/dev/mmcblk0" # sata nvme mmc (single)
 DEVICE_TRIM="true" # If DEVICE supports TRIM
 # LVM="true" # true if use LVM for partitioning
+# Discovered: LVM must be *explicitly* set to either (true/false) value
+# (there no impliend default and above example LVM=... was commented out).
+LVM="false"
 # LUKS - Linux Unified Key Setup (disk encryption)
 #LUKS_PASSWORD="archlinux" # LUKS encryption key, if LVM will be user LVM on LUKS. Empty for not use LUKS/encryption. Warning: change it!
 #LUKS_PASSWORD_RETYPE="archlinux"
-FILE_SYSTEM_TYPE="ext4 !btrfs !xfs" # (single)
+# Seems *only* one fs-token is tolerated here (no '!' prefixed options allowed,
+# these would be embedded (with '!') to parted command line
+FILE_SYSTEM_TYPE="ext4" # (single). Had also:  "... !btrfs !xfs"
 # Arch convention is to use swap-file (not swap-partition)
 SWAP_SIZE="!2048 !4096 !8192" # (single, in megabytes)
 # Custom for fully automated
 PARTITION_MODE="!auto custom !manual"
 PARTITION_CUSTOM_PARTED_UEFI="mklabel gpt mkpart ESP fat32 1MiB 512MiB mkpart root $FILE_SYSTEM_TYPE 512MiB 100% set 1 esp on"
 PARTITION_CUSTOM_PARTED_BIOS="mklabel msdos mkpart primary ext4 4MiB 512MiB mkpart primary $FILE_SYSTEM_TYPE 512MiB 100% set 1 boot on"
-PARTITION_CUSTOMMANUAL_BOOT="!/dev/sda1 !/dev/nvme0n1p1 !/dev/mmcblk0p1"
-PARTITION_CUSTOMMANUAL_ROOT="!/dev/sda2 !/dev/nvme0n1p2 !/dev/mmcblk0p2"
+# These (.._BOOt, .._ROOT) must have one enabled (There is no default)
+PARTITION_CUSTOMMANUAL_BOOT="/dev/sda1 !/dev/nvme0n1p1 !/dev/mmcblk0p1"
+PARTITION_CUSTOMMANUAL_ROOT="/dev/sda2 !/dev/nvme0n1p2 !/dev/mmcblk0p2"
 
 # network_install
 WIFI_INTERFACE=""
@@ -83,8 +94,8 @@ SYSTEMD_HOMED_CIFS_SERVICE=""
 # mkinitcpio
 HOOKS="base !udev !usr !resume !systemd !btrfs keyboard autodetect modconf block !net !dmraid !mdadm !mdadm_udev !keymap !consolefont !sd-vconsole !encrypt !lvm2 !sd-encrypt !sd-lvm2 fsck filesystems"
 
-# bootloader
-BOOTLOADER="!grub !refind systemd" # (single)
+# bootloader. Must be grub, esp defalt enabled 'systemd' does not work (well - it's not a bootloader anyway)
+BOOTLOADER="grub !refind !systemd" # (single)
 
 # desktop
 DESKTOP_ENVIRONMENT="!gnome !kde !xfce !mate !cinnamon !lxde !i3-wm !i3-gaps" # (single)
@@ -125,3 +136,5 @@ SYSTEMD_UNITS="" # eg. "ufw.service nginx.service" to enable, "!uwf.service !ngi
 
 #reboot
 REBOOT="true"
+# Must have this (discovered the hard way) and be only set to basename (NOT: /usr/bin/bash)
+CUSTOM_SHELL="bash
