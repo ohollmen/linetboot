@@ -193,11 +193,13 @@ menu label Install Ubuntu 18.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux
 # Must have: "auto=true" (Not only "auto", which may be sufficient for older distros)
 # --
-# Default: priority=critical (works alternate to hostname...,domain... below)
-# Another: debconf/priority=high
-# Debugging install and show components: install debconf/priority=medium 
-# hostname=unassigned-hostname domain=unassigned-domain
-append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=medium auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+# priority:
+# - Default, works best for prod: priority=critical (works alternate to hostname...,domain... below)
+# - debconf/priority=high
+# - Debugging install and show (menu) components: install debconf/priority=medium 
+# hostname=unassigned-hostname domain=unassigned-domain. DEBCONF_DEBUG=5
+# Skip tasksel: tasksel:tasksel/first=""
+append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -416,6 +418,7 @@ sysappend 3
 
 label archlinux_auto
 menu label Arch Linux (Full Auto Install)
+kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/ script=http://{{ httpserver }}/scripts/arch_alis_run.sh
 sysappend 3
