@@ -5,6 +5,7 @@
 # For more info, aee (Directory): $ISOROOT/usr/share/examples/pc-sysinstall
 # # References
 # https://www.youtube.com/watch?v=Yz2_n2yicnc&t=884s
+# http://ftp.icm.edu.pl/packages/pcbsd/iso/10.3-RELEASE/amd64/docs/html/advanced.html
 #############
 # (fresh/upgrade/extract)
 installMode=fresh
@@ -40,7 +41,7 @@ netDev=em0
 #netSaveDev=AUTO-DHCP
 netIP={{ net.ipaddress }}
 netMask={{ net.netmask }}
-netNameServer={{ net.nameservers }}
+netNameServer={{ net.nameserver_first }}
 netDefaultRouter={{ net.gateway }}
 ############# Disk #################
 # Partition table (MBR/GPT)
