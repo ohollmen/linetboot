@@ -53,6 +53,7 @@
  */
 var fs = require("fs");
 var Mustache = require("mustache");
+var yaml   = require('js-yaml'); // subiquity
 
 var hlr    = require("./hostloader.js"); // file_path_resolve
 var osdisk = require("./osdisk.js");
@@ -127,7 +128,18 @@ var recipes = [
   {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"}, // ctype: "*yast*" ?
   // {"url":"/control-files/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"},
   {"url":"/alis.conf",       "ctype":"arch",       "tmpl":"alis.conf.mustache"},
+  // Ubuntu 20 ("focal") "autoinstall" yaml (not template-only) ?
+  // https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
+  {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", pp: pp_subiquity},
 ];
+function pp_subiquity(out, d) {
+  var out2 = out;
+  var y;
+  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
+  // Add disk (d.diskinfo), net (d.net)
+  if (y) {}
+  return out2;
+}
 var recipes_idx = {};
 // TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
 // var _skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
@@ -147,8 +159,17 @@ function url_config_type(url) {
 //  return _skip_host_params[url];
 //}
 // Wrapper for getting template content
-function template_content(url) {
-  //return tmpls[ctype]; // OLD/Cached: global.tmpls
+function template_content(url, forcefn) {
+  var recipe = recipes_idx[url]; // url
+  if (!recipe) { console.log("No recipe for URL: "+ url); return ""; }
+  var fn = recipe.tmpl;
+  // Force template name override, but put his still through filename resolution.
+  if (forcefn) { fn = forcefn; console.log("Override template name (from hostparams?) to: "+forcefn); }
+  var fnr = hlr.file_path_resolve(fn, global.inst.tmpl_path);
+  if (!fs.existsSync(fnr)) { console.log("Resolved Template "+fnr+" does not exist !"); return ""; }
+  return fs.readFileSync(fnr, 'utf8');
+}
+//return tmpls[ctype]; // OLD/Cached: global.tmpls
   //// Phase 2 (url)
   //var ctype = tmplmap[url];
   //if (!ctype) { return ""; }
@@ -156,13 +177,7 @@ function template_content(url) {
   //////////////////////////////////
   // NEW: On demand
   //var url = "";
-  var recipe = recipes_idx[url]; // url
-  if (!recipe) { console.log("No recipe for URL: "+ url); return ""; }
-  var fn = recipe.tmpl;
-  var fnr = hlr.file_path_resolve(fn, global.inst.tmpl_path);
-  if (!fs.existsSync(fnr)) { console.log("Resolved Template "+fnr+" does not exist !"); return ""; }
-  return fs.readFileSync(fnr, 'utf8');
-}
+
 //////// cache templates into memory. TODO: Deprecate or make optional //////
 /*
 function templates_load() {
@@ -293,9 +308,9 @@ function host_for_request(req, cb) { // UNUSED
 * 
 * ## GET Query Parameters supported
 * 
-* - osid - Hint on (e.g. `osid=ubuntu18`)
+* - osid - Hint on operating system type (e.g. `osid=ubuntu18`, used by parameter creation logic)
 * - ip - Overriden IP address (wanted for content generation)
-* - trim - Clean ouput, no comment lines (for debugging)
+* - trim - Clean ouput, no comment lines (mostly for debugging)
 * 
 * ## URL-to-conftype-to-template Mapping
 * 
@@ -323,7 +338,7 @@ function preseed_gen(req, res) {
   
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
-  console.log("Preseed or KS Gen by (full w. qparams) URL: " + req.url + "(ip:"+ip+")"); // osid=
+  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+")"); // osid=
   // OLD location for tmplmap = {}, skip_host_params = {}
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
   var recipe = recipes_idx[url]; // Lookup recipe
@@ -347,10 +362,13 @@ function preseed_gen(req, res) {
   var d; // Final template params
   if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
   if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
+  if (url.match(/\buser-data\b/i)) { osid = 'ubuntu20'; } // As this *cannot* be fitted into URL
+  var hps = {}; // Host params
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
     // var p = global.hostparams[f.ansible_fqdn]; // f vs. h
+    hps = hlr.hostparams(f) || {}; // NEW: lookup !
     d = host_params(f, global, ip,  osid); // ctype,
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
     console.log("Call patch (stage 2 param formulation) ...");
@@ -377,11 +395,14 @@ function preseed_gen(req, res) {
   params_compat(d);
   if (req.query.json) { return res.json(d); }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
-  //var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
-  var tmplcont = template_content(url); // NEW: url
+  //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
+  // To facilitate preseed / debian-installer debugging with hard wired/literal preseeds (from internet)
+  var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null;
+  var tmplcont = template_content(url, forcefn); // NEW: url
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', ..."); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
+  if (recipe.pp) { output = recipe.pp(output, d); }
   // Post-process (weed comments and empty lines out )
   var line_ok = function (line) { return !line.match(/^#/) && !line.match(/^\s*$/); };
   var oklines = output.split(/\n/).filter(line_ok);
@@ -491,6 +512,7 @@ function params_compat(d) {
 function host_params(f, global, ip,  osid) { // ctype,
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
+  // Many parts of recipe creation might need hostparams (hps)
   var hps = hlr.hostparams(f) || {};
   if (anet.address != ip) {
     var msg = "# Hostinfo IP and detected ip not in agreement\n";
@@ -509,6 +531,10 @@ function host_params(f, global, ip,  osid) { // ctype,
   console.log("HPS:",hps);
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
+  
+  // Assemble. TODO: Make "inst" top level
+  var d = dclone(global); // { user: dclone(user), net: net};
+  
   var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
   // TODO: Merge these, figure out lin/win (different signature !)
@@ -520,22 +546,36 @@ function host_params(f, global, ip,  osid) { // ctype,
     partials = osdisk.tmpls; // TODO: merge, not override !
     instpartid = parts.length; // Because of 1-based numbering length will be correct
   }
-  if (osid.match('^suse')) {
-    //var ptt = hps["ptt"] || 'mbr';
+  if (osid.match(/^suse/)) {
+    //MOVED: var ptt = hps["ptt"] || 'mbr';
     parts = osdisk.lindisk_layout_create(ptt, 'suse');
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
-  // Assemble. TODO: Make "inst" top level
-  var d = dclone(global); // { user: dclone(user), net: net};
+  // This produces content, not params for partials
+  if (osid.match('ubu') || osid.match('deb')) {
+    parts = osdisk.lindisk_layout_create(ptt, 'debian');
+    var out = osdisk.disk_out_partman(parts);
+    console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
+    
+    out = osdisk.partman_esc_multiline(out);
+    console.log("PARTMAN-DISK:'"+out+"'");
+    d.diskinfo = out; // Disk Info in whatever format directly embeddable in template
+  }
+  if (osid.match('ubuntu20')) {
+    parts = osdisk.lindisk_layout_create(ptt, 'debian');
+    var out = osdisk.disk_out_subiquity(parts);
+    console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
+    d.diskinfo = out;
+  }
   d.net = net;
   d.user = user; // global (as-is). TODO: Create password_hashed
   d.disk = disk; // Gets put to data structure here, but template decides to use or not.
   // Win
-  d.parr = d.parts = parts; // TODO: Fix to singular naming
-  d.partials = partials;
-  d.instpartid = instpartid;
+  d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
+  d.partials = partials; // Suse or Win
+  d.instpartid = instpartid; // Win
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
@@ -569,15 +609,25 @@ function netconfig(net, f) {
   if (!f) { return net; } // No facts, cannot do overrides
   var anet = f.ansible_default_ipv4; // Ansible Net
   var dns_a = f.ansible_dns; // Has search,nameservers
-  net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
-  net.nameservers = net.nameservers.join(" "); // Debian: space separated
+  
   // Override nameservers, gateway and netmask from Ansible facts (if avail)
   if (dns_a.nameservers && Array.isArray(dns_a.nameservers)) {
-    net.nameservers = dns_a.nameservers.join(" ");
+    // Dreaded systemd 127.0.0.53
+    if ( ! dns_a.nameservers.includes('127.0.0.53')) { net.nameservers = dns_a.nameservers; }
+    
   }
-  // Account for KS needing nameservers comma-separated
+  net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
+  net.nameservers_csv  = net.nameservers.join(','); // Account for KS needing nameservers comma-separated
+  
+  // net.nameservers = net.nameservers.join(" ");
+  net.nameservers_ssv = net.nameservers.join(" ");
+  net.nameservers_str = net.nameservers.join(" ");
+  //OLD:net.nameservers = net.nameservers.join(" "); // Debian: space separated
+  // namesearch
+  net.namesearch_str = net.namesearch.join(" ");
   // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
-  net.nameservers_csv = net.nameservers.replace(' ', ',');
+  
+  net.nameserver_first = net.nameservers[0];
   // TODO: net.nameservers_ssv // Space separated values (?)
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
@@ -626,7 +676,8 @@ function script_send(req, res) {
   var url = req.url;
   var fname = req.params.filename;
   
-  console.log("Send Script with fname "+fname+" to " + ip);
+  console.log("Send Script with fname '"+fname+"' to " + ip);
+  var f = hostcache[ip];
   res.type("text/plain");
   // TODO: Create later a smarter data driven solution
   // if (fname == 'preseed_dhcp_hack.sh') { res.send("kill-all-dhcp; netcfg\n"); return; }
@@ -639,8 +690,17 @@ function script_send(req, res) {
   if (tpc) {
     console.error("need templating w." + tpc);
     var p = {};
-    if (tpc == 'user') { p = user; }
-    if (tpc == 'net') { p = global.net; } // TODO: adjust
+    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver; }
+    if (tpc == 'net') {
+      p = dclone(global.net);
+      p.httpserver = global.httpserver; // Complement w. universally needed var
+      if (f) {
+        var anet = f.ansible_default_ipv4 || {};
+        // p.httpserver = 
+        p.ipaddress = anet.address; p.hostname = f.ansible_hostname; p.macaddr = anet.macaddress;
+        console.log("Net-context: "+p);
+      }
+    } // TODO: adjust
     if (tpc == 'global') { p = global; }
     // Custom ... how to formulate this into more static config ? clone global and add ?
     if (tpc == 'sysinfo') {
@@ -648,9 +708,9 @@ function script_send(req, res) {
       p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
     // console.error("Params: ", p);
-    cont = Mustache.render(cont, p);
+    cont = Mustache.render(cont, p); // partials for complex scripts ? In that case should cache partials
   }
-  //else { console.error("No need for templating"); }
+  //else { console.error(fname + " - No need for templating"); }
   if (cont) { res.send(cont); return; }
   res.send("# Hmmm ... Unknown file.\n");
 }
@@ -677,7 +737,8 @@ function needs_template(cont) {
   if (tcs.length > 1) { console.error("Ambiguous TEMPLATE_WITH tagging ...."); return null; }
   return tcs[0];
 }
-/** Produce a listing of Recipes
+/** Produce a listing of Recipes.
+ * Let recipes (module variable) drive the generation of grid.
  */
 function recipe_view(req, res) {
   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
