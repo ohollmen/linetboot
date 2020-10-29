@@ -125,8 +125,9 @@ function menu_deflbl(fn) {
 */
 function bootlbl2bootitem(bootlbl, tcfg) {
   tcfg = tcfg || {}; // module init stored ?
-  if (!tcfg.menutmpl) { throw "No Boot Menu file found for label validation "; }
   var mfn = tcfg.menutmpl;
+  if (!mfn) { throw "No Boot Menu file found in config for label validation "; }
+  if (!fs.existsSync(mfn)) { throw "Boot Menu file "+mfn+" does not exist!"; }
   // Validate boot label against 
   var boots = bootlabels(mfn);
   if (!boots) { throw "No bootlabel structure";  } // return null;
