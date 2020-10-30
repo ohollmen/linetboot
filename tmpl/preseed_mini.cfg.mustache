@@ -23,7 +23,7 @@ d-i netcfg/disable_autoconfig boolean true
 d-i netcfg/get_ipaddress string {{ net.ipaddress }}
 d-i netcfg/get_netmask string {{ net.netmask }}
 d-i netcfg/get_gateway string {{ net.gateway }}
-d-i netcfg/get_nameservers string {{ net.nameservers }}
+d-i netcfg/get_nameservers string {{ net.nameservers_str }}
 d-i netcfg/confirm_static boolean true
 
 
