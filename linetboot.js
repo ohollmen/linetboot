@@ -64,7 +64,10 @@ var fact_path;
 var hostcache = {};
 var hostarr = [];
 var ldconn; var ldbound;
+
 app.use(bodyParser.json({limit: '1mb'}));
+var rawoptions = { inflate: true, limit: '10kb', type: 'application/octet-stream' };
+app.use(bodyParser.raw(rawoptions));
 
 /** Initialize Application / Module with settings from global conf.
 * @param cfg {object} - Global linetboot configuration
@@ -235,6 +238,8 @@ function app_init() { // global
   app.get("/setaddr",  ib_set_addr);
   // cloud-init/subiquity/curtin
   app.get("/meta-data",  ubu20_meta_data);
+  
+  app.post("/keyxchange",  keys_exchange);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -258,7 +263,10 @@ function app_init() { // global
     iptrans = require(mfn); // TODO: try/catch ?
     console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
   }
-  
+  // TODO: Clear up bot in doc and code how customhosts work in 2 cases:
+  // - Load into runtime directly from CSV file
+  // - generate facts and remote config from customhosts
+  // - TODO: Possibly converge to only one out of these two
   if (global.customhosts) {
     hlr.customhost_load(global.customhosts, global, iptrans);
   }
@@ -461,7 +469,8 @@ function linet_mw(req, res, next) {
   console.log("SS: ", (req.sessionStore ? "present" : "absent"));
   }
   var s; // Stats
-  console.log("app.use: "+req.method+":" + req.url);
+  var ts = new Date().toISOString();
+  console.log("app.use: "+req.method+" ("+ts+"):" + req.url);
   // 
   if (req.url.match("^(/ubuntu1|/centos|/gparted|/boot)")) {
     // Stat the file
@@ -546,6 +555,7 @@ function oninstallevent(req,res) {
     var sshcfg = {host: ip, username: process.env['USER'], privateKey: netprobe.privkey() }; // pkey
     //var conn = new ssh2.Client();
     var ssh = new node_ssh();
+    console.log("End-of-install: Created SSH client to connect back to "+ip+" for post-install");
     var tout = 10000; // ms. => 10 s. TODO: Pull from config.
     var trycnt_max = 30;
     var trycnt = trycnt_max;
@@ -560,7 +570,7 @@ function oninstallevent(req,res) {
         // Continue with some ssh operation (e.g. ssh.execCommand(cmd, {cwd: ""})) ?
         // ... or just trigger ansible via ansiblerunner ?
       }).catch(function (ex) {
-         console.log("No SSH Conn. Continue polling at every "+tout+" ms.");
+         console.log("No SSH Conn: "+ex+" (tries left "+trycnt+"). Continue polling at every "+tout+" ms.");
       });
       trycnt--;
     }, tout);
@@ -872,10 +882,14 @@ function ssh_key(req, res) {
   var xip = req.query["ip"];
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var f = hostcache[ip];
+  // short key-type to Facts key
   var keytypes = {
     "dsa":    "ansible_ssh_host_key_dsa_public",
+    // ssh-rsa
     "rsa":    "ansible_ssh_host_key_rsa_public",
+    // e.g.  ecdsa-sha2-nistp256
     "ecdsa":  "ansible_ssh_host_key_ecdsa_public",
+    // ssh-ed25519
     "ed25519":"ansible_ssh_host_key_ed25519_public"
     
   };
@@ -883,7 +897,7 @@ function ssh_key(req, res) {
   var keypath =  process.env["LINETBOOT_SSHKEY_PATH"] || global.inst.sshkey_path;
   //if (keypath && !fs.) {}
   res.type("text/plain");
-  var item = req.params.item;
+  var item = req.params.item; // :item in /ssh/:item
   if (!item) { console.error("No key param found (:item)" + ktype); res.send("# Error"); return; }
   var fnprefix; // var ktype;
   var ispublic = 0;
@@ -897,6 +911,7 @@ function ssh_key(req, res) {
   console.error("lookup key type: " + ktype + " public: " + ispublic);
   var pubdb = "facts";
   // Lookup from Facts
+  /*
   if (ispublic && (pubdb = "facts")) {
     var anskey = keytypes[ktype];
     if (!anskey) { console.error("Not a valid key type:" + ktype); res.send("# Error");return; }
@@ -907,19 +922,24 @@ function ssh_key(req, res) {
     // By testing this produces *exactly* correct MD5 despite being "reassebled". Do NOT remove "\n" at end.
     res.send(keytypelbl + keycont + comm + "\n");
   }
-  
+  */
   // Filesystem cached key directory tree lookup
-  if (keypath) {
-    // Form an actual filename
-    var fname = "ssh_host_"+ktype+"_key" + (ispublic ? ".pub" : "");
-    var absfname = keypath + "/" + f.ansible_fqdn + "/" + fname; // Full path
-    if (!fs.existsSync(absfname)) { console.error("No key file:"+absfname+" ktype " + ktype + "(Sending empty file)"); res.send("");return; }
-    var cont = fs.readFileSync(absfname, 'utf8');
-    if (!cont) { console.error("No key content:" + ktype + "(Sending empty file)"); res.send("");return; }
-    res.send(cont);
-    return;
-  }
-  res.send("# Error (not public, not private or keydir missing)\n");
+  var hname = f.ansible_fqdn;
+  // not public, not private or 
+  if ( ! keypath) { res.send("# Error (keypath/root missing)\n"); return; }
+  var hostkeypath = keypath + "/" + hname;
+  if (!fs.existsSync(hostkeypath)) { res.send("# Error (hostkeypath does not exist for "+hname+")\n"); return; }
+  //////////// Individual key vs. key-pack //////////////////////
+  // Single key Form an actual key-filename
+  var fname = "ssh_host_"+ktype+"_key" + (ispublic ? ".pub" : "");
+  var absfname = hostkeypath + "/" + fname; // Full path
+  if (!fs.existsSync(absfname)) { console.error("No key file:"+absfname+" ktype " + ktype + "(Sending empty file)"); res.send("");return; }
+  var cont = fs.readFileSync(absfname, 'utf8');
+  if (!cont) { console.error("# Error - No key content:" + ktype + "(Sending empty file)"); res.send("");return; }
+  res.send(cont);
+  return;
+  
+  
 }
 /** List Archived Host keys for (all) hosts.
 */
@@ -1615,7 +1635,7 @@ function installrequest(req, res) {
   // RedFish (patch)
   if (userf) {
     var rmgmtpath = process.env["RMGMT_PATH"] || global.ipmi.path;
-    var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
+    let rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
     if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
     // Instantiate by IPMI Config (shares creds)
     var ipmiconf2 = redfish.gencfg(global.ipmi, hlr.hostparams(f));
@@ -1636,7 +1656,7 @@ function installrequest(req, res) {
   else if (useipmi && ipmi.rmgmt_exists(q.hname)) {
     //var cmd = "";
     log("Found IPMI info files for " + q.hname);
-    var rmgmt = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
+    let rmgmt = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
     if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
     console.log("HAS-RMGMT:", rmgmt);
     /* NEW: ...
@@ -1879,7 +1899,7 @@ function ldaptest(req,res) {
     var ents = [];
     var d1 = new Date();
     //  +
-    var lds = {base: ldc.userbase, scope: ldc.scope, filter: "("+ldc.unattr+"="+q.uname+")"};
+    var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     lds.filter = "("+ldc.unattr+"="+q.uname+")";
     console.log(d1.toISOString()+" Search: ", lds);
@@ -1906,19 +1926,27 @@ function ldaptest(req,res) {
       //console.log("Got res:"+res);
       //console.log(JSON.stringify(res));
     });
+    function filter_gen(ldc, q) {
+      var fcomps = [];
+      fcomps.push(ldc.unattr+"="+q.uname);
+      ["displayName","mobile","mail", "manager", "employeeID"].forEach((k) => { return k + "="+q.uname; });
+      // fcomps.push(ldc.unattr+"="+q.uname);
+      var fstr = fcomps.map((c) => { return "("+c+")"; }).join(''); // ')('
+      return "(|"+fstr+")";
+    }
 }
 /** Login to application by performing LDAP authentication and app level authorization.
  * Uses main config core.authusers (Array) to authorize users to use linetboot app.
  */
 function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
-  var q = req.query;
+  var q = req.query; // 
+  // TODO: Prefer POST, support GET in transition phase (and with optional forced config?)
+  if (req.method == 'POST') { q = req.body; }
   var ldc = global.ldap;
-  var cc = global.core;
-  // if (req.method == '') {}
+  var cc = global.core; // core config
   if (req.body.username) { q = req.body; } // Object.keys(req.body).length
-  console.log(JSON.stringify(req.body));
-  console.log(JSON.stringify(req.query));
+  console.log("login: Authenticate user '"+q.username+"' (w. passwd of "+q.password.length+" B)." );
   
   if (!q.username) { jr.msg += "No username"; return res.json(jr); }
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
@@ -2120,5 +2148,90 @@ function ib_set_addr(req, res) {
       ress = ress.filter((it) => { return it; });
       ipmac_cmds_gen(ress);
     });
+  }
+}
+/** Exchange keys with a newly installed host (as part of OS install, POST /keyxchange).
+ * Allow new host/user send keys and send it keys in return.
+ * Use rudimentary formats to be shell-scripting fit.
+ * Testing with a CL call: ()
+ * ```
+ * # wget only sends as application/x-www-form-urlencoded
+ * # wget --post-file=${HOME}/.ssh/id_rsa.pub http://192.168.1.10:3000/keyxchange
+ * # Note: curl -d @... seems to strip "\n" out of the content Use --data-binary
+ * curl -v -X POST -H 'content-type: application/octet-stream' http://192.168.1.10:3000/keyxchange --data-binary @${HOME}/.ssh/id_rsa.pub -o /tmp/key
+ * ```
+ * ## SSH Hints
+ * ssh -o UserKnownHostsFile=/dev/null ...
+ * ssh -o StrictHostKeyChecking=no
+ * ## Notes on key formats (/etc/, host itself vs. ~/.ssh)
+ * - /etc/ssh/ non - ".pub" - in PEM format
+ * - /etc/*.pub - 3 fields: 1) keytype (e.g. "ssh-rsa") 2) key in base64 3) user@host (non-FQDN, e.g. root@my-host)
+ * - ~/.ssh/known_hosts (-H for hashed format)
+ *   - 3 fields (string tokens): 1) varies between hashed and non-hashed format, see below, 2) key type (e.g. "ssh-rsa"), 3) key
+ *   - Hashed format (1st field): "|1|s1IhFJ2YZtFWKMcH4rTnHrLKDKo=|bx6d2h/4Pq+IBfpQ16obrrnn6wo=" + type + key
+ *   - Hostname format (1st field): "my-host.comp.com" + type + key
+ *   - IP Format: "192.168.1.22" + type + key
+ *   - Hostname+IP format: "my-host.comp.com,192.168.1.22" + type + key
+ *   - best DIY format: Hostname + IP
+ *   - keyscan: Uses whatever you used on CL (or w. -H)
+ * - authorized_keys can use directly the format of ~/.ssh/id_rsa.pub
+ */
+function keys_exchange(req, res) {
+  var servpubkey = "/etc/ssh/ssh_host_rsa_key.pub";
+  var authkeysfn = process.env["HOME"]+"/.ssh/authorized_keys";
+  console.log("Req hdrs: ", req.headers);
+  
+  var key = req.body.toString();
+  // TODO: DO not strip here. but add "\n" later if missing (reason: matching
+  // in authorized_keys happens by sub-part anyways)
+  if (key.substr(key.length-1, 1) == "\n") {
+    console.log("Strip linefeed");
+    key = key.substr(0, key.length-1);
+  }
+  console.log("Got OS client user key:'" +key+"'");
+  var haskey = authkeys_check_key(authkeysfn, key);
+  console.log("authorized_keys Has key: ", haskey);
+  if ( ! haskey) {
+    if (key.substr(key.length-1, 1) != "\n") { console.log("Added \\n back"); key += "\n"; }
+    //authkeys_add(authkeysfn, key);
+  }
+  /////// Response ////////////////
+  // Send w/o \n for easy grep ?
+  var outkey = netprobe.pubkey();
+  console.log("Resp-Key:"+ outkey);
+  res.end(outkey);
+  // TODO: Consider working on fd-level so that fd is also a exclusivity flag
+  // Ops would be fd = fs.openSync('message.txt', 'a'); fs.appendFileSync(fd, ...) fs.closeSync(fd);
+  // Check key presence in file
+  // Return true value (array of matching lines) if key is present, no action needed (or no action possible) and
+  // false value (0) to signal key needs to be added. Return -1 for file not found.
+  function authkeys_check_key(fn, key) {
+    if (!fs.existsSync(fn)) { return -1; }
+    var kt = key.split(" ", 2); // Key and trailing part
+    key = kt[0] + " " + kt[1]; // "ssh-rsa" + " " + keypart
+    console.log("Re-composed key: " + key);
+    var klen = key.length; // kt[0].length;
+    var i = 0;
+    var iarr = [];
+    var cont = fs.readFileSync(fn, 'utf8');
+    var m = cont.split("\n").filter((line) => {
+      // OLD: line == key .. kt[0]
+      if (line.substr(0, klen) == key) { iarr.push(i); i++; return 1;}
+      i++; return 0;
+    });
+    console.log("Checked "+i+" keys in "+fn);
+    if (m.length) { return iarr; }
+    return 0;
+  }
+  // Add key to authorized keys. Locking needed ?
+  function authkeys_add(fn, key) {
+    if (!fs.existsSync(fn)) { return -1; }
+    try {
+      // fd = fs.openSync('message.txt', 'a');
+      var opts = {mode: 0o600}; // encoding: 'utf8'
+      fs.appendFileSync(fn, key, opts); //  Default mode: 0o666
+    }
+    catch (ex) { console.log("Failed to append key to "+fn+""); return 1; }
+    return 0;
   }
 }
