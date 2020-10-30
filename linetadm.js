@@ -406,6 +406,11 @@ function tftpsetup(opts) {
     mkmacsymlinks(dirs[0], cfg.hostarr);
   //});
   //////// BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache) ////
+  var tmplcfgs = [
+    {path: "/boot/", tmpl: "pc-autoinstall.conf.mustache", "fn": "pc-autoinstall.conf"},
+    {path: "/grub/", tmpl: "grub.cfg.mustache", "fn": "grub.cfg"}
+  ];
+  //tmplcfgs.forEach(() => {
   mkDirByPathSync(tcfg.root+"/boot/");
   var tmpl = fs.readFileSync("./tmpl/pc-autoinstall.conf.mustache", 'utf8');
   console.log("Got "+tmpl.length+" B of template");
@@ -415,6 +420,14 @@ function tftpsetup(opts) {
   var pcauto = Mustache.render(tmpl, mcfg);
   fs.writeFileSync( tcfg.root+"/boot/pc-autoinstall.conf", pcauto, {encoding: "utf8"} );
   
+  mkDirByPathSync(tcfg.root+"/grub/");
+  tmpl = fs.readFileSync("./tmpl/grub.cfg.mustache", 'utf8');
+  console.log("Got "+tmpl.length+" B of template");
+  // Note: Host specific params remain (in examples), see nic_config: (changed to univeral "dhcp-all")
+  // Formulate here:
+  // mcfg.net.nameserver_first = mcfg.net.nameservers[0];
+  var cont = Mustache.render(tmpl, mcfg);
+  fs.writeFileSync( tcfg.root+"/grub/grub.cfg", cont, {encoding: "utf8"} );
   
   /** Create MAC adress files for "pxelinux.cfg"
    * 
@@ -522,8 +535,14 @@ function bootbins(opts) {
     // iPXE (package ipxe)
     ["/usr/lib/ipxe/undionly.kpxe", "undionly.kpxe"],
     ["/usr/lib/ipxe/ipxe.efi", "ipxe.efi"],
-    // Grub
-    // ["", "boot/grub/"] // grub.cfg (menu file)
+    // http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
+    // Grub (orig plan for tftp dir "boot/grub/"
+    // Bootloaders: i386-pc/core.0, x86_32-efi/core.efi, x86_64-efi/core.efi
+    // Each dir has a bunch of grub *.mod module files.
+    // Grub has: grub-mknetdir
+    // ["/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed", "grub/grubnetx64.efi.signed"], // Also grubx64.efi.signed
+    // ["/usr/lib/shim/shimx64.efi.signed", "grub/shimx64.efi.signed"], // Also shimx64.efi
+    // ["", "grub/"] // grub.cfg (menu file)
     // BSD PXE Bootloader from FreeBSD 12 ISO
     // NOTE: Shoud chmod u+w 
     ["/isomnt/freebsd12/boot/pxeboot", "pxeboot"],
@@ -558,17 +577,19 @@ function bootbins(opts) {
     });
   }
 }
-/** Sync by SSH scp or rsync (Local path to remote path)
- * Not in case or direcrory source, caller should append a trailing slash to path.
- * scp has limitations in copying symbolic links. Use rsync for these cases.
- * @param local {string} - Local path (scp compatible source path)
- * @param remloc {string} - Remote server and path in format server:/path/to/dest/
+/** Sync tftp dirs content by SSH scp or rsync (Local path to remote path).
+ * 
+ * scp has limitations in copying symbolic links. Use rsync for these cases (opts.scp = false).
+ * @param local {string} - Local path (scp or rsync compatible source path)
+ * @param remloc {string} - Remote server and path in scp and rsync compatible format server:/path/to/dest/
+ * @param opts {object} - Options for sync op ("scp": true to prefer scp., "recursive" to do recursive copy)
  * @param cb {function} - Callback to call after asyncronous file sync.
  * See also (for spawn/exec data buffering / handlers): https://stackoverflow.com/questions/23429499/stdout-buffer-issue-using-node-child-process
  */
 function scp_sync(local, remloc, opts, cb) {
   opts = opts || {};
   var rec = opts.recursive ? "-r" : "";
+  // OLD ? Not in case or direcrory source, caller should append a trailing slash to path.
   // For "scp" Strip one path component out of the name
   if (opts.scp && opts.recursive) { remloc = path.dirname(remloc); }
   if (!opts.scp && !local.match(/\/$/)) { local += "/"; }
