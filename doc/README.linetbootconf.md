@@ -34,12 +34,13 @@ filer-001 nfs=1
 While key names for key-value pairs are arbitrary, some names have a special meaning (just as for Ansible) meaning for Lineboot.
 The list on notable ones is:
 
-- loc (sting) - Free form host location Indicator
-- use (string) - Brief Usage description
+- loc (string) - Free form host location Indicator (e.g. "West+DC")
+- use (string) - Brief Usage description (e.g. "MySQL+Prod")
 - dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts)
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
 - bmccreds (string) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
 - ptt (string) - partition table type "mbr" - Master Boot Record / "gpt" - GUID Partition table
+
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
@@ -57,31 +58,51 @@ together a set of hosts with similar patterns in name). See Documentation on mai
 Note: Because these variables are dynamically populated in linetboot runtime data structures, they are not available to ansible.
 If you must have params/vars available to ansible, you must statically populate them in inventory.
 
+### Effective hosts by 'hosts' file and facts
+
+For host to be considered effective, valid host it must **appear in hosts file** and it **must have facts**.
+This means / implies:
+- Hosts can be disabled by commenting them out or removing their host-line from hosts file (revert is as easy, remove comenting or add hostline bac)  
+- Hosts that have a host-line in hosts file, but do not have facts are ineffective
+
+At linetboot startup (in console) there are warning messages displayed on hosts that are registered in hosts, but do not have facts.
+
 ## Main Configuration
+
+The lineboot main configuration file is by default expected to be found under the home directory of the user who is
+running lineboot server, in the file `~/.linetboot/global.conf.json`. The lineboot codebase has a good default configuration
+by same name in the top directory of codebase. The following document sections got through the configuration sections within
+linetboot JSON config file, where each section is a "sub-object" within JSON and describes a logical sub-area or sub-system of linetboot.  
 
 ### Config Top level
 
-Configuration in the main config file `~/.linetboot/global.conf.json` (Currently items with "main." reside on top level):
+Linetboot top-level config properties are fairly global in nature and widely used in many places of application:
 
-- main.httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
+- httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
   Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
   This setting is important (and mainly used on) templates (e.g. bootmenu).
-- main.nfsserver - NFS file server for special installations that cannot cope with HTTP (E.g. Ubuntu
-  18.04 Desktop seems to be crippled with HTTP)
-- main.nfsserver - SMB/Samba/CIFS file server to use for special installations (mostly windows)
-- fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be enabled for install.
-- main.useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
-- main.hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system. These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
-- main.hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config 
+- nfsserver - NFS file server for special installations that cannot cope with HTTP (E.g. Ubuntu
+  18.04 Desktop seems to not work with HTTP) and require an NFS based installation source.
+- smbserver - SMB/Samba/CIFS file server to use for special installations (mostly Windows WinPE)
+- fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be properly enabled and have their info
+  properly utilizable across the application.
+- hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system.
+  These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
+- hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config 
   (array valued) key for hostnames (Default: Current users ~/.linetboot/hosts).
-- tmplfiles (obj) - Object with keys "preseed", "ks" to refer to (Mustache template toolkit) template files to be used for Debian Preseed and RedHat Kickstart configoutput respectively. Tweak only if you need to customize the templates.
 
+<!--
+- useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
+-->
 ### Section "core" - Essential Linetboot Settings
 
 - maindocroot (str) - The linetboot HTTP server (Express.js) document root for static boot media and OS Install files delivery
 - appname (str) - "Branded" Application name shown in Web frontend of Linetboot
 - hdrbg (str) - Header Background Image URL for frontend "branding"
 - apiena (bool) - N/A
+- addroot (array-of-str) - Array of additional document root paths, e.g. for ISO or raw images for the load-into-memory type of boots
+  (Note: do not allow filename resolution conflicts to be created when you add more of these. TODO: mention the resolution
+  order of these vs. linetboot internally handled URL:s)
 
 ### Section "tftp" - TFTP Settings
 
@@ -89,25 +110,29 @@ Lineboot Admin tool (hostsetup.js) can assist in populating TFTP directories wit
 config files and bootloader binaries. The settings for "tftp" are:
 
 - host - Remote host where TFTP server operates
-- ipaddr - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file.
-- root - TFTP server data root directory
-- linftp - Do not use this yet. Flag for using launching linetboot internal TFTP server (which can dynamically serve content for menus, etc)
-- bootfile - The bootloader file for configuring DHCP server NBP
-- menutmpl - PXELinux boot menu template file (Used for generating menu by admin tool)
+- ipaddr - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file
+  (and its next-server variable).
+- root - TFTP server data (local) root directory
+- bootfile - The default/global bootloader file (found under TFTP server) for configuring DHCP server NBP
+- menutmpl - PXELinux boot menu template file (Used for generating menu by admin tool and for extracting menu labels and descriptions)
 - menutout - Boot menu timeout (In seconds, parameter used for boot menu generation)
-- menutitle - Boot menu title (TODO) 
 - sync - Flag to sync content (config files, dirs or bootfiles) to remote TFTP server, specified by ipaddr)
+
+Tentative config vars:
+
+- linftp - Do not use this yet. Flag for using launching linetboot internal TFTP server (which can dynamically serve content for menus, etc)
+- menutitle - Boot menu title (TODO) 
 
 ### Section "net" - Install time (and general) Network settings
 
-- netmask - Network mask in dotted-quad format (E.g. "255.255.255.0")
-- gateway - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
-- namesearch - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
-- nameservers - DNS nameservers in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
-- domain - Domainname suffix for local network (E.g. "veryclose.net").
-- dev - The default network interface name for the OS being installed (E.g. "eno1")
-- ifdefault - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
-- ntpserver - Network Time Server (hostname)
+- netmask (str) - Network mask in dotted-quad format (E.g. "255.255.255.0")
+- gateway (str) - Gateway IP address in dotted-quad format (E.g. "192.168.1.1")
+- namesearch (array-of-str) - DNS name search domains as array (E.g. `["veryclose.net", "near.net", "wayfarther.net"]`)
+- nameservers (array-of-str) - DNS nameserver IP addresses in array (E.g.: ["192.168.1.10", "192.168.1.11"]).
+- domain (str) - Domainname suffix for local network (E.g. "veryclose.net").
+- dev (str) - The default network interface name for the OS being installed (E.g. "eno1")
+- ifdefault (str) - Default network interface (NOTE/TODO: disambiguate role of this with "dev" above)
+- ntpserver (str) - Network Time Server (hostname or IP)
 
 When new hosts without facts are being installed, Linetboot heavily uses this section to "guess" the good default settings
 for network config.
@@ -138,6 +163,9 @@ This section is for BMC based host management and interactivety by IPMI and RedF
 - user - Username for IPMI and Redfish
 - pass - Password for IPMI and Redfish
 - debug - Enable more verbose debug output on remote management ops
+
+Note: for hosts which do not comply to global BMC credentials, there's a way to override credentials on the host level
+(See hosts section, bmccreds)
 
 ### Section "ldap" - LDAP Authentication settings
 
