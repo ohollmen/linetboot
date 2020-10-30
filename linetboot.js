@@ -105,7 +105,7 @@ function app_init() { // global
     console.log("Sent file in path: " + path + " w. stat:");
     console.log(stat); // Stat Object
   };
-  var staticconf = {"setHeaders": logger };
+  var staticconf_0 = {"setHeaders": logger };
   // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
   // app.set('trust proxy', true); // relates to req.header('x-forwarded-for') ?
   // Note this URL mapping *can* be done by establishing symlinks from maindocroot
@@ -135,15 +135,17 @@ function app_init() { // global
   // For local disk boot (recent) kernels and network install as well
   var maindocroot = global.core.maindocroot;
   if (!fs.existsSync(maindocroot)) { console.error("Main docroot '"+maindocroot+"' does not exist"); process.exit(1); }
+  var staticconf = {dotfiles: "allow"}; // setHeaders
   // Main docroot
-  app.use(express.static(maindocroot)); // e.g. /var/www/html/ or /isomnt/ (from global config)
+  app.use(express.static(maindocroot, staticconf)); // e.g. /var/www/html/ or /isomnt/ (from global config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
   // TODO: global.core.addroot
   //app.use(express.static("/isoimages"));
   if (global.core.addroot && Array.isArray(global.core.addroot)) {
-    global.core.addroot.forEach((root) => { app.use(express.static(root)); });
+    global.core.addroot.forEach((root) => { app.use(express.static(root, staticconf)); });
   }
-  app.use('/web', express.static('web')); // Host Inventory
+  // No need for custom staticconf (mainly dotfiles)
+  app.use('/web', express.static('web', staticconf)); // Host Inventory
   ///////////// Dynamic content URL:s (w. handlers) //////////////
   ////////////////////// Installer ///////////////////////////////////
   
