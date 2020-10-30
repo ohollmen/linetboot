@@ -203,6 +203,7 @@ function diskinfo(req, res) {
   function disk_params (f) {
     var disk = {rootsize: 40000, swapsize: 8000, bootsize: 500, disktotsize: 0}; // Safe undersized defaults in case we return early (should not happen)
     if (!f) { return disk; }
+    var debug = 0;
     var ddevs = f.ansible_devices;
     var mem = f.ansible_memory_mb;
     if (!ddevs) { return disk; }
@@ -213,7 +214,7 @@ function diskinfo(req, res) {
     if (!sda) { console.error("Weird ... Machine does not have disk 'sda' !"); return disk; }
     var parts = sda.partitions;
     var ansparr = parts2array(parts);
-    console.log(JSON.stringify(ansparr, null, 2));
+    if (debug) { console.log(JSON.stringify(ansparr, null, 2)); }
     var disktot = disk.disktotsize = disk_calc_size(ansparr); // OLD: sda
     disk.ansdisk_name = "sda";
     disk.ansparr = ansparr; // OLD: sda, NEW: ansparr
@@ -226,7 +227,7 @@ function diskinfo(req, res) {
     // Assemble / Set final figures
     disk.rootsize = rootsize;
     disk.swapsize = (disktot - rootsize - disk.bootsize - 1000); // Need to shrink a bit further.
-    console.error("Calculated Disk Plan:", disk);
+    if (debug) { console.error("Calculated Disk Plan:", disk); }
     
     return disk;
   }
