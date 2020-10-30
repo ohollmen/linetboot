@@ -466,10 +466,44 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </script>
 
 <script id="lduser" type="text/template">
-<div>
-DN: {{{ dn }}}
-Name: {{{ displayName }}}
-</div>
+<!-- DN: {{{ dn }}} -->
+<h3>User {{{ displayName }}}</h3>
+
+<div><i id="index" class="glyphicon glyphicon-user" style="font-size:80px;"></i></div>
+<ul>
+<li>First Name: {{{ givenName }}}</li>
+<li>Last Name: {{{ sn }}}</li>
+<li>Userame: {{{ sAMAccountName }}}</li>
+<li>Employee Number: {{{ employeeNumber }}}</li>
+<li>Employee Type: {{{ employeeType }}}</li>
+<li>PostalCode / Zip: {{{ postalCode }}}</li>
+</ul>
+<hr>
+
+<div><i id="index" class="glyphicon glyphicon-globe" style="font-size:80px;"></i></div>
+<ul>
+<li>Country: {{{ co }}} ({{{ c }}})</li>
+<li>State / County: {{{ st }}}</li>
+<li>City/Town: {{{ l }}}</li>
+<li>Street Address: {{{ streetAddress }}}</li>
+<li>PostalCode / Zip: {{{ postalCode }}}</li>
+</ul>
+<hr>
+
+<div><i id="index" class="glyphicon glyphicon-earphone" style="font-size:80px;"></i></div>
+<ul>
+<li>Mobile Number: {{{ mobile }}}<li>
+  
+<li>Desk Phone Number: {{{ telephoneNumber }}}<li>
+<li>Email Address: {{{ mail }}}<li>
+
+
+<li>Division / BU: {{{ division }}}<li>
+<li>Dept. Number: {{{ departmentNumber }}}<li>
+  
+</ul>
+<hr>
+
 </script>
 
 </body>
