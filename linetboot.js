@@ -102,8 +102,9 @@ function app_init() { // global
   // "setHeaders": function (res,path,stat) {}
   osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
   var logger = function (res,path,stat) {
-    console.log("Sent file in path: " + path + " w. stat:");
-    console.log(stat); // Stat Object
+    // TODO: Extract URL from res ? (res has ref to req ?)
+    console.log("Send file in path: " + path + " ("+stat.size+" B)"); // size:
+    // console.log(stat); // Stat Object
   };
   var staticconf_0 = {"setHeaders": logger };
   // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
@@ -135,7 +136,10 @@ function app_init() { // global
   // For local disk boot (recent) kernels and network install as well
   var maindocroot = global.core.maindocroot;
   if (!fs.existsSync(maindocroot)) { console.error("Main docroot '"+maindocroot+"' does not exist"); process.exit(1); }
-  var staticconf = {dotfiles: "allow"}; // setHeaders
+  // https://expressjs.com/en/4x/api.html#express.static
+  var staticconf = {dotfiles: "allow"}; // setHeaders, index, fallthrough=false (to short circuit)
+  // Allow enabling 
+  if (global.inst.staticdebug) { staticconf.setHeaders = logger; }
   // Main docroot
   app.use(express.static(maindocroot, staticconf)); // e.g. /var/www/html/ or /isomnt/ (from global config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
@@ -146,6 +150,8 @@ function app_init() { // global
   }
   // No need for custom staticconf (mainly dotfiles)
   app.use('/web', express.static('web', staticconf)); // Host Inventory
+  // See need for this (https://expressjs.com/en/4x/api.html#express.text). This is actually reveive-middleware
+  // express.text([options]); // inflate
   ///////////// Dynamic content URL:s (w. handlers) //////////////
   ////////////////////// Installer ///////////////////////////////////
   
@@ -1629,11 +1635,20 @@ function installrequest(req, res) {
   var fullmacfn;
   try { fullmacfn = tboot.bootmenu_save(tcfg, global, q.bootlbl, f); }
   catch (ex) { jr.msg += "bootmenu_save: "+ex.toString(); return res.json(jr); }
-  log("Wrote Menu (for '"+macaddr+"') to: " + fullmacfn);
+  log("Wrote Menu (for MAC '"+macaddr+"') to: " + fullmacfn);
   // Make a call to set next boot to PXE (by Redfish ? ipmitool ?)
   // see if IPMI is in use (by config) and detect presence of rmgmt info for q.hname
   var useipmi = 0; // global.ipmi.useipmi;
   var userf = global.ipmi.userf;
+  ////////////////// Sync to remote TFTP ? ////////////////
+  //if (tcfg.sync && ) {
+  //  var remloc = tcfg.ipaddr + ":" + tcfg.root;
+  //  var user = process.env["USER"];
+  //  scp_sync(tcfg.root, remloc, {recursive: 1, user: user}, function (err, path) {
+  //    if (err) { jr.msg += "Failed to sync to remote TFTP ("+remloc+")"; console.error(jr.msg); return res.json(jr); }
+  //  });
+  //}
+  ////////////////// Additionally set PXE boot /////////////////
   // RedFish (patch)
   if (userf) {
     var rmgmtpath = process.env["RMGMT_PATH"] || global.ipmi.path;
