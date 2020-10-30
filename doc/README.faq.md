@@ -42,3 +42,26 @@ files left , this error triggers. Create more loop device files by:
 # -m640 - perms, b special blod dev, 7 = major (every loopN device), 8 = minor (match N in loopN) 
 sudo mknod -m640 /dev/loop8 b 7 8
 ```
+
+#### Q: Lineboot Newbie: Whats the best user account to use with Lineboot ?
+
+Use your own personal account (and own computer). You have (very likely) already done ssh-copy-id operation to create trust to between your
+account + host and the machines you would manage. If you account homedirectory is on network drive (NFS or Samba), the machine where you
+run Lineboot can be any machine that has access to your homedirectory and you can still take advantage of your personal SSH keys.
+This makes Ansible facts collection (part of install) a breeze ! then proceed to gather facts by `ansible -m setup ....`
+(See REAME.install.md for more details). Having passwordless SSH connectivity already established is an effort saver.
+
+#### Q: I'd need to to a single file change on otherwise perfect ISO. Do I need to take it copy its contents to filesystem and use it from there instead on the nice loop mount method ?
+
+Not necessarily. Linux has a nice mount method called "overlay" which you could try for "patching files" on top of loop mount.
+Using it starts by "mount -t overlay ..." (See also: `man mount`, https://wiki.archlinux.org/index.php/Overlay_filesystem or
+alternatively "union filesystem"). A dummy example of overlaying a OS install recipe on top of (read-only) loop mount:
+```
+sudo mkdir /merged
+mkdir /tmp/olay
+mkdir /tmp/olay_work
+echo "install-disk /dev/sda" > /tmp/olay/install_recipe.txt
+# Mount overlayed into /merged
+sudo mount -t overlay overlay -o lowerdir=/isomnt/archlinux/,upperdir=/tmp/olay/,workdir=/tmp/olay_work /merged
+```
+The downside is if loop mount already exists, a new dir (/merged) is created.
