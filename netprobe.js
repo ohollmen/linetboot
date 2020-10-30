@@ -20,11 +20,13 @@ var inited = 0;
 var ssh = new node_ssh();
 //NOT HERE: var ssh2Client = ssh2.client();
 var pkey;
+var pubkey;
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
 var opts = {tout: 0, debug: 0};
 var debugarr = []; // Like async results
 function privkey() { return pkey; }
+function pubkey() { return pubkey; }
 /**
 */
 function init(popts) {
@@ -32,7 +34,9 @@ function init(popts) {
   inited++;
   popts = popts || {};
   // MUST read in utf8 (to not get a binary buffer)
-  pkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
+  pkey   = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
+  pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  if (!pkey || !pubkey) { console.log("Warning: Linetboot should have SSH keys to interact effectively during installation.");}
   // pkey = process.env['HOME']+'/.ssh/id_rsa';
   servers = popts.dns ? popts.dns : dns.getServers();
   //resolver.setServers([]);
@@ -287,6 +291,7 @@ function stats_proc(hnode, cb) {
       
 module.exports = {
   privkey: privkey,
+  pubkey: pubkey,
   init: init,
   probe_all: probe_all,
   stats_proc: stats_proc
