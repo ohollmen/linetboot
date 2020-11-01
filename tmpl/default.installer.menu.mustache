@@ -203,6 +203,14 @@ append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
+# https://superuser.com/questions/1247353/ubuntu-16-04-pxe-netboot-preseed-install
+# locale=en_US.UTF-8 console-setup/ask_detect=false console-setup/layoutcode=us keyboard-configuration/layoutcode=us
+# mirror/http/mirror=ca.archive.ubuntu.com netcfg/get_hostname=
+# preseed/interactive=false
+label ubuntu1604
+menu label Install Ubuntu 16.04 Server (Full Automated)
+kernel http://{{ httpserver }}/ubuntu16/install/netboot/ubuntu-installer/amd64/linux
+append initrd=http://{{ httpserver }}/ubuntu16/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu16 preseed/interactive=false
 
 label ubuntu1404
 menu label Install Ubuntu 14.04 Server (Full Automated)
