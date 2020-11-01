@@ -2,6 +2,7 @@
   "httpserver": "192.168.1.141:3000",
   "nfsserver" : "192.168.1.141",
   "smbserver" : "192.168.1.141",
+  "mirrorserver": "",
   "debug": 1,  
   "inst": {
     "userconfig": "~/.linetboot/user.conf.json",
@@ -13,10 +14,12 @@
     "install_recommends": true,
     "rootlogin" : 0,
     "postscript": "mv_homedir_for_autofs.sh",
-    "script_path": "./scripts/",
+    "script_path": "./scripts/:~/.linetboot/scripts",
     "tmpl_path_dev": "./tmpl/:~/.linetboot/tmpl/",
     "tmpl_path":   "~/.linetboot/tmpl/:./tmpl/",
-    "sshkey_path": "~/.linetboot/sshkeys/"
+    "sshkey_path": "~/.linetboot/sshkeys/",
+    "staticdebug": 1,
+    "inetmirror": 0
   
   },
   
@@ -128,6 +131,12 @@
       "proxy": "",
       "directory": "/ubuntu14",
       "docroot": "/isomnt/ubuntu14"
+    },
+    {
+      "hostname":"192.168.1.141:3000",
+      "proxy": "",
+      "directory": "/ubuntu16",
+      "docroot": "/isomnt/ubuntu16"
     },
     {
       "hostname":"192.168.1.141:3000",
