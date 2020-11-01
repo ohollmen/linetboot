@@ -765,7 +765,7 @@ function dhcpconf(opts) {
 }
 
 /** Generate new host "fake-facts" and 
- * Note this implies
+ * Note this implies:
  * - adding hosts to Linetboot "hosts" file.
  * - Not using the "newhosts" mechanism (as facts don't need to be generated anymore).
  * Run with A CSV file:
@@ -777,29 +777,41 @@ function newhostgen(opts) {
   //mcfg.fact_path = "/tmp/facts"; // DEBUG
   //mcfg.ipmi.path = "/tmp/facts"; // DEBUG
   var csvfn = opts.newhosts;
+  if (!csvfn) { apperror("No newhosts CSV file named, pass with --newhosts"); }
+  if (!fs.existsSync(csvfn)) { apperror("newhosts CSV file by name"+csvfn+" does not exist"); }
   if (!mcfg.fact_path) { apperror("No fact_path"); }
   if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
   var ipath = mcfg.ipmi.path;
+  if (!ipath) { apperror("No ipmi_path to store generated BMC info."); }
   var newhosts = hlr.customhost_load(csvfn, mcfg);
-  if (!Array.isArray(newhosts)) { apperror("Could not properly load " + csvfn); }
+  if (!Array.isArray(newhosts)) { apperror("Could not properly load host info from: '" + csvfn + "'"); }
+  var save = opts.save;
   // Note: If username is to be parametrized (by e.g. template), the username MUST be padded to maintain tricky fixed offsets !
   var userblock = `
 ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
 1                    true    false      false      NO ACCESS
 2   root             true    true       true       ADMINISTRATOR
 `;
+  // Process all new hosts
   newhosts.forEach(function (h) {
     if (!h.hname) { console.log("No hname !", h); return; }
     var f = hlr.host2facts(h, mcfg);
     // Write fake facts
-    fs.writeFileSync( mcfg.fact_path + "/" + h.hname, JSON.stringify(f, null, 2), {encoding: "utf8"} );
-    if (!h.bmcipaddr) { apperror("No bmcipaddr in newhost record ! Exiting ..."); }
+    
+    if (save) { fs.writeFileSync( mcfg.fact_path + "/" + h.hname, JSON.stringify(f, null, 2), {encoding: "utf8"} ); }
+    else { console.log(JSON.stringify(f, null, 2)+"\n"); }
+    if (!h.bmcipaddr) { apperror("No bmcipaddr property in newhost record (add this to your CSV) ! Exiting ..."); }
     // Write fake IPMI info
     var ipmi_bn = ipath + "/" + h.hname; // Basename for both files
-    fs.writeFileSync( ipmi_bn+".lan.txt",   "IP Address              : "+h.bmcipaddr+"\n", {encoding: "utf8"} );
-    fs.writeFileSync( ipmi_bn+".users.txt", userblock, {encoding: "utf8"} );
+    if (save) {
+      var ipblock = "IP Address              : "+h.bmcipaddr+"\n";
+      fs.writeFileSync( ipmi_bn+".lan.txt",  ipblock , {encoding: "utf8"} );
+      fs.writeFileSync( ipmi_bn+".users.txt", userblock, {encoding: "utf8"} );
+    }
+    else { console.log(ipblock + "\n" + userblock); }
   });
-  console.log("Wrote generated information to "+mcfg.fact_path+" (facts) "+mcfg.ipmi.path+" (IPMI info)");
+  if (!save) { console.error("Use --save to store to files."); }
+  else { console.error("Wrote generated information to paths: '"+mcfg.fact_path+"' (facts) '"+mcfg.ipmi.path+"' (IPMI info)"); }
 }
 
 /** Generate loopmounts in /etc/fstab format (Linux ONLY, i.e. not BSD variants).
