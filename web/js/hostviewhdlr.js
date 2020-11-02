@@ -329,7 +329,11 @@ function recipes() {
       p.rname = this.textContent;
       //p.url = this.href;
       p.url = p.rname + "?ip=" + p.ip;
-      
+      p.type = "text/plain;charset=utf-8";
+      //if (p.rname.match(/\.xml$/)) { p.type = "application/xml;charset=utf-8"; }
+      // TODO: Choose template based on mime-type ?
+      // Data URIs cannot be larger than 32,768 characters.
+      // iframeElement.setAttribute('src', 'data:text/xml,<test>data</test>'); Also srcdoc="" base64,
       rapp.templated("recipe", p, "recipedialog");
       //var cont = "";
       //$('#recipedialog').html(cont);
