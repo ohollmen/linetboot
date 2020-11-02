@@ -245,16 +245,20 @@ function tftplist(ev, act) {
 function defboot_reset(jev) {
   // var macfname = this.dataset.macfname;
   var mac = this.dataset.macaddr; // NEW
+  console.log("Reset MAC:" + mac);
   // DEBUG:alert("Reset " + macfname);
   //var url = "/bootreset?macfname="+macfname;
   var url = "/bootreset?macaddr="+mac; // NEW
   // url += "&macaddr="+mac; // Compat
+  // TODO: Block / disable link ?
+  $(".defboot").click(function (jev) {});
+  toastr.info("Reset Permanenr boot on MAC:" + mac);
   axios.get(url).then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { return toastr.error("Error resetting boot by mac "+mac+ "\n"+d.msg); }
     toastr.info("Successfully reset boot to default menu.");
-    //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
-    //tftplist(); // Now on separate tab
+    //showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux); // ONLY shows grid (NO click hdlrs)
+    tftplist(); // Now on separate tab. Adds click handlers !
   }).catch(function (ex) { toastr.error(ex.toString()); });
   return false;
 }
@@ -293,13 +297,14 @@ function medialist(ev, act) {
  */
 function recipes() {
   function recipe_cell(val, item) {
-    return "<a href=\""+val+"?ip="+item.ipaddr+"\">"+val+"</a>";
+    // href=\""+val+"?ip="+item.ipaddr+"\"
+    return "<a class=\"recipecell\" data-hn=\""+item.hname+"\" data-ip=\""+item.ipaddr+"\">"+val+"</a>";
   }
   axios.get("/recipes").then(function (resp) {
     var d = resp.data;
     console.log(d);
-    var fis  = d.grid;
-    var urls = d.urls;
+    var fis  = d.grid; // Grid fields
+    var urls = d.urls; // Recipe rel. url
     var data = datasets["hostlist"]; // All hosts
     var i = 0;
     fis.forEach((fi) => {
@@ -311,6 +316,26 @@ function recipes() {
     });
     
     showgrid("jsGrid_recipes", data, fis);
+    // Recipe cell click => Dialog
+    $('.recipecell').click(onrecipeclick);
+    //$('.recipecell').get(0).addEventListener("click", onrecipeclick)
+    function onrecipeclick(jev) {
+      console.log("Click on recipe: "+this.href);
+      var dopts = {modal: true, width: 900, height: 700};
+      console.log("EV:", jev); // event.type
+      console.log("THIS:", this);
+      console.log("TGT:", jev.target);
+      var p = this.dataset; // Use datase directly as params, add some params
+      p.rname = this.textContent;
+      //p.url = this.href;
+      p.url = p.rname + "?ip=" + p.ip;
+      
+      rapp.templated("recipe", p, "recipedialog");
+      //var cont = "";
+      //$('#recipedialog').html(cont);
+      $('#recipedialog').dialog(dopts);
+      return false;
+    }
   }).catch(function (err) { console.log(err); });
 }
 

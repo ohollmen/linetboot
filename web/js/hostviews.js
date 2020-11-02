@@ -342,11 +342,34 @@ function gendialog(ev, act) {
   .catch(function (ex) { console.log(""); });
   function showdialog(data) {
     if (!act.dialogid) { return alert("No dialog indicated");}
-    //var out =
     rapp.templated(act.tmpl, data, act.dialogid); // 
+    var diael = document.getElementById(act.dialogid);
+    if (!diael) { alert("No dialog by id:" + act.dialogid); return; }
     var dopts = {modal: true, width: 500, height: 200};
+    // Look for size in ... target elem (jev: this)
+    if (diael.dataset && diael.dataset.dsize) {
+      var m = diael.dataset.dsize.match(/(\d+)x(\d+)/);
+      if (m) { dopts.width = m[1];  dopts.height = m[2]; }
+    }
+    console.log("gendialog:TGT:",ev.target);
+    console.log("gendialog:THIS:",this);
     //$("#"+act.dialogid).html(out);
     $("#"+act.dialogid).dialog(dopts);
+  }
+  // TODO: Make this into rapp. ...
+  // Get "raw" DOM element where event being handled now took place.
+  // This is expected to be used within event handler function
+  // This should cover either case of (e.g. click event)
+  // // 
+  // elem.addEventListener("click", function (rawev) {})
+  // // Type: jQuery.Event
+  // $(elem).click(function (jqev) {});
+  // 
+  function getevelem(anyev) {
+    // Test this directly ?
+    console.log("getevelem -> this: " + this);
+    if (anyev.originalEvent) { return anyev.originalEvent.target; } // Same as this in ev handler
+    return anyev.target;
   }
 }
 
