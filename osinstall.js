@@ -335,7 +335,7 @@ function preseed_gen(req, res) {
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   // Lookup directly by IP
   var f = hostcache[ip]; // Get facts. Even no facts is ok for new hosts.
-  
+  res.type('text/plain');
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
   console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+")"); // osid=
@@ -400,7 +400,7 @@ function preseed_gen(req, res) {
   var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null;
   var tmplcont = template_content(url, forcefn); // NEW: url
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
-  console.log("Starting template expansion for ctype = '"+ctype+"', ..."); // tmplfname = '"+tmplfname+"'
+  console.log("Starting template expansion for ctype = '"+ctype+"', forced template: "+forcefn); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
   if (recipe.pp) { output = recipe.pp(output, d); }
   // Post-process (weed comments and empty lines out )
@@ -409,6 +409,8 @@ function preseed_gen(req, res) {
   oklines.push("# " + oklines.length + " config lines in filterd output");
   console.log("Produced: " + oklines.length + " config directive lines ("+req.route.path+")");
   if (req.query["trim"]) { return res.end(oklines.join("\n")); }
+  // text/xml or application/xml
+  //if (url.match(/\.xml$/)) { res.type('application/xml'); } // response.set('Content-Type', 'text/xml');
   //console.log(oklines.join("\n"));
   //res.end(oklines.join("\n"));
   res.end(output);
@@ -581,20 +583,32 @@ function host_params(f, global, ip,  osid) { // ctype,
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
   //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
   //////////////// Choose mirror (Use find() ?) //////////////////
+  console.error("Calling mirror_info(global, osid) (by:" + global + ")");
+  var mirror = mirror_info(global, osid) || {};
+  d.mirror = mirror;
+  return d;
+}
+
+function mirror_info(global, osid) {
   var choose_mirror = function (m) {
     return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
   };
+  // For ubuntu / debian set params to use in mirror/http/hostname and mirror/http/directory
+  if (global.inst.inetmirror) {
+    if (osid.match(/^ubuntu/)) { return {hostname: "us.archive.ubuntu.com", directory: "/ubuntu"}; }
+    // See: https://www.debian.org/mirror/list
+    // http://ftp.us.debian.org/debian/
+    if (osid.match(/^debian/)) { return {hostname: "ftp.us.debian.org", directory: "/debian"}; }
+  }
   var mirror = global.mirrors.filter(choose_mirror)[0]; // NOT: Set {} by default
   if (!mirror) {
-    console.log("No Mirror"); // return null;
+    console.log("No Mirror"); return null;
   } // NOT Found ! Hope we did not match many either.
-  else {
-    console.log("Found Mirror("+osid+"):", mirror);
-    mirror = dclone(mirror); // NOTE: This should already be a copy ?
-  }
+  console.log("Found Mirror("+osid+"):", mirror);
+  mirror = dclone(mirror); // NOTE: This should already be a copy ?
+  // Linetboot or other globally used Mirror
   if (global.mirrorhost && mirror) { mirror.hostname = global.mirrorhost; } // Override with global
-  d.mirror = mirror;
-  return d;
+  return mirror;
 }
 
 /** Configure network params for host.
@@ -682,8 +696,11 @@ function script_send(req, res) {
   // TODO: Create later a smarter data driven solution
   // if (fname == 'preseed_dhcp_hack.sh') { res.send("kill-all-dhcp; netcfg\n"); return; }
   // Configurable script directory. TODO: Multiple paths, resolve
-  var spath = process.env["LINETBOOT_SCRIPT_PATH"] || global.inst.script_path || "./scripts/";
-  var fullname = spath + fname;
+  // process.env["LINETBOOT_SCRIPT_PATH"] ||
+  var spath =  global.inst.script_path || "./scripts/";
+  // OLD: var fullname = spath + fname;
+  // NEW: Resolve by:
+  var fullname = hlr.file_path_resolve(fname, global.inst.script_path);
   if (!fs.existsSync(fullname)) { res.send("# Hmmm ... No such script file.\n"); return; }
   var cont = fs.readFileSync(fullname, 'utf8');
   var tpc = needs_template(cont);
