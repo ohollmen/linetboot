@@ -346,13 +346,15 @@ function gendialog(ev, act) {
     var diael = document.getElementById(act.dialogid);
     if (!diael) { alert("No dialog by id:" + act.dialogid); return; }
     var dopts = {modal: true, width: 500, height: 200};
+    console.log("Dialog.dataset", diael.dataset);
     // Look for size in ... target elem (jev: this)
     if (diael.dataset && diael.dataset.dsize) {
       var m = diael.dataset.dsize.match(/(\d+)x(\d+)/);
       if (m) { dopts.width = m[1];  dopts.height = m[2]; }
+      console.log("DOPTS(post-adjust):", dopts );
     }
-    console.log("gendialog:TGT:",ev.target);
-    console.log("gendialog:THIS:",this);
+    //console.log("gendialog:TGT:",ev.target);
+    //console.log("gendialog:THIS:",this); // this is Window
     //$("#"+act.dialogid).html(out);
     $("#"+act.dialogid).dialog(dopts);
   }
