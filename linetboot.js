@@ -239,7 +239,8 @@ function app_init() { // global
   app.get("/recipes",  osinst.recipe_view);
   app.get("/ldaptest",  ldaptest);
   app.get("/diskinfo",  osdisk.diskinfo);
-  app.get("/login",  login);
+  //BAN: app.get("/login",  login);
+  app.post("/login",  login);
   
   app.get("/userent",  userent);
   

@@ -348,9 +348,12 @@ function loginform(ev, act) {
   rapp.templated(act.tmpl, act, ev.viewtgtid);
   $("#nav").hide();
   $("#loginbut").click(function () {
-    var p = {username: $("#username").val(), password: $("#password").val()};
-    var pp = {}; // POST params
-    axios.get("/login", {params: p}).then( function (resp) {
+    var p = { username: $("#username").val(), password: $("#password").val() };
+    // var pp = {}; // POST params - Not needed, use p directly
+    // BAD: leaves express middleware logging creds !
+    // axios.get("/login", {params: p}).then( function (resp) {
+    // POST (more securely)
+    axios.post("/login", p).then( function (resp) {
       var d = resp.data;
       console.log("Response:", d);
       if (d.status == "err") { toastr.error("Login Failed: " + d.msg); return; }
