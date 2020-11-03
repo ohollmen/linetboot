@@ -99,5 +99,6 @@ function ib_set_addr(req, res) {
 
 
 module.exports = {
+  init: init,
   ib_set_addr: ib_set_addr
 };
