@@ -333,10 +333,32 @@
     //{name: "gidNumber"      title: "GID Num.", type: "text", width: 30, visible: false},
     //{name: "loginShell"     title: "Shell", type: "text", width: 80, visible: false},
    ];
+// Compare these to facts values
+function ibmac_cell(val, item) {
+    var sty = "";
+    // Mangle case ?
+    if (val != item.macaddr) { sty = "color: red;"; }
+    return "<span style=\""+sty+"\">"+val+"</span>";
+}
+function ibip_cell(val, item) {
+    var sty = "";
+    if (val != item.ipaddr) { sty = "color: red;"; }
+    return "<span style=\""+sty+"\">"+val+"</span>";
+}
+   var fldinfo_iblox = [
+     hostfld, // "Joined"
+     {name: "ipaddr",  title: "IP Addr", type: "text", width: 120},
+     {name: "macaddr", title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
+     {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 120, itemTemplate: ibip_cell},
+     {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 130, css: "macaddr", itemTemplate: ibmac_cell},
+     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20},
+
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
-      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad
+      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
+      "iblox":  fldinfo_iblox
    };
    

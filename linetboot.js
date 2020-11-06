@@ -92,7 +92,7 @@ function app_init() { // global
   // {tout: (global.probe ? global.probe.tout : 0)}
   netprobe.init(global.probe);
   ipmi.init(global);
-  if (global.iblox) { iblox.init(global); }
+  if (global.iblox) { iblox.init(global, {hostarr: hostarr, hostcache: hostcache}); }
   //app.use(express.static('pkgcache'));
   // Express static path mapping
   // Consider: npm install serve-static
@@ -247,6 +247,7 @@ function app_init() { // global
   app.get("/logout",  logout);
   
   app.get("/setaddr",  iblox.ib_set_addr);
+  app.get("/ibshowhost",  iblox.ib_show_hosts);
   // cloud-init/subiquity/curtin
   app.get("/meta-data",  ubu20_meta_data);
   
