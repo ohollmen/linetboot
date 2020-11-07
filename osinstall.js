@@ -135,9 +135,22 @@ var recipes = [
 function pp_subiquity(out, d) {
   var out2 = out;
   var y;
+  var ycfg = {
+    'styles': { '!!null': 'canonical' },
+  };
   try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
   // Add disk (d.diskinfo), net (d.net)
-  if (y) {}
+  console.log("pp_subiquity(dump):"+JSON.stringify(y, null, 2));
+  if (y) {
+    var dy;
+    try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk yaml load: "+ex); }
+    if (!Array.isArray(dy)) { console.log("Disk Yam not parseable");}
+    // Disk
+    //y.autoinstall.storage.config = dy;
+    // Net / Netplan
+    // y.autoinstall.network.network = 
+    out2 = "#cloud-config\n"+yaml.safeDump(y, ycfg);
+  }
   return out2;
 }
 var recipes_idx = {};
@@ -396,12 +409,13 @@ function preseed_gen(req, res) {
   if (req.query.json) { return res.json(d); }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
   //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
-  // To facilitate preseed / debian-installer debugging with hard wired/literal preseeds (from internet)
+  // Lookup hostparams to facilitate preseed / debian-installer debugging with hard wired/literal preseeds (from internet)
   var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null;
   var tmplcont = template_content(url, forcefn); // NEW: url
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', forced template: "+forcefn); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
+  // pp = Post Process (cb)
   if (recipe.pp) { output = recipe.pp(output, d); }
   // Post-process (weed comments and empty lines out )
   var line_ok = function (line) { return !line.match(/^#/) && !line.match(/^\s*$/); };
@@ -590,8 +604,8 @@ function host_params(f, global, ip,  osid) { // ctype,
 }
 
 function mirror_info(global, osid) {
-  var choose_mirror = function (m) {
-    return m.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
+  var choose_mirror = function (mir) {
+    return mir.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
   };
   // For ubuntu / debian set params to use in mirror/http/hostname and mirror/http/directory
   if (global.inst.inetmirror) {
