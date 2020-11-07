@@ -28,6 +28,9 @@
  * - global
  * - user
  * - 
+ * ### Linting yaml
+node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.safeLoad(fs.readFileSync('tmpl/subiquity.autoinstall.yaml.mustache')); console.log(JSON.stringify(y, null, 2));"
+
  * ### Funcs moved
  * ```
  * {
