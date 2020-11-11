@@ -536,7 +536,9 @@ function host_params(f, global, ip,  osid) { // ctype,
     console.log(msg);
     return null;
   }
-  net.ipaddress = ip; // Move to net processing (if (ip) {}
+  // TODO: Move to net processing (if (ip) {}
+  net.ipaddress = ip; 
+  net.macaddress = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
   ////////////////////////// NETWORK /////////////////////////////////////
   console.error("Calling netconfig(f) (by:" + f + ")");
   netconfig(net, f);
