@@ -327,15 +327,10 @@ function host_for_request(req, cb) { // UNUSED
 * 
 * ## URL-to-conftype-to-template Mapping
 * 
-*      Request URL (e.g. /preseed.cfg)
-*             | (in code)
-*             V
-*      Conftype (e.g. "preseed")
-*             | (global-conf)
-*             V
-*      Template (e.g. ./tmpl/preseed.cfg.mustache)
+* Request URL (e.g. /preseed.cfg) determines:
+*  - ctype - Config type (e.g. "preseed", "ks", "win", "suse", etc...)
+*  - tmpl - Template (e.g. preseed.cfg.mustache)
 * 
-
 * # TODO
 * 
 * Create separate mechanisms for global params templating and hostinfo templating.
@@ -538,7 +533,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   }
   // TODO: Move to net processing (if (ip) {}
   net.ipaddress = ip; 
-  net.macaddress = f.ansible_default_ipv4 ? f.ansible_default_ipv4.macaddress : "";
+  net.macaddress = anet ? anet.macaddress : "";
   ////////////////////////// NETWORK /////////////////////////////////////
   console.error("Calling netconfig(f) (by:" + f + ")");
   netconfig(net, f);
@@ -636,7 +631,7 @@ function mirror_info(global, osid) {
  * 
 */
 function netconfig(net, f) {
-  if (!f) { return net; } // No facts, cannot do overrides
+  if (!f) { console.log("netconfig: No Facts !"); return net; } // No facts, cannot do overrides
   var anet = f.ansible_default_ipv4; // Ansible Net
   var dns_a = f.ansible_dns; // Has search,nameservers
   
