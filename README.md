@@ -27,7 +27,7 @@ Lineboot is ...
 - a bunch of documentation and hints to help you in any (non-Linetboot) DIY PXE related project
 
 Any of these features can be disabled to use only subset of features.
-There is a special synergy between Ansible and Linetboot on multiple fromts (explained better in the documentation, see below).
+There is a special synergy between Ansible and Linetboot on multiple fronts (explained better in the documentation, see below).
 
 Lineboot can be made to perform/organize/manage:
 
@@ -62,7 +62,7 @@ Install and config instructions aim to advice on the minute config differences n
 - TFTP Server - Hosts 1st stage bootloaders
 - LDAP Directory (Optional) - Used for optional authentication
 
-If you used Lineboot only as Asset Inventory, the DHCP and and TFTP would be needed.
+If you use Lineboot only as Asset Inventory, the DHCP and TFTP would note be needed.
 
 <!--
 

@@ -21,7 +21,7 @@ end box
 
 Client -> Client: Choose PXE Boot (e.g. F12) at startup
 Client -> DHCP: DHCP Request
-DHCP --> Client: Response w. Next-Server, Boot File
+DHCP --> Client: Response w. Next-Server, Boot File\n(and MAC addr. associated IP addr.)
 
 Client -> TFTP: Bootloader Request (NBP Boot File)
 Client <-- TFTP: Bootloader binary (lpxelinux.0)
