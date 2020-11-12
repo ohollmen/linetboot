@@ -268,7 +268,7 @@ function file_path_resolve(fname, path) {
   if (typeof fname != 'string') { throw "Filename is not a string"; }
   if (Array.isArray(path)) { patharr = path; }
   else if (typeof path == 'string')  { patharr = path.split(":"); }
-  else { throw "Path is neither an array of paths or a path-string"; }
+  else { throw "Path is neither an array of paths or a path-string ("+(typeof path)+")"; }
   if (!fname) { console.log("Empty filename, no use in resolving..."); return ""; }
   if (!patharr.length) { console.log("Empty path-array, no use in resolving..."); return ""; }
   console.error("file_path_resolve: Filename: ", fname);
@@ -358,10 +358,16 @@ function host2facts(h, global) {
   // Other, important
   f.ansible_domain = net.domain;
   f.ansible_fqdn = h.hname;
+  f.ansible_hostname = to_hn(h.hname); // NEW, MUST have
   ///////// Secondary
   f.ansible_all_ipv4_addresses = [h.ipaddr];
   f.ansible_distribution = "Unknown";
   f.ansible_distribution_version = "???";
+  
+  function to_hn(hnstr) {
+    var comps = hnstr.split('.');
+    return comps[0];
+  }
   return f;
 }
 /** Lightweight poor-mans (naive) CSV parser.
