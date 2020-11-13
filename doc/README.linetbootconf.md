@@ -149,22 +149,23 @@ for network config.
 ### Section "inst" - OS Installation
 
 Installation Environment universal parameters (with fairly obvious meanings, not documented individually for now) that are used on preseed/kickstart templates:
-- locale - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
-- keymap - Keyboard map / layout (E.g. "us")
-- time_zone - Timezone of hosts (E.g. "America/Los_Angeles")
-- install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
-- postscript - Script to launch at the end of installation (enter basename only, must be found in `script_path`, see below)
-- tmpl_path - Template path (':' delimited path string)
-- script_path - Script path (':' delimited path string)
-- userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT\_USER\_CONF overrides this).
+- locale (str) - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
+- keymap (str) - Keyboard map / layout (E.g. "us")
+- time_zone (str) - Timezone of hosts (E.g. "America/Los_Angeles")
+- install_recommends (bool) - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
+- postscripts (array-of-strings) - Scripts (0 or more) to launch at the end of installation (enter basename only, must be found in `script_path`, see below,
+    also note the legacy singular scalar key postscript w. no 's' is supported, but will be discontinued)
+- tmpl_path (str) - Template path (':' delimited path string)
+- script_path (str) - Script path (':' delimited path string)
+- userconfig (str) - OS Install initial user info JSON filename (See also how env. LINETBOOT\_USER\_CONF overrides this).
     This external file should have members:
-  - fullname - full firstname, lastname of user
-  - username - login username for user
-  - password - login password for user (in clear text for now)
-  - groups - The OS groups user should be member of
-  - homedir - Home directory for user
+  - fullname (str) - full firstname, lastname of user
+  - username (str) - login username for user
+  - password (str) - login password for user (in clear text for now)
+  - groups (array-of-str) - The OS groups user should be member of (These groups should be existing out-of-box OS created groups to be on safe side)
+  - homedir (str) - Home directory for user
 
-See also "net" section above for install network settings (Object with global network base settings).
+See also "net" section above for install-time network settings (Object with global network base settings).
 
 ### Section "ipmi" - Remote Management Info
 

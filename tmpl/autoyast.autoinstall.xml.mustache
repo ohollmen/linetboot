@@ -94,11 +94,13 @@ exit 0
 
         </source>
       </script>
+{{#postscripts}}
       <script>
         <chrooted config:type="boolean">true</chrooted>
-	<filename>{{{ postscript }}}</filename>
-        <location>http://{{{ httpserver }}}/scripts/{{{ postscript }}}</location>
+	<filename>{{{ . }}}</filename>
+        <location>http://{{{ httpserver }}}/scripts/{{{ . }}}</location>
       </script>
+{{/postscripts}}
     </chroot-scripts>
   </scripts>
   <software>

@@ -92,7 +92,12 @@ d-i grub-installer/with_other_os boolean true
 d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` /dev/null || true
 
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
-  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}"; in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}}
+  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; \
+{{#postscripts}}
+  in-target wget "http://{{ httpserver }}/scripts/{{{ . }}}"; \
+  in-target chmod a+x {{{ . }}}; in-target ./{{{ . }}}; \
+{{/postscripts}}
+  in-target /bin/sh -c 'dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt'
 
 # d-i preseed/run string scripts/preseed_net_restart.sh
 

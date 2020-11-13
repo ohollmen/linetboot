@@ -13,7 +13,7 @@
     "partreuse": 0,
     "install_recommends": true,
     "rootlogin" : 0,
-    "postscript": "mv_homedir_for_autofs.sh",
+    "postscripts": ["mv_homedir_for_autofs.sh"],
     "script_path": "./scripts/:~/.linetboot/scripts",
     "tmpl_path_dev": "./tmpl/:~/.linetboot/tmpl/",
     "tmpl_path":   "~/.linetboot/tmpl/:./tmpl/",

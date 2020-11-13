@@ -85,7 +85,7 @@ function app_init() { // global
   var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
   console.log("Choosing mainconf: " + globalconf);
   global = mc.mainconf_load(globalconf);
-  user = mc.user_load(global);
+  user = mc.user_load(global); // TODO: After env_merge, mainconf_process ?
   mc.env_merge(global);
   mc.mainconf_process(global);
   /////// Misc init():s ////////////////

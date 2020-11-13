@@ -440,8 +440,10 @@ d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installe
 # The cwd seems to be set (by chroot) to root of new OS install root directory.
 # in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ;\
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
-  in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}";\
-  in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}};\
+{{#postscripts}}
+  in-target wget "http://{{ httpserver }}/scripts/{{{ . }}}";\
+  in-target chmod a+x {{{ . }}}; in-target ./{{{ . }}};\
+{{/postscripts}}
   in-target /bin/sh -c 'dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt'
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 

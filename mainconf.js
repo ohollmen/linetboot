@@ -27,7 +27,7 @@ function error(msg) {
 function mainconf_load(globalconf) {
   
   
-  if (!fs.existsSync(globalconf)) { error("Main conf ("+globalconf+") does not exist !");}
+  if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
   var global   = require(globalconf);
   if (!global) { error("Main conf JSON ("+globalconf+") could not be loaded !"); }
   
@@ -52,7 +52,7 @@ function mainconf_process(global) {
   var sectnames = ["core", "tftp", "ipmi", "probe", "net", "inst"]; // "ansible", "docker"
   sectnames.forEach(function (sn) {
     // TODO: Check for real object !
-    if (!global[sn]) { console.error("Main Config Section "+sn+" missing. Exiting ..."); process.exit(1); }
+    if (!global[sn]) { console.error("Main Config (mandatory) Section '"+sn+"' missing. Exiting ..."); process.exit(1); }
     
   });
   //////// "~" ($HOME) expansion //////////////////
@@ -73,9 +73,23 @@ function mainconf_process(global) {
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
-    //if (dkr.config)  { dkr.config  = dkr.config.replace('~', home); }
-    //if (dkr.catalog) { dkr.catalog = dkr.catalog.replace('~', home); }
   }
+  /////////// Post Install Scripts ///////
+  // TODO: Discontinue use of singular version
+  //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
+  // New stye: Plural - multiple scripts in an Array. Ignore singular key completely.
+  if (global.inst.postscripts) {
+    if (!Array.isArray(global.inst.postscripts)) { error("inst.postscripts not in Array !"); }
+    // Compatibility w. old singular inst.postscript, set first as inst.postscript (Note NO 's')
+    global.inst.postscript = global.inst.postscripts[0];
+  }
+  // Legacy compatibility for singular version. Set the single script in plural array.
+  else if (global.inst.postscript) {
+    global.inst.postscripts = [global.inst.postscript];
+  }
+  // Set at least empty array (for recipe templating)
+  else { global.inst.postscripts = []; }
+  
   // Detect completeness of various configs and mark things that are not in use as disabled.
   // Use these to customize Web UI. Aim to use UI terms for ease at that end (and aim to sync terminology in time)
   // IPMI: See if dir exists and if any info collected
