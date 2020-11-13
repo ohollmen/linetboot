@@ -55,7 +55,7 @@ function mainconf_process(global) {
     if (!global[sn]) { console.error("Main Config Section "+sn+" missing. Exiting ..."); process.exit(1); }
     
   });
-  //////// "~" (HOME) expansion //////////////////
+  //////// "~" ($HOME) expansion //////////////////
   // ... for config convenience (top-level & some sects ?)
   var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module"];
   tilde_expand(global, top_paths);
@@ -114,9 +114,9 @@ function env_merge(global) {
   // INST
   if (process.env["LINETBOOT_USER_CONF"])   { global.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
   if (process.env["LINETBOOT_SSHKEY_PATH"]) { global.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
-  if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = parseInt(process.env["LINETBOOT_SCRIPT_PATH"]); }
   // NOT: split(/:/); ? Keep as is as our path resolver can use a string.
-  if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path = process.env["LINETBOOT_TMPL_PATH"]; }
+  if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = process.env["LINETBOOT_SCRIPT_PATH"]; }
+  if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path   = process.env["LINETBOOT_TMPL_PATH"]; }
   // RMGMT_PATH
   if (process.env["RMGMT_PATH"])            { global.ipmi.path = process.env["RMGMT_PATH"]; }
   // 
