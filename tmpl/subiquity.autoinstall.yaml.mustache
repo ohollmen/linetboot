@@ -20,9 +20,9 @@ autoinstall:
   # - This section seesm to be optional if "user-data" section is present
   # - hostname values seems to be referred from (url) "/meta-data" (e.g. "instance-id: focal-autoinstall")c
   # r00tme
-  identity: {hostname: focal-autoinstall, password: $6$.c38i4RIqZeF4RtR$hRu2RFep/.6DziHLnRqGOEImb15JT2i.K/F9ojBkK/79zqY30Ll2/xx6QClQfdelLe.ZjpeVYfE8xBBcyLspa/,
+  identity: {hostname: {{{ net.hostname }}}, password: $6$.c38i4RIqZeF4RtR$hRu2RFep/.6DziHLnRqGOEImb15JT2i.K/F9ojBkK/79zqY30Ll2/xx6QClQfdelLe.ZjpeVYfE8xBBcyLspa/,
     username: '{{{ user.username }}}', realname: '{{{ user.fullname }}}'}
-  # user-data: {}
+  # user-data: {timezone: '{{{ time_zone }}}', disable_root: false}
   keyboard: {layout: us, variant: ''}
   locale: en_US.UTF-8
   # interface name will probably be different
@@ -46,28 +46,28 @@ autoinstall:
       size: 0
     # TODO: Create dynamically (Use partial)
     config:
-    - {id: disk-sda, ptable: gpt, path: /dev/sda, preserve: false, name: '', grub_device: false,
-      type: disk}
-    - {id: partition-sda1, device: disk-sda, size: 536870912, wipe: superblock, flag: boot, number: 1,
-      preserve: false, grub_device: true, type: partition}
-    - {fstype: fat32, volume: partition-sda1, preserve: false, type: format, id: format-2}
-    - {id: partition-sda2, device: disk-sda, size: 1073741824, wipe: superblock, flag: linux, number: 2,
-      preserve: false, grub_device: false, type: partition}
-    - {fstype: ext4, volume: partition-sda2, preserve: false, type: format, id: format-0}
-    - {id: partition-sda3, device: disk-sda, size: -1, flag: linux, number: 3, preserve: false,
+      - {id: disk-sda, ptable: gpt, path: /dev/sda, preserve: false, name: '', grub_device: false,
+        type: disk}
+      - {id: partition-sda1, device: disk-sda, size: 536870912, wipe: superblock, flag: boot, number: 1,
+        preserve: false, grub_device: true, type: partition}
+      - {fstype: fat32, volume: partition-sda1, preserve: false, type: format, id: format-2}
+      - {id: partition-sda2, device: disk-sda, size: 1073741824, wipe: superblock, flag: linux, number: 2,
+        preserve: false, grub_device: false, type: partition}
+      - {fstype: ext4, volume: partition-sda2, preserve: false, type: format, id: format-0}
+      - {id: partition-sda3, device: disk-sda, size: -1, flag: linux, number: 3, preserve: false,
       grub_device: false, type: partition}
-    #- name: vg-0
-    #  devices: [partition-sda3]
-    #  preserve: false
-    #  type: lvm_volgroup
-    #  id: lvm-volgroup-vg-0
-    #- {name: lv-root, volgroup: lvm-volgroup-vg-0, size: 100%, preserve: false,
-    #  type: lvm_partition, id: lvm-partition-lv-root}
-    # volume: lvm-partition-lv-root,
-    - {fstype: ext4,  preserve: false, type: format, id: format-1}
-    - {device: format-1, path: /, type: mount, id: mount-2}
-    - {device: format-0, path: /boot, type: mount, id: mount-1}
-    - {device: format-2, path: /boot/efi, type: mount, id: mount-3}
+      #- name: vg-0
+      #  devices: [partition-sda3]
+      #  preserve: false
+      #  type: lvm_volgroup
+      #  id: lvm-volgroup-vg-0
+      #- {name: lv-root, volgroup: lvm-volgroup-vg-0, size: 100%, preserve: false,
+      #  type: lvm_partition, id: lvm-partition-lv-root}
+      # volume: lvm-partition-lv-root,
+      - {fstype: ext4,  preserve: false, type: format, id: format-1}
+      - {device: format-1, path: /, type: mount, id: mount-2}
+      - {device: format-0, path: /boot, type: mount, id: mount-1}
+      - {device: format-2, path: /boot/efi, type: mount, id: mount-3}
   # Script hooks
   #late-commands: ...
   #error-commands: ...

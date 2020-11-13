@@ -182,7 +182,7 @@ label ubuntu2004
 menu label Install Ubuntu 20.04 Server (TODO: Automated)
 kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
 # Note: add kenel param autoinstall. Should not need /isoimages (as it's an added root)
-append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso ds=nocloud-net\;seedfrom=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
+append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
 # NONEED(?): priority=critical auto=true interface=auto ipv6.disable=1
 # MAY NEED: root=/dev/ram0 ramdisk_size=1500000
 # Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
