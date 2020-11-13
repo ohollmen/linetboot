@@ -1,5 +1,5 @@
 /** Inquire info from proprietary Infoblox DHCP/DNS management system.
-* 
+* Infoblox provides a REST API to inquire and modify IP Address management related DHCP/DNS Info.
 */
 var ibconf;
 var hostarr;
@@ -22,6 +22,7 @@ function init(global, hdls) {
   var bauth = redfish.basicauth(ibconf);
   getpara = {headers: {Authorization: "Basic "+bauth}};
   url_h = ibconf.url + "/record:host?";
+  // return module.exports;
 }
 
 /** Set addr info in IB ()
@@ -61,7 +62,8 @@ function ib_set_addr(req, res) {
   ///////////////////////////////
   
 }
-
+/** Web handler for the Iblox info view
+ */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
   // var ibconf = global.iblox;
@@ -75,30 +77,30 @@ function ib_show_hosts(req, res) {
   ibhs_fetch(syncarr, showitems, res, jr);
   function showitems(ress, res) {
     var ress2 = ress.map((it) => {
-	    // Possibly
-	    // - use entry itself, copy inner obj props to top
-	    // - use hostarr to drive iteration
+      // Possibly
+      // - use entry itself, copy inner obj props to top
+      // - use hostarr to drive iteration
       //{hname: it.hname } // Use ipaddr_ib, macaddr_ib, usedhcp
       //it.ipaddr
       return it;
     });
-    res.json(ress2);
+    res.json({status: "ok", data: ress2});
   }
   
 }
-  /** Async fetch of IB hosts one-by-one, driven by syncarr.
-   * @param syncarr - Array of hosts to fetch/sync
-   * @param cb - Operation to launch on filtered results (gets called with IB results and HTTP response)
-   */
+/** Async fetch of IB hosts one-by-one, driven by syncarr.
+ * @param syncarr - Array of hosts to fetch/sync
+ * @param cb - Operation to launch on filtered results (gets called with IB results and HTTP response)
+ */
 function ibhs_fetch(syncarr, cb, res, jr) {
-    async.map(syncarr, ibh_fetch, function (err, ress) {
-      if (err) { jr.msg += "async.map error:"+err; console.log(jr.msg); return res.json(jr); }
-      // Filter out faulty
-      ress = ress.filter((it) => { return it; });
-      //ipmac_cmds_gen(ress, res);
-      cb(ress, res);
-    });
-  }
+  async.map(syncarr, ibh_fetch, function (err, ress) {
+    if (err) { jr.msg += "async.map error:"+err; console.log(jr.msg); return res.json(jr); }
+    // Filter out faulty
+    ress = ress.filter((it) => { return it; });
+    //ipmac_cmds_gen(ress, res);
+    cb(ress, res);
+  });
+}
 
   /** Generate IP/MAC change record with info to submit to IB.
    * The PUT data-to-be-submitted is already inc correct format in "data" member.
@@ -124,15 +126,15 @@ function ibhs_fetch(syncarr, cb, res, jr) {
 /** Output IB mac/ip association info as curl commands.
    */
 function ipmac_cmds_gen(aout, res) {
-    //var cmds = [];
-      var txt = "#!/bin/bash\n# Import IP/MAC Info to IB.\nexport IBCREDS=jsmith:o35cR\n";
-      txt += aout.map((it) => {
-        var puturl = it.url; // Works as change is on host level
-        // // it.ipv4addrs[0].
-        return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
-      }).join("\n");
-      return res.end(txt);
-  }
+  //var cmds = [];
+    var txt = "#!/bin/bash\n# Import IP/MAC Info to IB.\nexport IBCREDS=jsmith:o35cR\n";
+    txt += aout.map((it) => {
+      var puturl = it.url; // Works as change is on host level
+      // // it.ipv4addrs[0].
+      return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
+    }).join("\n");
+    return res.end(txt);
+}
 
   /** Fetch info for single host from IB by fqdn in facts.
    * @param f - Host facts

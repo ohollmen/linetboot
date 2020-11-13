@@ -436,6 +436,7 @@ function showpeople(ev, act) {
 function ibloxlist(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
   // , {params: p}
+  toastr.info("Looking up Iblox host info ... please wait");
   axios.get("/ibshowhost").then(function (resp) {
     var d = resp.data;
     if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
