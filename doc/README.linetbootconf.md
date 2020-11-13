@@ -208,9 +208,22 @@ Environment Variables that can override settings in main config:
 As part of configuration processing Lineboot internally:
 - Loads main (JSON) configuration into memory 
 - Overrides config values of config from the environment variables
-- During app runtime soly utilizes the main config
+- During app runtime solely utilizes the main config
  
 
 ## OS Recipe and Script template PATH:s
 
-The config variables 
+The config variables inst.tmpl_path and inst.script_path are (':'-separated) list of directories that contain OS Installation
+recipe templates and (templated) scripts respectively.
+
+When script is referred by basename from URL path "/scripts/", the scripts and teplates are searched in order form their
+"underlying" respecive paths as "scripts" is just a URL, not a directly mapped static directory.
+
+Example scenarios for templates search from `inst.tmpl_path`: 
+
+- "./tmpl:~/.linetboot/tmpl/" - Search first in lineboot codebase "tmpl" directory and only then form .linetboot/tmpl under
+linetboot config directory (where templates and script are copied at install time). This is  a good choice for starter user
+who relies on default recipes and does not modify or extreme lineboot developer, who actively changes recipes diretly in codebase
+and upstreams them frequently.
+- "~/.linetboot/tmpl/:./tmpl" - Opposite: First search under config dir ... . A good choice for user, who changes templates, but
+does not have plans to upstream them or only upstreams them much less frequently than doing git-pull updates.
