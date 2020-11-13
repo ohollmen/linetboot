@@ -321,6 +321,8 @@ var tabloadacts = [
   // Directory  (TODO: composite templating)
   {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
+  // Iblox
+  {"name": "Infoblox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", path: "ibloxlist"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -425,7 +427,7 @@ function acts_rmitem(acts, attr, val) {
   var remok = 0;
   for (var i = 0;i<acts.length;i++) {
     var n = acts[i];
-    if (n[attr]== val) { acts.splice(i, 1); remok = 1; break; }
+    if (n[attr]== val) { acts.splice(i, 1); remok = 1; console.log("RM(by):"+val); break; }
   }
   //return acts; // NO need for caller to store
   return remok;
@@ -443,11 +445,15 @@ function acts_uidisable(actitems) {
   //if (!Array.isArray(dis)) { return alert("disabled ... not an Array"); }
   // Do not check acts_rmitem() return values strictly as items may already be removed.
   dis.forEach((fstr) => {
+    console.log("Check:"+fstr);
+    // var rmby = "path"; var lbl = fstr;
     if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); }
     if (fstr == 'groups')    { acts_rmitem(actitems, "path", "groups"); }
     if (fstr == 'dockerenv') { acts_rmitem(actitems, "path", "dockerenv"); }
     if (fstr == 'hostkeys')  { acts_rmitem(actitems, "path", "hostkeys"); }
     if (fstr == 'pkgstats')  { acts_rmitem(actitems, "path", "pkgstats"); }
+    if (fstr == 'ibloxlist') { acts_rmitem(actitems, "path", "ibloxlist"); }
+    // acts_rmitem(actitems, rmby, lbl);
   });
 }
 // Also 2nd {params: {}}

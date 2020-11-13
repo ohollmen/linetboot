@@ -118,6 +118,12 @@
     "tabui": 0,
     "xtabs" : ["",""]
   },
+  "iblox": {
+    "url": "https://ipam.company.com/wapi/v2.10",
+    "user": "",
+    "pass": "",
+    "ro": 1
+  },
   "targetos": "ubuntu14",
   "useurlmapping": false,
   "remote": {

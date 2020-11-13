@@ -1567,7 +1567,7 @@ function config_send(req, res) {
   if (core && core.hdrbg)   { cfg.hdrbg = core.hdrbg; } // BG Image
   if (tftp && tftp.menutmpl) { cfg.bootlbls = tboot.bootlabels(tftp.menutmpl); }
   // Disable
-  cfg.disabled = global.disabled;
+  cfg.disabled = global.disabled; // could be undef, except mainconf module sets this to []
   // GUI
   if (web && (typeof web.tabui !== "undefined")) { cfg.tabui = web.tabui; }
   else { cfg.tabui = 1; } // Legacy default

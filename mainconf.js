@@ -105,6 +105,8 @@ function mainconf_process(global) {
   if (!fs.existsSync(global.inst.sshkey_path) || hasnofiles(global.inst.sshkey_path)) { dis.push("hostkeys"); }
   // PkgStat (pkgstats). Which directory ?
   if (!global.pkglist_path || !fs.existsSync(global.pkglist_path) || hasnofiles(global.pkglist_path) ) { dis.push("pkgstats"); }
+  var ibc = global.iblox;
+  if (!ibc || !ibc.user || !ibc.pass) { dis.push("ibloxlist"); }
   // Flags for docs disa ? Do not enable
   // Reporting (in flux for transition to tabs) "reports"
   //if (global.web && !global.web.reports) { dis.push("reports"); }

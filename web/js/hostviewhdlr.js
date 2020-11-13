@@ -431,4 +431,27 @@ function showpeople(ev, act) {
     search(p);
   });
 }
+/** 
+ */
+function ibloxlist(ev, act) {
+  rapp.templated("simplegrid", act, ev.viewtgtid);
+  // , {params: p}
+  axios.get("/ibshowhost").then(function (resp) {
+    var d = resp.data;
+    if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
+    if (!d.data) { return toastr.error("No Data Found."); }
+    if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
+    // Merge All and subset ? Add attrs for view.
+    d.data.forEach((it) => {
+      var ibent = it.data.ipv4addrs[0];
+      if (!ibent) { return; }
+      // Move to top
+      it.ipaddr_ib  = ibent.ipv4addr;
+      it.macaddr_ib = ibent.mac;
+      it.usedhcp    = ibent.configure_for_dhcp;
+    });
+    
+    showgrid(act.gridid, d.data, fldinfo.iblox);
+  }).catch (function (ex) { console.log(ex); });
+}
 //////////// Dialog handlers ////////////////////
