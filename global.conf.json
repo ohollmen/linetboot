@@ -118,7 +118,7 @@
     "tabui": 0,
     "xtabs" : ["",""]
   },
-  "targetos": "/ubuntu14",
+  "targetos": "ubuntu14",
   "useurlmapping": false,
   "remote": {
     "fspath": "/home/someuser/linetremote",

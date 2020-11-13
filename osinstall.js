@@ -662,7 +662,7 @@ function netconfig(net, f) {
   // Domain !
   if (f.ansible_domain) { net.domain = f.ansible_domain; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
-  //net.dev = anet.interface; // See Also .alias
+  //net.dev = anet.interface; // See Also anet.alias
   net.dev = "auto"; // Default ?
   
   // Extract interface (also alias) number !
