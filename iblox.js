@@ -152,11 +152,10 @@ function ipmac_cmds_gen(aout, res) {
     txt += aout.map((it) => {
       var puturl = it.url; // Works as change is on host level
       // // it.ipv4addrs[0].
-      return "curl -X PUT -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
+      return "curl -X PUT -k -u $IBCREDS -H 'content-type: application/json' -d '"+JSON.stringify(it.data)+"' '"+puturl+"'";
     }).join("\n");
     return res.end(txt);
 }
-
   /** Fetch info for single host from IB by fqdn in facts.
    * @param f - Host facts
    * @param cb - Async cb to call with IB host results
