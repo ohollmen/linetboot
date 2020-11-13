@@ -158,4 +158,55 @@ NOTE: There are slightly overlapping members in global.net
 
 Try to document (better) or disambiguate these (in implementation).
 
+# NetProbe async
+
+Exception (w. server crash)
+
+```
+/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:155
+                throw e;
+                ^
+
+Error: Callback was already called.
+    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/async/dist/async.js:966:32
+    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/async/dist/async.js:1137:13
+    at /projects/ccxsw/home/ccxswbuild/linetboot/netprobe.js:80:32
+    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/ping/lib/ping-sys.js:41:9
+    at _rejected (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:864:24)
+    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:890:30
+    at Promise.when (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:1142:31)
+    at Promise.promise.promiseDispatch (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:808:41)
+    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:624:44
+    at runSingle (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:137:13)
+```
+
+In code section
+```
+ping.sys.probe(ipaddr, function (isok) {
+          prec.ping = isok;
+          if (! isok) { return cb(null, prec); }
+	  
+```
+
+In more verbose output - place just before (twice called) CB call - a ipaddr repeats (for some reason):
+```
+Ping fail: 10.75.139.30
+Ping fail: 10.75.158.204
+Ping fail: 10.75.158.204
+```
+The reason for that is dns.resolveAny() produces sometimes > 1 records (2)
+and all are iterated by addrs.forEach(function (rec) {...
+```
+# Normal record
+Pv4 Addresses:  [ { address: '10.75.139.31', ttl: 3600, type: 'A' } ]
+# 
+IPv4 Addresses:  [ { address: '10.75.158.204', ttl: 60, type: 'A' },
+  { entries: [ '31bc53614c44bdcd25b434262c6e9f749e' ],
+    type: 'TXT' } ]
+```
+
+# Systemd: Attempted to remove disk file system, and we can't allow that.
+
+When trying to do: systemd-analyze verify ./linetboot.service
+Bug in systemd 237 and 238 (Ubuntu 18 has 237), see: https://unix.stackexchange.com/questions/443708/why-does-systemd-report-attempted-to-remove-disk-file-system-when-verify-is
 

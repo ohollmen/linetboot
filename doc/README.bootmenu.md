@@ -144,3 +144,9 @@ https://social.technet.microsoft.com/Forums/office/en-US/df523791-7424-4be7-b468
 0x80042565: The specified partition type is not valid for this operation.
 https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh824989(v=win.10)?redirectedfrom=MSDN Adding device drivers
 
+Filesystem access and perms
+
+- https://stackoverflow.com/questions/2928738/how-to-grant-permission-to-users-for-a-directory-using-command-line-in-windows
+- https://superuser.com/questions/364083/windows-list-files-and-their-permissions-access-in-command-line/364085
+- https://www.virtualhelp.me/windows/691-change-access-permissions-in-command-prompt
+

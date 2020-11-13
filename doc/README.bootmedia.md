@@ -160,7 +160,7 @@ Also Dell page ...https://www.dell.com/community/PowerEdge-Hardware-General/DRAC
 Note: For the Update from shell to work the "iDRAC Settings" => "Local Configuration" Settings "Disable iDRAC Local Configuration using Settings" and 
 "Disable iDRAC Local Configuration using RACADM" must be set to "Disabled".
 
-### Why run the BMI Update
+### Why run the BMI Update ?
 
 RedFish is a fairly recent technology (~2015) and many iplementations are still in flux in regards to sane support for features. Example of this is automated boot request with JSON message:
 

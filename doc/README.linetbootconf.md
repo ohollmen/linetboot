@@ -1,6 +1,14 @@
 # Linetboot configuration
 
-## "hosts" Inventory (Ansible-style)
+This section deals with the 2 manually created / maintained files that constitute the Linetboot configuration.
+They are (in the order they are loaded when linetboot starts):
+- **hosts** - The hosts list file (with assisteing "host parameters"), which determines which hosts should be covered by
+  by Linetboot application. Term *covered* here means "be bootable", "be displayed in hosts inventory" and be generally registered
+  with application with lot of information known about them.
+- global.conf.json - Linetboot global config to configure linetboot direct subsystems or connected subsystems for the use of Linetboot.
+  This includes named (JSON) config sections like "inst", "core", "dhcp", "tftp", "net"
+
+## Lineboot "hosts" Inventory (Ansible-style)
 
 Lineboot Configuration is best started by creating the initial "hosts" (inventory) file
 ( `~/.lineboot/hosts` ). The format for this file follows the ansible inventory file format.
@@ -12,7 +20,8 @@ Linetboot supports a subset of ansible supported features with following notable
 - Concept of "groups" is not currently supported.
 - host-lines should not be duplicated with same host(name) appearing multiple times in same inventory file
 
-Even with these limitations there is a good chance you can share the inventory file with Ansible.
+Even with these limitations there is a good chance you can share the inventory file with Ansible, which is a handy thing if you are
+already using Ansible for various host automation tasks.
 
 Note: Linetboot wants the whitespace in parameter values to be escaped by the URL escaping (Hex escape, e.g. %20 for space)  conventions.
 However whitespace is rarely needed and the best choice is to simply avoid it.
@@ -144,7 +153,9 @@ Installation Environment universal parameters (with fairly obvious meanings, not
 - keymap - Keyboard map / layout (E.g. "us")
 - time_zone - Timezone of hosts (E.g. "America/Los_Angeles")
 - install_recommends - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
-- postscript - Script to launch at the end of installation
+- postscript - Script to launch at the end of installation (enter basename only, must be found in `script_path`, see below)
+- tmpl_path - Template path (':' delimited path string)
+- script_path - Script path (':' delimited path string)
 - userconfig - OS Install initial user info JSON filename (See also how env. LINETBOOT\_USER\_CONF overrides this).
     This external file should have members:
   - fullname - full firstname, lastname of user
@@ -191,3 +202,14 @@ Environment Variables that can override settings in main config:
 - LINETBOOT\_IPTRANS\_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
 - LINETBOOT\_SSHKEY\_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
 
+## Internal processing of Environment Variables
+
+As part of configuration processing Lineboot internally:
+- Loads main (JSON) configuration into memory 
+- Overrides config values of config from the environment variables
+- During app runtime soly utilizes the main config
+ 
+
+## OS Recipe and Script template PATH:s
+
+The config variables 

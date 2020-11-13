@@ -14,7 +14,7 @@ box "linetboot"
 participant HTTP
 participant Media
 'participant "Host Params and Install DB" as HP
-database "Host Params and\nInstall DB" as HP
+database "Host Info and\nParams DB" as HP
 end box
 
 ' "database" declared here instead of above messes up the order
