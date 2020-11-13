@@ -4,7 +4,6 @@
 # Not needed in RH/CentOS, because homedir can be directly set in KS.
 # Needs to be run as root
 # Keep path on root partition.
-# Ref: https://askubuntu.com/questions/777218/debugging-preseed-late-command-for-ubuntu-16-04-server-tee-not-found-vs-nonexis
 # TEMPLATE_WITH: user
 #export NEW_HOME_PATH=/home_install
 export NEW_HOME_PATH=`dirname {{{ homedir }}}`
