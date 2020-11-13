@@ -442,7 +442,7 @@ d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installe
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
   in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}";\
   in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}};\
-  in-target dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt
+  in-target /bin/sh -c 'dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt'
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
 # preseed/run: One or more (space sep.) commands to download and run.
