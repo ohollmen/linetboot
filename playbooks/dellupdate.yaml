@@ -17,9 +17,10 @@
     # M640 and R640
     fwfname: iDRAC-with-Lifecycle-Controller_Firmware_369M3_LN_4.20.20.20_A00.BIN
     biosfname: BIOS_51CVR_LN_2.6.3.BIN
+    nfspath: '/isomnt/dell_r640'
   tasks:
     - name: Mount Update Media from NFS
-      shell: 'mount {{ nfsserv }}:/isomnt/dell_r640 {{ mntpt }}'
+      shell: 'mount {{ nfsserv }}:{{{ nfspath }}} {{ mntpt }}'
     - name: Run BIOS Updater Binary
       shell: '{{ mntpt }}/repository/{{ biosfname }} -q -n'
     - name: Run iDRAC Updater Binary
