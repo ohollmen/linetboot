@@ -827,9 +827,16 @@ function netplan_yaml(req, res) {
         .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
   }
 }
-/** Generate Ubuntu 20 subiquity meta-data file */
+/** Generate Ubuntu 20 subiquity single line meta-data file with hostname (!).
+ * Lookup facts for IP and extract (non-FQDN) hostname.
+ */
 function ubu20_meta_data(req, res) {
-  res.end("instance-id: focal-autoinstall\n");
+  var ip = osinst.ipaddr_v4(req);
+  var f = hostcache[ip];
+  var hn = 'host-01';
+  if (!f || !f.ansible_hostname) { }
+  else { hn = f.ansible_hostname; }
+  res.end("instance-id: "+hn+"\n"); // focal-autoinstall
 }
 
 /** generate API doc out of swagger API doc.
