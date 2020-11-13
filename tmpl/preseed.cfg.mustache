@@ -24,7 +24,7 @@
 # https://wiki.debian.org/DebianRepository/Format
 # https://askubuntu.com/questions/806820/how-do-i-create-a-completely-unattended-install-of-ubuntu-desktop-16-04-1-lts
 # https://github.com/core-process/linux-unattended-installation
-# https://www.debian.org/releases/wheezy/ia64/apbs05.html.en - Explanation of "seen" and inte4ractivity (Boot: preseed/interactive=true ), Preseed Inclusion
+# https://www.debian.org/releases/wheezy/ia64/apbs05.html.en - Explanation of "seen" and interactivity (Boot: preseed/interactive=true ), Preseed Inclusion
 # https://wiki.debian.org/DebianInstaller/Preseed
 # Official Ubuntu Server Book
 # https://www.debian.org/releases/jessie/i386/ch05s03.html.en - preseed config vars. Discussed in context of passing to kernel CL
@@ -33,14 +33,26 @@
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=852158
 # http://hands.com/d-i/ - Excellent preseed internals / debug notes
 # http://git.hands.com/hands-off - Cgit website with examples
-# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/ch-consistent_network_device_naming Netword Device naming conventions
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/ch-consistent_network_device_naming Network Device naming conventions
 # https://en.wikipedia.org/wiki/Consistent_Network_Device_Naming - Network Device naming (e.g. eth0, em1, eno1 ...)
 # https://blog.heckel.xyz/2015/10/18/how-to-create-debian-package-and-debian-repository/
 # https://help.ubuntu.com/community/InstallCDCustomization/PreseedExamples
 # https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
 # ftp://supermicro.com/ISO_Extracted/CDR-X9_1.30_for_Intel_X9_platform/Broadcom/Manuals/English/pxe.htm
 # https://help.ubuntu.com/lts/serverguide/installing-from-cd.html.en#install-tasks - Some elaboration on package tasks (tasksel)
-#
+# https://lists.ubuntu.com/archives/ubuntu-installer/2009-August/000466.html - Includes apt-setup-udeb examples, mirror examples
+# https://d-i.debian.org/doc/internals/ch02.html - Lot of excellent high-level info on Debian installer, install phases (also preseed)
+# http://ubuntu-on-big-iron.blogspot.com/2017/01/ - preseed and VLAN (also network in general)
+# https://wiki.ubuntu.com/S390X/InstallationGuide/AutomatedInstallsWithPreseed (Has link to excellent sample preseed.cfg, see link below)
+# https://wiki.ubuntu.com/S390X/InstallationGuide/AutomatedInstallsWithPreseed?action=AttachFile&do=get&target=preseed.cfg
+# http://www.vm.ibm.com/education/lvc/LVC0803.pdf IBM Course: Perseed on Ubuntu 16.04
+# https://github.com/wnoguchi/ubuntu_documents/blob/master/preseed/preseed.cfg/pxe/basic/preseed.cfg - Comprehensive (japanese) config
+# https://qiita.com/wnoguchi/items/9a9092dd23eea88d435f - Japanese (but still readable) article on Ubuntu PXE / preseed (Also good links)
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=433568 - Good info on VLAN directives (and preventing it). Also hints of d-i codebase file names
+# https://www.debian.org/doc/packaging-manuals/debconf_specification.html (e.g. debconf GET SET FGET (flag set) METAGET, SETTITLE CAPB tags explained)
+# https://hands.com/d-i/wheezy/misc/soda/dsd/common.cfg - 2005 preseed
+# http://ftp.gnome.org/pub/debian-meetings/2006/debconf6/slides/Debian_installer_workshop-Frans_Pop/paper/index.html
+
 # # Validating preseed file
 #     sudo debconf-set-selections -c preseed.cfg
 # # Notes on kernel CLI
@@ -67,23 +79,31 @@
 # https://www.debian.org/releases/lenny/hppa/apbs02.html.en Explains:
 #  delays the locale and keyboard questions until after there has been a chance to preseed them
 d-i auto-install/enable boolean true
+# OLD: With this traditional preseed be on safe side from >= ubu18 ... live stuff
+# N/A on ubuntu18
+#d-i live-installer/enable boolean false
+
 # Same as Boot CLI priority=critical, stops asking lower priority questions.
 # Installer default val seems to be "high"
 #d-i debconf/priority string critical
-# Preseed Include (Even HTTP is supported with basename approach, even sudir network/network.cfg works)
+# Preseed Include (Even HTTP is supported with basename approach, even subdir network/network.cfg works)
 #d-i preseed/include string network.cfg
 #d-i preseed/include_command string echo partition.cfg
 # Running a script (Relates to early_command, late_command)
 #d-i preseed/run string command.sh
 
-d-i debian-installer/quiet  boolean false
-d-i debian-installer/splash boolean false
+# 2x N/A on Ubu18 ?
+#d-i debian-installer/quiet  boolean false
+#d-i debian-installer/splash boolean false
 # String ? Debian Only ? Allow unautheticated repos using known gpg key
-#d-i debian-installer/allow_unauthenticated string true
+d-i debian-installer/allow_unauthenticated string true
 
 # Prompt *all* questions interactively (even if defaults by preseed are filled out).
 # Useful for debugging. Seems debconf/priority overrides this preseed/interactive (?)
-d-i preseed/interactive boolean true
+#d-i preseed/interactive boolean true
+
+# Mark seen ?
+#d-i debconf-apt-progress/info seen true
 
 ############# Locale / Keymaps ###################
 # en_US, en_NZ, en_GB (en_US.UTF-8) {{ locale }}
@@ -91,27 +111,30 @@ d-i debian-installer/locale string en_US
 # Individual step approach to previous
 #d-i debian-installer/language en
 # US, NL
-#d-i debian-installer/country string US
-#d-i debian-installer/theme string dark # UI Looks. e.g. "dark"
+d-i debian-installer/country string US
+#d-i debian-installer/theme string dark # UI Looks. e.g. "dark" OK
 d-i console-setup/ask_detect boolean false
-# Is following /layoutcode valid at all ?
-#d-i console-setup/layoutcode string us
+# Is following /layoutcode valid at all ? https://serverfault.com/questions/682245/debian-preseed-cfg-language-not-set
+d-i console-setup/layoutcode string us
 #d-i console-keymaps-at/keymap select us
-# Important / working (See similar above) {{ keymap }}
+# Important / working (See similar above) {{ keymap }} OK
 d-i keyboard-configuration/layoutcode string us
-
+# for Debian 7 and later
+d-i keymap select us
 ############ Network Config #############
+
+d-i netcfg/enable boolean true
+
 # See if Kernel CL supported ipv6.disable=1 is allowed in preseed
 # Per Debian docs (https://wiki.debian.org/DebianInstaller/Preseed), none of the netcfg/* settings
 # will succeed unless passed from Kernel CL (In which they lose their customization value as boot menu cannot be custom/host)
-# Value keywords for unassigned get_hostname/get_domain: unassigned-hostname unassigned-domain
-d-i netcfg/get_hostname string {{ net.hostname }}
-d-i netcfg/get_domain string {{ net.domain }}
+# However this is not completely true as preseed values *mostly* end up in /etc/* legacy files, /etc/netplan/01-netcfg.yaml, /etc/NetworkManager/
+
 # Setting this to false may benecessary to use netcfg/get_hostname string actualvalue
-# Actually seen means seen on screen (implies interacctive acceptance ?)
+# Actually seen means seen on screen (implies interactive acceptance ?)
 #d-i netcfg/get_hostname seen true
 #d-i netcfg/get_domain seen true
-# Besides "auto", choose_interface Could be eth0,em1,eno1
+# Besides "auto", choose_interface Could be eth0,em1,eno1. "auto" generally works best.
 # Facts based estimate:
 # d-i netcfg/choose_interface select {{ net.dev }}
 d-i netcfg/choose_interface select auto
@@ -120,36 +143,52 @@ d-i netcfg/link_wait_timeout string 10
 # Debian
 #d-i netcfg/link_detection_timeout string 10
 #d-i netcfg/dhcp_timeout string 20
-# NEW (to enable)
+# NEW (to enable). See https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html
 d-i netcfg/dhcp_failed note
+# Default: Configure network manually
 d-i netcfg/dhcp_options select Configure network manually
 #d-i netcfg/dhcp_hostname string {{ net.hostname }}
-d-i netcfg/disable_dhcp boolean true
-# Does this even exist ? # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=688273
+#### DHCP / AUTOCONFIG ####
+# Orig true. 2020-10 Try false to resolve name lookup during install
+# When set to true, does not change anything as preseed/run kills dhcp and restarts network
+# Doc says this is "(deprecated)", likely competing with netcfg/disable_autoconfig
+# DEPRECATED: d-i netcfg/disable_dhcp boolean true
+# netcfg/use_autoconfig (default true) # Change in netcfg/use_autoconfig: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=688273
 # Note from above: BOTH use_autoconfig false AND disable_autoconfig true must be set redundantly to use static (!?)
+# From kernel CL use_autoconfig seems to use format netcfg/use_autoconfig=1, even if other settings (on CL) use true/false
 d-i netcfg/use_autoconfig boolean false
-# To disable any DHCP or IPv6 autoconfig and allow manual config override
-# NEW/TODO: Note: This ssems to creating propting for hostname (!)
+# netcfg/disable_autoconfig (default false) - To disable any DHCP or IPv6 autoconfig and allow preseed manual config (below) override
+# NEW/TODO: Note: This (set to ...) seems to creating prompting for hostname (!)
 d-i netcfg/disable_autoconfig boolean true
 
-# Static network configuration.
-#
-# IPv4 example
-# Explicit hostname (compare to get_hostname)
-#d-i netcfg/hostname string {{ net.hostname }}
+# Static network configuration (IPv4 example)
+# Explicit hostname (compare to get_hostname). Examples seem to use hostname over get_hostname (!?)
+d-i netcfg/hostname string {{ net.hostname }}
+# Value keywords for unassigned get_hostname/get_domain: unassigned-hostname unassigned-domain
+d-i netcfg/get_hostname string {{ net.hostname }}
+d-i netcfg/get_domain string {{ net.domain }}
 d-i netcfg/get_ipaddress string {{ net.ipaddress }}
 d-i netcfg/get_netmask string {{ net.netmask }}
 d-i netcfg/get_gateway string {{ net.gateway }}
-d-i netcfg/get_nameservers string {{ net.nameservers }}
+# *space* delimited list
+d-i netcfg/get_nameservers string {{ net.nameservers_str }}
+# This is ack for interactive installer gui
 d-i netcfg/confirm_static boolean true
 
 #d-i hw-detect/load_firmware boolean true
 
-# Manual Network Config
-d-i netcfg/disable_autoconfig boolean true
+# Manual Network Config (duplicate, is loc. important?)
+# d-i netcfg/disable_autoconfig boolean true
 # d-i netcfg/wireless_wep string
 
-############# Clock Setup ##############
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=433568
+#d-i netcfg/use_vlan boolean false
+#d-i netcfg/vlan_id string vlanid_num
+# Event this is provided, but no doc what all it affects.
+# for internal use; can be preseeded. Set to false to fallback to ifupdown.
+#d-i netcfg/do_not_use_netplan boolean false
+
+############# Time/Clock Setup ##############
 d-i clock-setup/utc boolean true
 d-i clock-setup/utc-auto boolean true
 
@@ -167,21 +206,26 @@ d-i clock-setup/ntp boolean true
 d-i mirror/protocol string http
 # Lower case us ("US" works) ? (Can be "manual"). This gets us passed "Ubu arch. mirror country" menu.
 # According to sources country overrides mirror/http/hostname
-# Set to "manual" to allow mirror/http/mirror to override (See +bug/775670) /country ... "New Zealand"
+# Set mirror/country to "manual" to allow mirror/http/mirror or actually mirror/http/hostname to override
+# (See +bug/775670) /country ... "New Zealand"
 #d-i mirror/country string US
 d-i mirror/country string manual
 # Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com) {{ mirror.hostname }}
 d-i mirror/http/hostname string {{ mirror.hostname }}
 # Check /ubuntu/dists/bionic (e.g. "/ubuntu-11.04-server-i386", "/ubuntu14.04", "/ubuntu". In Debian "/debian")
+# For official Mirrors this seems to be: Ubuntu: /ubuntu , Debian: /debian
 d-i mirror/http/directory string {{{ mirror.directory }}}
-d-i mirror/http/proxy string
+# For no proxy: keep empty, no trailing slash
 #d-i mirror/http/proxy string http://<username>:<password>@<proxy>:8080
-# Orig example mirror/codename string natty (Is this a directory ? Under mirror.directory ?) Ubu:/suite ... dapper
+d-i mirror/http/proxy string
+
+# Orig example mirror/codename string natty (natty,hardy,stretch,bionic,dapper Is this a directory ? Under mirror.directory ?)
+# Consider (parametrize). is this Ubuntu only ? This seems to be redundant and it seems distro is always able to "know" this.
 #d-i mirror/suite string stretch
 #d-i mirror/codename string stretch
-# This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname)
-# e.g. my.local.mirror {{ mirror.hostname }}
+# This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname) e.g. my.local.mirror
 d-i mirror/http/mirror select {{ mirror.hostname }}
+
 # TODO: Possibly support local0
 #d-i apt-setup/local0/repository string http://apt.example.net/ubuntu &releasename; main
 #d-i apt-setup/local0/comment string local server
@@ -194,19 +238,35 @@ d-i mirror/http/mirror select {{ mirror.hostname }}
 # TODO: Choose OpenSSH Server basic ubuntu server (instead of just "core")
 # See: https://wiki.debian.org/tasksel
 popularity-contest popularity-contest/participate boolean false
-# Repositories
+# Repositories. questions.dat has: below and multiarch, partner, proposed (Only universe, multiverse have "/source")
+# Default is false for: contrib, non-free, partner, proposed (Others true, most surprising: restricted: true)
+# Orig policy: */source = false, 
+# Summary: multiverse: "non-free" (Ubu specific?)
+#{{#addrepos}}{{/addrepos}}
 d-i apt-setup/universe        boolean true
 d-i apt-setup/universe/source boolean false
 d-i apt-setup/multiverse      boolean true
 d-i apt-setup/multiverse/source boolean false
 d-i apt-setup/contrib         boolean true
 d-i apt-setup/restricted     boolean true
+# Added for explicit full list
+
+# From https://github.com/wnoguchi/ubuntu_documents/blob/master/preseed/preseed.cfg/pxe/basic/preseed.cfg
+d-i apt-setup/use_mirror boolean true
+
+# Long-time commented (backports, non-free)
 #d-i apt-setup/backports     boolean true
-# Debian ? non-free,contrib
+# Debian and Ubuntu have non-free. non-free,contrib
 # d-i apt-setup/non-free     boolean true
+d-i apt-setup/enable-source-repositories boolean false
+# NEW: Suggested to cure jam w/o value (Opts: security, updates, backports)
+#d-i apt-setup/services-select multiselect
+####### pkgsel, tasksel #####
 # Should not hurt w. install-language-support by Ubuntu examples (with no value)
-d-i pkgsel/language-pack-patterns   string
+#d-i pkgsel/language-pack-patterns string
+# d-i default true, keep here to false
 d-i pkgsel/install-language-support boolean false
+d-i pkgsel/install-language-support seen true
 # Example values: "ubuntu-server", "ubuntu-desktop" ubuntu-server kubuntu-desktop
 # Supposedly (old examples) standard system utilities, OpenSSH server, Basic Ubuntu server (comma separated options)
 # Debian manuals show "standard" and comma-separation, also desktop, web-server
@@ -215,17 +275,24 @@ d-i pkgsel/install-language-support boolean false
 # Eliminated: "ssh-server" (seems cannot be part of this, use pkgsel/include for this)
 # Note: the kw may be "server", NOT "ubuntu-server" as there is also "ubuntu-standard" pkg.
 # apt-cache Shows "Task:" for many packages as "server" (See tasksel --list-tasks).
-# Here (despite the "multiselect") either there can be only one choice, first gets considerd or there cannot be comma delim.
+# Here (despite the "multiselect") either there can be only one choice, first gets considered or there cannot be comma delim.
 # E.g. "server" alone works.
+# 2020-10 Try: "server" => "none" and just install openssh-server
+# Reduces packages from 503 => 360
 tasksel tasksel/first multiselect server
-# Install only security updates automatically
-#d-i pkgsel/update-policy select unattended-upgrades
+# Install only security updates automatically: "unattended-upgrades"
 d-i pkgsel/update-policy select none
-# none, safe-upgrade, full-upgrade
+# upgrade - N/A in ubu18 ? : none, safe-upgrade, full-upgrade
 d-i pkgsel/upgrade select none
 #d-i pkgsel/upgrade select full-upgrade
-# system's locate database will be updated
+# N/A in ubu18 ? system's locate (package?) database will be updated (was false)
 d-i pkgsel/updatedb boolean false
+# "anna" is installer (apt-like) for extra (addl comps) udeb pkgs.
+# Suggested as workround for problems with: Menu item 'apt-setup-udeb' selected ...
+# If this occurs: Falling back to the package description for brltty-udeb
+# d-i anna/choose_modules apt-cdrom-setup
+
+
 
 # Kernel options ("Kernel to install:" in installer)
 # As per https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html possible option is: linux-generic
@@ -248,52 +315,86 @@ d-i pkgsel/updatedb boolean false
 # NEW:
 d-i base-installer/install-recommends boolean {{ install_recommends }}
 # build-essential openssh-server ubuntu-server
-# When task (tasksel/first) "server" is selected "ubuntu-server" is unnecessary)
-d-i pkgsel/include string openssh-server python
+# When task (tasksel/first) "server" is selected "ubuntu-server" is unnecessary
+d-i pkgsel/include string openssh-server python curl
 
-############## Disk and Partitioning ####################
-# regular/lvm/crypto
-# NOTE: Leave out to enable biggest_free
-# d-i partman-auto/method string regular
+############## Disk and Partitioning (partman/*, partman-auto/*) ####################
+# Some level of "partman-auto/*" needs to remain as the most explicit partitioning by partman-auto/expert_recipe
+# is part of partman-auto/* directives. The most "constant" (and least likely to cause problems) partman* settings remain here on the top.
+# See also partman-auto-recipe.txt (in debian-installer package).
+# Seems like default_filesystem is never needed with explicit disk recipe
+#d-i partman/default_filesystem string ext4
+# Explicit Install Drive
+d-i partman-auto/disk string /dev/sda
+
+# https://serverfault.com/questions/415174/debian-6-preseeding-keeps-asking-write-the-changes-to-disks-and-configure-lvm
+# https://cptyesterday.wordpress.com/2012/06/17/notes-on-using-expert_recipe-in-debianubuntu-preseed-files/
+# https://ubuntuforums.org/showthread.php?p=9626883
+# partman-auto/method Opts: regular/lvm/crypto .. see https://www.debian.org/releases/squeeze/example-preseed.txt
+# NOTE: Leave partman-auto/method out to enable biggest_free (see below)
+# Otherwise: enable (as a very foundational setting) !
+d-i partman-auto/method string regular
+
 # Heuristical ... custom, some_device, some_device_crypto, some_device_lvm
 # Note: only effective when partman-auto/method is NOT set
-d-i partman-auto/init_automatically_partition select biggest_free
-# Explicit
-d-i partman-auto/disk string /dev/sda
+# Disable in favor of partman-auto/method string regular and partman-auto/expert_recipe ...
+# d-i partman-auto/init_automatically_partition select biggest_free
+
 # Purge LVM or RAID (_md). See also partman-lvm/device_remove_lvm below.
-#d-i partman-lvm/device_remove_lvm boolean true
+# NEW: Was commented for a long time. Enabled 2020-10
+d-i partman-lvm/device_remove_lvm boolean true
+#TODO ?
+#d-i partman-lvm/confirm boolean true
+# This is said to remove user receiving warning from installer
 d-i partman-auto/purge_lvm_from_device boolean true
-#d-i partman-md/device_remove_md boolean true
-# Auto-mode: atomic/home/multi
+# Remove old RAID ? Taken to use 2020-10
+d-i partman-md/device_remove_md boolean true
+
+# partman-auto/choose_recipe selects a "named" recipe - either out-of-box (?? - where are these listed, see known ones below)
+# or one named by d-i partman-auto/expert_recipe string root :: ... (e.g. "root" here). Must be present
+# to use a expert_recipe (expert_recipe does not get used implicitly w/o this) !
+# choose_recipe (out-of-box) opts: "atomic" (all in one part), "home" (sep. /home) , "multi" (fully normalized)
 #d-i partman-auto/choose_recipe select atomic
 
-d-i partman/default_filesystem string ext4
-# true = Write w/o confirmation
+d-i partman-auto/expert_recipe string rootdisk :: \
+{{{ diskinfo }}}
+d-i partman-auto/choose_recipe select rootdisk
+
+# confirm... true = Write w/o confirmation
 # Was disabled for minimally interactive install. What does this do / add ?
-#d-i partman/confirm_write_new_label boolean true
+# Likely "label" here is disklabel => partition table
+#  NEW: confirm_write_new_label Was commented for a long time. Enabled 2020-10
+# NOTE Also: d-i partman-partitioning/confirm_write_new_label boolean true **partman-partitioning**
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/confirm_write_new_label boolean true
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
-# MUST remain commented (with value finish), Otherwise locks install with infinite "UI loop"
+
+# OLD/OUTDATED Note: MUST remain commented (with value finish), Otherwise locks install with infinite "UI loop"
 # and error: "No root file system is defined..." Selecting "Partition disks" goes back to loop.
-# d-i partman/choose_partition select finish
-# Recipe (On only local FS ?, See: partman-auto-recipe.txt)
+# Some sources say this should have value: "Finish partitioning and write changes to disk" (no quotes)
+d-i partman/choose_partition select finish
+# Disk Recipe (On only local FS ?, See: partman-auto-recipe.txt)
 #d-i partman-auto/expert_recipe string \ ...(inlined)
 # TODO: Download by an early script hook ?
 #d-i partman-auto/expert_recipe_file string /hd-media/recipe
 d-i partman/mount_style select uuid
 d-i partman/unmount_active boolean true
 
+# LVM (-lvm) and RAID (-md) versions (of similar partman/* directives). Consider enable, but should not have effect.
 #d-i partman-lvm/confirm boolean true
 #d-i partman-lvm/confirm_nooverwrite boolean true
+#d-i partman-md/confirm boolean true
 
-
-########## User setup ######################
+########## User setup ("user-setup") ######################
 # User setup is performed very close to the end of the install, but before late_command
 d-i passwd/make-user boolean true
-d-i passwd/user-fullname string {{ user.fullname }}
+d-i passwd/user-fullname string {{{ user.fullname }}}
 d-i passwd/username string {{ user.username }}
-d-i passwd/user-password password {{ user.password }}
-d-i passwd/user-password-again password {{ user.password }}
+d-i passwd/user-password password {{{ user.password }}}
+d-i passwd/user-password-again password {{{ user.password }}}
+# E.g. by: mkpasswd -m sha-512
+# d-i passwd/user-password-crypted password {{{ user.password_crypted }}}
 # ... groups=1000(XXXXXXX),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),108(lxd),113(lpadmin),114(sambashare)
 #d-i passwd/user-uid string 1000
 d-i passwd/user-default-groups string {{ user.groups }}
@@ -301,53 +402,66 @@ d-i passwd/user-default-groups string {{ user.groups }}
 d-i user-setup/allow-password-weak boolean true
 d-i user-setup/encrypt-home boolean false
 
-d-i passwd/root-login boolean false
+{{#rootlogin}}
+d-i passwd/root-login boolean true
 # Use root-password for clear
 # d-i passwd/root-password-crypted password [MD5 hash]
-
+d-i passwd/root-password password {{{ user.password }}}
+d-i passwd/root-password-again password {{{ user.password }}}
+{{/rootlogin}}
 ############ Grub / Bootloader ######################
 d-i grub-installer/only_debian boolean true
+# Change to false as machines are (generally) exclusive special purpose machines ? (def: true, has worked ok)
 d-i grub-installer/with_other_os boolean true
+#d-i grub-installer/bootdev string /dev/sda
 
-
-############ Hooks: early and late command #####################
+############ Hooks: "run", "early_command" and "late_command" #####################
 # Unmount drives with active partitions. Without this command all the
 # installation process would stop and require confirmation to unmount
 # drives that are already mounted. See also d-i partman/unmount_active boolean true
 # See if token "in-target" after type is valid. Actually it is a command.
+#d-i preseed/early_command string umount /media || true
+
 # Notes:
 # - early_command is ran *very* early. Right after fetching (and parsing) preseed.cfg
 # - for example wget may not be available for early_command (Unexpected error; command not executed: 'wget http://...')
-# - Commands wrapped with command in-target get executed in installation target
+# - Commands wrapped with command "in-target" get executed (in a chroot fashion) in installation target dir (/target)
 # - Use command apt-install to install APT packages early
-# - Use command preseed_fetch to do early HTTP get fetches (Used fetch-url underneath)
+# - Use explicit command preseed_fetch to do early HTTP get fetches (w. params: src dest. Uses fetch-url underneath)
 # - The future root partition is mounted in install time dir: /target
 # - Examples show that a CL with multiple ";" separated commands can be run (like in sh / bash) by late_command
 # https://github.com/Jolicloud/ubiquity/blob/master/d-i/source/preseed/README.preseed_fetch
-#d-i preseed/early_command string umount /media || true
-# Change ";exit 0" to "; true" or " || true"
+
+# Change typical ";exit 0" to "; true" or " || true"
 d-i preseed/early_command string preseed_fetch "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` /dev/null || true
 
 # Late Command has all packages installed available (e.g. wget works)
 # Prefix command with wrapper command "in-target" to perform op in OS install mounted target area (Instead of current root).
 # The cwd seems to be set (by chroot) to root of new OS install root directory.
-#d-i preseed/late_command string \ ...
+# in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ;\
 d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true ;\
-  in-target wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list ; in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}"; in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}}
+  in-target wget "http://{{ httpserver }}/scripts/{{{ postscript }}}";\
+  in-target chmod a+x {{{ postscript }}}; in-target ./{{{ postscript }}};\
+  in-target dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt
 #d-i preseed/late_command string in-target wget http://.../some.sh; ...
 
-# One or more (space sep.) commands to download and run.
-# Note that this is done just *before* early_command.
-# Pre this doc: https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html this is extremely useful for
-# circumventing the stubborn refusal to accept static network config: Set this to script that runs: kill-all-dhcp; netcfg
+# preseed/run: One or more (space sep.) commands to download and run.
+# Note that this is done just *before* early_command and only has /bin/sh available (esp. notable if script has "hashbang" line).
+# This seems to be called by installer (and menu): "Download debconf preconfiguration file" (seems this collectively refers to
+# preseed.cfg, preseed/run and preseed/early_command (In that order).
+# Per this doc: https://help.ubuntu.com/lts/installation-guide/s390x/apbs04.html this is extremely useful for
+# circumventing the stubborn refusal to accept static network config: Set this to script that runs: "kill-all-dhcp; netcfg"
 # (Also from: https://www.debian.org/releases/stable/amd64/apbs04.html.en#preseed-network)
-d-i preseed/run string scripts/preseed_net_restart.sh
+# Set netcfg/disable_dhcp boolean false, disabled this ... => netplan is dhcp
+#d-i preseed/run string scripts/netplan.sh scripts/preseed_net_restart.sh
 
 ########### Ending / Rebooting #################
-d-i debian-installer/main-menu-title LiNetBoot Install
-# Could leave a note here ?
+# Commented as unnecessary
+#d-i debian-installer/main-menu-title LiNetBoot Install
+# Avoid last note. Could leave a note here ?
 d-i finish-install/reboot_in_progress note
 #d-i debian-installer/exit/halt boolean true
-d-i debian-installer/exit/poweroff boolean true
+# Disabled poweroff as "damaging" for general automation, quick ramp-up and linetboot post-provisioning
+#d-i debian-installer/exit/poweroff boolean true
 
 {{{ appendcont }}}
