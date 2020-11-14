@@ -15,14 +15,14 @@ var hlr      = require("./hostloader.js");
 
 function init(global, hdls) {
   if (global && global.iblox) { ibconf = global.iblox; }
-  else { return; }; // module.exports
+  else { return module.exports; }
   hostarr = hdls.hostarr;
   hostcache = hdls.hostcache;
   // Prepare get parameters that stay constant
   var bauth = redfish.basicauth(ibconf);
   getpara = {headers: {Authorization: "Basic "+bauth}};
   url_h = ibconf.url + "/record:host?";
-  // return module.exports;
+  return module.exports;
 }
 
 /** Set addr info in IB ()
@@ -76,12 +76,30 @@ function ib_show_hosts(req, res) {
   // console.log("getpara: ", getpara);
   ibhs_fetch(syncarr, showitems, res, jr);
   function showitems(ress, res) {
+    // TODO: Index ress, iterate all hosts (hostarr) ?
+    var ress_idx = {};
+    //ress.forEach((ibn) => { ress_idx[ibn.hname] = ibn; });
+    // hostarr.map((f) => {
     var ress2 = ress.map((it) => {
+      var f = hostcache[it.hname];
+      if (!f) { return it; } // return {}
+      var anet = f.ansible_default_ipv4;
+      if (!anet) { return it; }
       // Possibly
       // - use entry itself, copy inner obj props to top
       // - use hostarr to drive iteration
-      //{hname: it.hname } // Use ipaddr_ib, macaddr_ib, usedhcp
-      //it.ipaddr
+      //var n = {hname: f.ansible_fqdn, ipaddr: anet.address, macaddr: anet.macaddress } // Use ipaddr_ib, macaddr_ib, usedhcp
+      
+      // NEW: var it = ress_idx[f.ansible_fqdn];
+      // if (!it) { return ...;}
+      
+      it.ipaddr = anet.address;
+      it.ipaddr = anet.macaddress;
+      // TODO: Add Iblox -side info on top already here ?
+      //var ibent = it.data.ipv4addrs[0];
+      //it.ipaddr_ib  = ibent.ipv4addr;
+      //it.macaddr_ib = ibent.mac;
+      //it.usedhcp    = ibent.configure_for_dhcp;
       return it;
     });
     res.json({status: "ok", data: ress2});
