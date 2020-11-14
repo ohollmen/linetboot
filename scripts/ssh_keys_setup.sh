@@ -4,9 +4,11 @@
 ########################### SSH #################
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin:{{{ homedir }}}/bin
 hash -r
+ldconfig
 POST_LOG={{{ homedir }}}/post-log.txt
 
 LINET_HNAME=`echo -n {{{ httpserver }}} | cut -d ':' -f 1`
+# The ls does not work ?
 ls -al {{{ homedir }}} >> $POST_LOG
 ls -al /usr/bin/ssh-keygen >> $POST_LOG
 # Generate user SSH keys (and .ssh with correct rights). All ouput comes to stdout.
