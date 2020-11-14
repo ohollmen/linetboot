@@ -13,9 +13,10 @@ ls -al {{{ homedir }}} >> $POST_LOG
 ls -al /usr/bin/ssh-keygen >> $POST_LOG
 ldd /usr/bin/ssh-keygen >> $POST_LOG
 mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}/.ssh/
-touch {{{ homedir }}/.ssh/authorized_keys
-# echo "{ sshkey }" >> {{{ homedir }}/.ssh/authorized_keys
-chmod 0600 {{{ homedir }}/.ssh/authorized_keys
+touch {{{ homedir }}}/.ssh/authorized_keys
+# echo "{{{ linet_sshkey }}}" >> {{{ homedir }}}/.ssh/authorized_keys
+# Universal for all *files* in ~/.ssh (but .pub can be 0644)
+chmod 0600 {{{ homedir }}}/.ssh/authorized_keys
 # Generate user SSH keys (and .ssh with correct rights). All (normal) output from ssh-keygen comes to stdout.
 # su -p: preserve env (-su: /root/.bash_profile: Permission denied)
 /bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
