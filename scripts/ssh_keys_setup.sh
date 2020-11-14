@@ -20,10 +20,11 @@ echo "{{{ linet_sshkey }}}"  >> {{{ homedir }}}/.ssh/authorized_keys
 echo "{{{ linet_hostkey }}}" >> {{{ homedir }}}/.ssh/known_hosts
 # Universal for all *files* in ~/.ssh (but .pub can be 0644)
 chmod 0600 {{{ homedir }}}/.ssh/authorized_keys {{{ homedir }}}/.ssh/known_hosts
+chown -R {{ username }}:{{ username }} {{{ homedir }}}/.ssh
 # Generate user SSH keys (and .ssh with correct rights). All (normal) output from ssh-keygen comes to stdout.
 # su -p: preserve env (-su: /root/.bash_profile: Permission denied)
 # Normal user: Could not open /dev/null: Permission denied
-# ssh-keygen needs access
+# ssh-keygen needs write access (After install -rw-r--r--)
 chmod a+rw /dev/null
 ls -al /dev/null >> $POST_LOG
 /bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
