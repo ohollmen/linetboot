@@ -439,10 +439,11 @@ function ibloxlist(ev, act) {
   toastr.info("Looking up Iblox host info ... please wait");
   axios.get("/ibshowhost").then(function (resp) {
     var d = resp.data;
-    if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
+    if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
     if (!d.data) { return toastr.error("No Data Found."); }
     if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
     // Merge All and subset ? Add attrs for view.
+    /*
     d.data.forEach((it) => {
       var ibent = it.data.ipv4addrs[0];
       if (!ibent) { return; }
@@ -451,7 +452,7 @@ function ibloxlist(ev, act) {
       it.macaddr_ib = ibent.mac;
       it.usedhcp    = ibent.configure_for_dhcp;
     });
-    
+    */
     showgrid(act.gridid, d.data, fldinfo.iblox);
   }).catch (function (ex) { console.log(ex); });
 }

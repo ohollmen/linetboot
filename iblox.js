@@ -68,7 +68,7 @@ function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
   // var ibconf = global.iblox;
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
-
+  if (!ibconf.user || !ibconf.pass) { jr.msg += "Not Connected to IBlox system";return res.json(jr); }
   console.log("Query: "+url_h);
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
   var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return h.ansible_fqdn && hp.ibsync; });
@@ -78,29 +78,32 @@ function ib_show_hosts(req, res) {
   function showitems(ress, res) {
     // TODO: Index ress, iterate all hosts (hostarr) ?
     var ress_idx = {};
-    //ress.forEach((ibn) => { ress_idx[ibn.hname] = ibn; });
-    // hostarr.map((f) => {
-    var ress2 = ress.map((it) => {
-      var f = hostcache[it.hname];
-      if (!f) { return it; } // return {}
+    ress.forEach((ibn) => { ress_idx[ibn.hname] = ibn; });
+    var ress2 = hostarr.map((f) => {
+    //var ress2 = ress.map((it) => {
+      //var f = hostcache[it.hname];
+      if (!f) { return {}; } // return it
       var anet = f.ansible_default_ipv4;
-      if (!anet) { return it; }
+      if (!anet) { return {}; } // return it
       // Possibly
       // - use entry itself, copy inner obj props to top
       // - use hostarr to drive iteration
-      //var n = {hname: f.ansible_fqdn, ipaddr: anet.address, macaddr: anet.macaddress } // Use ipaddr_ib, macaddr_ib, usedhcp
+      var n = {hname: f.ansible_fqdn, ipaddr: anet.address, macaddr: anet.macaddress,
+        ipaddr_ib: '', macaddr_ib: '', usedhcp: ''}; // Use ipaddr_ib, macaddr_ib, usedhcp
       
-      // NEW: var it = ress_idx[f.ansible_fqdn];
-      // if (!it) { return ...;}
+      // NEW:
+      var it = ress_idx[f.ansible_fqdn];
+      if (!it) { return n;}
       
-      it.ipaddr = anet.address;
-      it.macaddr = anet.macaddress;
+      //it.ipaddr = anet.address;
+      //it.macaddr = anet.macaddress;
       // TODO: Add Iblox -side info on top already here ?
-      //var ibent = it.data.ipv4addrs[0];
-      //it.ipaddr_ib  = ibent.ipv4addr;
-      //it.macaddr_ib = ibent.mac;
-      //it.usedhcp    = ibent.configure_for_dhcp;
-      return it;
+      var ibent = (it.data && it.data.ipv4addrs && it.data.ipv4addrs[0]) ? it.data.ipv4addrs[0] : null;
+      if (!ibent) { return n; }
+      n.ipaddr_ib  = ibent.ipv4addr || '';
+      n.macaddr_ib = ibent.mac || '';
+      n.usedhcp    = ibent.configure_for_dhcp || '';
+      return n;
     });
     res.json({status: "ok", data: ress2});
   }
