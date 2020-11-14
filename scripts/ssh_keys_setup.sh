@@ -11,6 +11,7 @@ LINET_HNAME=`echo -n {{{ httpserver }}} | cut -d ':' -f 1`
 # The ls does not work ?
 ls -al {{{ homedir }}} >> $POST_LOG
 ls -al /usr/bin/ssh-keygen >> $POST_LOG
+ls -al /dev/null >> $POST_LOG
 ldd /usr/bin/ssh-keygen >> $POST_LOG
 mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}/.ssh/
 touch {{{ homedir }}}/.ssh/authorized_keys
@@ -21,6 +22,10 @@ echo "{{{ linet_hostkey }}}" >> {{{ homedir }}}/.ssh/known_hosts
 chmod 0600 {{{ homedir }}}/.ssh/authorized_keys {{{ homedir }}}/.ssh/known_hosts
 # Generate user SSH keys (and .ssh with correct rights). All (normal) output from ssh-keygen comes to stdout.
 # su -p: preserve env (-su: /root/.bash_profile: Permission denied)
+# Normal user: Could not open /dev/null: Permission denied
+# ssh-keygen needs access
+chmod a+rw /dev/null
+ls -al /dev/null >> $POST_LOG
 /bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
 echo "Created SSH keys: rc=$?" >> $POST_LOG
 #if [ ! -d "{{{ homedir }}}/.ssh" ]; then
