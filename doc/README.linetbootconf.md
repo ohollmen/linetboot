@@ -43,19 +43,19 @@ filer-001 nfs=1
 While key names for key-value pairs are arbitrary, some names have a special meaning (just as for Ansible) meaning for Lineboot.
 The list on notable ones is:
 
-- loc (string) - Free form host location Indicator (e.g. "West+DC")
-- use (string) - Brief Usage description (e.g. "MySQL+Prod")
-- dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts)
+- loc (str) - Free form host location Indicator (e.g. "West+DC", "Main+Office", etc.)
+- use (str) - Brief Usage description (e.g. "MySQL+Prod", "DHCP-Server")
+- dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts, e.g. "dock=1")
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
-- bmccreds (string) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
-- ptt (string) - partition table type "mbr" - Master Boot Record / "gpt" - GUID Partition table
-
+- bmccreds (str) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
+- ptt (str) - partition table type with supported values: "mbr" - Master Boot Record / "gpt" - GUID Partition table
+- nbp (str) - Network boot program, bootloader to use for this host (name given by DHCP, available by TFTP) 
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
 
 - ansible_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
-- ansible\_sudo\_pass - Anisble sudo password
+- ansible\_sudo\_pass - Ansible sudo password
 
 Sharing variables / variable names with ansible is okay as long as they have the same conceptual meaning.
 

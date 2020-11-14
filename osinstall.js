@@ -721,7 +721,10 @@ function script_send(req, res) {
   if (tpc) {
     console.error("need templating w." + tpc);
     var p = {};
-    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver; }
+    var np = require("./netprobe.js"); // .init(...) Rely on earlier init(), but has init-guard
+    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver; p.linet_sshkey = np.pubkey();
+      p.linet_sshkey = p.linet_sshkey.replace(/\s+$/, "");
+    }
     if (tpc == 'net') {
       p = dclone(global.net);
       p.httpserver = global.httpserver; // Complement w. universally needed var
