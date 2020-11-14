@@ -722,8 +722,12 @@ function script_send(req, res) {
     console.error("need templating w." + tpc);
     var p = {};
     var np = require("./netprobe.js"); // .init(...) Rely on earlier init(), but has init-guard
-    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver; p.linet_sshkey = np.pubkey();
+    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver;
+      // SSH Keys (also host) ?
+      p.linet_sshkey = np.pubkey();
       p.linet_sshkey = p.linet_sshkey.replace(/\s+$/, "");
+      var hk = fs.readFileSync("/etc/ssh/ssh_host_rsa_key.pub", 'utf8');
+      if (hk) { hk = hk.replace(/\s+$/, ""); p.linet_hostkey = hk; }
     }
     if (tpc == 'net') {
       p = dclone(global.net);
