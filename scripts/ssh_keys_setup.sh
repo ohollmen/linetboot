@@ -11,14 +11,21 @@ LINET_HNAME=`echo -n {{{ httpserver }}} | cut -d ':' -f 1`
 # The ls does not work ?
 ls -al {{{ homedir }}} >> $POST_LOG
 ls -al /usr/bin/ssh-keygen >> $POST_LOG
-# Generate user SSH keys (and .ssh with correct rights). All ouput comes to stdout.
+ldd /usr/bin/ssh-keygen >> $POST_LOG
+mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}/.ssh/
+touch {{{ homedir }}/.ssh/authorized_keys
+# echo "{ sshkey }" >> {{{ homedir }}/.ssh/authorized_keys
+chmod 0600 {{{ homedir }}/.ssh/authorized_keys
+# Generate user SSH keys (and .ssh with correct rights). All (normal) output from ssh-keygen comes to stdout.
 # su -p: preserve env (-su: /root/.bash_profile: Permission denied)
-/bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG
-echo "Created SSH keys: $?" >> $POST_LOG
+/bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
+echo "Created SSH keys: rc=$?" >> $POST_LOG
 if [ ! -d "{{{ homedir }}}/.ssh" ]; then
   echo "{{{ homedir }}}/.ssh (and keys) not created" >> $POST_LOG
   exit 0
 fi
+# 
+
 # Copy linetboot public key back (can copy direct to ~/.ssh/authorized_keys)
 SSH_AKFN={{{ homedir }}}/.ssh/authorized_keys
 SSH_HKEY_PATH=/etc/ssh/
