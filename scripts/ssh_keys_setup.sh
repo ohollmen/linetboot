@@ -1,4 +1,5 @@
 #!/bin/bash
+# Generate SSH keys for user.
 # TEMPLATE_WITH: user
 ########################### SSH #################
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin:{{{ homedir }}}/bin
@@ -6,9 +7,16 @@ hash -r
 POST_LOG={{{ homedir }}}/post-log.txt
 
 LINET_HNAME=`echo -n {{{ httpserver }}} | cut -d ':' -f 1`
-# Generate user SSH keys (and .ssh with correct rights)
-/bin/su -l '{{ username }}' -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG
+ls -al {{{ homedir }}} >> $POST_LOG
+ls -al /usr/bin/ssh-keygen >> $POST_LOG
+# Generate user SSH keys (and .ssh with correct rights). All ouput comes to stdout.
+# su -p: preserve env (-su: /root/.bash_profile: Permission denied)
+/bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG
 echo "Created SSH keys: $?" >> $POST_LOG
+if [ ! -d "{{{ homedir }}}/.ssh" ]; then
+  echo "{{{ homedir }}}/.ssh (and keys) not created" >> $POST_LOG
+  exit 0
+fi
 # Copy linetboot public key back (can copy direct to ~/.ssh/authorized_keys)
 SSH_AKFN={{{ homedir }}}/.ssh/authorized_keys
 SSH_HKEY_PATH=/etc/ssh/
@@ -20,10 +28,15 @@ mkdir -p $SSH_BK_PATH
 cp -p $SSH_HKEY_PATH/ssh_host* $SSH_BK_PATH
 echo "Created backup of hostkeys: $?" >> $POST_LOG
 ### Hostkeys (for /etc/ssh) ####
+# TODO: Only allow saving on valid content ("# Error (keypath/root missing)", )
 /usr/bin/curl http://{{{ httpserver }}}/ssh/rsa > $SSH_HKEY_PATH/ssh_host_rsa_key
 /usr/bin/curl http://{{{ httpserver }}}/ssh/rsa.pub > $SSH_HKEY_PATH/ssh_host_rsa_key.pub
+# Grep content for "Error"
+#
+# mv /tmp/ssh_host_rsa_key $SSH_HKEY_PATH/ssh_host_rsa_key
+# mv /tmp/ssh_host_rsa_key.pub $SSH_HKEY_PATH/ssh_host_rsa_key.pub
 echo "Downloaded hostkeys to $SSH_HKEY_PATH: $?" >> $POST_LOG
 # Add to ~/.ssh/known_hosts
 /bin/su -l '{{ username }}' -c "ssh-keyscan -H $LINET_HNAME >> {{{ homedir }}}/.ssh/known_hosts"
 echo "Scanned lineboot server hostkeys to known_hosts: $?" >> $POST_LOG
-
+exit 0
