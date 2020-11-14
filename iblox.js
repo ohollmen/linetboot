@@ -94,7 +94,7 @@ function ib_show_hosts(req, res) {
       // if (!it) { return ...;}
       
       it.ipaddr = anet.address;
-      it.ipaddr = anet.macaddress;
+      it.macaddr = anet.macaddress;
       // TODO: Add Iblox -side info on top already here ?
       //var ibent = it.data.ipv4addrs[0];
       //it.ipaddr_ib  = ibent.ipv4addr;
