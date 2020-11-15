@@ -3,8 +3,8 @@
 # - nis - NIS domain name
 # - nismm - NIS master map (without nay preceding '+' sign
 # TEMPLATE_WITH: user
-NIS_DOM="{{{ hps.nis }}}"
-NIS_AUTO_MASTER_MAP="{{{ hps.nisamm }}}"
+NIS_DOM="{{{ nisdomain }}}"
+NIS_AUTO_MASTER_MAP="{{{ nisamm }}}"
 NIS_SERVERS="{{{ nisservers }}}"
 POST_LOG={{{ homedir }}}/post-log.txt
 if [ -z "$NIS_AUTO_MASTER_MAP" ]; then
@@ -14,7 +14,7 @@ fi
 
 
 if [ -z "$NIS_DOM"]; then
-  echo "No NIS domain is configured for this machine. Skip NIS setup" >> $POST_LOG
+  echo "No NIS domain is configured globally or for this machine. Skip NIS setup" >> $POST_LOG
   exit 0
 fi
 # TODO: Check OS (rh/debian)
@@ -46,5 +46,9 @@ automount:	files nis
 sudoers:	files ldap
 EOT
 # TODO: /etc/yp.conf (NIS servers: "ypserver nis1.mycomp.com" ....)
+if [ -z "$NIS_SERVERS"]; then
+  echo "Warning: No NIS server configured !" >> $POST_LOG
+  exit 0
+fi
 echo -n "" > /etc/yp.conf
 for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done

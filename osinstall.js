@@ -718,6 +718,9 @@ function script_send(req, res) {
   if (!fs.existsSync(fullname)) { res.send("# Hmmm ... No such script file.\n"); return; }
   var cont = fs.readFileSync(fullname, 'utf8');
   var tpc = needs_template(cont);
+  // Lookup host params as "potentially useful" (each tpc-case still decides on them)
+  var hps = hlr.hostparams(f) || {};
+  
   if (tpc) {
     console.error("need templating w." + tpc);
     var p = {};
@@ -728,6 +731,13 @@ function script_send(req, res) {
       p.linet_sshkey = p.linet_sshkey.replace(/\s+$/, "");
       var hk = fs.readFileSync("/etc/ssh/ssh_host_rsa_key.pub", 'utf8');
       if (hk) { hk = hk.replace(/\s+$/, ""); p.linet_hostkey = hk; }
+      // Add host params
+      
+      p.hps = hps;
+      // See NIS info -  "nisservers", "nisdomain" from global.net
+      p.nisservers = global.net.nisservers || [];
+      p.nisdomain  = hps.nis || global.net.nisdomain || "";
+      p.nisamm     = hps.nisamm || global.net.nisamm || "auto.master";
     }
     if (tpc == 'net') {
       p = dclone(global.net);
@@ -738,6 +748,7 @@ function script_send(req, res) {
         p.ipaddress = anet.address; p.hostname = f.ansible_hostname; p.macaddr = anet.macaddress;
         console.log("Net-context: "+p);
       }
+      // Already have NIS servers if needed ...
     } // TODO: adjust
     if (tpc == 'global') { p = global; }
     // Custom ... how to formulate this into more static config ? clone global and add ?
@@ -745,6 +756,7 @@ function script_send(req, res) {
       // process.getgid(); // Need to translate
       p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
+    if (p.nisservers) { p.nisservers = p.nisservers.join(' '); }
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p); // partials for complex scripts ? In that case should cache partials
   }
