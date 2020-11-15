@@ -49,6 +49,11 @@ EOT
 if [ -z "$NIS_SERVERS"]; then
   echo "Warning: No NIS server configured !" >> $POST_LOG
   exit 0
+else
+  echo -n "" > /etc/yp.conf
+  for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
 fi
-echo -n "" > /etc/yp.conf
-for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
+# Ubu 18: nis, but also ypbind works
+service ypbind stop; service ypbind start
+service autofs stop; sleep 5; service autofs start
+service nscd stop; sleep 5; service nscd start

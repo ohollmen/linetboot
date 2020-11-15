@@ -99,7 +99,10 @@
     "domain": "",
     "dev": "auto",
     "ifdefault": "eno1np0",
-    "ntpserver": "ntp.example.com"
+    "ntpserver": "ntp.example.com",
+    "nisdomain": "home",
+    "nisservers": ["192.168.1.141"],
+    "nisamm": "auto.master"
   },
   "ldap": {
     "desc":"LDAP Settings for auth and user info",
