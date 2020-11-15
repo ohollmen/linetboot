@@ -877,7 +877,7 @@ function apidoc(req, res) {
   }
 }
 
-/** Deliver SSH key / keys for the old host for placing them onto new installation.
+/** Deliver single plain/text SSH key (or all keys as JSON) for the old host for placing them onto new installation.
 * Triggered via URL: '/ssh/:item'. Allow URL parameter ":item" to be (for private key, public key, respectively):
 * - dsa, dsa.pub (DSA is deprecated and no more used by Ubuntu 18.04)
 * - ecdsa, ecdsa.pub
@@ -913,7 +913,7 @@ function ssh_key(req, res) {
     
   };
   if (!f) { res.end("# No IP Address "+ip+" found in host DB\n"); return; } // ${ip}
-  var keypath =  process.env["LINETBOOT_SSHKEY_PATH"] || global.inst.sshkey_path;
+  var keypath = global.inst.sshkey_path; // process.env["LINETBOOT_SSHKEY_PATH"] ||
   //if (keypath && !fs.) {}
   res.type("text/plain");
   var item = req.params.item; // :item in /ssh/:item

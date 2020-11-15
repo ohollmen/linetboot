@@ -56,9 +56,10 @@ err_sec=$?
 /usr/bin/curl http://{{{ httpserver }}}/ssh/rsa.pub > /tmp/ssh_host_rsa_key.pub
 grep 'Error' /tmp/ssh_host_rsa_key.pub
 err_pub=$?
+echo "Grep results: err_sec: $err_sec err_pub: $err_pub" >> $POST_LOG
 # Grep content for "Error" or ...
-# This means keys OS Install generated kesy should be kept
-if [ "$err_sec" -ne 0 ] && [ "$err_pub" -ne 0 ]; then
+# This means keys OS Install generated keys should be kept
+if [ "$err_sec" -ne 0 ] || [ "$err_pub" -ne 0 ]; then
   rm -f /tmp/ssh_host_rsa_key /tmp/ssh_host_rsa_key.pub
   echo "No hostkeys were restored - possibly new host(name)/machine HW (?): $?" >> $POST_LOG
   exit 0
