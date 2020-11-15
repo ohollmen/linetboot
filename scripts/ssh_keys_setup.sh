@@ -59,9 +59,9 @@ err_pub=$?
 echo "Grep results: err_sec: $err_sec err_pub: $err_pub" >> $POST_LOG
 # Grep content for "Error" or ...
 # This means keys OS Install generated keys should be kept
-if [ "$err_sec" -ne 0 ] || [ "$err_pub" -ne 0 ]; then
+if [ "$err_sec" -eq 0 ] || [ "$err_pub" -eq 0 ]; then
   rm -f /tmp/ssh_host_rsa_key /tmp/ssh_host_rsa_key.pub
-  echo "No hostkeys were restored - possibly new host(name)/machine HW (?): $?" >> $POST_LOG
+  echo "No hostkeys could be restored - possibly new host(name)/machine HW (?): $?" >> $POST_LOG
   exit 0
 else
   mv /tmp/ssh_host_rsa_key     $SSH_HKEY_PATH/ssh_host_rsa_key
