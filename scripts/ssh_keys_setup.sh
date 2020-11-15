@@ -16,8 +16,9 @@ ldd /usr/bin/ssh-keygen >> $POST_LOG
 mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}/.ssh/
 touch {{{ homedir }}}/.ssh/authorized_keys
 # Store authorized (user, host) *public* keys.
-echo "{{{ linet_sshkey }}}"  >> {{{ homedir }}}/.ssh/authorized_keys
-echo "{{{ linet_hostkey }}}" >> {{{ homedir }}}/.ssh/known_hosts
+#echo "{{{ linet_sshkey }}}"  >> {{{ homedir }}}/.ssh/authorized_keys
+# Bare key is too plain (needs prefix). Use ssh-keyscan later instead
+#echo "{{{ linet_hostkey }}}" >> {{{ homedir }}}/.ssh/known_hosts
 # Universal for all *files* in ~/.ssh (but .pub can be 0644)
 chmod 0600 {{{ homedir }}}/.ssh/authorized_keys {{{ homedir }}}/.ssh/known_hosts
 chown -R {{ username }}:{{ username }} {{{ homedir }}}/.ssh
@@ -48,13 +49,27 @@ cp -p $SSH_HKEY_PATH/ssh_host* $SSH_BK_PATH
 echo "Created backup of hostkeys: $?" >> $POST_LOG
 ### Hostkeys (for /etc/ssh) ####
 # TODO: Only allow saving on valid content ("# Error (keypath/root missing)", )
-/usr/bin/curl http://{{{ httpserver }}}/ssh/rsa > $SSH_HKEY_PATH/ssh_host_rsa_key
-/usr/bin/curl http://{{{ httpserver }}}/ssh/rsa.pub > $SSH_HKEY_PATH/ssh_host_rsa_key.pub
-# Grep content for "Error"
-#
-# mv /tmp/ssh_host_rsa_key $SSH_HKEY_PATH/ssh_host_rsa_key
-# mv /tmp/ssh_host_rsa_key.pub $SSH_HKEY_PATH/ssh_host_rsa_key.pub
-echo "Downloaded hostkeys to $SSH_HKEY_PATH: $?" >> $POST_LOG
+# TODO: Detect if this is new host or not and act accordingly
+/usr/bin/curl http://{{{ httpserver }}}/ssh/rsa > /tmp/ssh_host_rsa_key
+grep 'Error' /tmp/ssh_host_rsa_key
+err_sec=$?
+/usr/bin/curl http://{{{ httpserver }}}/ssh/rsa.pub > /tmp/ssh_host_rsa_key.pub
+grep 'Error' /tmp/ssh_host_rsa_key.pub
+err_pub=$?
+# Grep content for "Error" or ...
+# This means keys OS Install generated kesy should be kept
+if [ "$err_sec" -ne 0 ] && [ "$err_pub" -ne 0 ]; then
+  rm -f /tmp/ssh_host_rsa_key /tmp/ssh_host_rsa_key.pub
+  echo "No hostkeys were restored - possibly new host(name)/machine HW (?): $?" >> $POST_LOG
+  exit 0
+else
+  mv /tmp/ssh_host_rsa_key     $SSH_HKEY_PATH/ssh_host_rsa_key
+  mv /tmp/ssh_host_rsa_key.pub $SSH_HKEY_PATH/ssh_host_rsa_key.pub
+  # TODO: Need chmod (pub: 0644, secret: 0600) ? 
+  chmod 0644 $SSH_HKEY_PATH/ssh_host_rsa_key.pub ; chmod 0600 $SSH_HKEY_PATH/ssh_host_rsa_key
+  echo "Downloaded and restored hostkeys to $SSH_HKEY_PATH: $?" >> $POST_LOG
+fi
+
 # Add to ~/.ssh/known_hosts
 /bin/su -l '{{ username }}' -c "ssh-keyscan -H $LINET_HNAME >> {{{ homedir }}}/.ssh/known_hosts"
 echo "Scanned lineboot server hostkeys to known_hosts: $?" >> $POST_LOG
