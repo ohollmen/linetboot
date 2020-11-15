@@ -3,8 +3,8 @@
  * 
  * This linetboot module implements:
  * - Hosts list loading (from a simple text file similar to ansible hosts inventory)
- * - JSON host Facts loading from ansible collected hosts files.
- * 
+ * - JSON host facts loading from ansible collected fact files
+ * - Loading extra / custom hosts from a CSV format text files
  */
 "use strict;";
 var fs = require("fs");
@@ -76,7 +76,9 @@ minimalistic loading of hosts for a generic app:
      // Gather facts (returns an array of facts)
      var hostsarr = hlr.facts_load_all();
 
-* TODO: throw on errors, strip out any process.exit().
+* TODO:
+* - throw on errors, strip out any process.exit().
+* - Change global to opts object w. grpattr
 */
 function hosts_load(global) {
   var hnames = global.hostnames;
@@ -94,47 +96,89 @@ function hosts_load(global) {
   global.hostparams = {};
   colls.hostparams = {};
   var i = 0;
-  var groups = {}; // TODO: record groups
-  var curr_g = '';
-  var re_g = /^\[([^\]]+)\]/; // Group RE
+  var groups = {}; // record group members
+  var groupvars = {};
+  var curr_g = ''; // Current group
+  var curr_gvg = ''; // Group var group (Could re-use/overload curr_g)
+  var re_g = /^\[([^\]]+)\]/; // Group RE TODO: ^\[([\w+\-]+?)\] # Non-greedy with symbol, term at literal ']' 
+  var re_gv = /^\[([\w+\-]+?)\:vars\]/; // Group Vars RE
+  var grpattr = (global.core && global.core.grpattr) ? global.core.grpattr : 'grpid'; // grplbl ?
+  var in_gv = 0; // State: In group vars section
   var hnames2 = [];
   hnames.forEach(function (hnline) {
-    var g;
+    var g; var gv;
+    // Av k-v pair in Group vars section (for curr_gvg)
+    /////// Parser state changes /////////////////
+    // Note: Currently this must be first to test (Improve re_g to make order independent)
+    if (gv = hnline.match(re_gv)) {
+      console.log("Group var tag: "+gv[1]);
+      curr_gvg = gv[1];
+      in_gv = 1;
+      return;
+    }
     // Group (mark as curr_g)
-    if (g = hnline.match(re_g)) {
+    else if (g = hnline.match(re_g)) {
       debug && console.log("Got group: '" + g[1] + "'");
       curr_g = g[1];
       groups[g[1]] = [];
-      
+      in_gv = 0;
       return;
     }
-    //var p  = hline_parse(hnames, i, hnline);
-    //var hn = hnames[i];
-    //global.hostparams[hn] = p;
-    // NEW:
+    //////// Group Var //////
+    if (in_gv) {
+      var kv = hnline.split(/\s*=\s*/);
+      let key = kv[0];
+      let val = kv[1];
+      // This may be unnecessary with group var post-population
+      if (!groups[curr_gvg]) { console.log("Group '"+curr_gvg+"' not encountered yet, skipping"); return; }
+      if ( ! groupvars[curr_gvg]) { groupvars[curr_gvg] = {}; }
+      groupvars[curr_gvg][key] = val;
+      return;
+    }
+    ///////// Hostline //////////////////
+    // hent has "hn" (hostname) and "p" (params)
     var hent  = hline_parse(hnline); // hnames, i, ...
     var hn = hent.hn;
     global.hostparams[hn] = hent.p; // original (Bad)
     colls.hostparams[hn]  = hent.p; // Module encapsulated
     debug && console.log("HN:" + hn);
-    if (curr_g) { groups[curr_g].push(hn); }
-    //else {global.hostparams[hnline] = {}; return;};
+    if (curr_g) {
+      groups[curr_g].push(hn);
+      if (grpattr && !hent.p[grpattr]) { hent.p[grpattr] = curr_g; }
+    }
+    // NOT VALID: Collect hostnames later after parsing is fully complete.
+    // Must be part of hostline parsing
     hnames2.push(hn);
     i++;
   });
   global.hostnames = hnames2; // NEW (OLD: hnames)
   colls.hostnames = hnames2;
   debug && console.log("Inventory Hostnames: " + JSON.stringify(global.hostnames)); // hnames
-  
+  console.log(colls.hostnames.length+" Hosts from loop");
+  //console.log(colls.hostnames.length+" Hosts dynamically post-loop");
   
   debug && console.log("Inventory Groups: ", groups);
+  //debug && console.log("Final Hostparams: ", colls.hostparams);
+  debug && console.log("Final Groupvars: ", groupvars);
   // NEW: Return for third party app (with no real global conf)
   return colls.hostnames;
+  function applygroupvars(hnames, groups, groupvars) {
+    // Drive by groupvars or groups (valid existing groups)
+    Object.keys(groups).forEach((gn) => {
+      var gvs = groupvars[gn];
+      if (!gvs) { return; } // No groupvars for current group
+      // gvs or groups ?
+      //Object.keys(gvs).forEach(() => {});
+    });
+  }
 }
+//var p  = hline_parse(hnames, i, hnline);
+    //var hn = hnames[i];
+    //global.hostparams[hn] = p;
+//else {global.hostparams[hnline] = {}; return;};
+
 /** Parse single hostline.
 Internal function to be used by hosts_load().
-@param hnames {array} - An array of hostnames
-@param i {integer} - Index of current item (in hnames array)
 @param hline {string} - Current hostline to parse (from text file as-is)
 @return object with "hn" (hostname) and "p" (host parameters)
 */
@@ -144,28 +188,30 @@ function hline_parse(hnline) {
   if (hnline.match(/\s+/)) {
     
     var rec = hnline.split(/\s+/);
-    debug && console.log("Has space: '"+hnline+"' Rec: ", rec);
+    //debug && console.log("Has space: '"+hnline+"' Rec: ", rec);
     
     hn = rec.shift(); // NEW
     // Parse remaining rec - Host Params
-    debug && console.log(rec);
+    //debug && console.log(rec);
     rec.forEach(function (pair) {
       
       var kv = pair.split(/=/, 2);
       kv[1] = kv[1].replace('+', ' ');
       p[kv[0]] = decodeURI(kv[1]); // Unescape
     });
-    debug && console.log("Pairs found (for hn:"+hn+"): ", p);
+    //debug && console.log("Pairs found (for hn:"+hn+"): ", p);
   }
   return {hn: hn, p: p}; // NEW (OLD: return p;)
 }
 //var hn = hnames[i] = rec.shift(); // OLD (Going by index gets out-of-sync)
-
+//@param hnames {array} - An array of hostnames
+//@param i {integer} - Index of current item (in hnames array)
 
 /** Load Facts for all hosts.
- * Uses `facts_load(hn)` to load individual host facts.
+ * Uses `facts_load(hn, opts) load individual host facts.
  * After this facts should be in module var colls.hostcache and colls.hostarr (See 2nd param passed to module init())
- * @return None
+ * @param opts {object} - Options object to be forwarded to facts_load()
+ * @return Hostarray
  */
 function facts_load_all(opts) {
   opts = opts || {};
@@ -377,6 +423,8 @@ function host2facts(h, global) {
  * - hdr - Array of headers to treat (already) the first line (basicaly every line) of CSV as (non-header) data.
  *         Not setting this (to array) makes parser treat first line of CSV as headers.
  * - max - Max number of fields (-1 = Use all)
+ * @param fname {string} - CSV filename (suffix does not matter)
+ * @param opts {object} - Parsing options
  * @return array of objects (AoO) formulated per first / header line.
  */
 function csv_parse(fname, opts) {
@@ -431,7 +479,7 @@ function customhost_load(fname, global, iptrans) {
   return arr;
 }
 
-/** Lookup inventory parameters for a host by facts / hostname.
+/** Lookup inventory parameters for a host by facts (object) or  hostname (string).
  * Using this allows changing hostloader implementation w/o breaking callers.
  * @param f {object} - Ansible facts for host (OR exact hostname to lookup params by)
  * @return Host parameters object 
