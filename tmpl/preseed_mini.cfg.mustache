@@ -97,7 +97,7 @@ d-i preseed/late_command string in-target wget "http://{{ httpserver }}/installe
   in-target wget "http://{{ httpserver }}/scripts/{{{ . }}}"; \
   in-target chmod a+x {{{ . }}}; in-target ./{{{ . }}}; \
 {{/postscripts}}
-  in-target /bin/sh -c 'dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt'
+  in-target /bin/sh -c 'dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.endofpost.txt'
 
 # d-i preseed/run string scripts/preseed_net_restart.sh
 
