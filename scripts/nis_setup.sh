@@ -20,7 +20,8 @@ fi
 # TODO: Check OS (rh/debian)
 # Notes: nis deps on portmap, comes with yp.conf
 # rpcbind exists for 1804, replaces portmap
-sudo apt-get install -y --no-install-recommends rpcbind nis nfs-common autofs nscd
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get install -yq --no-install-recommends rpcbind nis nfs-common autofs nscd
 # Set domain (todo: make backups of old)
 echo "$NIS_DOM" > /etc/defaultdomain
 echo "+$NIS_AUTO_MASTER_MAP" > /etc/auto.master
