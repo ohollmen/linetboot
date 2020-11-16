@@ -1,7 +1,8 @@
 #!/bin/sh
-# Setup NIS. Host params must have:
-# - nis - NIS domain name
+# Setup NIS. Net ("net") section should have:
+# - nisdomain - NIS domain name (Alternatively host params may have "nis")
 # - nismm - NIS master map (without nay preceding '+' sign
+# - nisservers - (array of) NIS server fqdn names or IP addresses
 # TEMPLATE_WITH: user
 NIS_DOM="{{{ nisdomain }}}"
 NIS_AUTO_MASTER_MAP="{{{ nisamm }}}"
@@ -21,7 +22,13 @@ fi
 # Notes: nis deps on portmap, comes with yp.conf
 # rpcbind exists for 1804, replaces portmap
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get install -yq --no-install-recommends rpcbind nis nfs-common autofs nscd
+# Debian/Ubuntu
+sudo DEBIAN_FRONTEND=noninteractive apt-get -yq install  --no-install-recommends rpcbind nis nfs-common autofs nscd
+# RH/Centos
+#if [ ... rh/centos ... ]; then
+#  yum install yp-tools nfs-utils autofs nscd
+#fi
+
 # Set domain (todo: make backups of old)
 echo "$NIS_DOM" > /etc/defaultdomain
 echo "+$NIS_AUTO_MASTER_MAP" > /etc/auto.master
@@ -36,25 +43,11 @@ if [ -f "/etc/sysconfig/network" ]; then
     echo "NISDOMAIN=$NIS_DOM" >> /etc/sysconfig/network
   fi
 fi
-# Simple NIS-favouring naming ordering
-cat <<EOT > /etc/nsswitch.conf
-passwd:         files nis
-group:          files nis
-shadow:         files nis
+# Simple NIS-favouring naming ordering (removed inlining)
+#cat <<EOT > /etc/nsswitch.conf
+#EOT
+wget "http://{{ httpserver }}/scripts/nsswitch.conf" -O /etc/nsswitch.conf
 
-hosts:          files dns
-networks:       files
-
-protocols:      files
-services:       files
-ethers:         files
-rpc:            files
-
-netgroup:       files nis
-
-automount:	files nis
-sudoers:	files ldap
-EOT
 # TODO: /etc/yp.conf (NIS servers: "ypserver nis1.mycomp.com" ....)
 if [ -z "$NIS_SERVERS" ]; then
   echo "Warning: No NIS server configured !" >> $POST_LOG
