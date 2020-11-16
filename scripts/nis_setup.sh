@@ -23,7 +23,7 @@ fi
 # rpcbind exists for 1804, replaces portmap
 export DEBIAN_FRONTEND=noninteractive
 # Debian/Ubuntu
-sudo DEBIAN_FRONTEND=noninteractive apt-get -yq install  --no-install-recommends rpcbind nis nfs-common autofs nscd
+sudo DEBIAN_FRONTEND=noninteractive apt-get -yq install --no-install-recommends rpcbind nis nfs-common autofs nscd
 # RH/Centos
 #if [ ... rh/centos ... ]; then
 #  yum install yp-tools nfs-utils autofs nscd
