@@ -59,7 +59,7 @@ var acts = [
   },
   {
     "id": "tftpsetup",
-    "title": "Create Bootmenu (based on Linetboot main Config) and MAc-file symlinks into TFTP Directories (w/o executables)",
+    "title": "Create Bootmenu (based on Linetboot main Config) and MAC-file symlinks into TFTP Directories (w/o executables)",
     "cb": tftpsetup,
     "needfacts": 1,
     "opts": [],
@@ -153,7 +153,18 @@ hostnames = hlr.hosts_load(mcfg); // Needs global / mcfg
 if (!hostnames) { console.log("No hosts in inventory !"); process.exit(1);}
 console.log("Installer Hosts:", hostnames);
 var hostarr;
-if (opnode.needfacts) { hostarr = hlr.facts_load_all(); } // Returns hostarr
+if (opnode.needfacts) {
+  hostarr = hlr.facts_load_all(); // Returns hostarr
+  if (opt.options.newhosts || mcfg.customhosts) {
+    var chsrc = "mainconf";
+    // Set Override to mcfg.customhosts
+    if (opt.options.newhosts) { mcfg.customhosts = opt.options.newhosts; chsrc = 'cl-options'; }
+    if (!fs.existsSync(mcfg.customhosts)) {  apperror("Custom hosts / newhosts file '"+mcfg.customhosts+"' from "+chsrc+" does not exist !"); }
+    console.log("Loading newhosts/custom hosts from: " + mcfg.customhosts);
+    
+    hlr.customhost_load(mcfg.customhosts, mcfg, null); // iptrans=null
+  }
+} 
 
 var rc = opnode.cb(opt.options);
 ///////////////////////////////////////////////////////////////
@@ -330,8 +341,7 @@ function rmgmt_collect() {}
 * If tftp.sync is set, replicate files (by SSH scp) to remote TFTP server in use (given by tftp.ipaddr).
 */
 function tftpsetup(opts) {
-  // TODO: Lookup 
-  // var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
+  
   var tcfg = mcfg.tftp;
   if (!tcfg) { console.error("No TFTP Config"); process.exit(1); }
   //console.log(tcfg);
@@ -343,68 +353,30 @@ function tftpsetup(opts) {
   //////////////// Create /pxelinux.cfg/ basedir(s) ///////////////////
   var ok = mkdir(dirs[0]);
   if (!ok) { apperror("Could not create pxelinux.cfg"); }
-  efidirs.forEach(function (dir) {
+  efidirs.forEach(function (dir) { // EFI dirs
     var ok = mkdir(dir);
     if (!ok) { apperror("Could noty create: "+dir); }
   });
-  // Note recursive: ... only works with node > 10.12.0
-  function mkdir(dir) {
-    if (!fs.existsSync(dir)) {
-      console.log("dir "+dir+" does not exist, try creating ...");
-      try {
-        //fs.mkdirSync(dir, {recursive: true});
-        mkDirByPathSync(dir); // Compat (for older node)
-      } catch (ex) {
-        console.log("Could not make dir "+dir+": " + ex); return ""; // process.exit();
-      }
-    }
-    else { console.log("Dir "+dir+" seems to already exist."); }
-    return dir;
-  } // mkdir
-  if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
-  //////////////////////// Create default menu (named "default")
+  //if (!fs.existsSync(tcfg.root)) { usage("TFTP Root does not exist even after trying to create it"); }
+  //////////////////////// Create default menu (named "default") ///////////////////////
   // TODO: Dry-run
   if (opts.dryrun) { tcfg.dryrun = 1; }
   // Same menu to pxelinx.cfg
   var cont = tboot.bootmenu_save(tcfg, mcfg, "vesamenu.c32", null);
   if (opts.dryrun) { console.log("# Dryrun mode - preview boot menu content:\n"+cont); process.exit(1); }
-  /////////////////// Individual host links ////////////////
-  // Need to change directory to be able to create relateive symlink
-  //var orgdir = process.cwd();
-  //console.log("Original dir: " + orgdir);
-  //process.chdir( tcfg.root ); // Throws
   
   //console.log(cfg.hostarr);
   // Make "default" symlinks to efi32/ and efi64/ (refer to dirs[0]/default)
   efidirs.forEach((efidir) => {
-     var ep = efidir+"pxelinux.cfg";
+     var ep = efidir + "pxelinux.cfg";
      if (fs.existsSync(ep)) { return; }
      try { fs.symlinkSync("../pxelinux.cfg/", ep, 'dir'); } catch (ex) { apperror(ex.toString()); }
   }) // forEach
-  /*
-  var ep0 = fs.existsSync(efidirs[0]+"pxelinux.cfg");
-  if (!ep0) {
-  try {
-    fs.symlinkSync("../pxelinux.cfg/", efidirs[0]+"pxelinux.cfg", 'dir');
-  } catch (ex) { apperror(ex.toString()); }
-  }
-  var ep1 = fs.existsSync(efidirs[1]+"pxelinux.cfg");
-  if (!ep1) {
-  try {
-    fs.symlinkSync("../pxelinux.cfg/", efidirs[1]+"pxelinux.cfg", 'dir');
-    
-  } catch (ex) { apperror(ex.toString()); }
-  }
-  */
   
-  // Back to original dir !
-  //process.chdir( orgdir );
+  /////////////////// Individual host links ////////////////
+  // Only in /pxelinux.cfg, make **dir** symlinks for others above
+  mkmacsymlinks(dirs[0], cfg.hostarr);
   
-  // TODO: Only in /pxelinux.cfg, make **dir** symlinks for others above
-  //dirs.forEach(function (pxelindir) {
-    //mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
-    mkmacsymlinks(dirs[0], cfg.hostarr);
-  //});
   //////// BSD boot/pc-autoinstall.conf (Using: tmpl/pc-autoinstall.conf.mustache) ////
   var tmplcfgs = [
     {path: "/boot/", tmpl: "pc-autoinstall.conf.mustache", "fn": "pc-autoinstall.conf"},
@@ -429,8 +401,37 @@ function tftpsetup(opts) {
   var cont = Mustache.render(tmpl, mcfg);
   fs.writeFileSync( tcfg.root+"/grub/grub.cfg", cont, {encoding: "utf8"} );
   
+  console.log("Setup pxelinux TFTP Dirs under local TFTP root: " + tcfg.root);
+  /////////////// SYNC ///////////////////////////
+  var tftp = tcfg;
+  if (tcfg.sync) {
+    var user = tcfg.sync.toString().match(/^[a-z]\w*$/) ? tcfg.sync : "";
+    var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
+    scp_sync(tftp.root, remloc, {recursive: 1, user: user}, function (err, path) {
+      if (err) { apperror("Failed sync." + err); }
+    });
+  }
+  ///////////// mkdir, mkmacsymlinks ////////////
+  /**Create dir in old-node compatible manner and with verbose messages.
+  * @param dir {string} - Directory name for dir to create
+  * @return Original directory name if created, empty string for could not be created.
+  * Note recursive: true ... only works with node > 10.12.0
+  */
+  function mkdir(dir) {
+    if (!fs.existsSync(dir)) {
+      console.log("dir "+dir+" does not exist, try creating ...");
+      try {
+        //fs.mkdirSync(dir, {recursive: true});
+        mkDirByPathSync(dir); // Compat (for older node)
+      } catch (ex) {
+        console.log("Could not make dir "+dir+": " + ex); return ""; // process.exit();
+      }
+    }
+    else { console.log("Dir "+dir+" seems to already exist."); }
+    return dir;
+  } // mkdir
   /** Create MAC adress files for "pxelinux.cfg"
-   * 
+   * @return dymmy 1
    **/
   function mkmacsymlinks(pxelindir, hostarr) {
   // Check writeability for the runner of the script
@@ -455,16 +456,34 @@ function tftpsetup(opts) {
   });
     return 1; // ??
   } // mkmacsymlinks
-  console.log("Setup pxelinux TFTP Dirs under local TFTP root: " + tcfg.root);
-  var tftp = tcfg;
-  if (tcfg.sync) {
-    var user = tcfg.sync.toString().match(/^[a-z]\w*$/) ? tcfg.sync : "";
-    var remloc = tftp.ipaddr + ":" + tftp.root; // "/tmp/tftp"
-    scp_sync(tftp.root, remloc, {recursive: 1, user: user}, function (err, path) {
-      if (err) { apperror("Failed sync." + err); }
-    });
-  }
 }
+// TODO: Lookup 
+// var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path 
+/*
+  var ep0 = fs.existsSync(efidirs[0]+"pxelinux.cfg");
+  if (!ep0) {
+  try {
+    fs.symlinkSync("../pxelinux.cfg/", efidirs[0]+"pxelinux.cfg", 'dir');
+  } catch (ex) { apperror(ex.toString()); }
+  }
+  var ep1 = fs.existsSync(efidirs[1]+"pxelinux.cfg");
+  if (!ep1) {
+  try {
+    fs.symlinkSync("../pxelinux.cfg/", efidirs[1]+"pxelinux.cfg", 'dir');
+    
+  } catch (ex) { apperror(ex.toString()); }
+  }
+  */
+// NOTNEEDED: Need to change directory to be able to create relative symlink
+  //var orgdir = process.cwd();
+  //console.log("Original dir: " + orgdir);
+  //process.chdir( tcfg.root ); // Throws
+  // Back to original dir !
+  //process.chdir( orgdir );
+//dirs.forEach(function (pxelindir) {
+//mkmacsymlinks(pxelindir, cfg.hostarr); // dirs[0]
+//});
+    
 /** Add bootloader binaries to the TFTP Area.
  * Meant to be used on Ubuntu (Debian) Host, which has best pxelinux packaging
  * (RH/Centos is missing the lpxelinux.0 binary that Linetboot uses).
@@ -764,9 +783,9 @@ function dhcpconf(opts) {
   
 }
 
-/** Generate new host "fake-facts" and 
- * Note this implies:
- * - adding hosts to Linetboot "hosts" file.
+/** Generate new host "fake-facts" and IPMI Remote management info files.
+ * Note: for later use of fake-files this requires:
+ * - adding hosts to Linetboot "hosts" file (manually for now).
  * - Not using the "newhosts" mechanism (as facts don't need to be generated anymore).
  * Run with A CSV file:
  * ```
