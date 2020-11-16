@@ -19,7 +19,8 @@
     "tmpl_path":   "~/.linetboot/tmpl/:./tmpl/",
     "sshkey_path": "~/.linetboot/sshkeys/",
     "staticdebug": 1,
-    "inetmirror": 0
+    "inetmirror": 0,
+    "piuser": "mradmin"
   
   },
   

@@ -564,10 +564,12 @@ function oninstallevent(req,res) {
     // TODO: get to know if *this* host (or OS profile) needs post-provisioning
     var node_ssh = require('node-ssh');
     //var ssh2  = require('ssh2');
-    var sshcfg = {host: ip, username: process.env['USER'], privateKey: netprobe.privkey() }; // pkey
+    var username = global.inst.piuser || process.env['USER'];
+    var sshcfg = {host: ip, username: username, privateKey: netprobe.privkey() }; // pkey
     //var conn = new ssh2.Client();
     var ssh = new node_ssh();
     console.log("End-of-install: Created SSH client to connect back to "+ip+" for post-install");
+    console.log("Try run (effectively): ssh "+username+"@"+ip+"");
     var tout = 10000; // ms. => 10 s. TODO: Pull from config.
     var trycnt_max = 30;
     var trycnt = trycnt_max;
