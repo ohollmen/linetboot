@@ -20,12 +20,21 @@ fi
 # TODO: Check OS (rh/debian)
 # Notes: nis deps on portmap, comes with yp.conf
 # rpcbind exists for 1804, replaces portmap
-sudo apt-get install rpcbind nis nfs-common autofs nscd --no-install-recommends
+sudo apt-get install -y --no-install-recommends rpcbind nis nfs-common autofs nscd
 # Set domain (todo: make backups of old)
 echo "$NIS_DOM" > /etc/defaultdomain
 echo "+$NIS_AUTO_MASTER_MAP" > /etc/auto.master
 # RH/Centos
-
+if [ -f "/etc/sysconfig/network" ]; then
+  grep '^NISDOMAIN=' /etc/sysconfig/network
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    # TODO: sed ?
+    perl -pi -e 's/^NISDOMAIN=.+/NISDOMAIN={{{ nisdomain }}}/;' /etc/sysconfig/network
+  else
+    echo "NISDOMAIN=$NIS_DOM" >> /etc/sysconfig/network
+  fi
+fi
 # Simple NIS-favouring naming ordering
 cat <<EOT > /etc/nsswitch.conf
 passwd:         files nis
@@ -46,7 +55,7 @@ automount:	files nis
 sudoers:	files ldap
 EOT
 # TODO: /etc/yp.conf (NIS servers: "ypserver nis1.mycomp.com" ....)
-if [ -z "$NIS_SERVERS"]; then
+if [ -z "$NIS_SERVERS" ]; then
   echo "Warning: No NIS server configured !" >> $POST_LOG
   exit 0
 else

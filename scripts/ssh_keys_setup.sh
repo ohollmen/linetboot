@@ -62,7 +62,7 @@ echo "Grep results: err_sec: $err_sec err_pub: $err_pub" >> $POST_LOG
 if [ "$err_sec" -eq 0 ] || [ "$err_pub" -eq 0 ]; then
   rm -f /tmp/ssh_host_rsa_key /tmp/ssh_host_rsa_key.pub
   echo "No hostkeys could be restored - possibly new host(name)/machine HW (?): $?" >> $POST_LOG
-  exit 0
+  #exit 0
 else
   mv /tmp/ssh_host_rsa_key     $SSH_HKEY_PATH/ssh_host_rsa_key
   mv /tmp/ssh_host_rsa_key.pub $SSH_HKEY_PATH/ssh_host_rsa_key.pub
@@ -73,5 +73,5 @@ fi
 
 # Add to ~/.ssh/known_hosts
 /bin/su -l '{{ username }}' -c "ssh-keyscan -H $LINET_HNAME >> {{{ homedir }}}/.ssh/known_hosts"
-echo "Scanned lineboot server hostkeys to known_hosts: $?" >> $POST_LOG
+echo "Scanned lineboot server hostkeys to known_hosts: rc=$?" >> $POST_LOG
 exit 0

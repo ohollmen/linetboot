@@ -737,11 +737,11 @@ function script_send(req, res) {
       // See NIS info -  "nisservers", "nisdomain" from global.net
       p.nisservers = global.net.nisservers || [];
       p.nisdomain  = hps.nis || global.net.nisdomain || "";
-      p.nisamm     = hps.nisamm || global.net.nisamm || "auto.master";
+      p.nisamm     = hps.nisamm || global.net.nisamm || "auto.master"; // Fall to empty, let script defaut ?
     }
     if (tpc == 'net') {
       p = dclone(global.net);
-      p.httpserver = global.httpserver; // Complement w. universally needed var
+      //p.httpserver = global.httpserver; // Complement w. universally needed var
       if (f) {
         var anet = f.ansible_default_ipv4 || {};
         // p.httpserver = 
@@ -756,7 +756,10 @@ function script_send(req, res) {
       // process.getgid(); // Need to translate
       p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
+    // Universal setup
     if (p.nisservers) { p.nisservers = p.nisservers.join(' '); }
+    if (f && f.ansible_distribution) { p.distro = f.ansible_distribution; } // Others: ansible_os_family
+    p.httpserver = global.httpserver;
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p); // partials for complex scripts ? In that case should cache partials
   }
