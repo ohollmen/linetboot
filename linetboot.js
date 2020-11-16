@@ -548,51 +548,59 @@ function oninstallevent(req,res) {
   var f = hostcache[ip];
   if (!f) { jr.msg += "Could not lookup facts for " + ip; return res.json(jr); }
   var now = new Date();
-  console.log("IP:" + ip + ", event: " + p.evtype + " time:" + now.toISOString());
-  var sq = "INSERT INTO hostinstall () VALUES (?)";
+  console.log("IP:" + ip + ", install-event: " + p.evtype + " time:" + now.toISOString());
+  //var sq = "INSERT INTO hostinstall () VALUES (?)";
   // sq = "UPDATE hostinstall SET ... WHERE ipadd = ?"
-  // conn.exec(sq, params, function (err, result) {
-  //  
-  //});
+  // conn.exec(sq, params, function (err, result) {});
   var endtypes = {"done": "deprecated", "end":"preferred"};
   // If end event signal trigger approximate timer and start checking when host is up ?
   // Use async.eachSeries() to poll by hdl = setTimeout(cb, toutms) / hdl=setInterval(cb, toutms) (combo of 2)
   // Note args can be passed after toutms
   // Use clearTimeout(hdl) / clearInterval(hdl)
   if (endtypes[p.evtype]) {
-    //function host_wait_up() {
+    host_wait_up(global, ip);
+    // TODO: ret null vs ...
+    function host_wait_up(global, ip) {
+    // cb = cb || function () {};
     // TODO: get to know if *this* host (or OS profile) needs post-provisioning
     var node_ssh = require('node-ssh');
     //var ssh2  = require('ssh2');
+    // NOTE: remote piuser is configurable
     var username = global.inst.piuser || process.env['USER'];
     var sshcfg = {host: ip, username: username, privateKey: netprobe.privkey() }; // pkey
     //var conn = new ssh2.Client();
     var ssh = new node_ssh();
+    var user_host = username+"@"+ip;
     console.log("End-of-install: Created SSH client to connect back to "+ip+" for post-install");
-    console.log("Try run (effectively): ssh "+username+"@"+ip+"");
-    var tout = 10000; // ms. => 10 s. TODO: Pull from config.
+    console.log("Try run (effectively): ssh "+user_host+"");
+    var tout = 10000; // Poll interval ms. => 10 s. TODO: Pull from config.
+    //var initdelay = 60000; // Initial delay before starting to poll.
     var trycnt_max = 30;
     var trycnt = trycnt_max;
+    // TODO: Intial delay before starting to poll (e.g.):
+    // async.series([ function (cb) { setTimeout(() => { cb(null, 1); }, initdelay); }, function () {} ], function () {});
     var iid = setInterval(function () { // iid = Interval ID
-      if (trycnt < 1) { console.log("Try count exhausted"); clearInterval(iid); }
-      console.log("try reach: "+ip+ " by SSH");
+      var dt = new Date();
+      if (trycnt < 1) { console.log(dt.toISOString()+" Try count exhausted (tries-left "+trycnt+")"); clearInterval(iid); return null; }
+      console.log(dt.toISOString()+" Try SSH: "+user_host+ "");
       ssh.connect(sshcfg).then(function () {
-        console.log("Got connection to: "+ip);
+        console.log("Got SSH connection: "+user_host+" (tries-left: "+trycnt+")");
         // because of successful ssh connect, we can cancel polling.
         clearInterval(iid);
-        console.log("Canceled polling (re-trying) on "+ ip);
+        console.log("SSH Success - Canceled polling (re-trying) on "+ user_host);
         // Continue with some ssh operation (e.g. ssh.execCommand(cmd, {cwd: ""})) ?
         // ... or just trigger ansible via ansiblerunner ?
       }).catch(function (ex) {
-         console.log("No SSH Conn: "+ex+" (tries left "+trycnt+"). Continue polling at every "+tout+" ms.");
+         console.log("No SSH Conn: "+ex+" (tries-left "+trycnt+") continue ..."); // . Continue polling at every "+tout+" ms.
       });
       trycnt--;
     }, tout);
-    //  return;
-    //}
+      return sshcfg;
+    }
   }
   // msg: "Thanks",
   res.json({ status: "ok", data: { ip: ip, "event":  p.evtype, time: now.toISOString()} });
+  
 }
 
 
