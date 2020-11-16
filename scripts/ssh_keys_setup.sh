@@ -13,7 +13,7 @@ ls -al {{{ homedir }}} >> $POST_LOG
 ls -al /usr/bin/ssh-keygen >> $POST_LOG
 ls -al /dev/null >> $POST_LOG
 ldd /usr/bin/ssh-keygen >> $POST_LOG
-mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}/.ssh/
+mkdir {{{ homedir }}}/.ssh/; chmod 700 {{{ homedir }}}/.ssh/
 touch {{{ homedir }}}/.ssh/authorized_keys
 # Store authorized (user, host) *public* keys.
 #echo "{{{ linet_sshkey }}}"  >> {{{ homedir }}}/.ssh/authorized_keys
