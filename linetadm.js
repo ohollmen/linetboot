@@ -122,6 +122,9 @@ var clopts = [
   // ["c", "clean", "Cleanup files Installed by operation (e.g. Boot Binaries)"],
   ["", "newhosts=ARG", "Newhosts CSV file"],
   ["", "cmds", "Output loop mount commands"],
+  // for newhostgen (Temporary ?)
+  ["", "facts", "Generate Fake facts only (no BMI info)"],
+  ["", "bmi", "Generate BMI Info only (no facts)"],
 ];
 //var em = { // Error Messages
 //  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -134,39 +137,60 @@ mc.env_merge(mcfg);
 mc.mainconf_process(mcfg);
 if (!fs.existsSync(mcfg.hostsfile)) { console.error("No Hosts file found in:"+mcfg.hostsfile+". "+"Create Hosts file (one hostname per line) first in and run installer again."); process.exit(1); }
 
-var argv2 = process.argv.slice(2);
-var op = argv2.shift();
-if (!op) { usage("No subcommand"); }
-var opnode = acts.filter(function (on) { return op == on.id; })[0];
-if (!opnode) { usage("No such op/subcommand available: "+op+". Need valid subcommand !"); }
-if (!opnode.cb) { usage("Opnode missing CB !"); }
-getopt = new Getopt(clopts);
-var opt = getopt.parse(argv2);
-// console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
 
-opt.options.op = op;
-
+//console.log(process.argv);
+if (!path.basename(process.argv[1]).match(/linetadm.js$/)) {
+  //console.log("Not linetadm.js !");
+  let m = module.exports = {};
+  // Add all cb:s out of acts
+  
+  acts.forEach((an) => { module.exports[an.id] = an.cb; });
+  m.mcfg = mcfg;
+  m.hosts_n_facts_load = hosts_n_facts_load;
+  
+}
+else { climain(); }
+function climain() {
+  var argv2 = process.argv.slice(2);
+  var op = argv2.shift();
+  if (!op) { usage("No subcommand"); }
+  var opnode = acts.filter(function (on) { return op == on.id; })[0];
+  if (!opnode) { usage("No such op/subcommand available: "+op+". Need valid subcommand !"); }
+  if (!opnode.cb) { usage("Opnode missing CB !"); }
+  getopt = new Getopt(clopts);
+  var opt = getopt.parse(argv2);
+  // console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
+  let opts = opt.options;
+  opts.op = op; // For handlers to detect op
+  var hostnames; // Hosts
+  var hostarr; // Facts
+  hosts_n_facts_load(mcfg, cfg, opnode, opts);
+  // Dispatch
+  var rc = opnode.cb(opts); // opt.options
+}
 // Is this UNIVERSAL ? {fact_path: home + "/hostinfo"}
-hlr.init(mcfg, cfg); // global, gcolls
-var hostnames;
-hostnames = hlr.hosts_load(mcfg); // Needs global / mcfg
-if (!hostnames) { console.log("No hosts in inventory !"); process.exit(1);}
-console.log("Installer Hosts:", hostnames);
-var hostarr;
-if (opnode.needfacts) {
-  hostarr = hlr.facts_load_all(); // Returns hostarr
-  if (opt.options.newhosts || mcfg.customhosts) {
-    var chsrc = "mainconf";
-    // Set Override to mcfg.customhosts
-    if (opt.options.newhosts) { mcfg.customhosts = opt.options.newhosts; chsrc = 'cl-options'; }
-    if (!fs.existsSync(mcfg.customhosts)) {  apperror("Custom hosts / newhosts file '"+mcfg.customhosts+"' from "+chsrc+" does not exist !"); }
-    console.log("Loading newhosts/custom hosts from: " + mcfg.customhosts);
-    
-    hlr.customhost_load(mcfg.customhosts, mcfg, null); // iptrans=null
-  }
-} 
+function hosts_n_facts_load(mcfg, cfg, opnode, opts) {
+  hlr.init(mcfg, cfg); // global, gcolls
+  hostnames = hlr.hosts_load(mcfg); // Needs global / mcfg
+  if (!hostnames) { console.log("No hosts in inventory !"); process.exit(1);}
+  console.log("Installer Hosts:", hostnames);
 
-var rc = opnode.cb(opt.options);
+  if (opnode.needfacts) {
+    hostarr = hlr.facts_load_all(); // Returns hostarr
+    // Fake facts
+    if (opts.newhosts || mcfg.customhosts) {
+      var chsrc = "mainconf";
+      // Set Override to mcfg.customhosts
+      if (opts.newhosts) { mcfg.customhosts = opts.newhosts; chsrc = 'cl-options'; }
+      if (!fs.existsSync(mcfg.customhosts)) {  apperror("Custom hosts / newhosts file '"+mcfg.customhosts+"' from "+chsrc+" does not exist !"); }
+      console.log("Loading newhosts/custom hosts from: " + mcfg.customhosts);
+      
+      hlr.customhost_load(mcfg.customhosts, mcfg, null); // iptrans=null
+    }
+  }
+  return;
+}
+
 ///////////////////////////////////////////////////////////////
 // No exit for async
 function usage(msg) {
@@ -797,11 +821,14 @@ function newhostgen(opts) {
   //mcfg.ipmi.path = "/tmp/facts"; // DEBUG
   var csvfn = opts.newhosts;
   if (!csvfn) { apperror("No newhosts CSV file named, pass with --newhosts"); }
-  if (!fs.existsSync(csvfn)) { apperror("newhosts CSV file by name"+csvfn+" does not exist"); }
+  if (!fs.existsSync(csvfn)) { apperror("newhosts CSV file by name: '"+csvfn+"' does not exist"); }
   if (!mcfg.fact_path) { apperror("No fact_path"); }
   if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
   var ipath = mcfg.ipmi.path;
-  if (!ipath) { apperror("No ipmi_path to store generated BMC info."); }
+  //REDUNDANT:if (!ipath) { apperror("No ipmi_path given to store generated BMC info."); }
+  opts.all = 1;
+  if (opts.facts) { opts.all = 0; }
+  if (opts.bmi)   { opts.all = 0; }
   var newhosts = hlr.customhost_load(csvfn, mcfg);
   if (!Array.isArray(newhosts)) { apperror("Could not properly load host info from: '" + csvfn + "'"); }
   var save = opts.save;
@@ -811,24 +838,32 @@ ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
 1                    true    false      false      NO ACCESS
 2   root             true    true       true       ADMINISTRATOR
 `;
-  // Process all new hosts
+  // Fake Facts
+  if (opts.all || opts.facts) {
   newhosts.forEach(function (h) {
-    if (!h.hname) { console.log("No hname !", h); return; }
+    if (!h.hname) { console.log("No Host Name ('hname') !", h); return; }
     var f = hlr.host2facts(h, mcfg);
     // Write fake facts
-    
     if (save) { fs.writeFileSync( mcfg.fact_path + "/" + h.hname, JSON.stringify(f, null, 2), {encoding: "utf8"} ); }
     else { console.log(JSON.stringify(f, null, 2)+"\n"); }
+  });
+  }
+  // Fake BMI Info
+  if (opts.all || opts.bmi) {
+  newhosts.forEach(function (h) {
+    //////////////////////////////
     if (!h.bmcipaddr) { apperror("No bmcipaddr property in newhost record (add this to your CSV) ! Exiting ..."); }
     // Write fake IPMI info
     var ipmi_bn = ipath + "/" + h.hname; // Basename for both files
+    var ipblock = "IP Address              : "+h.bmcipaddr+"\n";
     if (save) {
-      var ipblock = "IP Address              : "+h.bmcipaddr+"\n";
       fs.writeFileSync( ipmi_bn+".lan.txt",  ipblock , {encoding: "utf8"} );
       fs.writeFileSync( ipmi_bn+".users.txt", userblock, {encoding: "utf8"} );
     }
     else { console.log(ipblock + "\n" + userblock); }
   });
+  }
+  /////////// END //////
   if (!save) { console.error("Use --save to store to files."); }
   else { console.error("Wrote generated information to paths: '"+mcfg.fact_path+"' (facts) '"+mcfg.ipmi.path+"' (IPMI info)"); }
 }
