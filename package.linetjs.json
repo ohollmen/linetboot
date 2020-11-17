@@ -1,0 +1,22 @@
+{
+  "name": "linetjs",
+  "version": "0.0.1",
+  "description": "Linetboot CLI utility",
+  "main": "linet.js",
+  "dependencies": {
+    "axios": "0.20.0",
+    "async": "2.6.1",
+    "node-getopt": "0.3.2"
+  },
+  "keywords": [
+    "pxe",
+    "network",
+    "install",
+    "netboot"
+  ],
+  "scripts": {
+    "install": "npm install"
+  },
+  "author": "Olli Hollmen",
+  "license": "MIT"
+}
