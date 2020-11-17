@@ -72,8 +72,10 @@ function ib_show_hosts(req, res) {
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
   if (!ibconf.user || !ibconf.pass) { jr.msg += "Not Connected to IBlox system";return res.json(jr); }
   console.log("Query: "+url_h);
+  var syncarr = [];
+  if (ibconf.syncall) { syncarr = hostarr; }
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
-  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return h.ansible_fqdn && hp.ibsync; });
+  else { syncarr = hostarr.filter((h) => { var hps = hlr.hostparams(h); return h.ansible_fqdn && hps.ibsync; }); }
   console.log(syncarr.length + " Hosts for IB op.");
   // console.log("getpara: ", getpara);
   ibhs_fetch(syncarr, showitems, res, jr);
