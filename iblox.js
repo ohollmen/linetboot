@@ -25,7 +25,7 @@ function init(global, hdls) {
   return module.exports;
 }
 
-/** Set addr info in IB ()
+/** Web handler to set IP,MAC address info in IB ()
  * URL Options:
  * - cmds - Set true to produce commands (default)
  * TODO: Create correspnding validation and view
@@ -37,7 +37,9 @@ function ib_set_addr(req, res) {
 
   console.log("Query: "+url_h);
   // Use host inventory (instead of ibconf.hpatt) to decide which hosts to include in ipaddr sync.
-  var syncarr = hostarr.filter((h) => { var hp = hlr.hostparams(h); return h.ansible_fqdn && hp.ibsync; });
+  var syncarr = [];
+  if (ibconf.syncall) { syncarr = hostarr; }
+  else { syncarr = hostarr.filter((h) => { var hps = hlr.hostparams(h); return h.ansible_fqdn && hps.ibsync; }); }
   console.log(syncarr.length + " Hosts for IB op.");
   console.log("getpara: ", getpara);
   ibhs_fetch(syncarr, ipmac_cmds_gen, res, jr);
@@ -62,7 +64,7 @@ function ib_set_addr(req, res) {
   ///////////////////////////////
   
 }
-/** Web handler for the Iblox info view
+/** Web handler for the Iblox info view.
  */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
@@ -110,6 +112,7 @@ function ib_show_hosts(req, res) {
   
 }
 /** Async fetch of IB hosts one-by-one, driven by syncarr.
+ * syncarr has been determined and setup by ...
  * @param syncarr - Array of hosts to fetch/sync
  * @param cb - Operation to launch on filtered results (gets called with IB results and HTTP response)
  */

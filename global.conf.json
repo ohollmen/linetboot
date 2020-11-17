@@ -127,7 +127,8 @@
     "url": "https://ipam.company.com/wapi/v2.10",
     "user": "",
     "pass": "",
-    "ro": 1
+    "ro": 1,
+    "syncall": 1
   },
   "targetos": "ubuntu14",
   "useurlmapping": false,

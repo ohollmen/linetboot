@@ -67,6 +67,11 @@
       "grp":"osi"
     },
     {
+      "title" : "linet.js - CLI Installs",
+      "urlpath" : "doc/README.linetjs.md",
+      "grp":"osi"
+    },
+    {
       "title" : "Troubleshooting",
       "urlpath" : "doc/README.troubleshoot.md",
       "grp":"osi"
