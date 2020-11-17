@@ -539,7 +539,7 @@ function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 */
 function oninstallevent(req,res) {
   var jr = {status: "err", msg: "Failed to respond to install event."};
-  var evok = {"start": "Start", "done":"Legacy for End", "end": "End"};
+  var evok = {"start": "Start", "done":"Legacy for End", "end": "End", "post": "Post"};
   var ip = osinst.ipaddr_v4(req);
   var p = req.params;  // :evtype
   if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
@@ -1411,7 +1411,7 @@ function host_reboot(req, res) {
   if (!rq) {  jr.msg += " No Query params."; return res.json(jr); }
   var ipmiconf = global.ipmi || {};
   if (!ipmiconf || !Object.keys(ipmiconf).length) { jr.msg += " No Config."; return res.json(jr); }
-  
+  // cli: --pxe
   if (p.op == 'boot' && rq.pxe) { console.log("pxe=true, Use op=setpxe"); p.op = "setpxe"; } // Need both ops !? - NOT if kept strictly separate
   if (rq.test) { return res.json({status: "ok", test: 1}); } // rfmsg
   
@@ -1419,9 +1419,17 @@ function host_reboot(req, res) {
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " No facts, Not a valid host:"+p.hname; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
-  if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += " No BMC/rmgmt host."; return res.json(jr); }
+  // Try to fall back to hostparams => bmcipaddr
+  if (!rmgmt || !rmgmt.ipaddr) {
+    var hps = hlr.hostparams(f);
+    // Could not fall back ...
+    if (!hps || !hps.bmcipaddr) { jr.msg += " No rmgmt info (bmcipaddr) for host to contact."; return res.json(jr); }
+    // Mock up rmgmt info
+    rmgmt = { ipaddr: hps.bmcipaddr };
+  }
+  //if (!ipmiconf.testurl && (!rmgmt || !rmgmt.ipaddr)) {  jr.msg += " No BMC/rmgmt host."; return res.json(jr); }
   // console.log("RMGMT-info:",rmgmt);
-  if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
+  //if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
   
   var ipmiconf2 = redfish.gencfg(ipmiconf, hlr.hostparams(f));
