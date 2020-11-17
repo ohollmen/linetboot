@@ -194,7 +194,7 @@ function showdocindex (ev, act) {
   .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
   // axios.get(url).then((resp) => { cfg.initdocs(resp.data); })
 }
-/** Show Boot Options and allow set "next boot".
+/** Show Boot Options and allow set boot target (Boot / OS Install) on host(s).
  * 
  */
 function bootgui(ev, act) {
@@ -212,6 +212,10 @@ function bootgui(ev, act) {
   }
   boot_select_setup();
   $("#bootreqsubmit").click(function (jev) {
+    // TODO: Allow multiple hosts, not ONLY one !!!
+    // Call async.map(hnames, )
+    var hval = $("#hname").val();
+    console.log("Go host-value: ", hval);
     var para =  {"bootlbl": $("#bootlbl").val(), "hname": $("#hname").val()[0]};
     console.log(para);
     axios.get("/install_boot?", {params: para}).then(function (resp) {
@@ -431,7 +435,8 @@ function showpeople(ev, act) {
     search(p);
   });
 }
-/** 
+/** List Infoblox Info In a grid/summary view.
+ * However drive list by "all hosts" so that missing or bad info can be clearly seen.
  */
 function ibloxlist(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
