@@ -474,6 +474,13 @@ function customhost_load(fname, global, iptrans) {
     var f = host2facts(it, global);
     if (!f) { console.log("host2facts() made none for "+it.hname); return; }
     if (iptrans && it.tempipaddr) { iptrans[it.tempipaddr] = it.ipaddr; }
+    // Create stub hostparams
+    colls.hostparams[it.hname] = {};
+    global.hostparams[it.hname] = {}; // BAD / Compat
+    if (it.bmcipaddr) {
+      colls.hostparams[it.hname].bmcipaddr = it.bmcipaddr;
+      global.hostparams[it.hname].bmcipaddr = it.bmcipaddr; // BAD
+    }
     host_add(f);
   });
   return arr;
@@ -484,7 +491,7 @@ function customhost_load(fname, global, iptrans) {
  * @param f {object} - Ansible facts for host (OR exact hostname to lookup params by)
  * @return Host parameters object 
  */
-function hostparams(f) {
+function hostparams(f) { // obj
   if (!f) { console.log("No facts (and hostname) for looking up hostparams"); return null; }
   var hn;
   if (typeof f != 'string') {hn = f.ansible_fqdn; }
@@ -492,9 +499,11 @@ function hostparams(f) {
   // TODO: f. (Ip Address) ???
   if (!hn) { console.log("No hostname gotten from facts (for "+"???"+")for looking up hostparams"); return null; }
   if (!colls.hostparams) { console.log("No colls.hostparams"); }
+  //if (!colls.hostparams[hn]) { colls.hostparams[hn] = {}; }
+  // SET: if (obj) { Object.keys(obj).forEach((k) => { colls.hostparams[hn][k] = obj[k]; }); }
   return colls.hostparams[hn];
-  
 }
+
 
 module.exports = {
   init: init,
