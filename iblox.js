@@ -64,12 +64,19 @@ function ib_set_addr(req, res) {
   ///////////////////////////////
   
 }
+
+var tset = [
+  {hname: "nuc7", ipaddr: "1.1", macaddr: "aa", ipaddr_ib: "", macaddr_ib: "", "nbp": "pxelinux.0"},
+  {hname: "nuc5", ipaddr: "2.2", macaddr: "bb", ipaddr_ib: "", macaddr_ib: "", "boothost": "bootie"}
+];
+
 /** Web handler for the Iblox info view.
  */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
   // var ibconf = global.iblox;
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
+  if (ibconf.test) { return res.json({status: "ok", data: tset}); } // TEST Mode
   if (!ibconf.user || !ibconf.pass) { jr.msg += "Not Connected to IBlox system";return res.json(jr); }
   console.log("Query: "+url_h);
   var syncarr = [];
@@ -168,7 +175,10 @@ function ipmac_cmds_gen(aout, res) {
   function ibh_fetch(f, cb) {
     if (!f) { return cb("ibh_fetch: No facts (from async.map arr).", null);  }
     if (!f.ansible_fqdn) { return cb("ibh_fetch: facts missing FQDN", null);  }
-    axios.get(url_h+"name="+f.ansible_fqdn, getpara).then((resp) => {
+    var iburl = url_h+"name="+f.ansible_fqdn;
+    var ccmd = "curl -u "+ibconf.user +":"+ibconf.pass+" '"+ iburl + "'";
+    console.log("CURL: "+ccmd);
+    axios.get(iburl, getpara).then((resp) => {
       if (resp.status != 200) { return cb("Non-200 status:" + resp.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
       // Looking good, got resp data. validate.
@@ -184,11 +194,43 @@ function ipmac_cmds_gen(aout, res) {
       return cb(null, o); // resp.data
     })
     // "cb was already called"
-    .catch((ex) => { console.log("Axios EX:"+ex); return cb("axios exception:"+ex, null); });
+    .catch((ex) => { console.log("Axios (IB) EX:"+ex); return cb("axios exception:"+ex, null); });
   }
+/** Web handler to sync single host (mac, ip) with iblox (from GUI).
+ * Query host info from Infoblox (wich also formulates needed params for update call) and issue and update call.
+ */
+function ipam_sync(req, res) {
+  var jr = {status: "err", msg: "Could not sync (ip,mac) with IB."};
+  var err = 1;
+  var q = req.query;
+  if (!q)     { jr.msg += " No query."; return res.json(jr); }
+  var hname = q.hname;
+  if (!hname) { jr.msg += " No hname."; return res.json(jr); }
+  // Formulate message (See: ipmac_gen(f, ibh)
+  var f = hostcache[hname];
+  if (!f) { jr.msg += " No facts for '"+hname+"'"; return res.json(jr); }
+  // 1) Query Iblox to get ibh
+  ibh_fetch(f, (err, ibh) => {
+    if (err) { jr.msg += " Initial IB info fetch failure: "+ err; return res.json(jr); }
+    console.log("IBH:", ibh);
+    // 2) Call to sync (ibh already has info). See ipmac_cmds_gen() for curl info
+    // params: basic-creds
+    var rpara = {auth: {username: ibconf.user, password: ibconf.pass}};
+    axios.put(ibh.url, ibh.data, rpara).then((resp) => {
+      // Detect HTML (resp.headers ?)
+      if (resp.status != 200) { jr.msg += "Non-200 resp from IB:" + resp.status; return res.json(jr); }
+      var d = resp.data;
+      console.log("DATA: ", d);
+      res.json({status: "ok", data: 1});
+    }).catch((ex) => { jr.msg += ex; return res.json(jr); });
+  });
+  //if (err) { jr.msg += "Permission denied"; return res.json(jr); }
+  
+}
 
 module.exports = {
   init: init,
   ib_set_addr: ib_set_addr,
-  ib_show_hosts : ib_show_hosts
+  ib_show_hosts : ib_show_hosts,
+  ipam_sync: ipam_sync
 };
