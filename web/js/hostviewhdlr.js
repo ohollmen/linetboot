@@ -479,4 +479,38 @@ function ibloxlist(ev, act) {
     });
   }).catch (function (ex) { console.log(ex); });
 }
+
+function eflowlist(ev, act) {
+  console.log("EFlow ...");
+  rapp.templated("simplegrid", act, ev.viewtgtid);
+  axios.get(act.url).then(function (resp) { // "/eflowrscs"
+    var d = resp.data;
+    if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
+    if (!d.data) { return toastr.error("No Data Found."); }
+    if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
+    console.log(d.data);
+    showgrid(act.gridid, d.data, fldinfo.eflow);
+    $('.efena').change(function () {
+      var uithis = this;
+      var rscname = this.dataset.rscname;
+      var hname   = this.dataset.hname;
+      //$(uithis).prop('disabled', true); // Or all '.efena' ?
+      // Box: "enabled"
+      //var disa = this.checked ? 0 : 1;
+      var ena = this.checked ? 1 : 0;
+      toastr.clear();
+      toastr.info("Rsc "+rscname+" ena: "+ena);
+      return;
+      axios.get("/eflowrsctoggle/?hname="+hname+"&rscname="+rscname+"&ena="+ena).then((resp) => {
+        var d = resp.data;
+        console.log("resp.status: " + resp.status);
+        toastr.clear();
+        //$(uithis).prop('disabled', false);
+        toastr.info("Changed resource "+rscname+ " to enabled: " + d.data.ena);
+      }).catch((ex) => { toastr.error(ex); });
+      //.finally()
+    });
+  }).catch (function (ex) { console.log(ex); });
+}
+
 //////////// Dialog handlers ////////////////////

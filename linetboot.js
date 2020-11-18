@@ -254,6 +254,9 @@ function app_init() { // global
   app.get("/meta-data",  ubu20_meta_data);
   
   app.post("/keyxchange",  keys_exchange);
+  
+  app.get("/eflowrscs",  eflowrscs);
+  app.get("/eflowrsctoggle",  eflowrsctoggle);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2194,4 +2197,63 @@ function keys_exchange(req, res) {
     catch (ex) { console.log("Failed to append key to "+fn+""); return 1; }
     return 0;
   }
+}
+// /eflowrscs
+function eflowrscs(req, res) {
+  var jr = {status : "err", msg : "Error Createing Eflow Resources list."};
+  var efc = global.eflow;
+  if (!efc) { jr.msg += "No EFlow Config"; return res.json(jr); }
+  var erscs = [];
+  var axpara = { auth: {username: efc.user, password: efc.pass } };
+  hostarr.forEach((f) => {
+    var hps = hlr.hostparams(f);
+    if (!hps || !hps.ecrsc) { return null; }
+    var rn = hps.ecrsc;
+    var ent = { hname: f.ansible_fqdn, rscname: rn };
+    erscs.push(ent);
+    var efurl = efc.url + "/resources/"+rn;
+    console.log("EFURL: "+efurl);
+    return;
+    
+    /////////// ASYNC /////////////////////
+    axios.get(efurl, axpara).then((resp) => {
+      var d = resp.data;
+      if (!d) { jr.msg += "No data from EFlow for resource " + rn; return res.json(jr); }
+      console.log(d);
+      // stepLimit resourceName resourceId hostType resourceDisabled
+      if (!d.resource) { throw "Missing resource branch !"; }
+      var r = d.resource;
+      ent.ena = parseInt(r.resourceDisabled) ? 0 : 1;
+      ent.rscid = r.resourceId;
+      ent.pools = r.pools; // pools is deprecated, but works. Should use resourcePools
+      // cb(null, ent);
+    }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
+  });
+  res.json({ status: "ok", data: erscs });
+}
+/** Enable / Disable resource.
+ * Initially: Change the enablement state to requested one.
+ * TODO: Allow pool changes.
+ */
+function eflowrsctoggle(req, res) {
+  var jr = {status : "err", msg : "Error Toggling EFlow resource on/off."};
+  var efc = global.eflow;
+  if (!efc) { jr.msg += "No EFlow Config"; return res.json(jr); }
+  var q = req.query;
+  if (!q.rscname) { jr.msg += "No EFlow Resource name"; return res.json(jr); }
+  if (!q.ena) { jr.msg += "No EFlow Enablement info"; return res.json(jr); }
+  var p = {resourceDisabled: !parseInt(q.ena) }; // PUT. TODO: resourcePools: "a,b,c"
+  var axpara = { auth: {username: efc.user, password: efc.pass } };
+  var efurl = efc.url + "/resources/"+q.rscname; // "?resourceDisabled="
+  console.log("PUT:", p);
+  // Seems these *can* be sent PUT with params in URL ?
+  axios.put(efurl, p, axpara).then((resp) => {
+    var d = resp.data;
+    console.log("Resp.status: "+resp.status);
+    if (!d.resource) { throw "No resource branch !"; }
+    // Check resourceDisabled, pools
+    let ena = !parseInt(d.resource.resourceDisabled);
+    var okmsg = {status: "ok", data: {ena: ena}};
+    res.json(okmsg); console.log(okmsg);
+  }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
 }

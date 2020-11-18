@@ -359,18 +359,22 @@ function ibip_cell(val, item) {
      {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20},
      {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, Xvisible: false},
      {name: "nbp", title: "Boot File", type: "text", width: 80, Xvisible: false},
-     {name: "sync", title: "Sync", type: "text", width: 30, Xvisible: false, itemTemplate: ibsync_cell},
+     // Need rethink. Most of time host is no known in IB
+     {name: "sync", title: "Sync", type: "text", width: 30, visible: false, itemTemplate: ibsync_cell},
 
    ];
    function efena_cell(val, item) {
      var chk = item.ena ? "checked=checked" : "";
-     //return "<input class=\"efena\" type=\"checkbox\" data-hname=\""+item.hname+"\" name=\"scales\" "+chk+">"; // 
+     return "<input class=\"efena\" type=\"checkbox\" data-hname=\""+item.hname+"\" data-rscname=\""+item.rscname+"\" "+chk+">"; // 
+     //return "???";
    }
    var fldinfo_eflow = [
      hostfld, // "Joined"
      {name: "rscname",  title: "Resource Name", type: "text", width: 120},
      {name: "pools",  title: "Resource Pools", type: "text", width: 120},
-     {name: "ena", title: "Enabled", type: "text", width: 30, visible: false, itemTemplate: efena_cell},
+     // stepLimit
+     {name: "steplimit",  title: "Step Limit", type: "text", width: 30},
+     {name: "ena", title: "Enabled", type: "text", width: 30, Xvisible: false, itemTemplate: efena_cell},
    ];
    
    // TODO: Send sets as AoO, index by id
