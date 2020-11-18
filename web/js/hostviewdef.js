@@ -345,20 +345,39 @@ function ibip_cell(val, item) {
     if (val != item.ipaddr) { sty = "color: red;"; }
     return "<span style=\""+sty+"\">"+val+"</span>";
 }
+   function ibsync_cell(val, item) {
+     if (!item.needsync) { return "--"; }
+     
+     return "<input class=\"syncbutt\" type=\"button\" data-hname=\""+item.hname+"\" value=\"Sync\" >";
+   }
    var fldinfo_iblox = [
      hostfld, // "Joined"
-     {name: "ipaddr",  title: "IP Addr", type: "text", width: 120},
-     {name: "macaddr", title: "Mac Addr", type: "text", width: 130, css: "macaddr"},
-     {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 120, itemTemplate: ibip_cell},
-     {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 130, css: "macaddr", itemTemplate: ibmac_cell},
+     {name: "ipaddr",  title: "IP Addr", type: "text", width: 100},
+     {name: "macaddr", title: "Mac Addr", type: "text", width: 110, css: "macaddr"},
+     {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 100, itemTemplate: ibip_cell},
+     {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 110, css: "macaddr", itemTemplate: ibmac_cell},
      {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20},
+     {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, Xvisible: false},
+     {name: "nbp", title: "Boot File", type: "text", width: 80, Xvisible: false},
+     {name: "sync", title: "Sync", type: "text", width: 30, Xvisible: false, itemTemplate: ibsync_cell},
 
    ];
+   function efena_cell(val, item) {
+     var chk = item.ena ? "checked=checked" : "";
+     //return "<input class=\"efena\" type=\"checkbox\" data-hname=\""+item.hname+"\" name=\"scales\" "+chk+">"; // 
+   }
+   var fldinfo_eflow = [
+     hostfld, // "Joined"
+     {name: "rscname",  title: "Resource Name", type: "text", width: 120},
+     {name: "pools",  title: "Resource Pools", type: "text", width: 120},
+     {name: "ena", title: "Enabled", type: "text", width: 30, visible: false, itemTemplate: efena_cell},
+   ];
+   
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
-      "iblox":  fldinfo_iblox
+      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow
    };
    
