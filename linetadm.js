@@ -918,7 +918,7 @@ function genrscs(opts) {
   console.log(rscs);
   console.log("#!/bin/bash\nexport EC_CREDS="+efc.user+":"+efc.pass+"\n");
   rscs.forEach((r) => {
-    var cmd = "curl -v -k  -u $EC_CREDS -H 'content-type: application/json' -d '"+JSON.stringify(r)+"'";
+    var cmd = "curl -v -k  -u $EC_CREDS -H 'content-type: application/json' -d '"+JSON.stringify(r)+"' "+ efc.url+"/resources";
     console.log(cmd);
   });
   // Make single rsc out of facts and host params
