@@ -135,25 +135,25 @@ function ibhs_fetch(syncarr, cb, res, jr) {
   });
 }
 
-  /** Generate IP/MAC change record with info to submit to IB.
-   * The PUT data-to-be-submitted is already inc correct format in "data" member.
-   * @param f - Facts for host
-   * @param ibh - IB host info (w. "ipv4addrs" member to be used here).
-   * @return Return object with HTTP level info and PUT data parameters.
-   */
-  function ipmac_gen(f, ibh) {
-    var ipi = ibh.ipv4addrs;
-      if (!ipi) { return null; }
-      if (ipi.length > 1) { return null; }
-      // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
-      
-      if (ipi[0].ipv4addr != f.ansible_default_ipv4.address) { console.log("IP address conflict IB vs. Ans. Skipping..."); return null; }
-      var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}];
-      // URL with ibh._ref works because this is host level change. Network level: ipi[0]._ref
-      var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}};
-      o.hname = f.ansible_fqdn;
-      return o;
-  }
+/** Generate IP/MAC change record with info to submit to IB.
+ * The PUT data-to-be-submitted is already inc correct format in "data" member.
+ * @param f - Facts for host
+ * @param ibh - IB host info (w. "ipv4addrs" member to be used here).
+ * @return Return object with HTTP level info and PUT data parameters or null if update info object cannot be created.
+ */
+function ipmac_gen(f, ibh) {
+  var ipi = ibh.ipv4addrs;
+  if (!ipi) { return null; }
+  if (ipi.length > 1) { return null; }
+  // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
+  
+  if (ipi[0].ipv4addr != f.ansible_default_ipv4.address) { console.log("IP address conflict IB vs. Ans. Skipping..."); return null; }
+  var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}];
+  // URL with ibh._ref works because this is host level change. Network level: ipi[0]._ref
+  var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}};
+  o.hname = f.ansible_fqdn;
+  return o;
+}
 
 
 /** Output IB mac/ip association info as curl commands.
@@ -177,7 +177,7 @@ function ipmac_cmds_gen(aout, res) {
     if (!f.ansible_fqdn) { return cb("ibh_fetch: facts missing FQDN", null);  }
     var iburl = url_h+"name="+f.ansible_fqdn;
     var ccmd = "curl -u "+ibconf.user +":"+ibconf.pass+" '"+ iburl + "'";
-    console.log("CURL: "+ccmd);
+    console.log("CURL: "+ccmd); // On debug only ? if (ibconf && ibconf.debug) { }
     axios.get(iburl, getpara).then((resp) => {
       if (resp.status != 200) { return cb("Non-200 status:" + resp.status, null); }
       if (!resp.data) { return cb("No data in IB host resp.", null); }
@@ -185,12 +185,17 @@ function ipmac_cmds_gen(aout, res) {
       var ibharr = resp.data;
       if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
       if (ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
-      var ibh = ibharr[0];
+      if (ibharr.length < 1) { return cb("No IB host info (empty arr - host does not exist in IB) !", null); }
+      var ibh = ibharr[0]; // Should be single
       if (!ibh) { console.log("No IB Info for: "+f.ansible_fqdn); return cb(null, null); } // Happens, let happen. old: "No ibh for host: "+f.ansible_fqdn
+      // Inspect result further ... e.g empty array ([])
+      
       // No double lookup or shadowing (and causes: async.map error:axios exception:TypeError: Cannot read property 'ansible_fqdn' of undefined)
       //var f = hostcache[ibh.name]; // By name (ibh.ipv4addrs[0].ipv4addr)
       //if (!f) { console.log("No facts by: "+ibh.name); return cb("No facts by: "+ibh.name, null); } // 
       var o = ipmac_gen(f, ibh);
+      // NOTE: o may be NULL
+      //if (!o.url) { console.log("Warning: No URL in ibh !"); }
       return cb(null, o); // resp.data
     })
     // "cb was already called"
@@ -201,7 +206,7 @@ function ipmac_cmds_gen(aout, res) {
  */
 function ipam_sync(req, res) {
   var jr = {status: "err", msg: "Could not sync (ip,mac) with IB."};
-  var err = 1;
+  //var err = 1;
   var q = req.query;
   if (!q)     { jr.msg += " No query."; return res.json(jr); }
   var hname = q.hname;
@@ -209,10 +214,11 @@ function ipam_sync(req, res) {
   // Formulate message (See: ipmac_gen(f, ibh)
   var f = hostcache[hname];
   if (!f) { jr.msg += " No facts for '"+hname+"'"; return res.json(jr); }
-  // 1) Query Iblox to get ibh
-  ibh_fetch(f, (err, ibh) => {
+  // 1) Query Iblox to get ibh and formulated update
+  ibh_fetch(f, (err, ibh) => { // TODO: call this ibup (not ibh)
     if (err) { jr.msg += " Initial IB info fetch failure: "+ err; return res.json(jr); }
     console.log("IBH:", ibh);
+    if (!ibh) { jr.msg += "Host '"+ hname+"' does not seem to exist in IB !"+ err; return res.json(jr); }
     // 2) Call to sync (ibh already has info). See ipmac_cmds_gen() for curl info
     // params: basic-creds
     var rpara = {auth: {username: ibconf.user, password: ibconf.pass}};
