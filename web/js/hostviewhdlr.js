@@ -458,7 +458,25 @@ function ibloxlist(ev, act) {
       it.usedhcp    = ibent.configure_for_dhcp;
     });
     */
+    d.data.forEach((item) => {
+      if ((item.ipaddr_ib != item.ipaddr) || (item.macaddr_ib != item.macaddr)) { item.needsync = 1; }
+    });
     showgrid(act.gridid, d.data, fldinfo.iblox);
+    $('.syncbutt').click(function () {
+      var hname = this.dataset.hname;
+      // TODO: lock/disable buttons
+      $('.syncbutt').prop('disabled', true);
+      //toastr.info("Should sync "+hname+" with infoblox !");
+      //return;
+      axios.get("/ipamsync?hname="+hname).then((resp) => {
+        var d = resp.data;
+        if (d.status == 'err') { toastr.clear(); return toastr.error("Failed InfoBlox sync: " + d.msg); }
+        if (!d.data) { return toastr.error("No Data Found."); }
+        toastr.clear();
+        toastr.info("Sync'd "+hname+" with infoblox successfully !");
+      }).catch((ex) => { toastr.error(ex); })
+      .finally(() => { $('.syncbutt').prop('disabled', false); });
+    });
   }).catch (function (ex) { console.log(ex); });
 }
 //////////// Dialog handlers ////////////////////
