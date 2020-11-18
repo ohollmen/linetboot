@@ -90,9 +90,11 @@ function mainconf_process(global) {
   // Set at least empty array (for recipe templating)
   else { global.inst.postscripts = []; }
   
-  // Detect completeness of various configs and mark things that are not in use as disabled.
-  // Use these to customize Web UI. Aim to use UI terms for ease at that end (and aim to sync terminology in time)
-  // IPMI: See if dir exists and if any info collected
+  /** Detect completeness of various configs and mark things that are not in use as disabled.
+  * Use these to customize Web UI. Aim to use UI terms for ease at that end (and aim to sync terminology in time)
+  * IPMI: See if dir exists and if any info collected
+  */
+  // function diabled_detect() {
   var dis = global.disabled = [];
   if (!fs.existsSync(global.ipmi.path) || hasnofiles(global.ipmi.path)) { dis.push('ipmi'); }
   // Docker see if both files exist
@@ -110,6 +112,8 @@ function mainconf_process(global) {
   // Flags for docs disa ? Do not enable
   // Reporting (in flux for transition to tabs) "reports"
   //if (global.web && !global.web.reports) { dis.push("reports"); }
+  //  return dis;
+  //} // diabled_detect
   function hasnofiles(dir) {
     if (!dir) { return 1; }
     var files;
@@ -140,6 +144,10 @@ function env_merge(global) {
   
   if (process.env["LINETBOOT_LDAP_SIMU"]) { global.ldap.simu = process.env["LINETBOOT_LDAP_SIMU"]; }
   // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
+  // Proprietary systems test modes. To disable it's enough leave out user/pass.
+  if (process.env["IBLOX_TEST"]) { stub("iblox"); global.iblox.test = process.env["IBLOX_TEST"]; }
+  if (process.env["EFLOW_TEST"]) { stub("eflow"); global.eflow.test = process.env["EFLOW_TEST"]; }
+  function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
 function tilde_expand(obj, keyarr) {
   if (typeof obj != 'object') { throw "Not an object"; }
