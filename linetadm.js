@@ -101,6 +101,14 @@ var acts = [
     "cb": loopmounts,
     "opts": [],
   },
+  // 
+  {
+    "id": "genrscs",
+    "title": "Create Electric Flow Resources",
+    "cb": genrscs,
+    "needfacts": 1,
+    "opts": [],
+  },
   /*
   {
     "id": "",
@@ -137,6 +145,9 @@ mc.env_merge(mcfg);
 mc.mainconf_process(mcfg);
 if (!fs.existsSync(mcfg.hostsfile)) { console.error("No Hosts file found in:"+mcfg.hostsfile+". "+"Create Hosts file (one hostname per line) first in and run installer again."); process.exit(1); }
 
+// Proper scope
+var hostnames; // Hosts
+var hostarr; // Facts
 
 //console.log(process.argv);
 if (!path.basename(process.argv[1]).match(/linetadm.js$/)) {
@@ -150,6 +161,8 @@ if (!path.basename(process.argv[1]).match(/linetadm.js$/)) {
   
 }
 else { climain(); }
+
+  
 function climain() {
   var argv2 = process.argv.slice(2);
   var op = argv2.shift();
@@ -162,8 +175,7 @@ function climain() {
   // console.log("Opt key-vals: "+JSON.stringify(opt.options, null, 2));
   let opts = opt.options;
   opts.op = op; // For handlers to detect op
-  var hostnames; // Hosts
-  var hostarr; // Facts
+  
   hosts_n_facts_load(mcfg, cfg, opnode, opts);
   // Dispatch
   var rc = opnode.cb(opts); // opt.options
@@ -892,4 +904,34 @@ function loopmounts(opts) {
     if (err) { return apperror("Failed interrogating losetup"); }
     console.log(Mustache.render(tmpls[fmt], {loops: arr}));
   });
+}
+
+function genrscs(opts) {
+  var efc = mcfg.eflow;
+  var rscs = [];
+  hostarr.forEach((f) => {
+    var hps = hlr.hostparams(f);
+    var rsc = makersc(f, hps);
+    if (!rsc) { return; }
+    rscs.push(rsc);
+  });
+  console.log(rscs);
+  console.log("#!/bin/bash\nexport EC_CREDS="+efc.user+":"+efc.pass+"\n");
+  rscs.forEach((r) => {
+    var cmd = "curl -v -k  -u $EC_CREDS -H 'content-type: application/json' -d '"+JSON.stringify(r)+"'";
+    console.log(cmd);
+  });
+  // Make single rsc out of facts and host params
+  function makersc(f, hps) {
+    if (!hps || !hps.ecrsc) { return null; }
+    // Correlate to core cnt (e.g. 96 => 7, 13.7 cores / step)
+    var slim = Math.floor(f.ansible_processor_vcpus / 10);
+    if (slim < 1) { slim = 1; }
+    var p = {resourceName: hps.ecrsc, description: "Host: "+f.ansible_fqdn,
+      resourceDisabled: false, resourcePools: (efc.pooltest || ""), stepLimit: slim,
+      workspaceName: efc.wsname
+    }; // [] ?
+    
+    return p;
+  }
 }
