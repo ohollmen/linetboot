@@ -2234,6 +2234,7 @@ function eflowrscs(req, res) {
       ent.ena = parseInt(r.resourceDisabled) ? 0 : 1;
       ent.rscid = r.resourceId;
       ent.pools = r.pools; // pools is deprecated, but works. Should use resourcePools
+      ent.steplimit = r.stepLimit;
       return  cb(null, ent);
     }).catch((ex) => { console.log("EFlow Rsc EX: "+ex); cb(null, null); }); // jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr);
   }
@@ -2247,8 +2248,8 @@ function eflowrsctoggle(req, res) {
   var efc = global.eflow;
   if (!efc) { jr.msg += "No EFlow Config"; return res.json(jr); }
   var q = req.query;
-  if (!q.rscname) { jr.msg += "No EFlow Resource name"; return res.json(jr); }
-  if (!q.ena) { jr.msg += "No EFlow Enablement info"; return res.json(jr); }
+  if (!q.rscname) { jr.msg += "No EFlow Resource name given"; return res.json(jr); }
+  if (!q.ena) { jr.msg += "No EFlow Enablement info passed"; return res.json(jr); }
   var p = {resourceDisabled: !parseInt(q.ena) }; // PUT. TODO: resourcePools: "a,b,c"
   var axpara = { auth: {username: efc.user, password: efc.pass } };
   var efurl = efc.url + "/resources/"+q.rscname; // "?resourceDisabled="

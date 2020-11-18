@@ -494,21 +494,21 @@ function eflowlist(ev, act) {
       var uithis = this;
       var rscname = this.dataset.rscname;
       var hname   = this.dataset.hname;
-      //$(uithis).prop('disabled', true); // Or all '.efena' ?
+      $(uithis).prop('disabled', true); // Or all '.efena' ?
       // Box: "enabled"
       //var disa = this.checked ? 0 : 1;
       var ena = this.checked ? 1 : 0;
       toastr.clear();
-      toastr.info("Rsc "+rscname+" ena: "+ena);
-      return;
+      toastr.warning("Rsc "+rscname+" ena: "+ena);
+      //return;
       axios.get("/eflowrsctoggle/?hname="+hname+"&rscname="+rscname+"&ena="+ena).then((resp) => {
         var d = resp.data;
         console.log("resp.status: " + resp.status);
         toastr.clear();
-        //$(uithis).prop('disabled', false);
+        //
         toastr.info("Changed resource "+rscname+ " to enabled: " + d.data.ena);
-      }).catch((ex) => { toastr.error(ex); });
-      //.finally()
+      }).catch((ex) => { toastr.error(ex); })
+      .finally(() => { $(uithis).prop('disabled', false); })
     });
   }).catch (function (ex) { console.log(ex); });
 }
