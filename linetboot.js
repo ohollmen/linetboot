@@ -2205,31 +2205,38 @@ function eflowrscs(req, res) {
   if (!efc) { jr.msg += "No EFlow Config"; return res.json(jr); }
   var erscs = [];
   var axpara = { auth: {username: efc.user, password: efc.pass } };
-  hostarr.forEach((f) => {
+  //hostarr.forEach(rsc_get);
+  async.map(hostarr, rsc_get, function (err, ress) {
+    if (err) { res.msg += err; return res.json(jr); }
+    ress = ress.filter( (r) => { return r; } );
+    res.json({ status: "ok", data: ress });
+  });
+  //res.json({ status: "ok", data: erscs });
+  function rsc_get(f, cb) {
     var hps = hlr.hostparams(f);
-    if (!hps || !hps.ecrsc) { return null; }
+    if (!hps || !hps.ecrsc) { return cb(null, null); }
     var rn = hps.ecrsc;
     var ent = { hname: f.ansible_fqdn, rscname: rn };
     erscs.push(ent);
     var efurl = efc.url + "/resources/"+rn;
-    console.log("EFURL: "+efurl);
-    return;
+    console.log("EFURL: curl -u $EFCREDS "+efurl+"");
+    //return;
     
     /////////// ASYNC /////////////////////
     axios.get(efurl, axpara).then((resp) => {
       var d = resp.data;
-      if (!d) { jr.msg += "No data from EFlow for resource " + rn; return res.json(jr); }
+      //NOT: if (!d) { jr.msg += "No data from EFlow for resource " + rn; return res.json(jr); }
+      if (!d) { console.log("No data from EFlow for Rsc: "+ rn); return cb(null, null); }
       console.log(d);
       // stepLimit resourceName resourceId hostType resourceDisabled
-      if (!d.resource) { throw "Missing resource branch !"; }
+      if (!d.resource) { return cb(null, null); } // throw "Missing resource branch !";
       var r = d.resource;
       ent.ena = parseInt(r.resourceDisabled) ? 0 : 1;
       ent.rscid = r.resourceId;
       ent.pools = r.pools; // pools is deprecated, but works. Should use resourcePools
-      // cb(null, ent);
-    }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
-  });
-  res.json({ status: "ok", data: erscs });
+      return  cb(null, ent);
+    }).catch((ex) => { console.log("EFlow Rsc EX: "+ex); cb(null, null); }); // jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr);
+  }
 }
 /** Enable / Disable resource.
  * Initially: Change the enablement state to requested one.
