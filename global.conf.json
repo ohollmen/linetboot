@@ -88,7 +88,8 @@
     "port": "4243",
     "config": "~/docker.conf.json",
     "catalog": "~/dockercat.conf.json",
-    "hostgrp":"nuc"
+    "hostgrp":"nuc",
+    "insecreg": ""
   },
   "net": {
     "desc": "Installation Related Network Configuration",
@@ -124,11 +125,20 @@
     "xtabs" : ["",""]
   },
   "iblox": {
-    "url": "https://ipam.company.com/wapi/v2.10",
+    "url": "https://ipam.mycomp.com/wapi/v2.10",
     "user": "",
     "pass": "",
     "ro": 1,
     "syncall": 1
+  },
+  "eflow": {
+    "url": "https://eflow.mycomp.com/rest/v1.0",
+    "user": "",
+    "pass": "",
+    "pooltest": "SWSHOP_DEBIAN_TEST",
+    "poolprod": "SWSHOP_DEBIAN",
+    "wsname":   "SWSHOP_WS",
+    "agenthost": "efagent.mycomp.com"
   },
   "targetos": "ubuntu14",
   "useurlmapping": false,
