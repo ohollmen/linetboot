@@ -913,7 +913,8 @@ function genrscs(opts) {
     var hps = hlr.hostparams(f);
     var rsc = makersc(f, hps);
     if (!rsc) { return; }
-    rscs.push(rsc);
+    //rscs.push(rsc);
+    rscs.unshift(rsc);
   });
   console.log(rscs);
   console.log("#!/bin/bash\nexport EC_CREDS="+efc.user+":"+efc.pass+"\n");
@@ -929,9 +930,9 @@ function genrscs(opts) {
     if (slim < 1) { slim = 1; }
     var p = {resourceName: hps.ecrsc, description: "Host: "+f.ansible_fqdn,
       resourceDisabled: false, resourcePools: (efc.pooltest || ""), stepLimit: slim,
-      workspaceName: efc.wsname
+      workspaceName: efc.wsname, hostName: efc.agenthost, hostType: f.ansible_system.toLowerCase(), // Common: "linux"
+      
     }; // [] ?
-    
     return p;
   }
 }
