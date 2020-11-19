@@ -2263,7 +2263,7 @@ function eflowrsctoggle(req, res) {
     if (!r) { throw "No resource branch in response data !"; }
     console.log("Rsc disabled: "+r.resourceDisabled);
     // Check resourceDisabled, pools
-    let ena = !parseInt(r.resourceDisabled) ? 0 : 1;
+    let ena = !parseInt(r.resourceDisabled) ? 1 : 0;
     var okmsg = { status: "ok", data: {ena: ena} };
     res.json(okmsg); console.log(okmsg);
   }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
