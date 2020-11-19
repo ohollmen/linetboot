@@ -2258,10 +2258,12 @@ function eflowrsctoggle(req, res) {
   axios.put(efurl, p, axpara).then((resp) => {
     var d = resp.data;
     console.log("Resp.status: "+resp.status);
-    if (!d.resource) { throw "No resource branch !"; }
+    if (!d) { jr.msg += "No Eflow Rsc update response"; return res.json(jr); }
+    let r = d.resource;
+    if (!r) { throw "No resource branch in response data !"; }
     console.log("Rsc disabled: "+r.resourceDisabled);
     // Check resourceDisabled, pools
-    let ena = !parseInt(d.resource.resourceDisabled) ? 0 : 1;
+    let ena = !parseInt(r.resourceDisabled) ? 0 : 1;
     var okmsg = { status: "ok", data: {ena: ena} };
     res.json(okmsg); console.log(okmsg);
   }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
