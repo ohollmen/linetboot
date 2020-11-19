@@ -185,7 +185,9 @@ function ipmac_cmds_gen(aout, res) {
       var ibharr = resp.data;
       if (!Array.isArray(ibharr)) { return cb("IB host resp. not in Array", null); }
       if (ibharr.length > 1) { return cb("IB host resp. len > 1", null); }
-      if (ibharr.length < 1) { return cb("No IB host info (empty arr - host does not exist in IB) !", null); }
+      // NEW: This is half-okay. There's no "host" record in IB.
+      // Returning err here fails async collection iteration, so settle for cb(null, null)
+      if (ibharr.length < 1) { return cb(null, null); } // return cb("No IB host info (empty arr - host does not exist in IB) !", null);
       var ibh = ibharr[0]; // Should be single
       if (!ibh) { console.log("No IB Info for: "+f.ansible_fqdn); return cb(null, null); } // Happens, let happen. old: "No ibh for host: "+f.ansible_fqdn
       // Inspect result further ... e.g empty array ([])
