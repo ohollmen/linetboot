@@ -483,7 +483,7 @@ function ibloxlist(ev, act) {
 function eflowlist(ev, act) {
   console.log("EFlow ...");
   rapp.templated("simplegrid", act, ev.viewtgtid);
-  toastr.info("Request Resource Infro from EFlow ... please wait...");
+  toastr.info("Request Resource Info from EFlow ... please wait...");
   axios.get(act.url).then(function (resp) { // "/eflowrscs"
     var d = resp.data;
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
@@ -491,6 +491,7 @@ function eflowlist(ev, act) {
     if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
     console.log(d.data);
     showgrid(act.gridid, d.data, fldinfo.eflow);
+    $(".hostcell").click(on_host_click);
     $('.efena').change(function () {
       var uithis = this;
       var rscname = this.dataset.rscname;
