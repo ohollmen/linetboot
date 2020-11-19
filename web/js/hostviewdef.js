@@ -369,12 +369,13 @@ function ibip_cell(val, item) {
      //return "???";
    }
    var fldinfo_eflow = [
-     hostfld, // "Joined"
+     hostfld,
      {name: "rscname",  title: "Resource Name", type: "text", width: 120},
      {name: "pools",  title: "Resource Pools", type: "text", width: 120},
+     {name: "desc",  title: "Description", type: "text", width: 150},
      // stepLimit
-     {name: "steplimit",  title: "Step Limit", type: "text", width: 30},
-     {name: "ena", title: "Enabled", type: "text", width: 30, Xvisible: false, itemTemplate: efena_cell},
+     {name: "steplimit",  title: "Step Limit", type: "text", width: 25},
+     {name: "ena", title: "Enabled", type: "text", width: 25, Xvisible: false, itemTemplate: efena_cell},
    ];
    
    // TODO: Send sets as AoO, index by id

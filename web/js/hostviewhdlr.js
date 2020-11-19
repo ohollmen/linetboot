@@ -508,7 +508,7 @@ function eflowlist(ev, act) {
         console.log("resp.status: " + resp.status);
         toastr.clear();
         var darr = ["Disabled", "Enabled"];
-        toastr.info("Changed resource "+rscname+ " to enabled= " + d.data.ena);
+        toastr.info("Changed resource "+rscname+ " to "+darr[d.data.ena]); // +    enabled= " + d.data.ena
       }).catch((ex) => { toastr.error(ex); })
       .finally(() => { $(uithis).prop('disabled', false); })
     });

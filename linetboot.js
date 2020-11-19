@@ -2203,7 +2203,7 @@ function eflowrscs(req, res) {
   var jr = {status : "err", msg : "Error Createing Eflow Resources list."};
   var efc = global.eflow;
   if (!efc) { jr.msg += "No EFlow Config"; return res.json(jr); }
-  var erscs = [];
+  //var erscs = [];
   var axpara = { auth: {username: efc.user, password: efc.pass } };
   //hostarr.forEach(rsc_get);
   async.map(hostarr, rsc_get, function (err, ress) {
@@ -2217,7 +2217,7 @@ function eflowrscs(req, res) {
     if (!hps || !hps.ecrsc) { return cb(null, null); }
     var rn = hps.ecrsc;
     var ent = { hname: f.ansible_fqdn, rscname: rn };
-    erscs.push(ent);
+    //erscs.push(ent);
     var efurl = efc.url + "/resources/"+rn;
     console.log("EFURL: curl -u $EFCREDS "+efurl+"");
     //return;
@@ -2235,6 +2235,7 @@ function eflowrscs(req, res) {
       ent.rscid = r.resourceId;
       ent.pools = r.pools; // pools is deprecated, but works. Should use resourcePools
       ent.steplimit = r.stepLimit;
+      ent.desc = r.description;
       return  cb(null, ent);
     }).catch((ex) => { console.log("EFlow Rsc EX: "+ex); cb(null, null); }); // jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr);
   }
