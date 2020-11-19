@@ -483,6 +483,7 @@ function ibloxlist(ev, act) {
 function eflowlist(ev, act) {
   console.log("EFlow ...");
   rapp.templated("simplegrid", act, ev.viewtgtid);
+  toastr.info("Request Resource Infro from EFlow ... please wait...");
   axios.get(act.url).then(function (resp) { // "/eflowrscs"
     var d = resp.data;
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
@@ -505,8 +506,8 @@ function eflowlist(ev, act) {
         var d = resp.data;
         console.log("resp.status: " + resp.status);
         toastr.clear();
-        //
-        toastr.info("Changed resource "+rscname+ " to enabled: " + d.data.ena);
+        var darr = ["Disabled", "Enabled"];
+        toastr.info("Changed resource "+rscname+ " to enabled= " + d.data.ena);
       }).catch((ex) => { toastr.error(ex); })
       .finally(() => { $(uithis).prop('disabled', false); })
     });
