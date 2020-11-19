@@ -67,7 +67,7 @@
      // insertTemplate: "<img src='foo.png'> Hi"
      {name: "distname",  title: "Distro", type: "text", width: 80, itemTemplate: distrocell }, // css: "osicon"
      {name: "distver",   title: "Ver", type: "number", width: 50},
-     {name: "kernelver", title: "Kernel", type: "text", width: 150},
+     {name: "kernelver", title: "Kernel", type: "text", width: 90},
      // Dynamic (visible: false)
      {name: "use", title: "Usage", type: "text", width: 80},
      {name: "loc", title: "Location", type: "text", width: 80},

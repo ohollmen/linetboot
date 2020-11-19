@@ -606,21 +606,22 @@ function pkg_stats(ev, act) {
   // Routing event ?
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
   axios.get('/hostpkgcounts').then(function (resp) {
-    if (resp.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    var data = resp.data.data;
-    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}]};
+    var d = resp.data;
+    if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
+    var data = d.data;
+    var chdef = { lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}] };
     createchart(data, "Packages", "pkgcnt", 'canvas_pkg');
   } )
   .catch(function (error) { console.log(error); });
   
   gscale = 10;
-  axios.get('/hostcpucounts').then(function (response) {
-    if (response.data.status == "err") { alert("Package stats error: " + response.data.msg); return; }
-    var data = response.data.data;
+  axios.get('/hostcpucounts').then(function (resp) {
+    var d = resp.data;
+    if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
+    var data = d.data;
     var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}]};
     createchart(data, "CPU:s", "numcpus", 'canvas_cpu');
-  } )
-  .catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); });
   // Uses global: cmap, global scales, outer: gscale
   function createchart(data, label, prop, canvasid) {
     // label: null displays as :"null" (). See legend: { display: false} below.
@@ -660,19 +661,15 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   if (!hname) { console.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling docker ...");
-  axios.get('http://'+hname+':'+port+'/v1.24/images/json')
-  .then(function (response) {
-    var pinfo = response.data; // NO: data.data
+  axios.get('http://'+hname+':'+port+'/v1.24/images/json').then(function (resp) {
+    var pinfo = resp.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
-    if (!pinfo ) { alert("No data from " + hname); return; }
-    if (!pinfo.length) { alert("No images found on " + hname); return; }
-    console.log("dockerinfo: Creating grid to: '" + dialogsel + "' ... " + pinfo + ""); // gridsel
-    cb(pinfo, dialogsel); // if (cb) { cb(pinfo, dialogsel); return; }
-    //else { alert("No dialog callback ..."); }
-    
+    if (!pinfo ) { toastr.error("No data from " + hname); return; }
+    if (!pinfo.length) { toastr.warning("No images found", "... on " + hname); return; }
+    console.log("dockerinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
+    cb(pinfo, dialogsel);
     // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
-  })
-  .catch(function (error) { console.log(error); alert("No Docker info, "+ error); });
+  }).catch(function (error) { console.log(error); toastr.error("No Docker info", error); });
 }
 /** Display NFS exports from an NFS server.
  * @param hname {string} - Hostname
@@ -689,13 +686,14 @@ function nfsinfo(hname, dialogsel, cb) {
   .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
 }
 /** RedFish Info dialog.
+ * TODO: Allow to use boot methods other than default
  */
 function rfinfo(hname, dialogsel, cb) {
   var tc = $('#redfish').html();
   if (!tc) { return alert("No template content"); }
   axios.get("/rf/info/" + hname).then(function (resp) {
     var rd = resp.data;
-    if (rd.status == 'err') { return alert(""+rd.msg); }
+    if (rd.status == 'err') { return toastr.error(""+rd.msg); }
     //console.log("RFDATA", rd);
     var d = rd.data;
     if (!d) { return alert("No Data"); }
