@@ -39,7 +39,7 @@
      cont += " (type " + aent.type + ")";
      return cont;
    }
-   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
+   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 130};
    var fldinfo_net = [
      hostfld,
      // Network
