@@ -53,7 +53,7 @@ var acts = [
   //},
   {
     "id": "hostsetup",
-    "title": "Check host reachability and gather facts. This is a primary prerequisite for all other operations (Use --dest to sort facts in location other than given in main config 'fact_path').",
+    "title": "Check host reachability and gather facts. This is a primary prerequisite for all other operations (Use --dest to store facts in path location other than given in main config 'fact_path').",
     "cb": hostsetup,
     "opts": [],
   },
@@ -132,7 +132,7 @@ var clopts = [
   ["", "cmds", "Output loop mount commands"],
   // for newhostgen (Temporary ?)
   ["", "facts", "Generate Fake facts only (no BMI info)"],
-  ["", "bmi", "Generate BMI Info only (no facts)"],
+  ["", "bmi", "Generate Fake BMI Info only (no facts)"],
 ];
 //var em = { // Error Messages
 //  "crhosts":"Create Hosts file (one hostname per line) first in and run installer again."
@@ -217,11 +217,13 @@ function apperror(msg) {
   process.exit(1);
 }
 /** Gather and store Facts.
+ * Must have an existing "hosts" host inventory (e.g. ~/.linetboot/hosts).
  */
 function hostsetup (opts) {
   
   // var mcfg = require(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf); // Abs Path
-  var pass = opts.pass || process.env["ANSIBLE_PASS"] || mcfg.ansible.sudopass;
+  // || process.env["ANSIBLE_PASS"]
+  var pass = opts.pass  || mcfg.ansible.pass;
   if (!pass) { console.log("Need password for Ansible sudo user (--pass or env. ANSIBLE_PASS)"); process.exit(1); }
   opts.pass = pass;
   if (opts.dest) { mcfg.fact_path = opts.dest; }
@@ -332,7 +334,7 @@ function hostsetup (opts) {
     console.log("Wrote hosts file to (tmp filename): '" + fn + "'");
     var acfg = {};
     acfg.pbpath = process.env['PLAYBOOK_PATH'] || "./playbooks";
-    //acfg.sudopass = 
+    //acfg.pass = 
     // execstyle
     var arun = new ans.Runner(p, acfg);
     ans.playbooks_resolve(acfg, arun);
@@ -349,7 +351,7 @@ function hostsetup (opts) {
       if (!fs.existsSync(fullpath)) { console.log("missing facts: " + fullpath); return; }
       var data = fs.readFileSync(fullpath, 'utf8');
       var len = data.length;
-      var j = JSON.parse(data); // TODO: Consider bad JSON
+      var j = JSON.parse(data); // TODO: Consider bad JSON try {} ctach (ex) {}
       // j.changed && j.msg
       if (!j.ansible_facts && (len < 500)) {
         console.log("Remove bad facts: " + fullpath + " ("+len+" B)");
@@ -907,6 +909,7 @@ function loopmounts(opts) {
 }
 
 function genrscs(opts) {
+  // var eflow = require("./eflow.js");
   var efc = mcfg.eflow;
   var rscs = [];
   hostarr.forEach((f) => {
