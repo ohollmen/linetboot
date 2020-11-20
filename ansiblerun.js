@@ -248,7 +248,7 @@ Runner.prototype.ansible_run = function (xpara) { //
     console.log(runinfo);
     
     // Remove temp hosts file (fs.statSync(fn))
-    if (!p.debug) { fs.unlinkSync(fn); }
+    if (fs && !p.debug) { fs.unlinkSync(fn); }
     // TODO: Notify ?
     //if (p.ee) { p.ee.emit("ansplaycompl", runinfo); }
   }
