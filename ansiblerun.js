@@ -1,4 +1,14 @@
 /** Ansible Runner
+* Ways to control user identity / creds in Ansible:
+- Ansible config file: DEFAULT_REMOTE_USER ()
+- Playbook: remote_user
+- Command line extra var: ansible_user
+
+# Testing Playbooks Manually
+```
+
+```
+
 */
 var crypto = require('crypto');
 var hlr   = require("./hostloader.js");
@@ -9,8 +19,9 @@ var async = require("async");
 var yaml  = require('js-yaml');
 var path  = require('path');
 // Ansible command template. (Mustache)
-// ansible_sudo_pass={{{ sudopass }}} host={{{ host }}}
-var anscmd = "ansible-playbook -i '{{{ hostsfile }}}'  '{{{ pb }}}' --extra-vars \"{{{ xpara }}}\"";
+// ansible_sudo_pass={{{ pass }}} host={{{ host }}}
+// \"{{{ xpara }}}\"
+var anscmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' --extra-vars '{{{ xpara }}}'";
 
 // var .. = {}; /// Config holder
 
@@ -163,38 +174,50 @@ Runner.prototype.ansible_run = function (xpara) { //
   p = this;
   p.debug && console.log("ansible_run: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
-  // var hostnames = p.hostnames; // hnames ?
   if (!p.hostnames) { throw "No hostnames passed (groups should be resolved to hostnames)"; }
   if (!p.playbooks) { throw "No playbooks passed / resolved (from profiles)"; }
-  // 
-  var grpname = "myhosts"; // Local Temp group name
-  var fn = hostsfile(p.hostnames, grpname); // Temporary !
-  console.log("Wrote ("+p.hostnames.length+") hosts for playbook run to temp file: '" + fn + "'");
-  function mkxpara(xps) {
+  // TODO:
+  // - Possibly retain host inventory params ? See below:
+  // - Use original "hosts" file, refine the host selector: --limit ... (-l)
+  var prun = { hostsfile: null, }; // CLI Run parameters -i ...
+  var fn; // Temp file !
+  if (p.invfn && fs.existsSync(p.invfn)) {
+    prun.hostsfile = p.invfn;
+    p.xpara.host = prun.limit = p.hostnames.join(','); // NEW !
+  }
+  else {
+    var defgrpname = "myhosts"; // Local Temp group name
+    fn = hostsfile(p.hostnames, defgrpname); // Temporary !
+    p.xpara.host = defgrpname; // Set late but outside / before set_xpara()
+    prun.hostsfile = fn;
+    console.log("Wrote ("+p.hostnames.length+") hosts for playbook run to temp file: '" + fn + "'");
+  }
+  // Serialize Object contained params as string for --extra-vars (-e)
+  function xpara_ser(xps) {
     // Must be Object, not Array
     var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
     return xparr.join(" ");
   }
   // Start running playbooks (TODO: async)
-  var prun = { hostsfile: fn, XXXhost: grpname, XXXsudopass: p.sudopass, xpara: ""}; // NOT directly: global.hostsfile
+  //OLD: var prun = { XXhostsfile: fn, XXXhost: grpname, XXXpass: p.pass, xpara: ""}; // NOT directly: global.hostsfile
   
-  p.xpara.host = grpname; // Set late but outside / before set_xpara()
+  
   console.log("xpara (before overrides)", p.xpara);
   // Extra parameters for the -e / --extra-vars. Also consider @filename.json
-  function set_xpara(xpara, prun) { // Instance method
+  // Add extra params from prun to p.xpara object and Serialize params into string member of prun at end (by mkxpara())
+  function xpara_add(xpara) { // Instance method (OLD: prun)
     // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
   
     //OLD:if (xpara) { prun.xpara = mkxpara(xpara); }
     //OLD:else if (p.xpara) { prun.xpara = mkxpara(p.xpara); }
-    if (xpara) {
+    if (!xpara) { return; }
       Object.keys(xpara).forEach(function (k) {
         if (xpara[k]) { p.xpara[k] = xpara[k]; }
       });
-    }
-    // Serialize to prun at the very end
-    prun.xpara = mkxpara(p.xpara);
   }
-  set_xpara(xpara, prun);
+  xpara_add(xpara); // prun
+  // Serialize to prun at the very end
+  prun.xpara = xpara_ser(p.xpara);
   console.log("xpara (after overrides)", p.xpara);
   console.log("Command tmpl params: ", prun);
   var fullcmds = [];
@@ -246,7 +269,11 @@ Runner.prototype.ansible_run = function (xpara) { //
   }
   return;
 };
-
+/** Consruct Ansible runner
+* 
+* @param cfg {object} - Context specific config
+* @param acfg {object} - Application (global/context independent) ansible config
+*/
 function Runner(cfg, acfg) {
   var attrs = ["hostnames", "hostgroups", "playbooks",  "playprofile", "runstyle"]; // , "debug"
   if (!acfg) { acfg = {}; }
@@ -258,10 +285,13 @@ function Runner(cfg, acfg) {
   this.runstyle = cfg.runstyle;
   
   this.xpara = cfg.xpara || {};
-  ////// 
-  this.xpara.ansible_sudo_pass = acfg.sudopass || process.env["ANSIBLE_PASS"];
-  this.debug = cfg.debug || acfg.debug || process.env["LINETBOOT_ANSIBLE_DEBUG"] || 0;
+  ////// OLD: || process.env["ANSIBLE_PASS"]
+  this.xpara.ansible_user = acfg.user;
+  this.xpara.ansible_become_password = acfg.pass;
+  // OLD: || process.env["LINETBOOT_ANSIBLE_DEBUG"]
+  this.debug = cfg.debug || acfg.debug || 0;
   this.debug = parseInt(this.debug);
+  this.invfn = cfg.invfn || acfg.invfn || "";
   // Keep acfg in instance ?
   // this.acfg = acfg;
 }
