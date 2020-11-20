@@ -36,7 +36,7 @@
     "authusers": ["ohollmen"],
     "grpattr": "grpid"
   },
-  "groups": [
+  "groupsXX": [
     {"id": "nuc", "name": "NUCs", "patt": "^nuc"},
     {"id": "odroid", "name": "Odroid:s", "patt": "^odroid"},
     {"id": "other", "name": "Other Hosts", "policy": "nongrouped"}
@@ -187,7 +187,8 @@
   ],
   "ansible" : {
     "pbpath":"./playbooks",
-    "sudopass": "overrdide_w_env_ANSIBLE_PASS",
+    "user": "",
+    "pass": "overrdide_w_env_ANSIBLE_PASS",
     "COMMENT" : "The inner objects need to have more info (runstyle, name)",
     "pbprofs" : [
       {
