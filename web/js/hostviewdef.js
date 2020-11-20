@@ -93,11 +93,11 @@
    var fldinfo_hw = [
      hostfld,
      // Disk
-     {name: "cpuarch",  title: "CPU Arch", type: "text", width: 70},
-     {name: "cores",    title: "# Cores", type: "number", width: 70},
+     {name: "cpuarch",  title: "CPU Arch", type: "text", width: 55},
+     {name: "cores",    title: "# Cores", type: "number", width: 45},
      
      {name: "cpuname",  title: "CPU", type: "text", width: 170},
-     {name: "memsize",  title: "Mem (MB)", type: "number", width: 70},
+     {name: "memsize",  title: "Mem (MB)", type: "number", width: 60},
      {name: "sysvendor",title: "System Vendor", type: "text", width: 120},
      {name: "sysmodel", title: "Model", type: "text", width: 120},
      {name: "prodver",  title: "Prod.Ver.", type: "text", width: 100},
