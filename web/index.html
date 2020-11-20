@@ -388,6 +388,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <script id="simplegrid" type="text/template">
 <h3>{{{ name }}}</h3>
+<div class="xui" style="display:none"></div>
 <div id="{{{ gridid }}}"></div>
 </script>
 
@@ -398,10 +399,12 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 </script>
 <script id="reports" type="text/template">
 <!--<div id="jsGrid_pkg"></div>-->
-     <h3>Packages</h3>
-     <canvas id="canvas_pkg"></canvas>
-     <h3>CPU Cores</h3>
-     <canvas id="canvas_cpu"></canvas>
+  <h3>Packages</h3>
+  <canvas id="canvas_pkg"></canvas>
+  <h3>CPU Cores</h3>
+  <canvas id="canvas_cpu"></canvas>
+  <h3>Main (RAM) Memory</h3>
+  <canvas id="canvas_mem"></canvas>
 </script>
 
 <script id="netprobe" type="text/template" data-todo="Call anyprobe or dynprobe and use for Load">
