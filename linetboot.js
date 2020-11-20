@@ -145,8 +145,7 @@ function app_init() { // global
   // Main docroot
   app.use(express.static(maindocroot, staticconf)); // e.g. /var/www/html/ or /isomnt/ (from global config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
-  // TODO: global.core.addroot
-  //app.use(express.static("/isoimages"));
+  // Additional document roots in (Array) global.core.addroot
   if (global.core.addroot && Array.isArray(global.core.addroot)) {
     global.core.addroot.forEach((root) => { app.use(express.static(root, staticconf)); });
   }
@@ -195,8 +194,11 @@ function app_init() { // global
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
   // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
+  // Charts
   app.get('/hostpkgcounts', pkg_counts);
   app.get('/hostcpucounts', hostp_prop_stat);
+  app.get('/hostmemstats',  hostp_prop_stat);
+  // Comparison
   app.get('/hostpkgstats', host_pkg_stats);
   // Group lists
   app.get('/groups', grouplist);
@@ -280,7 +282,7 @@ function app_init() { // global
     iptrans = require(mfn); // TODO: try/catch ?
     console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
   }
-  // TODO: Clear up bot in doc and code how customhosts work in 2 cases:
+  // TODO: Clear up both in doc and code how customhosts work in 2 cases:
   // - Load into runtime directly from CSV file
   // - generate facts and remote config from customhosts
   // - TODO: Possibly converge to only one out of these two
@@ -305,8 +307,8 @@ function app_init() { // global
   // ifs.keys().filter(function (k) {});
   //console.log(ifs); // DEBUG
   // Ansible
-  global.ansible = global.ansible || {};
-  if (process.env["ANSIBLE_PASS"]) { global.ansible.sudopass = process.env["ANSIBLE_PASS"]; }
+  //global.ansible = global.ansible || {};
+  
   // Websockets
   /*
   io.on('connection', function (socket) {
@@ -358,7 +360,7 @@ function app_init() { // global
   
   app.set('trust proxy', 1);
   app.use(session(sesscfg));
-  // Must reside after session
+  // *Must* reside after session
   app.use(linet_mw);
   sethandlers();
   // LDAP (when not explicitly disabled)
@@ -1197,13 +1199,15 @@ function ansible_run_serv(req, res) {
   if (!global.ansible) { jr.msg += "No ansible section in config !"; return res.json(jr); }
   var acfg = global.ansible;
   if (typeof acfg != 'object') {  jr.msg += "Ansible config is not an object !"; return res.json(jr); }
-  if (req.method != "POST") { jr.msg += "Send request as POST"; return res.json(jr); } // POST !!!
-  var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
+  if (req.method != "POST") { jr.msg += "Not sent via POST. Send request as POST"; return res.json(jr); } // POST !!!
+  var pbpath = acfg.pbpath; // process.env['PLAYBOOK_PATH'] ||
   if (!pbpath) { jr.msg += "Playbook path not given (in env or config) !"; return res.json(jr); }
   acfg.pbpath = pbpath; // Override (at init ?)
-  // Define the policy of manding hosts to be listed in hostsfile / known to linetboot
+  acfg.invfn  = acfg.invfn || global.hostsfile;
+  // Define the policy of mandating hosts to be listed in hostsfile / known to linetboot
   if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in config !"; return res.json(jr); }
   var p = req.body; // POST Params
+  
   // Test ONLY (Comment out for real run)
   // if (!p || !Object.keys(p).length) {
   //  p = ans.testpara; // TEST/DEBUG
@@ -1303,10 +1307,15 @@ function showmounts(req, res) {
  */
 function hostp_prop_stat(req, res) {
   var jr = {"status": "err", "msg":"Could not extract data to display. "};
-  var prop = "ansible_processor_vcpus";
+  var sprop = "ansible_processor_vcpus"; var dprop;
+  if (req.url == '/hostcpucounts') { sprop = "ansible_processor_vcpus"; dprop = 'numcpus'; }
+  else if (req.url == '/hostmemstats') { sprop = 'ansible_memtotal_mb'; dprop = 'memcapa'; } // MB
   var arr = [];
   hostarr.forEach(function (f) {
-    arr.push({hname: f.ansible_fqdn, numcpus: f[prop]});
+    //arr.push({hname: f.ansible_fqdn, numcpus: f[sprop]});
+    var e = {hname: f.ansible_fqdn};
+    e[dprop] = f[sprop];
+    arr.push(e);
   });
   res.json({status:"ok", data: arr});
 }
@@ -1318,9 +1327,8 @@ function hostp_prop_stat(req, res) {
 function host_pkg_stats(req, res) {
   // Sample-only array
   var pkgs = ["wget","x11-common","python2.7","patch", "xauth", "build-essential"];
-  if (req.query && req.query.pkgs) {
-    req.query.pkgs.split(/,\s*/);
-  }
+  var q = req.query;
+  if (q && q.pkgs) { pkgs = q.pkgs.split(/,\s*/); }
   console.log("Start /hostpkgstats");
   // Add hname here or on client ?
   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
@@ -2231,6 +2239,7 @@ function eflowrscs(req, res) {
       // stepLimit resourceName resourceId hostType resourceDisabled
       if (!d.resource) { return cb(null, null); } // throw "Missing resource branch !";
       var r = d.resource;
+      // TODO: r.hname = f.ansible_fqdn;
       ent.ena = parseInt(r.resourceDisabled) ? 0 : 1;
       ent.rscid = r.resourceId;
       ent.pools = r.pools; // pools is deprecated, but works. Should use resourcePools
@@ -2269,3 +2278,7 @@ function eflowrsctoggle(req, res) {
     res.json(okmsg); console.log(okmsg);
   }).catch((ex) => { jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr); });
 }
+/** get Pool
+ * var url = efc.url + "/resourcePools/"+q.poolname;
+ * - On top (intermed): resourcePool
+ */
