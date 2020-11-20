@@ -118,7 +118,7 @@ function pkgstat(jev, act) {
     var pinfo = resp.data.data;
     var gdef  = resp.data.grid;
     console.log("Pkg data: ", pinfo);
-    if (!pinfo || !pinfo.length) { alert("No Package Data"); return; }
+    if (!pinfo || !pinfo.length) { toastr.error("No Package Data"); return; }
     // Set cell handlers
     gdef.forEach(function (it) {
       if (it.name == 'hname') { return; }
@@ -216,7 +216,9 @@ function bootgui(ev, act) {
     var bootlbls = datasets["cfg"].bootlbls; // id, name. Should do rapp.dclone()
     bootlbls = bootlbls.map((bi) => { return {id: bi.id, name: bi.id + " - " + bi.name}; }); // Effective clone
     webview.addoptions(bootlbls, $("#bootlbl").get(0), {}); // datasets["cfg"].bootlbls
-    webview.addoptions(datasets["hostlist"], $("#hname").get(0), {aid: "hname", aname: "hname"});
+    var hlist = datasets["hostlist"];
+    hlist = hlist.map((it) => { return {hname: it.hname}; } ).sort((a,b) => { return a.hname.localeCompare(b.hname);  });
+    webview.addoptions(hlist, $("#hname").get(0), {aid: "hname", aname: "hname"});
   }
   boot_select_setup();
   $("#bootreqsubmit").click(function (jev) {
@@ -252,19 +254,16 @@ function tftplist(ev, act) {
     // Handle Click on (Default Boot) Reset Link
     $(".defboot").click(defboot_reset);
   }).catch(function (err) { console.log(err); });
-  }
+}
 // Click handler for Boot item reset (to default)
 function defboot_reset(jev) {
   // var macfname = this.dataset.macfname;
   var mac = this.dataset.macaddr; // NEW
   console.log("Reset MAC:" + mac);
-  // DEBUG:alert("Reset " + macfname);
-  //var url = "/bootreset?macfname="+macfname;
-  var url = "/bootreset?macaddr="+mac; // NEW
-  // url += "&macaddr="+mac; // Compat
+  var url = "/bootreset?macaddr="+mac;
   // TODO: Block / disable link ?
   $(".defboot").click(function (jev) {});
-  toastr.info("Reset Permanenr boot on MAC:" + mac);
+  toastr.info("Reset Permanent boot on MAC:" + mac);
   axios.get(url).then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { return toastr.error("Error resetting boot by mac "+mac+ "\n"+d.msg); }
@@ -425,7 +424,7 @@ function showpeople(ev, act) {
         console.log("Calling click hdlr");
         var un = this.dataset.uid;
         var e = idx[un];
-        if (!e) { alert("No data looked up (locally)"); return; }
+        if (!e) { toastr.error("No data looked up (locally)"); return; }
         console.log(e);
         //var out = rapp.templated("lduser", e); // app.gridid
         //console.log(out);
@@ -475,7 +474,6 @@ function ibloxlist(ev, act) {
       // TODO: lock/disable buttons
       $('.syncbutt').prop('disabled', true);
       //toastr.info("Should sync "+hname+" with infoblox !");
-      //return;
       axios.get("/ipamsync?hname="+hname).then((resp) => {
         var d = resp.data;
         if (d.status == 'err') { toastr.clear(); return toastr.error("Failed InfoBlox sync: " + d.msg); }
@@ -489,7 +487,7 @@ function ibloxlist(ev, act) {
 }
 
 function eflowlist(ev, act) {
-  console.log("EFlow ...");
+  //console.log("EFlow ...");
   rapp.templated("simplegrid", act, ev.viewtgtid);
   toastr.info("Request Resource Info from EFlow ... please wait...");
   axios.get(act.url).then(function (resp) { // "/eflowrscs"
@@ -510,7 +508,6 @@ function eflowlist(ev, act) {
       var ena = this.checked ? 1 : 0;
       toastr.clear();
       toastr.warning("Rsc "+rscname+" ena: "+ena);
-      //return;
       axios.get("/eflowrsctoggle/?hname="+hname+"&rscname="+rscname+"&ena="+ena).then((resp) => {
         var d = resp.data;
         console.log("resp.status: " + resp.status);
