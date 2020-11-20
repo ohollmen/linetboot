@@ -402,8 +402,9 @@ function preseed_gen(req, res) {
     return; // We already sent res.end()
   }
   if (patch_params_custom) { patch_params_custom(d, osid); }
-  // Copy "inst" section params for (transition period ?) compatibility !
+  // Copy "inst" section params to top level for (transition period ?) compatibility !
   params_compat(d);
+  d.hps = hps; // Host params !
   if (req.query.json) { return res.json(d); }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
   //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
@@ -509,6 +510,15 @@ function params_compat(d) {
   // For now all keys (Explicit: "locale","keymap","time_zone","install_recommends", "postscript")
   if (!d.inst) { return 0; }
   Object.keys(d.inst).forEach((k) => { d[k] = d.inst[k]; });
+  // Just before Recipe or JSON params dump delete cluttering parts that will never be used in OS install context.
+  // This is also a good note-list of what should likely not be there (in main config) at all.
+  // Note: Theoretically customizations might do someting w. groups
+  delete(d.groups);
+  delete(d.tftp);
+  delete(d.hostnames);
+  delete(d.ansible);
+  delete(d.hostparams);
+  delete(d.mirrors);
 }
 /** Generate host parameters for OS installation.
 * Parameters are based on global linetboot settings and host
@@ -646,10 +656,11 @@ function netconfig(net, f) {
     if ( ! dns_a.nameservers.includes('127.0.0.53')) { net.nameservers = dns_a.nameservers; }
     
   }
+  // TODO: net.nameservers_first (Note: s)
   net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
   net.nameservers_csv  = net.nameservers.join(','); // Account for KS needing nameservers comma-separated
   
-  // net.nameservers = net.nameservers.join(" ");
+  // NOT: net.nameservers = net.nameservers.join(" ");
   net.nameservers_ssv = net.nameservers.join(" ");
   net.nameservers_str = net.nameservers.join(" ");
   //OLD:net.nameservers = net.nameservers.join(" "); // Debian: space separated
