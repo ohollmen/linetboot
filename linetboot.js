@@ -287,7 +287,10 @@ function app_init() { // global
   // - generate facts and remote config from customhosts
   // - TODO: Possibly converge to only one out of these two
   if (global.customhosts) {
-    hlr.customhost_load(global.customhosts, global, iptrans);
+    console.log("Detected New/custom hosts file: "+ global.customhosts);
+    var carr = hlr.customhost_load(global.customhosts, global, iptrans);
+    if (carr) { console.log("Loaded "+carr.length+" New/custom hosts"); }
+    
   }
   //////////////// Groups /////////////////
   // If lineboot config has dynamic "groups" rules defined, collect group members into
@@ -722,6 +725,7 @@ function gen_allhost_output(req, res) {
 * 
 * @todo Convert netmask to CIDR notation.
 * @todo Make Reusable and http/express request agnostic to use part of ubuntu 20
+* @todo Generate all values first (osinstall.js / netconfig() ?) then produce yaml, not as-yu-go.
 * See also: https://netplan.io/examples
 */
 function netplan_yaml(req, res) {
@@ -796,7 +800,7 @@ function netplan_yaml(req, res) {
   //iface["netmask"] = iface_a["netmask"];
   }
   var nproot = {"network": np}; // Netplan (root) - Complete
-  /////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////// YAML ///////////////////////////////////////////////
   // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8')); // From
   // To YAML
   var ycfg = {
