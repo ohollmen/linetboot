@@ -409,7 +409,8 @@ function preseed_gen(req, res) {
   //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
   // Lookup hostparams to facilitate preseed / debian-installer debugging with hard wired/literal preseeds (from internet)
   var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null;
-  var tmplcont = template_content(url, forcefn); // NEW: url
+  if (osid == 'ubuntu20' && hps.subiud) { forcefn = hps.userdata; } // subiquity troubleshoot
+  var tmplcont = template_content(url, forcefn); // forcefn => Overriden fn
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', forced template: "+forcefn); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
@@ -628,10 +629,11 @@ function mirror_info(global, osid) {
 /** Configure network params for host.
  * Create netconfig as a blend of information from global network config and hostinfo facts.
  * TODO:
- * - Take from host facts (f) f.ansible_dns if available !!!
+ * - NOT: Take from host facts (f) f.ansible_dns if available !!! Actually f.ansible_dns.nameservers in Ubuntu18
+ *   will have systemd originated value '127.0.0.53'
  * - Pass (or enable access) to host params, e.g. for network if name override.
  * - Need to pass also other info (e.g. osid, os hint to make proper decision on interface naming)
- * 
+ * See also: linetboot.js - netplan_yaml()
 */
 function netconfig(net, f) {
   if (!f) { console.log("netconfig: No Facts !"); return net; } // No facts, cannot do overrides
