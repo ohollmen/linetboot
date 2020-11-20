@@ -428,7 +428,11 @@ function acts_rmitem(acts, attr, val) {
   var remok = 0;
   for (var i = 0;i<acts.length;i++) {
     var n = acts[i];
-    if (n[attr]== val) { acts.splice(i, 1); remok = 1; console.log("RM(by):"+val); break; }
+    //if (n[attr]== val) { acts.splice(i, 1); remok = 1; console.log("RM(by):"+val); break; }
+    // Alt: Suppress the static item by DOM selector
+    //$('nav ').css(); // select by "a", but suppress outer/parent "li" !
+    //var n.path;
+    $("nav a[href=\'#"+n.path+"\']").hide(); // #eflowlist
   }
   //return acts; // NO need for caller to store
   return remok;
@@ -448,12 +452,13 @@ function acts_uidisable(actitems) {
   dis.forEach((fstr) => {
     console.log("Check:"+fstr);
     // var rmby = "path"; var lbl = fstr;
-    if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); }
+    //if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); } // 
     if (fstr == 'groups')    { acts_rmitem(actitems, "path", "groups"); }
     if (fstr == 'dockerenv') { acts_rmitem(actitems, "path", "dockerenv"); }
     if (fstr == 'hostkeys')  { acts_rmitem(actitems, "path", "hostkeys"); }
     if (fstr == 'pkgstats')  { acts_rmitem(actitems, "path", "pkgstats"); }
     if (fstr == 'ibloxlist') { acts_rmitem(actitems, "path", "ibloxlist"); }
+    if (fstr == 'eflowlist') { acts_rmitem(actitems, "path", "eflowlist"); }
     // acts_rmitem(actitems, rmby, lbl);
   });
 }
@@ -481,7 +486,11 @@ window.onload = function () {
   //$('nav').html( webview.list(acts_menu, {titleattr: "name"}) );
   /////////////// Setup Tabs (Dynamic) ////////////////////
   var tabs = tabloadacts.filter((ti) => { return ti.elsel; });
-  acts_uidisable(tabs);
+  //acts_uidisable(tabs);
+  let ccfg = datasets["cfg"];
+  if (ccfg && Array.isArray(ccfg.disabled)) {
+    ccfg.disabled.forEach((p) => { $("nav a[href='#"+p+"']").parent().hide(); });
+  }
   if (tabui) { tabui_setup(tabs); }
   else { } // .sidebar_static Style changes (float ...)
   /////////////// Router / routable acts ///////////////////
@@ -506,7 +515,7 @@ window.onload = function () {
     //NOT:ee.on("on_jsGrid_dockercat_done", function (d) {  });
     // Others
     ee.on("on_jsGrid_rmgmt_done", function (d) { $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); });
-    //  // Reload. TODO: Wait ...
+    // Reload handler. TODO: Wait ...
     function on_probe_reload(jev) {
       $("#jsGrid_probe").fadeOut();
       $("#reloadsym").removeClass().addClass("glyphicon glyphicon-hourglass");
@@ -538,6 +547,8 @@ window.onload = function () {
     //$(".hostcell").click(on_host_click); // NEW: Moved to specific UI setup
     // Activate Router
     if (!tabui) {
+      // TEST selector 'nav ...' 
+      //$('nav a[href=\'#eflowlist\']').parent().hide(); // css('display', 'none');
       router.start();
       location.hash = "basicinfo"; // ~defpath
     }
@@ -577,14 +588,17 @@ var cmap = {
 * @param cmap {object} - Option color mapping object (to signify distro by "distname")
 * Accesses outer scope Color map (cmap)
 */
-function chartdata(pkginfo, cdata, prop, cmap) {
-  // var prop = "pkgcnt";
-  cdata.labels = pkginfo.map(function (it) { return it.hname; });
+function chartdata(darr, cdata, vprop, cmap) {
+  // OLD: var prop = "pkgcnt";
+  // TODO:
+  var lblprop = 'hname';
+  // var vprop = ... // 
+  cdata.labels = darr.map(function (it) { return it[lblprop]; });
   // Add dataset
-  cdata.datasets[0].data = pkginfo.map(function (it) { return it[prop]; });
+  cdata.datasets[0].data = darr.map(function (it) { return it[vprop]; });
   // Lookup BG color for each bar
   if (cmap) {
-    cdata.datasets[0].backgroundColor = pkginfo.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
+    cdata.datasets[0].backgroundColor = darr.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
   }
 }
     // Debug Chart Click (detects particular bar)
@@ -602,33 +616,44 @@ function chartdata(pkginfo, cdata, prop, cmap) {
 */
 function pkg_stats(ev, act) {
   // Param: prop (for stat), label/name, scaling, canvas sel.
-  var gscale = 1000;
+  //var gscale = 1000;
   // Routing event ?
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = { lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}] };
-    createchart(data, "Packages", "pkgcnt", 'canvas_pkg');
-  } )
-  .catch(function (error) { console.log(error); });
+    var chdef = { lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000};
+    createchart(data, chdef); // "Packages", "pkgcnt", 'canvas_pkg'
+  }).catch(function (ex) { console.log(ex); });
   
-  gscale = 10;
+  //gscale = 10;
   axios.get('/hostcpucounts').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}]};
-    createchart(data, "CPU:s", "numcpus", 'canvas_cpu');
-  }).catch(function (error) { console.log(error); });
-  // Uses global: cmap, global scales, outer: gscale
-  function createchart(data, label, prop, canvasid) {
+    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10};
+    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+  }).catch(function (ex) { console.log(ex); });
+  // 
+  axios.get('/hostmemstats').then(function (resp) {
+    var d = resp.data;
+    if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
+    var data = d.data;
+    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10};
+    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+  }).catch(function (ex) { console.log(ex); });
+  // Uses global: cmap, global scales, outer: gscale (for ... suggestedMax)
+  function createchart(data, chdef) { // label, vprop, canvasid
+    var vprop = chdef.chcols[0].attr;
+    var label = chdef.chcols[0].name;
+    var canvasid = chdef.canvasid;
+    var gscale = chdef.gscale;
     // label: null displays as :"null" (). See legend: { display: false} below.
     var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
     // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
     var ctx = document.getElementById(canvasid).getContext('2d'); // 'canvas_pkg'
-    chartdata(data, cdata, prop, cmap);
+    chartdata(data, cdata, vprop, cmap); // AoO to chart
     // console.log(JSON.stringify(cdata, null, 2));
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
@@ -673,7 +698,7 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
 }
 /** Display NFS exports from an NFS server.
  * @param hname {string} - Hostname
- * @param dialogsel {string} - 
+ * @param dialogsel {string} - Dialog selector
  */
 function nfsinfo(hname, dialogsel, cb) {
   // Load data
@@ -691,6 +716,7 @@ function nfsinfo(hname, dialogsel, cb) {
 function rfinfo(hname, dialogsel, cb) {
   var tc = $('#redfish').html();
   if (!tc) { return alert("No template content"); }
+  toastr.info("Please wait ...", "Inquiring BMC Info");
   axios.get("/rf/info/" + hname).then(function (resp) {
     var rd = resp.data;
     if (rd.status == 'err') { return toastr.error(""+rd.msg); }
@@ -706,6 +732,9 @@ function rfinfo(hname, dialogsel, cb) {
     // Boot media Types
     var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {};
     if (mediatypes && Array.isArray(mediatypes)) { d.MediaValues = mediatypes; }
+    // TODO: map esp. resettypes (maybe also mediatypes) to clickable links here or do on template ?
+    // TODO: Add "Boot Options" that pops up options.
+    // resettypes = resettypes.map((ri) => { return "<span class='rsttype' data-hname=''></span>"; });
     // BMC (MC) Info / Link
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
@@ -733,7 +762,8 @@ function rfinfo(hname, dialogsel, cb) {
     uisetup();
     // No grid based dialog here
   })
-  .catch(function (error) { console.log(error); alert("No RF info, "+ error); });
+  .catch(function (error) { console.log(error); alert("No RF info, "+ error); })
+  .finally(() => { toastr.clear(); });
 }
 
 
