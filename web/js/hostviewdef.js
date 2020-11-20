@@ -365,7 +365,7 @@ function ibip_cell(val, item) {
    ];
    function efena_cell(val, item) {
      var chk = item.ena ? "checked=checked" : "";
-     return "<input class=\"efena\" type=\"checkbox\" data-hname=\""+item.hname+"\" data-rscname=\""+item.rscname+"\" "+chk+">"; // 
+     return "<input class=\"efena\" type=\"checkbox\" data-hname=\""+item.hname+"\" data-rscname=\""+item.rscname+"\" "+chk+" disable=disabled>"; // 
      //return "???";
    }
    var fldinfo_eflow = [
