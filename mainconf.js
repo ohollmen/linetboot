@@ -11,6 +11,7 @@
 * var mc = require("./mainconf.js");
 * var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
 * var mcfg = mc.mainconf_load(globalconf);
+* // Do env-merging always first (Unless you know a strong reasong to not do it at all)
 * mc.env_merge(mcfg);
 * mc.mainconf_process(mcfg);
 * ```
@@ -74,6 +75,7 @@ function mainconf_process(global) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog"]);
   }
+  tilde_expand(global.ansible, ["pbpath"]);
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -89,12 +91,26 @@ function mainconf_process(global) {
   }
   // Set at least empty array (for recipe templating)
   else { global.inst.postscripts = []; }
+  // Detect disabled features 
+  var dis = disabled_detect(global);
   
-  /** Detect completeness of various configs and mark things that are not in use as disabled.
-  * Use these to customize Web UI. Aim to use UI terms for ease at that end (and aim to sync terminology in time)
+  
+}
+
+function hasnofiles(dir) {
+    if (!dir) { return 1; }
+    var files;
+    try { files = fs.readdirSync(dir); } catch (ex) { return 1; };
+    if (files.length > 1) { return 0; }
+    return 1;
+  }
+
+/** Detect completeness of various configs and mark things that are not in use as disabled.
+  * Use these to customize Web UI. Use UI terms here for ease at that end (and aim to sync terminology in time).
+  * All this means the push() - keywords *must* be in sync with web frontend.
   * IPMI: See if dir exists and if any info collected
   */
-  // function diabled_detect() {
+function disabled_detect(global) {
   var dis = global.disabled = [];
   if (!fs.existsSync(global.ipmi.path) || hasnofiles(global.ipmi.path)) { dis.push('ipmi'); }
   // Docker see if both files exist
@@ -109,19 +125,19 @@ function mainconf_process(global) {
   if (!global.pkglist_path || !fs.existsSync(global.pkglist_path) || hasnofiles(global.pkglist_path) ) { dis.push("pkgstats"); }
   var ibc = global.iblox;
   if (!ibc || !ibc.user || !ibc.pass) { dis.push("ibloxlist"); }
+  var efc = global.eflow;
+  if (!efc || !efc.user || !efc.pass) { dis.push("eflowlist"); }
   // Flags for docs disa ? Do not enable
   // Reporting (in flux for transition to tabs) "reports"
-  //if (global.web && !global.web.reports) { dis.push("reports"); }
-  //  return dis;
-  //} // diabled_detect
-  function hasnofiles(dir) {
-    if (!dir) { return 1; }
-    var files;
-    try { files = fs.readdirSync(dir); } catch (ex) { return 1; };
-    if (files.length > 1) { return 0; }
-    return 1;
+  if (global.web && !global.web.reports) { dis.push("reports"); }
+  // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
+  // in g.hostnames.lenght > 0.
+  // NOTE: We don't know if groups have been loaded and it will be hard to test here.
+  if (global.groups && 1) {
+    //dis.push("groups");
   }
-}
+  return dis;
+} // diabled_detect
 
 ////// TRANSFER KEY ENV VARS /////////////////
   // No Transfer: LINETBOOT_GLOBAL_CONF, LINETBOOT_URL (linet.js)
@@ -147,6 +163,9 @@ function env_merge(global) {
   // Proprietary systems test modes. To disable it's enough leave out user/pass.
   if (process.env["IBLOX_TEST"]) { stub("iblox"); global.iblox.test = process.env["IBLOX_TEST"]; }
   if (process.env["EFLOW_TEST"]) { stub("eflow"); global.eflow.test = process.env["EFLOW_TEST"]; }
+  if (process.env["ANSIBLE_PASS"]) { stub("ansible"); global.ansible.pass = process.env["ANSIBLE_PASS"]; }
+  if (process.env['PLAYBOOK_PATH']) { stub("ansible"); global.ansible.pbpath = process.env["PLAYBOOK_PATH"]; }
+  if (process.env["LINETBOOT_ANSIBLE_DEBUG"]) { stub("ansible"); global.ansible.debug = parseInt(process.env["LINETBOOT_ANSIBLE_DEBUG"]); }
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
 function tilde_expand(obj, keyarr) {
@@ -169,4 +188,5 @@ module.exports = {
   mainconf_process: mainconf_process,
   env_merge: env_merge,
   tilde_expand: tilde_expand,
+  disabled_detect: disabled_detect
 };
