@@ -106,12 +106,14 @@ function sshkeys(ev, act) {
  * because of jsgrid dot-notation support.
 */
 function pkgstat(jev, act) {
-  // console.log("Launch Pkg stat ...");
   var tgtid = jev.viewtgtid;
   rapp.templated("simplegrid", act, tgtid);
+  var deflist = "wget,x11-common,python2.7,patch,xauth,build-essential";
+  $('.xui').html("<input type='text' name='pkgs' value='"+deflist+"' size='80'><input id='pkgcheck' type='button' value='Lookup'>").show();
+  function lookup() {
   // Params to pass
-  
-  var url = act.url + "?"; // encodeURIComponent()
+  var upara = $("input[name='pkgs']").val();
+  var url = act.url + "?pkgs=" + encodeURIComponent(upara);
   axios.get(url).then(function (resp) {
     var pinfo = resp.data.data;
     var gdef  = resp.data.grid;
@@ -124,8 +126,14 @@ function pkgstat(jev, act) {
     });
     showgrid("jsGrid_pkgstat", pinfo, gdef);
     
-  })
-  .catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); })
+  .finally(() => { toastr.clear(); });
+  }
+  lookup();
+  $("#pkgcheck").click((jev) => {
+    toastr.info("Looking up package info");
+    lookup();
+  });
 }
 
 // Output Gen
