@@ -1,9 +1,11 @@
 @startuml
 skinparam roundcorner 10
-title OS Post Install Next-Boot Polling
+title OS Post Ops and Post Install Next-Boot Polling
 
 participant "OS Installer" as Client
+participant "Installed OS" as OSClient
 box "Linetboot"
+' Works w. almost any plantuml element <img linux.png>
 participant "Linetboot\nOSInstall" as HTTP
 
 'participant "Parameter Creation" as Para
@@ -17,39 +19,10 @@ end box
 
 participant "User-Custom\nPostInst\nActions" as exec
 
-'hnote over Client: Get Network Interface up
 
-'Client -> HTTP: Request Recipe (e.g. by URL in kernel command line)
+hnote over Client: ... continued from earlier Installer diagram
 
-'hnote over HTTP: Detect IP Address of client (Host Identity, for facts lookup)
-'hnote over HTTP: Detect the kind of Recipe to generate from URL (e.g. /ks.cfg => RH Kickstart)
-'hnote over HTTP: Lookup facts or generate "fake-facts" for new hosts (by IP Addr)
-
-'HTTP -> Para: Create Parameters
-
-' hnote over Para: Global Main Config\nHost Facts\nNet (global+host)\nDisk (host)\nInitial User\nPackages Repo / Mirror\nOS Hint
-
-'hnote over Para
-'* Global Main Config
-'* Host Facts
-'** Net (global+host)
-'** Disk (host)
-'** Initial User
-'** Packages Repo / Mirror
-'** OS Type Hint
-'end hnote
-
-'HTTP <- Para: Return Parameters Structure ""{net: {}, ...}""
-
-'hnote over HTTP: Complete Parameters (private deep copy)
-
-'HTTP -> TS: Get Correct Template for current OS Install (e.g. ks.cfg.tmpl)
-'HTTP <- TS:
-
-'HTTP -> TE: Generate Templated Output: ""out = TmplEngine.render(tmpl, params)""
-'HTTP <- TE: "The Recipe"
-
-Client <- HTTP: Send complete Recipe to OS Installer (in correct format)
+Client <- HTTP: Send complete Install-Recipe to OS Installer
 
 hnote over Client: Start OS Installation
 
@@ -62,23 +35,35 @@ Client -> media: Request SW Packages
 Client <-- media: Deb: *.deb,*.udeb, RH: *.rpm
 end
 
-hnote over Client: Post-Operations\n(RH: **%post**, Preseed **late_command**)
+' hnote over Client: Post-Operations\n(RH: **%post**, Preseed: **late_command**)
 
-Client -> HTTP: Request Post Scripts
+group Post-Operations (RH: **%post**, Preseed: **late_command**)
+Client -> HTTP: Request Post Scripts (cfg: inst.postscripts)
 Client <- HTTP: Fetch, chmod (a+x) and Run
+' Place here for better graphics alignment (even if logically belongs to Request ...)
+note right: See examples:\n*os_fixup.sh\n*nis_setup.sh\n*ssh_keys_setup.sh
 
-Client -> HTTP: Request SSH Public key (reverse ssh-copy-id by HTTP)
+Client -> HTTP: Request SSH Public key\n(reverse ssh-copy-id by HTTP)
 Client <- HTTP: Add key to ~/.ssh/authorized_keys
 
 Client -> HTTP: Signal **end** event
+
+end
+
 note over HTTP: Detect Install Client IP Address
 HTTP -> pi: Trigger First Boot (Post Install) Waiting
 
 hnote over Client: End Installation, Issue Reboot
+
 == Reboot ==
-note over Client: First new-OS Boot
-note over pi: poll by SSH\nwait for OS Client to boot up\npasswordless SSH
-'note right
+
+' NOTE: groups can only be nested, not intersected
+' group BOOT
+note over pi: Initial (configurable)\npre-polling wait (e.g 30s.)
+note over OSClient: First Boot (w. new-OS)
+note over pi: Poll by SSH\n* wait for OS Client to boot up\n* Use passwordless SSH
+' Also: note right
+'hnote 
 'poll by SSH
 'wait for OS Client to boot up
 'passwordless SSH
@@ -86,30 +71,35 @@ note over pi: poll by SSH\nwait for OS Client to boot up\npasswordless SSH
 
 group Poll "Host-up" by SSH (Till success or exhausting try-count)
 
-Client <- pi: Test SSH by login
-Client -> pi: *Fail*
+OSClient <- pi: Test SSH by login
+OSClient -> pi: <color:#C60C30>**Fail**</color>
 
-note over Client: BIOS Init
+note over OSClient: BIOS Init
 
-Client <- pi: Test SSH by login
-Client -> pi: *Fail*
+OSClient <- pi: Test SSH by login
+OSClient -> pi: <color:#C60C30>**Fail**</color>
 
-note over Client:Boot new Local OS
+note over OSClient:Boot new Local OS
 
-Client <- pi: Test SSH by login
-Client -> pi: *Fail*
+OSClient <- pi: Test SSH by login
+OSClient -> pi: <color:#C60C30>**Fail**</color>
 
-note over Client:Start SSH Service
+note over OSClient:Start SSH Service
 
-Client <- pi: Test SSH by login
-Client -> pi: **Success**
+OSClient <- pi: Test SSH by login
+OSClient -> pi: **Success**
 
 end
+' BOOT
+'end
 
-pi -> exec: Run Post Install Provisioning
+
+pi -> exec: Success: Run
+note right: * JS callback\n* .sh, .py, .pl ...\n* ELF binaries
+pi -> pi: Fail: No Action
 
 
-exec -> Client: Provision additional features (SSH, SSH-exec, SCP, Ansible, rsync, Git, HTTP ...)
+exec -> OSClient: Provision additional features (SSH, SSH-exec, SCP, Ansible, rsync, Git, HTTP ...)
 
 
 
