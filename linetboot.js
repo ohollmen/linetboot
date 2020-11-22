@@ -51,6 +51,7 @@ var osinst   = require("./osinstall.js");
 var mc       = require("./mainconf.js");
 var osdisk   = require("./osdisk.js");
 var iblox    = require("./iblox.js");
+var postinst = require("./postinst.js");
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
 var global = {};
@@ -65,6 +66,7 @@ var fact_path;
 var hostcache = {};
 var hostarr = [];
 var ldconn; var ldbound;
+var setupmod;
 
 app.use(bodyParser.json({limit: '1mb'}));
 var rawoptions = { inflate: true, limit: '10kb', type: 'application/octet-stream' };
@@ -324,21 +326,21 @@ function app_init() { // global
   /* Run customization setup plugin */
   var modfn = global.lboot_setup_module;
   // TODO: Later eliminate and let normal module path resolution take place?
-  var mod = {};
+  var mod = setupmod = {};
   if (!fs.existsSync(modfn))   { console.error("Warning: setup module does not exists as: "+ modfn);  } // return;
   else {
-    mod = require(modfn);
+    setupmod = mod = require(modfn);
     if (!mod || !mod.run || typeof mod.run != 'function') {
-      console.error("Error: module either 1) Not present 2) Does not have run() member 3) run member is not a callable");
+      console.error("Error: module either 1) Could not be loaded 2) Does not have run() member 3) run member is not a callable");
       return; // exit() ?
     }
-    console.log("Loaded app custom module: "+ modfn + " ... running it ...");
-    // Call for local customization
+    console.log("Loaded app custom module: "+ modfn + " ... running setup: run() ...");
+    // Call for local customization: try {} catch () {}
     mod.run(global, app, hostarr);
   }
   // Init osinst AFTER loading hosts, iptrans, custom module
   var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user};
-  osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null));
+  osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null)); // TODO: Pass mod
   // Session
   // resave: true, saveUninitialized: true, store: MemoryStore (default) cookie.maxAge, genid: (req) => {}
   // http://expressjs.com/en/resources/middleware/session.html
@@ -546,11 +548,24 @@ function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 *
 *      # let lineboot know the start of install
 *      http://localhost:3000/installevent/start
+* 
+* ## Testing Events submission
+* 
+* Especially the "end" event with its triggered actions may be worth getting familiar with and
+* also worth testing the triggered actions manually. You can accomplish this by calling a simple
+* GET http URL (curl call included) and by monitoring linetboot console log:
+* ```
+* curl 'http://...:3000/installevent/end?ip=192.168.1.99'
+* ```
+* In a case of real OS Install case the IP address will be auto-detected by lineboot, but in your
+* simulation run you are unlikely to run it on that host (if you are, leave out the ip).
 */
 function oninstallevent(req,res) {
   var jr = {status: "err", msg: "Failed to respond to install event."};
   var evok = {"start": "Start", "done":"Legacy for End", "end": "End", "post": "Post"};
+  var xip = req.query["ip"];
   var ip = osinst.ipaddr_v4(req);
+  if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var p = req.params;  // :evtype
   if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
@@ -564,50 +579,35 @@ function oninstallevent(req,res) {
   // conn.exec(sq, params, function (err, result) {});
   var endtypes = {"done": "deprecated", "end":"preferred"};
   // If end event signal trigger approximate timer and start checking when host is up ?
+  // series,eachSeries,waterfall
   // Use async.eachSeries() to poll by hdl = setTimeout(cb, toutms) / hdl=setInterval(cb, toutms) (combo of 2)
   // Note args can be passed after toutms
   // Use clearTimeout(hdl) / clearInterval(hdl)
   if (endtypes[p.evtype]) {
-    host_wait_up(global, ip);
-    // TODO: ret null vs ...
-    function host_wait_up(global, ip) {
-    // cb = cb || function () {};
-    // TODO: get to know if *this* host (or OS profile) needs post-provisioning
-    var node_ssh = require('node-ssh');
-    //var ssh2  = require('ssh2');
-    // NOTE: remote piuser is configurable
-    var username = global.inst.piuser || process.env['USER'];
-    var sshcfg = {host: ip, username: username, privateKey: netprobe.privkey() }; // pkey
-    //var conn = new ssh2.Client();
-    var ssh = new node_ssh();
-    var user_host = username+"@"+ip;
-    console.log("End-of-install: Created SSH client to connect back to "+ip+" for post-install");
-    console.log("Try run (effectively): ssh "+user_host+"");
-    var tout = 10000; // Poll interval ms. => 10 s. TODO: Pull from config.
-    //var initdelay = 60000; // Initial delay before starting to poll.
-    var trycnt_max = 30;
-    var trycnt = trycnt_max;
-    // TODO: Intial delay before starting to poll (e.g.):
-    // async.series([ function (cb) { setTimeout(() => { cb(null, 1); }, initdelay); }, function () {} ], function () {});
-    var iid = setInterval(function () { // iid = Interval ID
-      var dt = new Date();
-      if (trycnt < 1) { console.log(dt.toISOString()+" Try count exhausted (tries-left "+trycnt+")"); clearInterval(iid); return null; }
-      console.log(dt.toISOString()+" Try SSH: "+user_host+ "");
-      ssh.connect(sshcfg).then(function () {
-        console.log("Got SSH connection: "+user_host+" (tries-left: "+trycnt+")");
-        // because of successful ssh connect, we can cancel polling.
-        clearInterval(iid);
-        console.log("SSH Success - Canceled polling (re-trying) on "+ user_host);
-        // Continue with some ssh operation (e.g. ssh.execCommand(cmd, {cwd: ""})) ?
-        // ... or just trigger ansible via ansiblerunner ?
-      }).catch(function (ex) {
-         console.log("No SSH Conn: "+ex+" (tries-left "+trycnt+") continue ..."); // . Continue polling at every "+tout+" ms.
-      });
-      trycnt--;
-    }, tout);
-      return sshcfg;
+    
+    var fancy = 1;
+    postinst.init(setupmod);
+    var picfg = postinst.hostup_init(global, ip); // Common initialization
+    var actcb = function (err, picfg) { picfg && postinst.hostup_act(picfg); };
+    ///////////////
+    if (!fancy) {
+      // Cannot use hostup_init_wait here ?
+      hostup_poll(picfg, actcb);
     }
+    else {
+    var pass = (cb) => { cb(null, picfg); };
+    // Maybe completion function here should be directly hostup_act() (<= NOT because of sign)
+    // asyc.series would get results of individual funcs. waterfall is perfect match
+    async.waterfall([ pass, postinst.hostup_init_wait, postinst.hostup_poll, ], function (err, picfg) {
+       if (err) { console.log("Error in host-up waiting:"+err); return; }
+       console.log("Success waiting for host-up. Look for action ...");
+       //actcb(null, picfg);
+       postinst.hostup_act(picfg);
+    });
+    }
+
   }
+  
   // msg: "Thanks",
   res.json({ status: "ok", data: { ip: ip, "event":  p.evtype, time: now.toISOString()} });
   
