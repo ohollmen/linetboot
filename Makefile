@@ -121,7 +121,7 @@ dotlinetboot:
 	@mkdir -p ~/.linetboot/tmpl
 	@echo "Copying PXE (preseed,kickstart) Install templates for you to customize"
 	@cp ./tmpl/* ~/.linetboot/tmpl
-	@[ ! -f "~/.linetboot/user.conf.json" ] && cp ./initialuser.json ~/.linetboot/user.conf.json
+	@[ ! -f "~/.linetboot/initialuser.conf.json" ] && cp ./initialuser.conf.json ~/.linetboot/initialuser.conf.json
 	@echo "Set following env variables in your ~/.bashrc (or equivalent shell config)"
 	@echo "(Note: Change /home/ to /Users/ on Mac!)"
 	@echo "export LINETBOOT_GLOBAL_CONF=/home/$(USER)/.linetboot/global.conf.json"
