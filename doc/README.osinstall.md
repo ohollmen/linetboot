@@ -35,9 +35,10 @@ Roughly in the order they are performed during install.
 - Language, keyboard, time and localization
 - Networking, setting up active network device/interface
 - OS Package and Mirror package repository settings
-- Installing extra packages
 - Partitioning and disks
+- Installing extra packages
 - Bootloader installation
+- Running post-install scripts
 
 ## OS Install Pre and Post Operations
 
@@ -49,8 +50,32 @@ These customizable scripting solutions are a powerful mechanism to compensate fo
 functionality and bugs in it.
 
 Because there is very little of anything on the host (besides Installer that just started to run) at the beginning of install
-when pre-script runs, the post-install phase remains the more interesting one (e.g. you will have some tools installed, by which
-you will get yor post install chores done).
+when pre-script runs, the post-install phase remains the more interesting one out of the two (e.g. you will have some tools
+installed, by which you will get yor post install chores done).
+
+Linetboot provides a few good out-of-the box postscripts preconfigured (as an exaple) in inst.postscrips config var.
+See these usable example scripts in `scripts/` directory:
+
+- os_fixup.sh - Fix misc shortcomings and bugs in OS install early phase (meant to be run early among postscripts)
+- mv_homedir_for_autofs.sh - Move created user homedir so that using /home as empty mountpoint (for autofs/NFS) is possible
+- nis_setup.sh - Setup and start NIS (relies on NIS config being present, see net.nis* config vars). By having NIS up already at
+  first boot, the further "push" post provisioning may be much easier
+- ssh_keys_setup.sh - Exchange (public) keys between OS install client and Lineboot so that Linetboot (SSH) host / user will
+  have easy passwordless access (by e.g. plain SSH, SCP, rsync. ansible - all of which use SSH) to OS client from Lineboot host. 
+
+## Triggering Custom Setup Steps on First Boot
+
+![Post Install Flow](doc/postinstall.png "Post Install Flow Illustrated")
+
+Linetboot is able to monitor the host after installation and detect when it's boot with newly installed operating system is completed.
+This "Host-up" monitoring by Linetboot is based on SSH (and being able to automatically / programmatically log on to host).
+On such "Host-up (with SSH)" event Linetboot allows one of 2 kinds of "executable hooks" to be run:
+
+- JS/Node.js callback contained in custom setup module
+- Any Shell executable (*.sh, *.py, *.pl, ELF binary, ...) named in main config `postinst.execact`
+
+The shell executable (or JS plugin) can then use SSH (or some other SSH related methodology, such as rsync) to perform additional setup
+steps on the host. See Post-Install illustration above to see the flow of events.
 
 ## Creating Recipes
 
@@ -113,12 +138,43 @@ You will find plenty of examples in Linetboot `./tmpl/` subdirectory and from Mu
   `{{#people}}- {{ name }} - {{ title }}\n{{/people}}` (In a file this should be split to multiple lines with no need for `\n`)
 - Make a block of template output conditional (true/false evaluation of template var) on a value: `{{#hasloan}}Conditions of Loan: ...{{/hasloan}}`
 - Avoid built-in (HTML geared) escaping rules from triggering by using 3 curlies: {{{ var_with_special_chars_in_value }}}
+  (This prevents e.g. '/' from becoming "&#x2F;")
 - However never use triple-curlies in a loop or conditional construct (Mnemonic for this: These are not about escaping a
   string/scalar value) 
 
 With these simple rules - and especially by reading the full manual - you should be equipped to create correct working templates.
 Logicless templating often shows its limitations in places where you'd want to e.g. join array values, etc (There's no operation "join"
 in logicless templating). However limitations of "logicless" have been largely overcome sofar.
+
+## Info on Template Parameters
+
+During the OS Install Linetboot creates a comprehensive set of parameters based on:
+- Global Main Configuration
+- Individual host facts
+- Inverntory host parameters (aka "host variables")
+- Intial user info (from JSON file given by inst.userconfig)
+
+The layout rules for parameter "tree" are:
+- The global main config acts as as "base" for the parameter tree (The names/keys are by default as-is)
+- The initial user properties are seen under top-level key "user" (names/keys as-is)
+- The network information - that needs to be tailored for individual host (e.g. unique IP address) - is a mix of main
+  config "environment specific" (not individual host) settings and individual host settings originated from facts
+- Disk information gets created as "full disk recipe" on-the fly by linetboot so the names/keys are not appplicable here
+
+
+Network settings formulation under key "net" (This is where most customization takes place):
+- Names are close to ansible naming
+- nameserver (array-of-str) - Arry of name server IP Addresses - Often hard to use on templates, thus string versions are provided
+  - nameservers_csv - Name servers as comma separated values (e.g. usable on RH kickstart)
+  - nameservers_ssv - Name servers ans space-separated values (e.g. usable on Preseed, ISC DHCP server)
+  - nameservers_str - Alias for nameservers
+  - nameserver_first - First Nameserver for templates and apps where format only allows single name server
+- gateway (str) - Gateway / Router IP Address
+- netmask (str) - Netmask as dotted-quad
+- domain (str) - Domain suffix (Empty string if there is no domain suffix)
+- hostname (str) - short hostname (w/o domain suffix)
+- ifnum (int) - Interface number (1-based value for the network interface order number, e.g. 1 could mean eno1, enp0s1)
+- namesearch (array-of-str) - domain suffixes to try for DNS search by non-fqdn hostname searches
 
 ## Solution Hints for Recipe based Automation
 
