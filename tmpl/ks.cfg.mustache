@@ -165,9 +165,11 @@ selinux --disabled
 # SSH Temp account
 sshpw --username={{{ user.username }}} '{{{ user.password }}}' --plaintext
 #%packages --excludedocs
-%packages
+# Ignore pkgs not avail: --ignoremissing
+%packages --ignoremissing
 @Base
 @Core
+network-scripts
 git
 openssh-server
 python-paramiko
@@ -192,10 +194,13 @@ wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
 # What is the current way: "nochroot" or "--nochroot"
 # %post --log=/root/ks-post.log ... https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
 %post --log=/root/ks-post.log
-wget "http://{{ httpserver }}/installevent/done?uid=$UID&path="`pwd` || true
+wget "http://{{ httpserver }}/installevent/post?uid=$UID&path="`pwd` || true
 wget "http://{{ httpserver }}/bootreset"
+# Enable legacy network service
+#chkconfig network on
 # Equivalent of Debian build-essential
 #yum groupinstall 'Development Tools'
+wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
 %end
 ################## End of Install ###############
 # One of these, exclusive: reboot,shutdown,halt (shutdown -h),poweroff
