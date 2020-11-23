@@ -123,11 +123,11 @@ dotlinetboot:
 	@cp ./tmpl/* ~/.linetboot/tmpl
 	@[ ! -f "~/.linetboot/initialuser.conf.json" ] && cp ./initialuser.conf.json ~/.linetboot/initialuser.conf.json
 	@echo "Set following env variables in your ~/.bashrc (or equivalent shell config)"
-	@echo "(Note: Change /home/ to /Users/ on Mac!)"
-	@echo "export LINETBOOT_GLOBAL_CONF=/home/$(USER)/.linetboot/global.conf.json"
-	@echo "export LINETBOOT_IPTRANS_MAP=/home/$(USER)/.linetboot/iptrans.json"
-	@echo "export LINETBOOT_USER_CONF=/home/$(USER)/.linetboot/user.conf.json"
-	@echo "export FACT_PATH=/home/$(USER)/hostinfo"
+	#@echo "(Note: Change /home/ to /Users/ on Mac!)"
+	#@echo "export LINETBOOT_GLOBAL_CONF=$(HOME)/.linetboot/global.conf.json"
+	#@echo "export LINETBOOT_IPTRANS_MAP=$(HOME)/.linetboot/iptrans.json"
+	#@echo "export LINETBOOT_USER_CONF=$(HOME)/.linetboot/user.conf.json"
+	#@echo "export FACT_PATH=$(HOME)/hostinfo"
 	@ls -al ~/.linetboot
 	
 jsdoc: FORCE
