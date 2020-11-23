@@ -5,7 +5,8 @@
   "mirrorserver": "",
   "debug": 1,  
   "inst": {
-    "userconfig": "~/.linetboot/user.conf.json",
+    "desc": "Settings for OS Installer or scripts run during install",
+    "userconfig": "~/.linetboot/initialuser.conf.json",
     "locale": "en_US.UTF-8",
     "keymap": "us",
     "time_zoneXX": "US/Pacific",
@@ -20,10 +21,17 @@
     "sshkey_path": "~/.linetboot/sshkeys/",
     "staticdebug": 1,
     "inetmirror": 0,
-    "piuser": "mradmin"
+    "": ""
   
   },
-  
+  "postinst": {
+    "desc": "Provisioning after First Boot with Newly Installed OS",
+    "user": "ubuntu",
+    "initwait": 60,
+    "pollint": 10,
+    "trycnt": 30,
+    "execact": "ssh ${POSTOP_USER}@${POSTOP_IP} ls -al /"
+  },
   "fact_path":  "~/hostinfo",
   "hostsfile" : "~/.linetboot/hosts",
   "core": {
@@ -69,7 +77,7 @@
   "rmgmt_path": "~/hostrmgmt",
   "pkglist_path": "~/hostpkginfo",
   "ipmi": {
-    "desc": "Remote Management (redfish and IPMI)",
+    "desc": "Remote Management (RedFish and IPMI)",
     "path": "~/hostrmgmt",
     "user": "mickey",
     "pass": "mouse",
@@ -85,6 +93,7 @@
     "debug": 0
   },
   "docker": {
+    "desc": "Settings for environments that use Docker",
     "port": "4243",
     "config": "~/docker.conf.json",
     "catalog": "~/dockercat.conf.json",
@@ -129,7 +138,8 @@
     "user": "",
     "pass": "",
     "ro": 1,
-    "syncall": 1
+    "syncall": 1,
+    "networks": ["192.168.1.0","192.168.5.0","192.168.8.0"]
   },
   "eflow": {
     "url": "https://eflow.mycomp.com/rest/v1.0",
