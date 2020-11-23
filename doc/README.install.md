@@ -2,8 +2,11 @@
 
 Example manual installation explained here installs Linetboot under users
 home directory in directories explained in this document.
-**Stage 1** install guide aims at getting web based inventory visibility up and running quickly.
-** Stage 2** install guide aims to get you ready to actually PXE boot your hosts and get you installing Operating systems.
+
+- **Stage 1** install guide aims at getting web based inventory visibility up and running quickly
+- **Stage 2** install guide aims to get you ready to actually PXE boot your hosts and get you installing Operating systems
+- **Stage 3** install adds nice-to have features like ability to track Installed OS packages (and provide charts and
+  statistics on those), gathering (IPMI/RedFish) remote management info, etc.
 
 ## Pre-requisites checklist
 
@@ -39,14 +42,20 @@ cd web
 ../node_modules/yarn/bin/yarn install
 cd ..
 ```
+After this Node.js with Linetboot required pakages / modules should be usable. Next install steps
+on Linetboot installation and launching admin (and installation) utility linetadm.js exercise the node.js
+and Linetboot node modules installation.  
+
 ## Stage 1 Installation - Get Host inventory Ready
 
-Run prep-steps:
+Run prep-steps (legacy / manual):
 
 ```
 # Create boot media dirs with root (sudo) rights
 # If you want to keep this step non-root, run: mkdir ~/isomnt and
 # change main config "core.maindocroot" to match that value.
+# This directory is not required for host inventory functionality, but it must exist
+# for linetboot to start up. 
 sudo mkdir /isomnt
 # Change to home directory
 cd ~
@@ -66,22 +75,36 @@ cd linetboot
 make dotlinetboot
 # Source (environment variable) changes in ~/.bashrc into current shell
 . ~/.bashrc
-
-
+```
+Run prep-steps (NEW, simplified, *make* not needed)
+```
+# Create boot media dirs with root (sudo) rights
+# If you want to keep this step non-root, run: mkdir ~/isomnt and
+# change main config "core.maindocroot" to match that value.
+# This directory is not required for host inventory functionality, but it must exist
+# for linetboot to start up. 
+sudo mkdir /isomnt
+# Assuming standard install location in ~/linetboot
+cd ~/linetboot
+./linetadm.js userconf
 ```
 
-### Populate Hostnames
+### Populate Hostnames into 'hosts' inventory
 
 Even small linetboot environment has a requirement for linetboot host knowing
-the hosts by names to connecto to them over the network. Use either /etc/hosts as a "wannabe" hostname resolution
-mechanism, or settle for a "real" DNS, where open source package "dnsmasq" would be a good lightweight DNS solution.
+the hosts by names to connect to them over the network. Hostname resolution can be implemented by:
+- "real" DNS service, where open source package "dnsmasq" would be a good lightweight DNS solution.
+- Simpli use  /etc/hosts for "poor-man's" hostname resolution mechanism
+ 
 If you are installing linetboot in a company environment, you likely already have a DNS and do not need to do anything.
+If you have a high grade network router with DNS server, you should be able register your hosts there.
+
 When filling in names to the inventory, Linetboot prefers fully qualified hostnames to be used. If you are in a home network
 with no domain suffix, the bare hostnames will work. In a large network with multiple domans fully qualified names should always be used.
 
-Add all inventoried hosts into file `~/.linetboot/hosts` (A stub for this should already exist after `make dotlinetboot`, see above).
-If you already have an ansible inventory file, try using it as-is. Linetboot will always access inventory file read-only.
-Example contents:
+Add all inventoried hosts into file `~/.linetboot/hosts` (A stub for this should already exist after installation steps above).
+If you already have an ansible inventory file, try using it as-is. This inventory file will be shared between Ansible and Linetboot.
+Linetboot will always access inventory file read-only. Example contents:
 
 ```
 ws-001.comp.com
@@ -94,11 +117,12 @@ fileserver.comp.com
 reports.comp.com nis=west use=Reporting+Server
 ```
 
-Hashmark ("`#`") is treated as comment. You can start with a small subset
-of hosts and expand the set later.
+Hashmark ("`#`") is treated as comment. You can start with a small subset of hosts (e.g. 3-5) and expand the set later.
+Set full path of 'hosts' file into property `hostsfile` in main config `~/.linetboot/global.config.json`.
+
 If some of the hosts are Windows hosts, please read Ansible documentation
 on recording facts (and using ansible more generally) with Windows hosts.
-Set full path of this file into preoperty `hostsfile` in `~/.linetboot/global.config.json`.
+
 
 ### Recording (Ansible collected) Host Facts
 
@@ -111,10 +135,10 @@ copied onto that remote account. Copying SSH keys can be accomplished by:
     
 Do this for all the machines (If you did not have SSH key to start with, generate it with `ssh-keygen -t rsa -b 4096`, use no passphrase).
 
+
 Record facts (for all hosts in single step) by running command:
 
-    ansible all -i ~/.linetboot/hosts  -b -m setup --tree ~/hostinfo \
-       --extra-vars "ansible_sudo_pass=$ANSIBLE_PASS"
+    ansible all -i ~/.linetboot/hosts -b -m setup --tree ~/hostinfo --extra-vars "ansible_sudo_pass=$ANSIBLE_PASS"
 
 Use `ansible_user=remoteuser` in --extra-vars if your current user is not
 the same as remote user. key=val pairs in --extra-vars are separated by space.
@@ -134,20 +158,32 @@ NOTE: There should be a supporting ansible playbook for doing this.
 
 ### Misc. Config Adjustments
 
-Main configuration (global.conf.json).
+Review main configuration (global.conf.json) and make sure most essential settings are correct:
+- Change 'httpserver' to have your IP address (by default keep port 3000)
 - Change `maindocroot` to an existing directory (possibly create `/isomnt/`, this is where your boot media goes) - The
   maindocroot must exist or the server exits with an error.
-- Change `hostsfile` to name your host inventory file (e.g. /home/mrsmith/.linetboot/hosts). The default value ~/.linetboot/hosts
+- Change `hostsfile` to name your host inventory file (e.g. /home/joesmith/.linetboot/hosts). The default value ~/.linetboot/hosts
   will likely work if you followed the default installation.
+- Change 'core.appname' to name your Lineboot server instance
+- Change 'core.authusers' to include your username (with LDAP authentication disable any username/password will work)
+
+The config sections to review at this point would be: "core"
 
 ### Starting Linetboot Server
 
 Linetboot runs as non-root user:
 
-    # Start purely by node (on the shell foreground)
+    # Option 1) Start purely by node (on the shell foreground, only good for debugging and seeing "live log" output).
+    # Use this only in very small scale
     $ node linetboot.js
-    # Run "safely" by pm2 (goes to shell background and gets a process watchdog features from PM2 - https://pm2.keymetrics.io )
+    # Option 2) Run "safely" by node.js utility "pm2" (where pm stands for Process manager).
+    # Linetboot goes to shell background and gets process watchdog features from PM2 (https://pm2.keymetrics.io)
     $ node_modules/pm2/bin/pm2 start linetboot.js
+    # Option 3) Generate Linux systemd unit file by linetboot, install it and run it.
+    # Note: You must first start lineboot by Option 1 or Option 2
+    wget http://localhost:3000/scripts/linetboot.service -O ~/.linetboot/linetboot.service
+    sudo systemctl enable ~/.linetboot/linetboot.service
+    
 
 Check Linetboot Web GUI with your browser (Assume localhost as install host here): `http://localhost:3000/web/` .
 
@@ -172,6 +208,10 @@ sudo mkdir /isomnt
 #make mkmediadir
 # Create dirs for Ubuntu and Centos Server Install ISO:s within media root
 sudo mkdir /isomnt/centos7 /isomnt/ubuntu18
+# Download ISO images. Note: These are not real URL:s - google and follow leads to get to apprpriate
+# (also credible and authoritative) image download sites.
+wget http://one.imagesite.org/images/ubuntu-18.04.1-server-amd64.iso -O /usr/local/iso/ubuntu-18.04.1-server-amd64.iso
+wget http://another.isosite.org/dpwnload/iso/CentOS-7-x86_64-Minimal-1810.iso -O /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso
 # Mount ISO:s. These 2 OS Distros are known to boot and install directly from their
 # loopmount directories, read-only, no changes.
 sudo mount -o loop /usr/local/iso/ubuntu-18.04.1-server-amd64.iso   /isomnt/ubuntu18/
@@ -189,8 +229,17 @@ get delivered from (by http) by lineboot
 
 Sharing the traditionally root owned dirs to a "normal" group is potential security risk and you have to evaluate
 the security constraints of your environment. Both changes are same in nature: Allow lineboot user (via group sharing)
-to write (config and other) files to system areas. Bothe TFTP and DHCPD setup steps are partially assisted by lineboot
-install script `hostsetup.js`.
+to write (config and other) files to system areas. Both TFTP and DHCPD setup steps are partially assisted by lineboot
+install script `linetadm.js`.
+
+Writability to both TFTP and DHCP dirs will be enabled by shared group ownership (See $LINETBOOT_USER_GROUP below), where
+group to use must be chosen form the groups where lineboot user belongs to. Groups can be queried by commands `groups` or
+`id -Gn`. The primary group of user will be the first in the list. For best security, choose the group that has least users
+in it (Usually primary group will be user specific and contain single user, so it would be a good choice).
+To set primary group into $LINETBOOT_USER_GROUP (for the setup command flows below), run:
+```
+export LINETBOOT_USER_GROUP=`groups | awk '{print $1}'`
+```
 
 ### Setting up TFTP
 
@@ -198,17 +247,20 @@ With Linetboot *only* the bootloader (and boot menus) get delivered from TFTP se
 Setup TFTP Directory structure (dir structure, bootloader menu and binaries):
 ```
 ###### TFTP DIRS ######
-# Create mock-up dir (in de-facto location). If already exists there will br no errors because of -p
+# Create TFTP root dir (in de-facto location). If already exists there will be no errors because of -p
+# This dir may end up being a mock-up dir if your TFTP server is remote or actual TFTP root if your TFTP is local.
 sudo mkdir -p /var/lib/tftpboot/
 # Change TFTP accessible to Linetboot user
 sudo chmod -R g+w /var/lib/tftpboot/
 sudo chgrp -R $LINETBOOT_USER_GROUP /var/lib/tftpboot/
 # Create menu and mac address based symlinks.
 # To dry run and only preview menu: node hostsetup.js tftpsetup --dryrun | less
+# Run this again whenever you add hosts that you want to be PXE bootable
 node hostsetup.js tftpsetup
-# Ubuntu Only:
-# Install various OS packages (see prerequisite docs) containing PXE bootloader binaries.
-# Populate bootloader binaries from installed packages under tftp root.
+###### TFTP - Bootloader binaries ######
+# Can be run on Ubuntu Only:
+# Install first various OS packages (see prerequisite docs) containing PXE bootloader binaries.
+# Populate bootloader binaries from installed packages to dirs under TFTP root.
 # (Currently installs in temp directory, directory name is echoed at the end of operation)
 node hostsetup.js bootbins
 
@@ -223,7 +275,7 @@ sudo perl -pi -e "s/^TFTP_DIRECTORY=.+$/TFTP_DIRECTORY=\"\/var\/lib\/tftpboot\"/
 ### Setting up Mock-up DHCP config
 
 This is optional step, but allows to mock up (ISC) dhcpd config event if you are not running DHCP on linetboot host.
-On a typical linux system (that has group for each user) you can 
+See discussion for the shared group (set by $LINETBOOT_USER_GROUP) in sections above. 
 ```
 ###### DHCP(D) CONFIG ##############
 # Create mock-up dir (in de-facto location). If already exists there will br no errors because of -p
@@ -233,7 +285,7 @@ sudo chmod g+w /etc/dhcp/
 # Change group to be shared (likely: sudo chgrp $USER /etc/dhcp/)
 sudo chgrp $LINETBOOT_USER_GROUP /etc/dhcp/
 # Generate dhcpd config (/etc/dhcp/dhcpd.conf)
-node hostsetup.js dhcpconf
+node linetadm.js dhcpconf
 ```
 
 <!--
@@ -263,6 +315,13 @@ ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_sudo
 # Gather SSH Keys 
 ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_sudo_pass=... host=all keyarchpath="
 ```
+A small intro or refresher (depending on your familiarity w. Ansible) on ansible host selection mechanism
+(by yaml playbook "hosts: ..." or command line `--limit` option):
+- keyword *all* allows you to address all hosts in your `hosts` inventory file
+- single hostname (e.g. host=db-01.comp.com) allows you address single host
+- multiple hosts can be given as comma separated list (no whitespaces to keep them as "single token")
+- multiple groups can be given as colon separated string 
+
 ## Sharing Linetboot Installations between multiple application instances
 
 Deploy Lineboot (Using install instructions) to single shared location. This location (git clone/checkout dir) could be for example be
