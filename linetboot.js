@@ -573,7 +573,7 @@ function oninstallevent(req,res) {
   var f = hostcache[ip];
   if (!f) { jr.msg += "Could not lookup facts for " + ip; return res.json(jr); }
   var now = new Date();
-  console.log("IP:" + ip + ", install-event: " + p.evtype + " time:" + now.toISOString());
+  console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+p.path+", time:" + now.toISOString());
   //var sq = "INSERT INTO hostinstall () VALUES (?)";
   // sq = "UPDATE hostinstall SET ... WHERE ipadd = ?"
   // conn.exec(sq, params, function (err, result) {});
@@ -590,20 +590,20 @@ function oninstallevent(req,res) {
     var picfg = postinst.hostup_init(global, ip); // Common initialization
     var actcb = function (err, picfg) { picfg && postinst.hostup_act(picfg); };
     ///////////////
+    // Cannot use hostup_init_wait here ?
     if (!fancy) {
-      // Cannot use hostup_init_wait here ?
       hostup_poll(picfg, actcb);
     }
     else {
-    var pass = (cb) => { cb(null, picfg); };
-    // Maybe completion function here should be directly hostup_act() (<= NOT because of sign)
-    // asyc.series would get results of individual funcs. waterfall is perfect match
-    async.waterfall([ pass, postinst.hostup_init_wait, postinst.hostup_poll, ], function (err, picfg) {
-       if (err) { console.log("Error in host-up waiting:"+err); return; }
-       console.log("Success waiting for host-up. Look for action ...");
-       //actcb(null, picfg);
-       postinst.hostup_act(picfg);
-    });
+      var pass = (cb) => { cb(null, picfg); };
+      // Maybe completion function here should be directly hostup_act() (<= NOT because of sign)
+      // asyc.series would get results of individual funcs. waterfall is perfect match
+      async.waterfall([ pass, postinst.hostup_init_wait, postinst.hostup_poll, ], function (err, picfg) {
+        if (err) { console.log("Error in host-up waiting:"+err); return; }
+        console.log("Success waiting for host-up. Look for action ...");
+        //actcb(null, picfg);
+        postinst.hostup_act(picfg);
+      });
     }
 
   }
