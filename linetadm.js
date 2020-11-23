@@ -45,6 +45,13 @@ var cfg = {
 };
 var mainconf_fn_default = home + "/.linetboot/global.conf.json";
 var acts = [
+  //
+  {
+    "id": "userconf",
+    "title": "Create Default User config (files and dirs) during Linetboot installation",
+    "cb": userconf,
+    "opts": [],
+  },
   //{
   //  "id": "configedit",
   //  "title": "Edit Most important parts of config (Do not use, Work in progress)",
@@ -450,24 +457,7 @@ function tftpsetup(opts) {
     });
   }
   ///////////// mkdir, mkmacsymlinks ////////////
-  /**Create dir in old-node compatible manner and with verbose messages.
-  * @param dir {string} - Directory name for dir to create
-  * @return Original directory name if created, empty string for could not be created.
-  * Note recursive: true ... only works with node > 10.12.0
-  */
-  function mkdir(dir) {
-    if (!fs.existsSync(dir)) {
-      console.log("dir "+dir+" does not exist, try creating ...");
-      try {
-        //fs.mkdirSync(dir, {recursive: true});
-        mkDirByPathSync(dir); // Compat (for older node)
-      } catch (ex) {
-        console.log("Could not make dir "+dir+": " + ex); return ""; // process.exit();
-      }
-    }
-    else { console.log("Dir "+dir+" seems to already exist."); }
-    return dir;
-  } // mkdir
+  
   /** Create MAC adress files for "pxelinux.cfg"
    * @return dymmy 1
    **/
@@ -720,6 +710,51 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
     return curDir;
   }, initDir);
 }
+
+/**Create dir in old-node compatible manner and with verbose messages.
+  * @param dir {string} - Directory name for dir to create
+  * @return Original directory name if created, empty string for could not be created.
+  * Note recursive: true ... only works with node > 10.12.0
+  */
+  function mkdir(dir) {
+    if (!fs.existsSync(dir)) {
+      console.log("dir "+dir+" does not exist, try creating ...");
+      try {
+        //fs.mkdirSync(dir, {recursive: true});
+        mkDirByPathSync(dir); // Compat (for older node)
+      } catch (ex) {
+        console.log("Could not make dir "+dir+": " + ex); return ""; // process.exit();
+      }
+    }
+    else { console.log("Dir "+dir+" seems to already exist."); }
+    return dir;
+  } // mkdir
+/** Copy all files from srcdir to destdir.
+ * Appropriate checks are made to esure both source and destination are existing directories.
+ * @param srcdir {string} - Source directory
+ * @param destdir {string} - Destination directory
+ * @return 1 for errors, 0 for no errors
+ */
+function copydirfiles(srcdir, destdir) {
+  if (!fs.existsSync(srcdir)) { console.log("copydirfiles: Error - srcdir ("+srcdir+") must be an existing dir !"); return 1; }
+  if (!fs.existsSync(destdir)) { console.log("copydirfiles: Error - destdir ("+destdir+") must be an existing dir !"); return 2; }
+  // 
+  var files;
+  try { files = fs.readdirSync(srcdir); } catch (ex) { console.log("copydirfiles: Error listing files in "+srcdir+": "+ ex); return 3; };
+  var err = 0;
+  files.forEach((bn) => {
+    if (bn.match(/~/)) { console.log(" Bad name: "+bn); return; }
+    var src = srcdir + "/" + bn;
+    var dest = destdir + "/" + bn;
+    console.log("DEBUG: Should copy: "+src);
+    // Check presence
+    if (fs.existsSync(dest)) { console.log(" Already exists in dest: "+dest+" .... skip"); return; }
+    //console.log("Should copy: "+src+" to "+dest);
+    try { fs.copyFileSync(src, dest ); } catch (ex) { console.log("Error Copying "+src+": "+ex+"... skip"); $err+=4; return; }
+  });
+  return err;
+}
+
 /** Generate ISC DHCP Configuration with single range of addresses (thus small scale).
  * 
  */
@@ -938,5 +973,46 @@ function genrscs(opts) {
       
     }; // [] ?
     return p;
+  }
+}
+
+function userconf(opts) {
+  var cpath = process.env["HOME"]+"/.linetboot";
+  //cpath = "/tmp/.linetboot"; // TEST
+  console.log("Copy Default Config Boilerplate (dirs and files) to "+cpath);
+  var mkdirs = [
+    cpath, cpath+"/sshkeys", cpath+"/tmpl", cpath+"/scripts",
+    path.dirname(cpath)+"/hostinfo", path.dirname(cpath)+"/hostpkginfo", path.dirname(cpath)+"/hostrmgmt",
+    // TODO: cpath+"/hostinfo", cpath+"/hostpkginfo", cpath+"/hostrmgmt",
+    
+  ];
+  console.log("path.dirname of "+cpath+ " is "+path.dirname(cpath));
+  var files = [
+    ["./global.conf.json",      cpath+"/global.conf.json"],
+    ["./initialuser.conf.json", cpath+"/initialuser.conf.json"],
+    // ["./hosts", cpath+"/hosts"],
+  ];
+  mkdirs.forEach((d) => {
+    if (!exists(d)) { mkdir(d); }
+  });
+  //var dircopies = [["", ""], ["", ""]];
+  copydirfiles("./scripts", cpath+"/scripts");
+  copydirfiles("./tmpl",    cpath+"/tmpl");
+  files.forEach((f) => {
+    var src = f[0];
+    var dest = f[1];
+    if (!exists(dest)) {
+      console.log("Should copy "+src+" to "+dest);
+      try { fs.copyFileSync(src, dest ); } catch (ex) { console.log("Error Copying "+src+": "+ex+"... skip"); return; }
+    }
+  });
+  console.log("Done. To see all files copied, run:\n  ls -alR "+cpath+"");
+  console.log(`It's suggested that you version control your linetboot config.
+If this appeals to you, run:\n  pushd ${cpath}; git init; git add .; git commit -m "Version Local Linetboot Config in Git"; popd`);
+  // Test File or Dir existence
+  function exists(fn) {
+    if (fs.existsSync(fn)) { console.log(fn+" already exists ..."); return 1; }
+    
+    return 0;
   }
 }
