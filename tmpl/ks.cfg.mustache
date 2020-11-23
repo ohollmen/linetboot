@@ -1,42 +1,4 @@
-# Example kickstart file
-
-# - Google: Ubuntu kickstart example
-# - https://help.ubuntu.com/lts/installation-guide/i386/ch04s06.html
-# - https://gist.github.com/funzoneq/d77369203ea447dc3cc2
-# - http://gyk.lt/ubuntu-16-04-desktop-unattended-installation/ - Good article on KS and Preseed settings,
-#    but is based on remastering a CD/DVD
-# - https://help.ubuntu.com/lts/installation-guide/s390x/apbs02.html
-# - https://blog.programster.org/kickstart-files
-# - https://help.ubuntu.com/community/KickstartCompatibility - Ubuntu KS compat. (w. links)
-# - https://github.com/programster/KVM-Command-Generator
-# - https://linuxconfig.org/automating-linux-installations-with-kickstart - Excellent elaboration
-#    on KS params/options
-# - https://searchitchannel.techtarget.com/feature/Performing-an-automated-Ubuntu-install-using-preseeding
-# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
-# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/s1-kickstart2-options
-# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/ch-parmfiles-Kickstart_parameters
-# - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/sn-automating-installation
-# - https://gist.github.com/mineiro/5431336 - Centos 6 kickstart
-# - https://www.linuxtopia.org/online_books/rhel6/rhel_6_installation/rhel_6_installation_s1-kickstart2-options.html
-# - https://wiki.centos.org/HowTos/PXE/PXE_Setup - Some useful info on how to setup tftp and pxelinux (called syslinux) in CentOS
-# - https://bugs.centos.org/view.php?id=14221 Centos 7 install problems and ideas / tips for Boot CL
-#
-# KS & Preseed params: ks=... preseed/file=... preseed/url=http:// (also url=... works)
-# Preseed commands can be mixed here (for Ubuntu), but must start w. "preseed ...".
-# # Kernel CL
-# In both Debian/Ubuntu and native RedHat the kernel CL param is ks=URL
-# Naming convention for kickstart file (and suffix):
-# - Debian/Ubuntu: ks.cfg
-# - Redhat: Early on .ks suffix, nowadays naming like kickstart-NNN.cfg and especially ks.cfg is shown as recommendation.
-#   - Install-time settings are saved during install as /root/anaconda-ks.cfg
-# See also
-# - RUNKS=value (e.g. RUNKS=0, RUNKS=1)
-# - Kernel CL param: kssendmac (Send MAC address to distinguish machine in special HTTP headers)
-# - Discovered kervel CL param from /var/log/anaconda.log: BOOTIF=01-14-..... (Mac address, dash separated)
-# During Install (at least CentOS 6)
-# - this kickstart file gets downloaded to /tmp/ with name $SOMEHASH-ks.cfg
-# - Anaconda installer writes a log in /tmp/anaconda.log
-
+# Linetboot kickstart file / template)
 ############### Language, Keyboard, Timezone ##################
 lang en_US
 #lang en_US.UTF-8
@@ -195,6 +157,12 @@ wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
 # %post --log=/root/ks-post.log ... https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
 %post --log=/root/ks-post.log
 wget "http://{{ httpserver }}/installevent/post?uid=$UID&path="`pwd` || true
+{{#postscripts}}
+wget "http://{{ httpserver }}/scripts/{{{ . }}}"
+chmod a+x {{{ . }}}
+./{{{ . }}}
+{{/postscripts}}
+wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
 wget "http://{{ httpserver }}/bootreset"
 # Enable legacy network service
 #chkconfig network on
