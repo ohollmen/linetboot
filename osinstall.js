@@ -70,6 +70,7 @@ var iptrans = {};
 var global = {};
 var user = {};
 var patch_params_custom; // CB
+var setupmod = {}; // custom CB Module
 
 // Map URL to symbolic template name needed. template names get mapped by global.tmplfiles (Object-map, See main config)
 // {url: ..., ctype: ..., tmpl: "", nopara: ...}
@@ -217,7 +218,7 @@ function templates_load() {
  * @param conf {object} - Handle members: hostcache, global, iptrans, user
  * @param _patch_params {function} - User defined custom function for customizing params
  */
-function init(conf, _patch_params) {
+function init(conf, _patch_params) { // TODO: 2nd: _mod
   // ["hostcache", "global", "iptrans", "user"];
   hostcache = conf.hostcache ;
   if (!hostcache) {throw "No hostcache"}
@@ -229,6 +230,7 @@ function init(conf, _patch_params) {
   if (!user) { throw "No initial user config"; }
   // TODO: patch_params
   if (_patch_params) { console.log("Got patch_params customization CB"); patch_params_custom = _patch_params; }
+  // NEW: if (_mod) { mod = _mod; }
   // Additional in-depth validation (e.g. MUST HAVE "inst" and "inst.tmpl_path
   if (!global.inst) { throw "No 'inst' in main conf"; }
   if (!global.inst.tmpl_path) { throw "No 'inst.tmpl_path' in main conf"; }
@@ -539,6 +541,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   var anet = f.ansible_default_ipv4; // Ansible net info
   // Many parts of recipe creation might need hostparams (hps)
   var hps = hlr.hostparams(f) || {};
+  console.log("HPS:",hps);
   if (anet.address != ip) {
     var msg = "# Hostinfo IP and detected ip not in agreement\n";
     res.end(msg); // NOTE NO res !!!!!!
@@ -549,23 +552,24 @@ function host_params(f, global, ip,  osid) { // ctype,
   net.ipaddress = ip; 
   net.macaddress = anet ? anet.macaddress : "";
   ////////////////////////// NETWORK /////////////////////////////////////
-  console.error("Calling netconfig(f) (by:" + f + ")");
+  console.error("Calling netconfig(net, f) (by: f:" + f + ")");
   netconfig(net, f);
   ///////////////////////// DISK /////////////////////////////////
-  // Disk logic was embedded here
+  // Ansible based legacy calc (imitation of original disk).
   console.error("Calling disk_params(f) (by:" + f + ")");
   var disk = osdisk.disk_params(f);
-  console.log("HPS:",hps);
+  
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
   
   // Assemble. TODO: Make "inst" top level
   var d = dclone(global); // { user: dclone(user), net: net};
-  
+  // TODO: Make into object, overlay later
+  // var di = {parts: null, partials: null, instpartid: 0}
   var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
   // TODO: Merge these, figure out lin/win (different signature !)
-  if (osid.match('^win')) {
+  if (osid.match(/^win/)) {
     
     parts = osdisk.windisk_layout_create(ptt);
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
@@ -581,7 +585,7 @@ function host_params(f, global, ip,  osid) { // ctype,
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
   // This produces content, not params for partials
-  if (osid.match('ubu') || osid.match('deb')) {
+  if (osid.match('ubu') || osid.match('deb')) { // /(ubu|deb)/
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     var out = osdisk.disk_out_partman(parts);
     console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
@@ -590,15 +594,21 @@ function host_params(f, global, ip,  osid) { // ctype,
     console.log("PARTMAN-DISK:'"+out+"'");
     d.diskinfo = out; // Disk Info in whatever format directly embeddable in template
   }
-  if (osid.match('ubuntu20')) {
+  if (osid.match(/ubuntu20/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     var out = osdisk.disk_out_subiquity(parts);
     console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
+  if (osid.match(/(centos|rh)/)) {
+    parts = osdisk.lindisk_layout_create(ptt, 'centos');
+    var out = osdisk.disk_out_ks(parts);
+    console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
+    d.diskinfo = out;
+  }
   d.net = net;
   d.user = user; // global (as-is). TODO: Create password_hashed
-  d.disk = disk; // Gets put to data structure here, but template decides to use or not.
+  d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
   // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
   d.partials = partials; // Suse or Win
