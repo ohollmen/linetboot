@@ -79,15 +79,17 @@ function is_esp(p) {
  * Dir /sys/firmware/EFI indicates EFI Boot
  */
 function lindisk_layout_create(btype, ostype) {
+  var debug = 0;
+  debug && console.log("Before clone: "+linparts.length + " for "+btype+"/"+ostype);
   var parts = dclone(linparts);
   // Debian/Ubuntu - delete boot
   if (ostype && ostype.match(/^(ubu|deb)/)) { parts.splice(0, 1); }
   // MBR => Delete EFI
   if (btype == 'mbr') {
     // Just mark extend
-    
+    debug && console.log("Before parts filter: "+parts.length);
     parts = parts.filter(non_efi);
-    
+    debug && console.log("After parts filter: "+parts.length);
   }
   // Non-EFI
   function non_efi(p) { return (p.mpt != "biosboot") && (p.mpt != "/boot/efi"); }
@@ -182,7 +184,8 @@ function diskinfo(req, res) {
   //res.type('application/xml');
   return res.end(xml);
 }
-/** Generate Disk parameters for super simple disk layout: root+swap (and optional boot).
+/** Generate Disk parameters for super simple disk layout based on Ansible facts.
+ * Layout: root+swap (and optional boot).
   * Calculate disk params based on the facts.
   * The unit on numbers is MBytes (e.g. 32000 = 32 GB)
   * See facts sections: ansible_device_links ansible_devices ansible_memory_mb
@@ -459,7 +462,7 @@ function disk_out_ks(parr) {
   //comps.push("reqpart --add-boot");
   return comps.join("\n") + "\n";
 }
-/** Output disk in "d-i partman-auto/expert_recipe" format.
+/** Output disk in "d-i partman-auto/expert_recipe" (partman) format.
  * Refs:
  * https://www.bishnet.net/tim/blog/2015/01/29/understanding-partman-autoexpert_recipe/
  * d-i/debian-installer/doc/devel/partman-auto-recipe.txt
