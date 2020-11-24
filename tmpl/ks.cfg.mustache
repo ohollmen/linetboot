@@ -171,7 +171,8 @@ chmod a+x {{{ . }}}
 ./{{{ . }}}
 {{/postscripts}}
 wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
-wget "http://{{ httpserver }}/bootreset"
+# Not needed if BIOS default boot is SSD/HDD
+# wget "http://{{ httpserver }}/bootreset"
 # Enable legacy network service
 #chkconfig network on
 # Equivalent of Debian build-essential
