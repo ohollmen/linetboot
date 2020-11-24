@@ -588,6 +588,7 @@ function oninstallevent(req,res) {
     var fancy = 1;
     postinst.init(setupmod);
     var picfg = postinst.hostup_init(global, ip); // Common initialization
+    if (!picfg) { jr.msg += "Missing main conf 'postinst' section for IP: " + ip; return res.json(jr); }
     var actcb = function (err, picfg) { picfg && postinst.hostup_act(picfg); };
     ///////////////
     // Cannot use hostup_init_wait here ?
