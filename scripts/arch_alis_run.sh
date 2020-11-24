@@ -6,7 +6,7 @@
 # at least as of 2020-10).
 # Usage: Add to linux kernel CL: script=http://yourlinetserv.my.com:3000/scripts/arch_alis_run.sh
 # This will be picked up (downloaded and executed) by arch root login script (See arch /root/*).
-
+curl "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
 # Load keymap
 loadkeys us
 # Original: Run curl to download and run a (~50 l.) script to download
@@ -30,3 +30,11 @@ curl -O http://{{ httpserver }}/alis.conf
 echo "Downloaded ALIS scripts and dynamic config to: "`pwd`
 # Start Install - will WIPE EVERYTHING on machine and auto-install new Arch !
 ./alis.sh
+# Run misc post scripts. Do wget or curl -O
+curl "http://{{ httpserver }}/installevent/post?uid=$UID&path="`pwd` || true
+{{#postscripts}}
+curl -O "http://{{ httpserver }}/scripts/{{{ . }}}"
+chmod a+x {{{ . }}}
+./{{{ . }}}
+{{/postscripts}}
+curl "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true

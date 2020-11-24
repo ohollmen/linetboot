@@ -11,10 +11,12 @@ chmod a+rw /dev/null
 # Detect OS (See also: $OSTYPE, `uname` (Linux), uname -a (Ubuntu))
 # https://askubuntu.com/questions/459402/how-to-know-if-the-running-platform-is-ubuntu-or-centos-with-help-of-a-bash-scri
 # See: /etc/issue /etc/os-release /etc/redhat-release /etc/lsb-release
-grep Ubuntu /etc/os-release
+grep -P '(Debian GNU|Ubuntu)' /etc/os-release
 ubu_rc=$?
-grep CentOS /etc/os-release
+grep -P '(Red Hat|CentOS)' /etc/os-release
 cen_rc=$?
+grep 'Arch Linux' /etc/os-release
+arch_rc=$?
 # ubuntu
 if [ $ubu_rc -eq 0 ]; then
   # Replace Lineboot host, port and osid pattern with globally good value
@@ -33,7 +35,11 @@ if [ $cen_rc -eq 0 ]; then
    # Fix sudoers to allow wheel group to sudo. Assume pristine default RH config.
    # Seems RH 7 already has this line uncommented
    perl -pi -e 's/^#\s*%wheel\s+ALL=(ALL)\s+ALL\b/%wheel\tALL=(ALL)\tALL/;' /etc/sudoers
+   # TODO: Fix: /etc/yum.repos.d/CentOS-Base.repo ? Seems no need to
    
+fi
+if [ $arch_rc -eq 0 ]; then
+  # Arch Fixups ?
 fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.

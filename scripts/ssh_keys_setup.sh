@@ -48,8 +48,8 @@ mkdir -p $SSH_BK_PATH
 cp -p $SSH_HKEY_PATH/ssh_host* $SSH_BK_PATH
 echo "Created backup of hostkeys: $?" >> $POST_LOG
 ### Hostkeys (for /etc/ssh) ####
-# TODO: Only allow saving on valid content ("# Error (keypath/root missing)", )
-# TODO: Detect if this is new host or not and act accordingly
+# Only allow saving on valid content ("# Error (keypath/root missing)", )
+# Detect if this is new host or not and act accordingly
 /usr/bin/curl http://{{{ httpserver }}}/ssh/rsa > /tmp/ssh_host_rsa_key
 grep 'Error' /tmp/ssh_host_rsa_key
 err_sec=$?

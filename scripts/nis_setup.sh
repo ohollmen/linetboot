@@ -1,5 +1,6 @@
 #!/bin/sh
-# Setup NIS. Net ("net") section should have:
+# Setup NIS. Supports /(Debian GNU|Ubuntu)/ and /(Red Hat|CentOS)/
+# Net ("net") section should have:
 # - nisdomain - NIS domain name (Alternatively host params may have "nis")
 # - nismm - NIS master map (without nay preceding '+' sign
 # - nisservers - (array of) NIS server fqdn names or IP addresses
@@ -39,9 +40,23 @@ fi
 if [  $cen_rc -eq 0 ]; then
   yum -y install yp-tools nfs-utils autofs nscd
 fi
-
+if [ $arch_rc -eq 0 ]; then
+  # Arch AUR makepkg (https://wiki.archlinux.org/index.php/NIS https://wiki.archlinux.org/index.php/autofs)
+  #
+  #pacman -S yp-tools ypbind-mt autofs nscd
+  echo "NISDOMAINNAME=\"$NIS_DOM\"" > /etc/nisdomainname
+  # nscd -i <database> ?
+  rm -rf /var/db/nscd/
+  mkdir /var/db/nscd/
+  rm -f /etc/autofs/auto.master
+  # Will be actually created on a later step
+  touch /etc/auto.master
+  ln -s /etc/auto.master /etc/autofs/auto.master
+  
+fi
 # Set domain (todo: make backups of old)
 echo "$NIS_DOM" > /etc/defaultdomain
+# Arch: /etc/autofs/auto.master
 echo "+$NIS_AUTO_MASTER_MAP" > /etc/auto.master
 # RH/Centos
 if [ $cen_rc -eq 0 ]; then
@@ -80,4 +95,4 @@ fi
 #service nscd stop; sleep 5; service nscd start
 systemctl enable ypbind autofs nscd
 systemctl start ypbind autofs nscd
-
+# rpcbind ?
