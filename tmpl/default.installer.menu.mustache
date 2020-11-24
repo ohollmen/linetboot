@@ -249,7 +249,9 @@ menu label Install CentOS 7 (Full Automated)
 kernel http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz
 # Change "repo=..." => "method=..."
 # Centos doc: inst.ks= ?
-append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+# NOTE: Cannot use method=http://mirror.centos.org/centos/7/os/x86_64/ as mixed version components may result.
+# Use method=http://{{ httpserver }}/centos7/ with big-enough (not *mini* or *net*) ISO to have all needed pkgs available.
+append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=true devfs=nomount method=http://{{ httpserver }}/centos7/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
 
 # Dell Update CD (R630)
 # Aka DTK = Dell Deployment Toolkit (File isolinux/VER_INFO gives DTK version, e.g. DTK_VERSION_STRING="6.3.0")
