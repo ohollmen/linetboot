@@ -585,7 +585,7 @@ function host_params(f, global, ip,  osid) { // ctype,
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
   // This produces content, not params for partials
-  if (osid.match('ubu') || osid.match('deb')) { // /(ubu|deb)/
+  if (osid.match(/ubu/) || osid.match(/deb/)) { // /(ubu|deb)/
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     var out = osdisk.disk_out_partman(parts);
     console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
@@ -723,7 +723,9 @@ var scriptnames = [
 */
 function script_send(req, res) {
   // #!/bin/sh\n
+  var xip = req.query["ip"];
   var ip = ipaddr_v4(req);
+  if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var url = req.url;
   var fname = req.params.filename;
   
