@@ -72,9 +72,12 @@ else
   for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
 fi
 # Ubu 18: nis, but also ypbind works
-service ypbind enable
-service ypbind stop; service ypbind start
-service autofs enable
-service autofs stop; sleep 5; service autofs start
-service nscd enable
-service nscd stop; sleep 5; service nscd start
+#service ypbind enable
+#service ypbind stop; service ypbind start
+#service autofs enable
+#service autofs stop; sleep 5; service autofs start
+#service nscd enable
+#service nscd stop; sleep 5; service nscd start
+systemctl enable ypbind autofs nscd
+systemctl start ypbind autofs nscd
+
