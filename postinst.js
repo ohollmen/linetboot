@@ -31,6 +31,7 @@ function hostup_init(global, ip) {
   // TODO: get to know if *this* host (or OS profile) needs post-provisioning
   //
   //var hu = {};
+  if (!global.postinst) { return null; }
   var picfg = dclone(global.postinst || {});
   picfg.username = global.postinst.user || process.env['USER'];
   picfg.sshcfg = { host: ip, username: picfg.username, privateKey: netprobe.privkey() }; // pkey
