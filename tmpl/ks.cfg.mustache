@@ -78,10 +78,6 @@ clearpart --drives=sda --all --initlabel
 #autopart
 # Is this only for LVM ?
 #swap --recommended
-# Centos7:
-# - console 1:main : "ValueError: new value non-existent xfs filesystem is not valid as default fs type"
-# - console 2:shell: "blivet: invalid default fstype: XFS instance (0x....) object id 2--" (See also /tmp/storage.log)
-# /tmp/program.log: modprobe xfs ... Return code: 1
 
 # Explicit partitioning (Sizes in MiB) --onpart=hda1
 # --size=10240 --size=1024 --fsoptions --resize=...
@@ -89,9 +85,12 @@ clearpart --drives=sda --all --initlabel
 # bootsize = {{ disk.bootsize }}
 part /boot --asprimary --fstype=ext4 --label="boot" --size=500
 # rootsize = {{ disk.rootsize }}
-part /     --asprimary --fstype=ext4 --label="root" --size=32000
+part /     --asprimary --fstype=ext4 --label="root" --size=32000 --grow
 # swapsize = {{ disk.swapsize }}
-part swap  --asprimary --fstype=swap --label="swap" --size=2048
+part swap  --asprimary --fstype=swap --label="swap" --size=2048 --recommended
+
+# TODO: [[[ diskinfo ]]] - has bootloader/zerombr/clearpart included
+
 # Mount and optionally reformat
 #mount --reformat ext4 /dev/sda1 /boot
 #mount --reformat ext4 /dev/sda2 /
@@ -158,7 +157,7 @@ wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
 %end
 # Some good ideas gathered here
 # --nochroot for seeing installation root as "/target/" (e.g. root homedir: "/target/root")
-# E.g. (old 2008 info) "%post nochroot --log=/tmp/post.log" to copy install time logs to permanent place
+# E.g. (old 2008 info) "%post --nochroot --log=/tmp/post.log" to copy install time logs to permanent place
 # What is the current way: "nochroot" or "--nochroot"
 # %post --log=/root/ks-post.log ... https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
 %post --log=/root/ks-post.log
