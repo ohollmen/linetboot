@@ -19,8 +19,8 @@ timezone --utc {{{ time_zone }}}
 rootpw {{{ user.password }}}
 # Param --isccrypted means password is given in crypt(ed) format
 # legacy: --fullname (no such option)
-# TODO: --groups 
-user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir={{{ user.homedir }}}
+# pass cryptedness: --plaintext / --iscrypted
+user --name={{ user.username }} --gecos "{{ user.fullname }}" --password {{{ user.password }}} --plaintext --homedir={{{ user.homedir }}} --groups=wheel
 # Optional new group
 # group --name devops --gid 1000
 # System Auth (--passalgo ...md5, sha256, sha512). Possibly --enablemd5 is very legacy form for --passalgo=md5)
@@ -78,6 +78,10 @@ clearpart --drives=sda --all --initlabel
 #autopart
 # Is this only for LVM ?
 #swap --recommended
+# Centos7:
+# - console 1:main : "ValueError: new value non-existent xfs filesystem is not valid as default fs type"
+# - console 2:shell: "blivet: invalid default fstype: XFS instance (0x....) object id 2--" (See also /tmp/storage.log)
+# /tmp/program.log: modprobe xfs ... Return code: 1
 
 # Explicit partitioning (Sizes in MiB) --onpart=hda1
 # --size=10240 --size=1024 --fsoptions --resize=...
@@ -98,8 +102,10 @@ part swap  --asprimary --fstype=swap --label="swap" --size=2048
 #################### Network Config and Firewall ###########################
 # Note nameservers need to be separated by comma for for Redhat KS (Preseed has space)
 # Must --activate (to not get installer error: not activating because --activate flag is not set)
-network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers_csv }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
+# DHCP (By device MAC address or device name)
+# network --bootproto=dhcp --device={{ net.macaddress }} --activate
 # network --bootproto=dhcp --device=eth0
+network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers_csv }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
 # firewall --enabled --ssh --smtp --http --ftp
 firewall --disabled
 ########## Installation media: cdrom/harddrive/nfs/url (which may be http/https/ftp) ###############
