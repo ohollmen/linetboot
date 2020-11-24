@@ -29,7 +29,11 @@ fi
 # RH/Centos
 if [ $cen_rc -eq 0 ]; then
    systemctl stop firewalld; systemctl disable firewalld
-   yum list installed -q > ~{{{ username }}}/yum_pkgs.`date -Iminutes`.initial.txt
+   yum list installed -q | grep -v '^Installed Packages' > ~{{{ username }}}/yum_pkgs.`date -Iminutes`.initial.txt
+   # Fix sudoers to allow wheel group to sudo. Assume pristine default RH config.
+   # Seems RH 7 already has this line uncommented
+   perl -pi -e 's/^#\s*%wheel\s+ALL=(ALL)\s+ALL\b/%wheel\tALL=(ALL)\tALL/;' /etc/sudoers
+   
 fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.
@@ -40,7 +44,8 @@ fi
 [ ! -e /usr/local/bin/perl ] && ln -s /usr/bin/perl /usr/local/bin/perl
 
 # Ubuntu(18): /etc/pam.d/common-session ... "session	optional	pam_systemd.so " (Note space at end !)
-# Avid SSH slow-downs
+# Avoid SSH slow-downs
+# Seems this is created *only* at first boot after install, cannot be done here.
 if [ ! -e "/etc/pam.d/common-session" ]; then
   perl -pi -e 's/^(.+?pam_systemd\.so)/## $1/' /etc/pam.d/common-session
 fi
