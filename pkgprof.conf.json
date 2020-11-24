@@ -1,0 +1,4 @@
+{
+  "note": "Resolve from . and ~/.linetboot .. separate cfg var ?",
+  "deb:build": ["pkgprofs/bld.txt"]
+}
