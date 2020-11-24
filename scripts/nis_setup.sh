@@ -37,7 +37,7 @@ fi
 # RH/Centos
 # Seems yp-tools nfs-utils autofs are installed out-of-the-box ?
 if [  $cen_rc -eq 0 ]; then
-  yum install yp-tools nfs-utils autofs nscd
+  yum -y install yp-tools nfs-utils autofs nscd
 fi
 
 # Set domain (todo: make backups of old)
