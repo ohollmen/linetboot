@@ -1,4 +1,4 @@
-# Linetboot kickstart file / template)
+# Linetboot kickstart (file / template)
 ############### Language, Keyboard, Timezone ##################
 lang en_US
 #lang en_US.UTF-8
@@ -170,7 +170,6 @@ wget "http://{{ httpserver }}/scripts/{{{ . }}}"
 chmod a+x {{{ . }}}
 ./{{{ . }}}
 {{/postscripts}}
-wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
 # Not needed if BIOS default boot is SSD/HDD
 # wget "http://{{ httpserver }}/bootreset"
 # Enable legacy network service
