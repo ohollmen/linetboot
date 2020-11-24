@@ -132,19 +132,21 @@ selinux --disabled
 # SSH Temp account
 sshpw --username={{{ user.username }}} '{{{ user.password }}}' --plaintext
 #%packages --excludedocs
-# Ignore pkgs not avail: --ignoremissing
+# Ignore pkgs not avail: --ignoremissing. --nocore would not install (implicit) @Core, --nobase => no @Base
+# Prefix '@' installs a named group. --nodefaults only installs mandatory pkgs
+# '-' in front excludes (a pkg or group)
 %packages --ignoremissing
-@Base
 @Core
+# @Base
 network-scripts
 git
 openssh-server
 python-paramiko
-perl-libwww-perl
-perl-JSON
-yp-tools
-autofs
-nfs-utils
+# perl-libwww-perl
+# perl-JSON
+# yp-tools
+# autofs
+# nfs-utils
 # Do NOT install redhat-lsb
 redhat-lsb-core
 # automake autoconf make
