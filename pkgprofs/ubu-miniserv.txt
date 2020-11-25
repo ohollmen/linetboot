@@ -1,0 +1,44 @@
+# More Minimalistic than default server
+# Initially pasted from `apt-cache depends ubuntu-server`
+# Depends: ...
+acpid # lsb-base init-system-helpers (low deps)
+# apport
+# at
+# bcache-tools # Bcache allows the use of SSDs to cache other block devices.
+# btrfs-tools
+# byobu Byobu is Ubuntu's powerful text-based window manager
+# cloud-guest-utils
+# cloud-initramfs-copymods
+# cloud-initramfs-dyn-netconf
+curl
+# dirmngr # dirmngr is a server for managing and downloading OpenPGP and X.509 certificates,
+ethtool # (low deps)
+# fonts-ubuntu-console
+git
+# gnupg
+# htop
+# lvm2 # This is LVM2, the rewrite of The Linux Logical Volume Manager
+# mdadm # The mdadm utility can be used to create, manage, and monitor MD (multi-disk) arrays for software RAID or multipath I/O
+net-tools # ifconfig (deps on libselinux1)
+# open-iscsi
+# open-vm-tools
+# overlayroot
+patch
+# pollinate
+# screen # terminal multiplexer that runs several separate "screens"
+# software-properties-common
+# sosreport
+# tmux # enables a number of terminals (or windows) to be accessed ... like screen
+# update-notifier-common
+#vim # Try stick with vi ?
+# xfsprogs
+# vim: ...
+#  vim-athena
+#  vim-gtk
+#  vim-gtk3
+#  vim-nox
+# Recommends: grub-legacy-ec2
+#  pv-grub-menu
+#Recommends: landscape-common
+#Recommends: lxd
+#Recommends: snapd
