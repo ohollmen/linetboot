@@ -127,22 +127,24 @@ url --url="http://{{ mirror.hostname }}{{{ mirror.directory }}}"
 
 ################# Packages #######################
 # System Services
-services --disabled="NetworkManager"
+## services --disabled="NetworkManager"
 selinux --disabled
 # SSH Temp account
 sshpw --username={{{ user.username }}} '{{{ user.password }}}' --plaintext
 #%packages --excludedocs
 # Ignore pkgs not avail: --ignoremissing. --nocore would not install (implicit) @Core, --nobase => no @Base
+# NOTE: "--nobase option was removed in version F22, but you are using kickstart syntax version RHEL8)
 # Prefix '@' installs a named group. --nodefaults only installs mandatory pkgs
 # '-' in front excludes (a pkg or group)
-%packages --ignoremissing --nobase
+%packages --ignoremissing
 @Core
 # @Base
-network-scripts
+-@Base
+## network-scripts
 git
 wget
 openssh-server
-python-paramiko
+# python-paramiko
 # perl-libwww-perl
 # perl-JSON
 # yp-tools
@@ -151,8 +153,6 @@ python-paramiko
 # Do NOT install redhat-lsb
 redhat-lsb-core
 # automake autoconf make
-#@ ubuntu-server
-#openssh-server
 %end
 %pre
 #wget -O /tmp/preinstall.sh http://{{ httpserver }}/rhel6_preinstall.sh
