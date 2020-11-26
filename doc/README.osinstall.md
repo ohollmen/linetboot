@@ -77,6 +77,20 @@ On such "Host-up (with SSH)" event Linetboot allows one of 2 kinds of "executabl
 The shell executable (or JS plugin) can then use SSH (or some other SSH related methodology, such as rsync) to perform additional setup
 steps on the host. See Post-Install illustration above to see the flow of events.
 
+### Performing "root" Operations on Host
+
+Almost all the post provisioning ops (e.g. tweak files in /etc/, install packages, launch dameons) must happen as root,
+additionally when doing this remotely and in an automated context poses challenges on getting to "root state" to run
+provisioning commands. Here are some suggestions.
+
+- Use root@... user (directly) via SSH (requires SSH key copy)
+- Use sudo command with normal user - with passwordless sudo authorization
+- Run ansible ad-hoc commands or playbooks (as ansible is very good at switching to supervisory mode) 
+
+<!--
+### Examples of JS callbacks and shell commands
+
+-->
 ## Creating Recipes
 
 Creating recipes for automated operating installation can be tedious,
@@ -137,10 +151,10 @@ You will find plenty of examples in Linetboot `./tmpl/` subdirectory and from Mu
 - Loop through an array of objects where objects have members "name" and "title":
   `{{#people}}- {{ name }} - {{ title }}\n{{/people}}` (In a file this should be split to multiple lines with no need for `\n`)
 - Make a block of template output conditional (true/false evaluation of template var) on a value: `{{#hasloan}}Conditions of Loan: ...{{/hasloan}}`
-- Avoid built-in (HTML geared) escaping rules from triggering by using 3 curlies: {{{ var_with_special_chars_in_value }}}
+- Avoid built-in (HTML geared) escaping rules from triggering by using 3 curlies: {{{ var\_with\_special\_chars\_in\_value }}}
   (This prevents e.g. '/' from becoming "&#x2F;")
 - However never use triple-curlies in a loop or conditional construct (Mnemonic for this: These are not about escaping a
-  string/scalar value) 
+  string/scalar value)
 
 With these simple rules - and especially by reading the full manual - you should be equipped to create correct working templates.
 Logicless templating often shows its limitations in places where you'd want to e.g. join array values, etc (There's no operation "join"
@@ -165,9 +179,9 @@ The layout rules for parameter "tree" are:
 Network settings formulation under key "net" (This is where most customization takes place):
 - Names are close to ansible naming
 - nameserver (array-of-str) - Arry of name server IP Addresses - Often hard to use on templates, thus string versions are provided
-  - nameservers_csv - Name servers as comma separated values (e.g. usable on RH kickstart)
-  - nameservers_ssv - Name servers ans space-separated values (e.g. usable on Preseed, ISC DHCP server)
-  - nameservers_str - Alias for nameservers
+  - nameservers\_csv - Name servers as comma separated values (e.g. usable on RH kickstart)
+  - nameservers\_ssv - Name servers ans space-separated values (e.g. usable on Preseed, ISC DHCP server)
+  - nameservers\_str - Alias for nameservers
   - nameserver_first - First Nameserver for templates and apps where format only allows single name server
 - gateway (str) - Gateway / Router IP Address
 - netmask (str) - Netmask as dotted-quad

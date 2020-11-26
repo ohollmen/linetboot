@@ -5,23 +5,31 @@
 The lineboot basic boot examples have been all successful using
 plain (non-modified) ISO image content as content to boot.
 This means distribtion ISO authors have generally done good job preparing
-their ISO:s to be PXE bootable. What all gets utilized from boot media and when ?
+their ISO:s to be PXE bootable. What all gets utilized from ISO boot media and what point of boot or install ?
 
-- **OS kernel** and **Initial RAM disk** - By *bootloader* (lpxelinux.0).
-  - most internet examples insist making a copy of these (e.g. to root of TFTP server),
-  but Linetboot (with the help of lpxelinux.0) 1) Uses HTTP to load these, not TFTP and 2) Uses them *directly* from media
+- **OS kernel** and **Initial RAM disk**
+  - These get downloaded by *bootloader* (lpxelinux.0)
+  - In legacy / traditional model these get downloaded by TFTP
+  - In modern / Linetboot way with a HTTP-capable bootloader (e.g. lpxelinux.0, note "l" in front) these get downloaded
+    by HTTP (much faster than TFTP)
+  - most internet examples insist making a copy of these (e.g. to root of TFTP or HTTP server),
+  but Linetboot uses them *directly* from loop-mounted media media
   (with a little bit longer and "deeper" path though) instead of making a FS cluttering copy of them (with many OS:s clutter will
-  gradually form). 
-- OS Install packages - By OS Installer.
+  gradually form).
+- OS Install packages
+  - These get downloaded by OS Installer, usually by HTTP (Also legacy methods for TFTP, FTP and NFS exist in installers)
+  - Linetboot favors hinting (on Kernel CLI) installer to use HTTP always when it can (Sometime fallback on e.g. NFS is necessary
+    because of malfunctioning or missing HTTP access)
   - Most OS Distros have a good set (even if not complete set) of packages on ISO image, but some of the "slimmest" distributions
-  leave out the packages altogether out from ISO image and fetch packages from internet repos
+  leave out the packages altogether out from ISO image and fetch packages from internet mirror repos
   - These "slim" distributions are often recognizable by \*net\* or \*mini\* in their name *or* by their ISO size - a 100MB ISO
     is likely to use internet repos and not contain much packages at all on ISO, and a > 900MB is likely to be "self contained" and
-    not use internet repos for install at all (although the models mix too, e.g. for recent updates not contained on ISO).  
+    not use internet repos for install at all (although the models mix too, e.g. for recent updates not contained on ISO).
+  - 
 
 ## Downloading ISO Images
 
-The linetboot example setup uses a single directory (/usr/local/iso) for storing the ISO images.
+The linetboot example setup uses a single directory (`/usr/local/iso`) for storing the ISO images.
 All images are mounted from this "ISO image repo". It's recommended that you use the original
 names of the downloaded images as these tend to be very unique, descriptive and distinctive.
 
@@ -36,7 +44,7 @@ Creating and setting up an ISO image repo directory (e.g):
     # cd for further downloads ... (see below)
     cd iso
 
-Example download:
+Example ISO image download (for Ubuntu 18.04 server):
 
     # Download by wget or curl
     wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
@@ -46,8 +54,8 @@ Example download:
 ## Creating ISO Image mount dirs
 
 All the images used by linetboot can be mounted
-with linux loop-mount method where image looks like file tree under the
-mountpoint.
+with linux loop-mount method, after which image content appears as directory tree under the
+mountpoint. All you need for booting by PXE will be there.
 
 Choose short but descriprive labels on the mounpoints. For systematic approach,
 these same names may be refleced in the pxelinux boot menu "menu label ..." lines.
@@ -84,13 +92,24 @@ The corresponding /etc/fstab entries would be (to allow mounts to persist over a
 loop /usr/local/iso/gparted-live-0.31.0-1-amd64.iso /isomnt/gparted  iso9660 loop 0 0
 
 ```
+If you already mounted images manually, Linetboot allows you to auto-reverse engineer and generate
+either mount commands or /etc/fstab mount lines to loopmount the ISO media:
+
+```
+# By default as /etc/fstab lines ... 
+./linetadm.js loopmounts
+# As commands (You could paste output to bash script if you wanted to avoid modifying /etc/fstab)
+./linetadm.js loopmounts --cmds
+
+```
 
 Linux kernel always mounts ISO images with loop mount read-only and immutable making boot process
 predictable and repeatable.
 With loop-mount method you never copy the thousands of file contained in a ISO image to
 your existing file systems. On the other hand if the very distro and it's version was authored
 in PXE boot un-friendly way (with bugs and malfunctions) you might need to copy the files on image to
-a path location and alter them.
+a path location and alter them. Linetboot is completely fine with this, even if out-of-box boot
+examples/options use loopmount method.
 
 The loop mount on BSD UNIX is said to use combination of `mdconfig` and `mount` commands. In MacOS
 `hdiutil attach ...` facilitates eqivalent of Linuxloop mounts.
@@ -98,14 +117,15 @@ The loop mount on BSD UNIX is said to use combination of `mdconfig` and `mount` 
 After loop-back mounting you should make sure all the bootable distros will be available to linetboot
 via HTTP for the http server configured as "httpserver" in lineboot main config.
 
-## HTTP delivery
+## Media Files HTTP Delivery
 
-Note that with linetboot all boot and package files (from mounted ISO images) are fetched via HTTP, **not** TFTP.
+Note that with linetboot all boot (kernel,ramdisk) and OS Install package files (from mounted ISO images) are fetched
+via HTTP, **not** TFTP. Lineboot itself is a HTTP server that delivers all that content.
 Setup your linetboot server "core.maindocroot" to refer to the ISO mount path (e.g. "/isomnt/")
 
 ## Hints on boot name labels
 
-Boot label names lenght and complexity is up to your usage. If you only install servers (or only desktops)
+Boot label names length and complexity is up to your usage. If you only install servers (or only desktops)
 and you have standardized on OS 32/64 bitness (e.g. never 32 bit again), short labels, such
 as "ubuntu18", "centos7" may suffice.
 
@@ -117,7 +137,7 @@ of your (example) ubuntu variants, your naming convention needs to grow in lengt
     ubuntu-18-i386-dt    # 32 bit Desktop
     ubuntu-18-amd64-dt   # 64 bit Desktop
 
-If you can foresee yourself going to wide selection, got with granular long names from the start.
+If you can foresee yourself going to wide selection, go with granular long names from the start.
 
 ## Updating servers from Dell DTK ISO:s
 
@@ -179,5 +199,12 @@ As an example of this on Dell M640 server the list
 
 # References
 
+Windows boot:
+
 - https://ipxe.org/howto/winpe - Network-booting Windows PE using iPXE
 - https://www.microsoft.com/en-us/download/details.aspx?id=30652 - Windows Assessment and Deployment Kit (ADK) for Windows 8
+
+ISO Media sources:
+
+- http://linux.darkpenguin.net/distros/ubuntu-unity/ubuntu-web/20.04.1/ - Ubuntu Web Remix
+  - Background for Ubuntu Web Remix: https://discourse.ubuntu.com/t/ubuntu-web-remix/19394

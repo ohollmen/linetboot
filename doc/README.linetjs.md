@@ -50,7 +50,7 @@ on multiple hosts.
 Set boot target to be an automated Ubuntu 18.04 Install (`-l ubuntu1804`)
 whenever host is booted in PXE boot mode:
 ```
-./linet.js install -l ubuntu1804 bitcoin-03.comp.com -h bitcoin-04.comp.com -h bitcoin-05.comp.com -h bitcoin-06.comp.com -h bitcoin-07.comp.com
+./linet.js install -l ubuntu1804 -h bitcoin-03.comp.com -h bitcoin-04.comp.com -h bitcoin-05.comp.com -h bitcoin-06.comp.com -h bitcoin-07.comp.com
 ```
 This boot target is in effect till cancelled (currently only available in web gui). Linetboot stores the info abot boot target in TFTP directories.
 
@@ -98,6 +98,7 @@ done
 More condensed and less verbosely explained flow (assumes you understood):
 
 ```
+# memtest - memory testeer X86 boot target
 ./linet.js install -l memtest -h bitcoin-11.comp.com -h bitcoin-12.comp.com
 ./linet.js setpxe -h bitcoin-11.comp.com -h bitcoin-12.comp.com
 ./linet.js boot -h bitcoin-11.comp.com -h bitcoin-12.comp.com

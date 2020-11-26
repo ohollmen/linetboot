@@ -126,6 +126,9 @@ on the host level config the following fields in "ipv4addrs" section are relevan
 
 Note: Does host record "Updates" => "Protected" (checkbox) need to be turned off ?
 
+In terms of DNS The host can be recorded in may ways in InfoBlox (TXT (no address)/A (ip address)/PTR, all these have "Basic" tab only,
+or "Host" record). The machines for PXE boot should be recorded as "Host" records.
+
 ------------------------------------------------------------------------
 
 # Configuring TFTP Server

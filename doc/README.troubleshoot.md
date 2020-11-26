@@ -74,6 +74,67 @@ Any completed install creates:
   The error occurred while applying unattend answer file's <DiskConfiguration> setting. Error code 0x80042565
   - https://social.technet.microsoft.com/Forums/windows/en-US/f5b06914-552a-47db-a52c-cdc646dcb215/windows-could-not-create-a-partition-on-disk-0-the-error-occurred-while-applying-the-unattended?forum=w7itproinstall
 
+- Centos 7: messages for XFS default filesystem
+  - console 1:main : "ValueError: new value non-existent xfs filesystem is not valid as default fs type"
+  - console 2:shell: "blivet: invalid default fstype: XFS instance (0x....) object id 2--" (See also /tmp/storage.log)
+  - xfs is not requested, modprobe xfs fails per /tmp/program.log (modprobe xfs ... Return code: 1)
+  - CLI:"... method=http://mirror.centos.org/centos/7/os/x86_64/ ..." file layout looks like top of /isomnt/centos7
+  - Various articles state reason as mixed media
+  - Change orig method=... to http://10.85.233.180:3000/centos7/
+  - In installer env: /etc/redhat-release: CentOS Linux release 7.9.2009 (Core) when booted with mirror.centos.org
+  - /isomnt/centos7/CentOS_BuildTag: 20200420-1800
+  - Changing kernel CLI to use ISO as mirror helps (method=http://{{ httpserver }}/centos7/)
+  - https://serverfault.com/questions/910020/error-xfs-filesystem-is-not-valid-as-a-default-fs-type
+
+#### Centos 8/RH8: `%post --nobase` discontinued.
+
+- Do not use in (any) ks.cfg content. Solution: just leave out package set `@Base` or state '-@Base' (Shows in /var/log/anaconda/packaging.log
+  as: 18:47:53,415 DBG packaging: excluding group Base').
+- File also explain from what group packages are coming from (e.g.  "Adding packages from group 'core':
+  {<libcomps.Package object 'iwl5150-firmware', ...")
+- Testing by: yum install '@Base' *does* install 133 packages.
+- Note also (form same log): "INF dnf: You can remove cached packages by executing 'dnf clean packages'."
+
+#### RH8 problems about authconfig missing
+
+- Add package authconfig (authselect,authselect-compat) in %package section
+
+#### Centos 8 Networking does not come up
+- networking does not come up at boot
+- /etc/sysconfig/network has NISDOMAIN=.. (only)
+- Install with KS `network --device=$MACADDR` and /etc/sysconfig/network-scripts/ifcfg-eno1 looks good (including
+  ONBOOT=yes, BOOTPROTO=static) and *merely* issuing `systemctl start network` brings interface up !
+- Centos 8 (installer) adds TYPE=Ethernet to (e.g.) ifcfg-eno1 (compared to Centos 7)
+- chkconfig (Pre systemd config) Shows ony item 'network' with 'off' on all runlevels (1..6)
+
+Output of chkconfig (Seems this is related to installed )
+```
+# Centos 8 (Only has network, all "off")
+network        	0:off	1:off	2:off	3:off	4:off	5:off	6:off
+# Centos 7 (with same install settings)
+netconsole     	0:off	1:off	2:off	3:off	4:off	5:off	6:off
+network        	0:off	1:off	2:on	3:on	4:on	5:on	6:off
+```
+- `systemctl start network` brings up network inteface
+- When issuing `sudo systemctl status network` Centos 8 warns about `network-scripts` (legacy package and respective functionality,
+Centos 7 does not do this).
+- Reboot after no persistent change: problem repeats, no interface, but `systemctl start network` brings network up
+- Reboot after setting 'systemctl enable network' - Network fully works
+
+Solution: run `systemctl enable network` in %post scripts
+
+### Centos troubleshooting commands
+
+```
+ip addr show
+chkconfig
+systemctl list-unit-files | grep network
+cat /etc/sysconfig/network
+# NIS
+cat /etc/yp.conf
+grep NISDOMAIN /etc/sysconfig/network
+```
+ 
 #### Ubuntu 18: On screen "Configuring apt" (25% - Retrieveing file 1 of 3)
   - Last file requested (404): /ubuntu18/dists/bionic/InRelease, Misc downloads from (ISO dir): dists/bionic/main/
   - Last packages retreieved (from last to earlier): usbutils, libc-bin, libusb-1.0.0, pciutils, libpci3
@@ -185,6 +246,17 @@ small to be automatically partitioned.
 Problem is (likely) with heuristic d-i recipe setting `d-i partman-auto/init_automatically_partition select biggest_free`, which tries
 to find a free disk and partition to install OS to. Because earlier install succeeded and occupied whole disk, there will be
 no unallocated space per this setting. Solution: do not use `nit_automatically_partition ... select biggest_free`.
+
+### Ubuntu post scripts apt-package installations
+
+Example: Package configuration ... Configuring nis ... Please choose the NIS "domainname" for this system.
+If you want this machine to just be a client, you should enter the NIS domain you wish to join....
+enter a new NIS "domainname" or the name of an existing NIS domain (also a lot of control chars appears on screen). 
+
+Solution: Add "-yq" (aut-yes, quiet) and env. setting DEBIAN_FRONTEND=noninteractive
+```
+DEBIAN_FRONTEND=noninteractive apt-get -yq install ...
+```
 
 ## Testing DHCP Client
 
@@ -328,7 +400,9 @@ loading crashes completeley (screen goes green in iDRAC). Note: Local disk boot 
 (loads ok but crashes with boot menu screen frozen),  
 Same with memdisk based FreeBSD12 Boot. Seems crash is timed at the completion of loading (when bootstrap starts).
 
+## SSH
 
+SSH client reports (with -v turned on) `no hostkey alg`. The host keys are likely corrupt or have wrong perms.
 
 ## References
 - https://stackoverflow.com/questions/8504065/ubuntu-preseed-file-installation-hanging

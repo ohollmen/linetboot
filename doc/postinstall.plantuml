@@ -95,7 +95,7 @@ end
 
 
 pi -> exec: Success: Run
-note right: * JS callback\n* .sh, .py, .pl ...\n* ELF binaries
+note right: * JS callback\n*Shell command\n** .sh, .py, .pl ...\n** ELF binaries\n**ansible
 pi -> pi: Fail: No Action
 
 

@@ -31,9 +31,17 @@ Historical note: There was an intial intent to implement Ubuntu install with kic
 - https://www.linuxtopia.org/online_books/rhel6/rhel_6_installation/rhel_6_installation_s1-kickstart2-options.html
 - https://wiki.centos.org/HowTos/PXE/PXE_Setup - Some useful info on how to setup tftp and pxelinux (called syslinux) in CentOS
 - https://bugs.centos.org/view.php?id=14221 Centos 7 install problems and ideas / tips for Boot CL
+- https://github.com/CentOS/Community-Kickstarts
+- https://docs.fedoraproject.org/en-US/Fedora/22/html/Installation_Guide/sect-kickstart-commands-network.html - Excellent info on KS Networking
+
+## Misc KS Notes
 
 KS & Preseed params: ks=... preseed/file=... preseed/url=http:// (also url=... works)
 Preseed commands can be mixed here (for Ubuntu), but must start w. "preseed ...".
+
+Do not use `%post --nobase` as this basically disables @Base package group, but (at least in Centos7)
+can be much easier accomplished by leaving out / commenting out '@Base', it is not implicitly installed there (Related concern: is @Base imlicit in Centos6/RH6 requiring --nobase ?)
+
 
 # Kernel CL
 

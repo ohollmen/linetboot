@@ -40,10 +40,10 @@ boot-stage binaries running "raw on CPU", not dependent on anything so they do n
 
 ## TFTP Server
 
-Debian/Ubuntu (Default TFTP Server data/content root in older Ubuntu/Debian: `/srv/tftp`, More recent: ``).
+Debian/Ubuntu (Default TFTP Server data/content root in older Ubuntu/Debian: `/srv/tftp`, More recent: `/var/lib/tftpboot`).
 TFTP Server on Linux (mainly because of it's simplicity)"just works" with no config customizations needed.
 
-    # Default TFTP root /srv/tftp (or /var/lib/tftpboot).
+    # Default TFTP root /var/lib/tftpboot  (or /srv/tftp on older Debian/Ubuntu).
     # However this TFTP server package tftpd named does not support TFTP "options" (See RFC 2347).
     # Some X86_64 UEFI BIOSes require options for PXE Boot TFTP phase.
     # Older server (and client) package tftpd, not recommended.
@@ -73,7 +73,7 @@ Test and Verify:
     # Testing
     # Copy dummy to /var/lib/tftpboot and try get
     echo "Hello" | sudo tee  /var/lib/tftpboot/dummy.txt
-    # test getting the test file
+    # test getting the test file by TFTP (client)
     tftp localhost -c get dummy.txt
     cat dummy.txt
 
@@ -182,6 +182,17 @@ Installing the distro bundled ansible is recomended:
 Ansible Requires no special (system wide) configuration.
 Inventory file for ansible operations will be configured as part of Linetboot install flow (Ansible and Linetboot will
 share the inventory config).
+
+### Linetboot as Ansible Accelerator
+
+You can accelerate Ansible facts gathering phase by using Linetboot `fact_path` as Ansible shared "facts cache"
+(e.g. place this into your `~/.bashrc`):
+```
+# Same location as main config 'fact_path' or env. $FACT_PATH (honored by Linetboot)
+export ANSIBLE_CACHE_PLUGIN_CONNECTION=~/hostinfo
+export ANSIBLE_CACHE_PLUGIN=jsonfile
+export ANSIBLE_CACHE_PLUGIN_TIMEOUT=10000000
+```
 
 ## Optional Dependencies / Pre-requisites
 

@@ -40,22 +40,28 @@ ws-002.comp.com loc=Floor+3 ansible_user=mrsmith nis=west
 filer-001 nfs=1
 ```
 
-While key names for key-value pairs are arbitrary, some names have a special meaning (just as for Ansible) meaning for Lineboot.
-The list on notable ones is:
+While key names for key-value pairs are arbitrary (and may be used by ansible playbooks), some names have a special meaning
+(just as for Ansible) meaning for Lineboot. The list on notable host parameters is:
 
 - loc (str) - Free form host location Indicator (e.g. "West+DC", "Main+Office", etc.)
 - use (str) - Brief Usage description (e.g. "MySQL+Prod", "DHCP-Server")
 - dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts, e.g. "dock=1")
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
 - bmccreds (str) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
-- ptt (str) - partition table type with supported values: "mbr" - Master Boot Record / "gpt" - GUID Partition table
+- bmcipaddr (str) - BMC IP Address (when no recorded IPMI info is available)
+- ptt (str) - partition table type for host with supported values: "mbr" - Master Boot Record / "gpt" - GUID Partition table
 - nbp (str) - Network boot program, bootloader to use for this host (name given by DHCP, available by TFTP) 
+- nis (str) - NIS domain name (Like given in /etc/defaultdomain or RH/Centos /etc/sysconfig/network NISDOMAIN=...)
+- nisamm (str) - NIS auto-mounter master map (e.g. `auto.master` or `auto_master`. post scripts default to auto.master)
+- ibsync (bool) - Fetch info from and sync host with proprietary InfoBlox ip address management system
+- preseed (str) - Use an alternative preseed template (or e.g. literal file) for debugging prurposes
+- subiud (str) - Use an alternative Subiquity "user-data" template for debugging purposes 
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
 
-- ansible_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
-- ansible\_sudo\_pass - Ansible sudo password
+- ansible\_user - User to connect to this host as (often not present or overriden by ansible -e / --extra-vars)
+- ansible\_sudo\_pass - Ansible sudo password (See also: ansible\_sudo\_password, ansible\_become\_pass, ansible\_become\_password)
 
 Sharing variables / variable names with ansible is okay as long as they have the same conceptual meaning.
 
@@ -83,22 +89,31 @@ running lineboot server, in the file `~/.linetboot/global.conf.json`. The linebo
 by same name in the top directory of codebase. The following document sections got through the configuration sections within
 linetboot JSON config file, where each section is a "sub-object" within JSON and describes a logical sub-area or sub-system of linetboot.  
 
+The types given in parenthesis below indicate the type of the value in JSON main configuration. The used types are:
+- str - String value, surrounded by double quotes
+- int - Integer value (*no* quotes)
+- bool - Boolean value indicating two possible values. Using integer values 0/1 is fine in most cases
+- array-of-str - Array of simple string values (e.g. ["uno","dos","tres"]) 
+
+Path and filename setting in config allow use of "~" to reflect  
+
 ### Config Top level
 
 Linetboot top-level config properties are fairly global in nature and widely used in many places of application:
 
-- httpserver - The IP address of linetboot HTTP server with optional port (in addr:port notation).
+- httpserver (str) - The IP address of linetboot HTTP server with optional port (in addr:port notation).
   Use port 3000 (Express / linetboot default port) unless you know better what you are doing.
-  This setting is important (and mainly used on) templates (e.g. bootmenu).
-- nfsserver - NFS file server for special installations that cannot cope with HTTP (E.g. Ubuntu
+  This setting is important (and mainly used on) templates (e.g. bootmenu and generated scripts). Do not use hostname
+  as this value gets used in operational contexts where DNS name resolution may not be available.
+- nfsserver (str) - NFS file server for special installations that cannot cope with HTTP (E.g. Ubuntu
   18.04 Desktop seems to not work with HTTP) and require an NFS based installation source.
-- smbserver - SMB/Samba/CIFS file server to use for special installations (mostly Windows WinPE)
+- smbserver (str) - SMB/Samba/CIFS file server to use for special installations (mostly Windows WinPE)
 - fact_path (str) - Ansible fact path (See Env. FACT_PATH) for hosts to be properly enabled and have their info
-  properly utilizable across the application.
-- hostnames (array) - Explicit hostnames that are allowed to be booted/installed by linetboot system.
+  properly utilizable across the application. Note: this is a single path (not colon separated multi-path string)
+- hostnames (array-of-str) - Explicit hostnames that are allowed to be booted/installed by linetboot system. DEPRECATED, do not use.
   These hosts must have their hosts facts recorded in dir registered in FACT_PATH (App init will fail on any host that does not have it's facts down). This is DEPRECATED
 - hostsfile (string) - Filename for simple line-per-host text file with hostnames. Alternative to `hostnames` JSON config 
-  (array valued) key for hostnames (Default: Current users ~/.linetboot/hosts).
+  (array valued) key for hostnames (Default: Current users `~/.linetboot/hosts`).
 
 <!--
 - useurlmapping (bool) - map URL:s instead of using using symlinks to loop mounted ISO FS images.
@@ -106,7 +121,8 @@ Linetboot top-level config properties are fairly global in nature and widely use
 ### Section "core" - Essential Linetboot Settings
 
 - maindocroot (str) - The linetboot HTTP server (Express.js) document root for static boot media and OS Install files delivery
-- appname (str) - "Branded" Application name shown in Web frontend of Linetboot
+- addroot (array-of-str) - Additional document roots for static file delivery (e.g. ["/isoimages", "/usr/local/iso"])
+- appname (str) - "Branded" Application name shown in Web frontend of Linetboot (e.g. "DevOps Boot Portal")
 - hdrbg (str) - Header Background Image URL for frontend "branding"
 - apiena (bool) - N/A
 - addroot (array-of-str) - Array of additional document root paths, e.g. for ISO or raw images for the load-into-memory type of boots
@@ -118,19 +134,23 @@ Linetboot top-level config properties are fairly global in nature and widely use
 Lineboot Admin tool (hostsetup.js) can assist in populating TFTP directories with (boot menu, config subdirs, symlinks etc.)
 config files and bootloader binaries. The settings for "tftp" are:
 
-- host - Remote host where TFTP server operates
-- ipaddr - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file
-  (and its next-server variable).
-- root - TFTP server data (local) root directory
-- bootfile - The default/global bootloader file (found under TFTP server) for configuring DHCP server NBP
-- menutmpl - PXELinux boot menu template file (Used for generating menu by admin tool and for extracting menu labels and descriptions)
-- menutout - Boot menu timeout (In seconds, parameter used for boot menu generation)
-- sync - Flag to sync content (config files, dirs or bootfiles) to remote TFTP server, specified by ipaddr)
+- host (str) - Remote host where TFTP server operates. Used in high level contexts where (host)name resolution is available (e.g.
+  some lineboot templates for high level purposes), but this name should resolve to tftp.ipaddr below 
+- ipaddr (str) - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file
+  (and its next-server variable)
+- root (str) - TFTP server data root directory as absolute path. There's currently expectation of this path matching between
+  local TFTP dirs and remote TFTP dirs. A very common value (e.g. among linux distros) for this is "/var/lib/tftpboot/" 
+- bootfile (str) - The default/global bootloader file (found under TFTP server) for configuring DHCP server NBP
+- menutmpl (str) - PXELinux boot menu template file (Used for generating menu by admin tool and for extracting menu labels and descriptions)
+- menutout (int) - Boot menu timeout (In seconds, parameter used for boot menu generation)
+- sync (bool) - Flag to sync content (config files, dirs or bootfiles) to remote TFTP server, specified by ipaddr)
 
+<!--
 Tentative config vars:
 
 - linftp - Do not use this yet. Flag for using launching linetboot internal TFTP server (which can dynamically serve content for menus, etc)
 - menutitle - Boot menu title (TODO) 
+-->
 
 ### Section "net" - Install time (and general) Network settings
 
@@ -152,8 +172,8 @@ Installation Environment universal parameters (with fairly obvious meanings, not
 - locale (str) - Locale name for Language Locale / Char encoding (e.g. "en_US.UTF-8")
 - keymap (str) - Keyboard map / layout (E.g. "us")
 - time_zone (str) - Timezone of hosts (E.g. "America/Los_Angeles")
-- install_recommends (bool) - Debian Installer (D-I only) setting for installing recommended dependencies (true/false)
-- postscripts (array-of-strings) - Scripts (0 or more) to launch at the end of installation (enter basename only, must be found in `script_path`, see below,
+- install_recommends (bool) - Debian Installer (D-I only) setting for installing recommended dependencies (Use strictly: true/false)
+- postscripts (array-of-str) - Scripts (0 or more) to launch at the end of installation (enter basename only, must be found in `script_path`, see below,
     also note the legacy singular scalar key postscript w. no 's' is supported, but will be discontinued)
 - tmpl_path (str) - Template path (':' delimited path string)
 - script_path (str) - Script path (':' delimited path string)
@@ -171,26 +191,34 @@ See also "net" section above for install-time network settings (Object with glob
 
 This section is for BMC based host management and interactivety by IPMI and RedFish (protocols).
 
-- path - Path location for ipmitool collected files (`$hostname.net.users.txt` and `$hostname.net.users.txt`)
-- user - Username for IPMI and Redfish
-- pass - Password for IPMI and Redfish
-- debug - Enable more verbose debug output on remote management ops
+- path (str) - Path location for ipmitool collected files (`$hostname.net.users.txt` and `$hostname.net.users.txt`)
+- user (str) - Username for IPMI and Redfish
+- pass (str) - Password for IPMI and Redfish
+- debug (int) - Enable more verbose debug output on remote management ops
 
 Note: for hosts which do not comply to global BMC credentials, there's a way to override credentials on the host level
 (See hosts section, bmccreds)
 
 ### Section "ldap" - LDAP Authentication settings
 
-- disa - Force disabling LDAP authentication/connectivity (e.g. temporarily) even if config is complete and working (0/1)
-- host - LDAP Server host (add port to end if needed, e.g. "myhost:8389")
-- binddn - Bind DN (Distinguished name) for user that LDAP connection is bound as (must be authorized to do searches)
-- bindpass - LDAP Bind password for the user
-- userbase - base to seacrh users from (LDAP authentication always involves user search as a first step)
-- scope - LDAP search scope (base, one, sub). You likely want "sub" here.
-- unattr - Username attribute for your LDAP schema (AD: "sAMAccountName", Typical OpenLDAP: "uid")
-- idletout - Idle timeout for LDAP API
-- rebindonerror - Rebind if error occurs on connection (Default: 1)
-- rebindwait - Wait delay for binding after client API has encountered and is reconnecting (Default: 5000)
+- disa (bool) - Force disabling LDAP authentication/connectivity (e.g. temporarily) even if config is complete and working (0/1)
+- host (str) - LDAP Server host (add port to end if needed, e.g. "myhost:8389")
+- binddn (str) - Bind DN (Distinguished name) for user that LDAP connection is bound as (must be authorized to do searches)
+- bindpass (str) - LDAP Bind password for the user
+- userbase (str) - base to seacrh users from (LDAP authentication always involves user search as a first step)
+- scope (str) - LDAP search scope (base, one, sub). You likely want "sub" here.
+- unattr (str) - Username attribute for your LDAP schema (AD: "sAMAccountName", Typical OpenLDAP: "uid")
+- idletout (int) - Idle timeout for LDAP API
+- rebindonerror (bool) - Rebind if error occurs on connection (Default: 1)
+- rebindwait (int) - Wait (ms.) delay for binding after client API has encountered and is reconnecting (Default: 5000)
+
+### Section "iblox" - InfoBlox IPAM
+
+- url (str) - Web API URL, up to the api version number, no trailing slash (e.g. "https://ipam.company.com/wapi/v2.10")
+- user (str) - API Username
+- pass (str) - API password
+- ro (bool) - Indication that Web API access will be read-only
+- syncall (bool) - Consider all inventoried hosts to be synced (not only ones with host parameter ibsync=1)
 
 ## Linetboot Environment Variables
 
@@ -202,6 +230,9 @@ Environment Variables that can override settings in main config:
 - LINETBOOT\_USER\_CONF - OS Install Default User config JSON (See example initialuser.json)
 - LINETBOOT\_IPTRANS\_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
 - LINETBOOT\_SSHKEY\_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
+
+While environment variables always have string values (even when describing e.g. integer number), Linetboot will internally
+coerce / convert values to correct types. 
 
 ## Internal processing of Environment Variables
 
