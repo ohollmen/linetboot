@@ -1750,7 +1750,8 @@ function installrequest(req, res) {
   }
   else { return res.json({status: "ok", data: {"msgarr": msgarr} }); }
 }
-
+/** List MAC address named boot config (or symlink) files in pxelinux.cfg directory.
+ */
 function tftp_listing(req, res) { // global
   var jr = {status: "err", "msg": "Could List PXE Linux dir. "};
   // PXE Linux Config dir
@@ -1768,6 +1769,9 @@ function tftp_listing(req, res) { // global
     var fullfn = path + it.fname;
     if (!it.issym) { it.bootlbl = tboot.menu_deflbl(fullfn); }
   });
+  // Sort by e.g. name. Names joined ONLY on client side ?
+  var byname = function (a, b) { return a.hname.localeCompare(b.hname); };
+  list.sort(byname);
   res.json({"status": "ok", data: list});
 }
 /** Reset the earlier set custom PXE boot back to default boot menu.
@@ -1853,7 +1857,7 @@ function bootreset(req, res) {
   }
   
 }
-/** List Media directories (Under maindocroot)
+/** List Media directories (Under maindocroot) GET: /medialist
  * Additionally probes into stub directories to see if they are mounted (and have one or more files).
  * TODO: Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
  */
