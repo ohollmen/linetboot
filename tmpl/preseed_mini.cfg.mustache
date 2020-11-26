@@ -78,7 +78,7 @@ d-i passwd/user-fullname string {{ user.fullname }}
 d-i passwd/username string {{ user.username }}
 d-i passwd/user-password password {{ user.password }}
 d-i passwd/user-password-again password {{ user.password }}
-d-i passwd/user-default-groups string {{ user.groups }}
+d-i passwd/user-default-groups string {{ user.groups_str }}
 
 d-i user-setup/allow-password-weak boolean true
 d-i user-setup/encrypt-home boolean false

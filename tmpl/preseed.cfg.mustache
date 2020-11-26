@@ -324,7 +324,7 @@ d-i passwd/user-password-again password {{{ user.password }}}
 # d-i passwd/user-password-crypted password {{{ user.password_crypted }}}
 # ... groups=1000(XXXXXXX),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),108(lxd),113(lpadmin),114(sambashare)
 #d-i passwd/user-uid string 1000
-d-i passwd/user-default-groups string {{ user.groups }}
+d-i passwd/user-default-groups string {{ user.groups_str }}
 
 d-i user-setup/allow-password-weak boolean true
 d-i user-setup/encrypt-home boolean false

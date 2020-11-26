@@ -14,6 +14,7 @@
 * // Do env-merging always first (Unless you know a strong reasong to not do it at all)
 * mc.env_merge(mcfg);
 * mc.mainconf_process(mcfg);
+* var user = mc.user_load(global);
 * ```
 */
 var fs = require("fs");
@@ -26,23 +27,26 @@ function error(msg) {
 }
 
 function mainconf_load(globalconf) {
-  
-  
   if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
   var global   = require(globalconf);
   if (!global) { error("Main conf JSON ("+globalconf+") could not be loaded !"); }
   
   return global;
 }
-/** Load Initial User (for OS Installation)
+/** Load Initial User (for OS Installation).
+ * Note: this should take place after tilde expansion (in mainconf_process()) has taken place.
 */
 function user_load(global) {
-  var userconf = process.env["LINETBOOT_USER_CONF"] || global.inst.userconfig || "./initialuser.json";
+  // process.env["LINETBOOT_USER_CONF"] ||
+  var userconf = global.inst.userconfig || "./initialuser.json";
   if (!fs.existsSync(userconf)) { error("User conf ("+userconf+") does not exist !");}
   //var
   user     = require(userconf);
   if (!user) { error("User conf JSON ("+user+") could not be loaded !"); }
-  user.groups  = user.groups.join(" ");
+  // TODO: user.groups_str = ...
+  //OLD: user.groups  = user.groups.join(" ");
+  user.groups_str  = user.groups.join(" ");
+  user.groups_csv  = user.groups.join(",");
   return user;
 }
 
@@ -144,6 +148,7 @@ function disabled_detect(global) {
   // LINETBOOT_USER_CONF  LINETBOOT_ANSIBLE_DEBUG
   // LINETBOOT_SSHKEY_PATH LINETBOOT_DEBUG LINETBOOT_IPTRANS_MAP LINETBOOT_SCRIPT_PATH
 function env_merge(global) {
+  if (!global) { error("env_merge: No handle to main config !"); }
   // TOP
   if (process.env["FACT_PATH"])           { global.fact_path = process.env["FACT_PATH"]; }
   if (process.env["LINETBOOT_DEBUG"])	    { global.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
