@@ -4,7 +4,7 @@
 # Installer kernel / ramdisk on out-of-box Ubuntu TFTP
 # - ubuntu-installer/amd64/linux
 # - ubuntu-installer/amd64/initrd.img
-# Simple generation of file with mustache:
+# Simple generation of menu file with mustache:
 # cat global.conf.json | ./node_modules/mustache/bin/mustache - ./default_inst
 
 #default menu.c32
@@ -76,16 +76,21 @@ kernel hdt.c32
 
 # GpartEd (https://gparted.org/livepxe.php)
 # This boot seems to be sometimes (but rarely) failing on Dell D830 with lack of network detection network card support. Works always with Dell servers.
+# https://gparted.org/gparted-live-boot-param.php => https://gparted.org/display-doc.php?name=debian-live-config
+# nfsopts=vers=3 ? debug=1 httpfs=URL
+# config
+# live-config.timezone={{ inst.time_zone }} utc=yes
 # Certified to Boot with efi64/syslinux.efi
 label gparted
 menu label GpartEd Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/gparted/live/vmlinuz
-append initrd=http://{{ httpserver }}/gparted/live/initrd.img boot=live config components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs
+initrd http://{{ httpserver }}/gparted/live/initrd.img
+append boot=live  components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs keyb=us gl_kbd=us gl_lang=en_US gl_numlk=off gl_batch nolocales
 
 # TODO: System Rescue CD (https://www.system-rescue.org/Download/)
 # systemrescue-7.00-amd64.iso
 # https://www.system-rescue.org/manual/PXE_network_booting/
-# label sysresccd
+# label sysresc
 # menu label System Rescue CD (Live)
 # kernel http://{{ httpserver }}/sysresccd/boot/x86_64/vmlinuz
 # INITRD sysresccd/boot/intel_ucode.img,sysresccd/boot/amd_ucode.img,sysresccd/boot/x86_64/sysresccd.img
@@ -98,11 +103,13 @@ append initrd=http://{{ httpserver }}/gparted/live/initrd.img boot=live config c
 # ...but converted to Linetboot HTTP context.
 # TODO: Convert to current mainstream iso loop mount scheme
 # Certified to Boot with efi64/syslinux.efi (net/dhcp problems)
+# Removed: quiet
 label clonezilla
 menu label Clonezilla Live (Ramdisk Netboot)
 kernel http://{{ httpserver }}/clzilla/live/vmlinuz
+initrd http://{{ httpserver }}/clzilla/live/initrd.img
 # nolocales
-append initrd=http://{{ httpserver }}/clzilla/live/initrd.img boot=live username=user union=overlay config components quiet noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
 
 # Ubuntu 18 Desktop
 # https://askubuntu.com/questions/1069907/why-is-it-not-possible-to-pxe-boot-ubuntu-desktop-editions
@@ -181,8 +188,9 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 label ubuntu2004
 menu label Install Ubuntu 20.04 Server (TODO: Automated)
 kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu20/casper/initrd
 # Note: add kenel param autoinstall. Should not need /isoimages (as it's an added root)
-append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
+append ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
 # NONEED(?): priority=critical auto=true interface=auto ipv6.disable=1
 # MAY NEED: root=/dev/ram0 ramdisk_size=1500000
 # Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
@@ -191,6 +199,7 @@ append initrd=http://{{ httpserver }}/ubuntu20/casper/initrd ip=dhcp url=http://
 label ubuntu1804
 menu label Install Ubuntu 18.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux
+initrd http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz
 # Must have: "auto=true" (Not only "auto", which may be sufficient for older distros)
 # --
 # priority:
@@ -199,7 +208,7 @@ kernel http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/l
 # - Debugging install and show (menu) components: install debconf/priority=medium 
 # hostname=unassigned-hostname domain=unassigned-domain. DEBCONF_DEBUG=5
 # Skip tasksel: tasksel:tasksel/first=""
-append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
+append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu18
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
@@ -210,11 +219,13 @@ append initrd=http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/
 label ubuntu1604
 menu label Install Ubuntu 16.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu16/install/netboot/ubuntu-installer/amd64/linux
-append initrd=http://{{ httpserver }}/ubuntu16/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto ipv6.disable url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu16 preseed/interactive=false
+initrd http://{{ httpserver }}/ubuntu16/install/netboot/ubuntu-installer/amd64/initrd.gz
+append priority=critical auto=true interface=auto ipv6.disable url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu16 preseed/interactive=false
 
 label ubuntu1404
 menu label Install Ubuntu 14.04 Server (Full Automated)
 kernel http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/linux
+initrd http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/initrd.gz
 #kernel ubuntu-installer/amd64/linux
 # Must have: auto=true 
 # --
@@ -222,19 +233,16 @@ kernel http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/l
 # hostname=unassigned-hostname domain=unassigned-domain
 # Seems Ubu14 should use live-installer/net-image (https://ubuntuforums.org/showthread.php?t=2228972)
 # 
-append initrd=http://{{ httpserver }}/ubuntu14/install/netboot/ubuntu-installer/amd64/initrd.gz priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
+append priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu14 live-installer/net-image=http://{{ httpserver }}/ubuntu14/install/filesystem.squashfs
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
-# ISO: CentOS-6.10-x86_64-netinstall.iso (at ... http://isoredirect.centos.org/centos/6/isos/x86_64/)
-# Mirror: http://mirrors.sonic.net/centos/6.10/os/x86_64/ http://mirror.centos.org/centos/6.10/os/x86_64/
-label centos6
-menu label Install CentOS 6 (Full Automated)
-kernel http://{{ httpserver }}/centos6/images/pxeboot/vmlinuz
-# devfs=nomount
-# method=http://{{ httpserver }}/centos6
-# Note: Is auto=true hampering this
-append initrd=http://{{ httpserver }}/centos6/images/pxeboot/initrd.img auto=true devfs=nomount ks=http://{{ httpserver }}/ks.cfg?osid=centos6
+# Centos 8
+label centos8
+menu label CentOS 8.2 (Full Automated)
+kernel http://{{ httpserver }}/centos8/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/centos8/images/pxeboot/initrd.img
+append auto=true devfs=nomount method=http://{{ httpserver }}/centos8/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
 
 # Centos 7
 # See: https://www.tecmint.com/install-pxe-network-boot-server-in-centos-7/
@@ -247,11 +255,30 @@ menu label Install CentOS 7 (Full Automated)
 # Note: Centos 7 says: 'method=' is deprecated. Using 'repo=http://...' instead. --noipv6 should be supported.
 # RH 6 supports param "text" (?)
 kernel http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/centos7/images/pxeboot/initrd.img
 # Change "repo=..." => "method=..."
 # Centos doc: inst.ks= ?
 # NOTE: Cannot use method=http://mirror.centos.org/centos/7/os/x86_64/ as mixed version components may result.
 # Use method=http://{{ httpserver }}/centos7/ with big-enough (not *mini* or *net*) ISO to have all needed pkgs available.
-append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=true devfs=nomount method=http://{{ httpserver }}/centos7/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+append auto=true devfs=nomount method=http://{{ httpserver }}/centos7/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+
+# ISO: CentOS-6.10-x86_64-netinstall.iso (at ... http://isoredirect.centos.org/centos/6/isos/x86_64/)
+# Mirror: http://mirrors.sonic.net/centos/6.10/os/x86_64/ http://mirror.centos.org/centos/6.10/os/x86_64/
+label centos6
+menu label Install CentOS 6 (Full Automated)
+kernel http://{{ httpserver }}/centos6/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/centos6/images/pxeboot/initrd.img
+# devfs=nomount
+# method=http://{{ httpserver }}/centos6
+# Note: Is auto=true hampering this
+append auto=true devfs=nomount ks=http://{{ httpserver }}/ks.cfg?osid=centos6
+
+label redhat8
+menu label RedHat 8.X (TODO: Full Automated)
+kernel http://{{ httpserver }}/redhat8/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/redhat8/images/pxeboot/initrd.img
+append auto=true devfs=nomount method=http://{{ httpserver }}/redhat8/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+
 
 # Dell Update CD (R630)
 # Aka DTK = Dell Deployment Toolkit (File isolinux/VER_INFO gives DTK version, e.g. DTK_VERSION_STRING="6.3.0")
@@ -300,10 +327,11 @@ append initrd=http://{{ httpserver }}/centos7/images/pxeboot/initrd.img auto=tru
 label dell_m640
 menu label Dell M640 Update
 kernel http://{{ httpserver }}/dell_m640/isolinux/SA.1
+initrd http://{{ httpserver }}/dell_m640/isolinux/SA.2
 # DEBUG=0 quiet ... Also: loglevel=1
 # Share types seen/used: cdrom,nfs,tftp,smbfs (Also http is made to be supported by SA.2(initrd file): bin/start-stage3.sh with addition)
 # append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 Stage3_type=cdrom DEBUG=0 quiet BUILD=955 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/drm_files share_script=apply_bundles.sh share_opts=nolock selinux=0
-append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399 root=live:CDLABEL=CDROM rootfstype=auto  rd.live.image  rd.writable.fsimg rd.md=0 rd.dm=0 Stage3_type=CDROM DEBUG=0  BUILD=0 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/ share_script=drm_files/apply_bundles.sh share_opts=nolock selinux=0
+append ramdisk_size=72399 root=live:CDLABEL=CDROM rootfstype=auto  rd.live.image  rd.writable.fsimg rd.md=0 rd.dm=0 Stage3_type=CDROM DEBUG=0  BUILD=0 vmalloc=256M share_type=nfs share_location={{ nfsserver }}:/isomnt/dell_m640/ share_script=drm_files/apply_bundles.sh share_opts=nolock selinux=0
 
 # OpenSuse ISO Install (and autoinst.xml, also called AutoYaST control files (control-files/) ?
 # There's also linuxrc key-value based text (non-XML) format
@@ -329,16 +357,18 @@ append initrd=http://{{ httpserver }}/dell_m640/isolinux/SA.2 ramdisk_size=72399
 label opensuse_tw_64
 menu label OpenSUSE Thumbleweed 64 bit Mini/Net (Auto-Install)
 kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux
+initrd http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd
 # EXAMPLE: append initrd=boot/initrd-life64 isofrom_device=nfs:10.0.0.254:/srv/nfs/ isofrom_system=/openSUSE-Edu-li-f-e.x86_64-42.1.1.iso
 # ALT:  http://download.opensuse.org/tumbleweed/repo/oss/
 # Certified to Boot with efi64/syslinux.efi
-append initrd=http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/initrd showopts textmode=1 install=http://{{ httpserver }}/opensuse_tw_64/ autoyast2=http://{{ httpserver }}/autoinst.xml
+append showopts textmode=1 install=http://{{ httpserver }}/opensuse_tw_64/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
 label opensuse15
 menu label OpenSUSE 15.2 Leap (DVD, Auto-Install)
 kernel http://{{ httpserver }}/opensuse152/boot/x86_64/loader/linux
+initrd http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd
 # console=ttyS0 showopts
-append initrd=http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd  textmode=1  install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
+append textmode=1 install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
 # FreeBSD (12) bootonly.iso (Network installer)
 # One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
