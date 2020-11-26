@@ -455,12 +455,15 @@ function patch_params(d, osid) {
     //d.appendcont = "d-i base-installer/kernel/image select vmlinuz-4.4.0-31-generic\n";
   }
   // Centos* TODO: Change groups to be RH Compatible
-  if (osid.indexOf("centos") > -1) {
+  //if (osid.indexOf("centos") > -1) {
+  if (osid.match(/(centos|redhat)/)) {
     // d.user.groups = ""; // String or array at this point ?
     var net = d.net;
     if (!net) { console.log("No d.net for patching centos (" + osid + ")"); return; }
     // RH and Centos 7 still seems to prefer "em" (Check later ...)
-    net.dev = "em" + net.ifnum;
+    // values: macaddr, "link" (first link connected to switch), bootif (from pxelinux if IPAPPEND 2 in pxelinux.cfg and BOOTIF set)
+    // net.dev = "em" + net.ifnum;
+    net.dev = net.macaddress; // net.macaddress set earlier from facts
   }
 }
 /** Create dummy params (minimal subset) that ONLY depend on global config.
@@ -600,7 +603,7 @@ function host_params(f, global, ip,  osid) { // ctype,
     console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
-  if (osid.match(/(centos|rh)/)) {
+  if (osid.match(/(centos|redhat)/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'centos');
     var out = osdisk.disk_out_ks(parts);
     console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
