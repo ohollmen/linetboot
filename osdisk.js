@@ -452,7 +452,7 @@ function disk_out_ks(parr) {
     // --maxsize= could limit the growth. --ondisk could refere to disk/by-id/...
     // Seems --size=... and --grow can coexist (and must per doc - size is min size)
     pdef += p.size_mb ? " --size="+p.size_mb : "";
-    if (p.fmt == 'swap') { pdef += " --recommended"; } // Ok with size ?
+    if (p.fmt == 'swap') { pdef += " --recommended"; } // Ok with size on Centos 7
     else if (p.extend) { pdef += " --grow"; }
     
     comps.push(pdef);

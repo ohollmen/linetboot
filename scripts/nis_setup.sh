@@ -63,6 +63,7 @@ if [ $cen_rc -eq 0 ]; then
   if [ ! -f "/etc/sysconfig/network" ]; then
     touch "/etc/sysconfig/network"
   fi
+  # TODO: Brute-force simplify by *only* appending (as it is ~100% sure NISDOMAIN does not exist)
   grep '^NISDOMAIN=' /etc/sysconfig/network
   rc=$?
   # Match ...

@@ -229,16 +229,16 @@ Runner.prototype.ansible_run = function (xpara) { //
     fullcmds.push(cont);
   });
   console.log("Generated ("+fullcmds.length+") ansible-playbook commands: \n"+ JSON.stringify(fullcmds, null, 2));
-  /*
+  /* TODO: pass config, attach handlers */
   function runexec(cmd, cb) {
     console.log("Start runexec by calling cproc.exec");
     cproc.exec(cmd, function (err, stdout, stderr) {
       if (err) { return cb(err, null); }
-      console.log("cproc.exec success !");
-      cb(null, 69); // stdout, stderr
+      console.log("Ansible cproc.exec success !");
+      cb(null, 69); // {stdout: stdout, stderr: stderr}
     });
   }
-  */
+  
   // Async Completion
   function oncomplete (err, results) {
     

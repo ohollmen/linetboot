@@ -330,14 +330,19 @@ function file_path_resolve(fname, path) {
   if (!pathmatch.length) { return ""; }
   return pathmatch[0] + "/" + fname;
 }
-/** Derive dynamic members for the groups py regexp patterns.
-* @param groups {array} - Groups array
-* @param hostarr {array} - Array of hosts to reger to during member resolution
+/** Derive dynamic members for the groups (in AoO) by hostname regexp patterns.
+ * Members of inner group objects:
+ * - id - ID label for group
+ * - name - Descrptive name / title for the group
+ * - patt - Hostname pattern
+ * We store the hostnames of groups into the group objects.
+* @param groups {array} - Groups array (of objects, AoO)
+* @param hostarr {array} - Array of host facts to refer to during member resolution
 */
 function group_mems_setup(groups, hostarr) {
     if (!Array.isArray(groups)) { console.log("Configured Groups not in array !"); return null; }
-    var isgrouped = {}; // Flags (counts ?) for hosts joined to any group.
-    var grp_other = [];
+    var isgrouped = {}; // Flags (counts ?) for hosts joined to any/some group (by name pattern).
+    var grp_other = []; // Groups with no pattern and policy == 'nongrouped'
     // TODO: Make more generic and allow matching on any attribute (not just hostname)
     groups.forEach(function (it) {
       
@@ -354,6 +359,7 @@ function group_mems_setup(groups, hostarr) {
     });
     // Second pass for non-grouped
     // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
+    // othernames - hostnames of non-grouped / other hosts
     var othernames = hostarr.reduce(function (oarr, h) {
       if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); }
       return oarr;

@@ -35,8 +35,14 @@ if [ $cen_rc -eq 0 ]; then
    # Fix sudoers to allow wheel group to sudo. Assume pristine default RH config.
    # Seems RH 7 already has this line uncommented
    perl -pi -e 's/^#\s*%wheel\s+ALL=(ALL)\s+ALL\b/%wheel\tALL=(ALL)\tALL/;' /etc/sudoers
-   # TODO: Fix: /etc/yum.repos.d/CentOS-Base.repo ? Seems no need to
-   
+   # TODO: Fix: /etc/yum.repos.d/CentOS-Base.repo ? Seems no need to do anything (Centos 7)
+   # Centos 8 fix (for case where network-scripts installed or ervices --disabled="NetworkManager").
+   # Should not hurt other versions.
+   # But this warns: network.service is not a native service, redirecting to systemd-sysv-install
+   # Executing: /usr/lib/systemd/systemd-sysv-install enable network
+   #systemctl enable network
+   #TODO: Possibly append to /etc/sysconfig/network
+   #echo -e "NETWORKING=yes\n# HOSTNAME=...\nNETWORKING_IPV6=no" >> /etc/sysconfig/network
 fi
 if [ $arch_rc -eq 0 ]; then
   # Arch Fixups ?

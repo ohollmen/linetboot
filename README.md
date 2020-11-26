@@ -25,6 +25,7 @@ Lineboot is ...
 - IPMI, iDRAC and RedFish Remote management system
 - SSH Host keys Inventory - enabling archiving and restoration of SSH hostkeys when hosts get re-imaged
 - a bunch of documentation and hints to help you in any (non-Linetboot) DIY PXE related project
+- Ansible accelerator (thanks to facts caching by Linetboot)
 
 Any of these features can be disabled to use only subset of features.
 There is a special synergy between Ansible and Linetboot on multiple fronts (explained better in the documentation, see below).

@@ -1,4 +1,8 @@
-var dns = require("dns");
+/** @file
+ * # Various Lineboot over-the network probing and monitoring operations.
+ * 
+ */
+var dns  = require("dns");
 var ping = require('ping');
 // Disable 'node-arp' because of pkg manager level (dependency) incompat with node-ssh (Causes mutual
 // uninstall between node-ssh and node-arp, yet manual install (on remote dir) allows linetboot to run fine)
@@ -288,7 +292,12 @@ function stats_proc(hnode, cb) {
       //  console.log("Client stream error ("+hn+"): " + err.toString());
       //  return cb(err, prec);
       //});
-      
+////// Host-up functionality ///////
+
+
+
+
+
 module.exports = {
   privkey: privkey,
   pubkey: pubkey,
