@@ -104,7 +104,7 @@ part swap  --asprimary --fstype=swap --label="swap" --size=2048 --recommended
 # DHCP (By device MAC address or device name)
 # network --bootproto=dhcp --device={{ net.macaddress }} --activate
 # network --bootproto=dhcp --device=eth0
-network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers_csv }} --device={{ net.dev }} --noipv6 --onboot=yes --activate
+network --bootproto=static --hostname={{ net.hostname }} --ip={{ net.ipaddress }} --netmask={{ net.netmask }} --gateway={{ net.gateway }} --nameserver={{ net.nameservers_csv }} --device={{ net.macaddress }} --noipv6 --onboot=yes --activate
 # firewall --enabled --ssh --smtp --http --ftp
 firewall --disabled
 ########## Installation media: cdrom/harddrive/nfs/url (which may be http/https/ftp) ###############
@@ -147,6 +147,9 @@ openssh-server
 # python-paramiko
 # perl-libwww-perl
 # perl-JSON
+# For RH
+ypbind
+rpcbind
 # yp-tools
 # autofs
 # nfs-utils
