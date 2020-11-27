@@ -14,8 +14,11 @@
   <general>
     <mode>
       <!-- Fully unattended => false -->
-      <confirm config:type="boolean">true</confirm>
-      <final_reboot config:type="boolean">false</final_reboot>
+      <confirm config:type="boolean">false</confirm>
+      <final_reboot config:type="boolean">true</final_reboot>
+      <!-- NEW: Try avoid 2nd stage in automated install (behavior of normal distros) -->
+      <second_stage config:type="boolean">false</second_stage>
+      <forceboot config:type="boolean">true</forceboot>
     </mode>
     <self_update config:type="boolean">false</self_update>
   </general>
@@ -125,7 +128,7 @@ exit 0
         <filename>installevent_post.sh</filename>
         <source><![CDATA[
 #!/bin/sh
-echo "Starting installation"
+echo "Starting post-stage"
 wget "http://{{ httpserver }}/installevent/post?uid=$UID&path="`pwd` || true
 exit 0
 ]]>
@@ -144,7 +147,7 @@ exit 0
         <filename>installevent_end.sh</filename>
         <source><![CDATA[
 #!/bin/sh
-echo "Starting installation"
+echo "Ending installation"
 wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
 exit 0
 ]]>
