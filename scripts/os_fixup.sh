@@ -67,7 +67,8 @@ fi
 # Resolve perl scripts hashbang-line ambiguity
 [ ! -e /usr/local/bin/perl ] && ln -s /usr/bin/perl /usr/local/bin/perl
 # Record Install-time command-line (NOT: -p). Problem: file is not in chroot
-#cp /proc/cmdline /root/install_time_proc_cmdline
+# Per golinuxhub.com /mnt is the mount point
+cp /proc/cmdline /mnt/root/install_time_proc_cmdline
 
 # Ubuntu(18): /etc/pam.d/common-session ... "session	optional	pam_systemd.so " (Note space at end !)
 # Avoid SSH slow-downs

@@ -5,16 +5,18 @@
   xmlns:config="http://www.suse.com/1.0/configns">
   <global>
     <activate config:type="boolean">true</activate>
+    <!-- Kernel params (in final system) -->
     <append></append>
     <timeout config:type="integer">10</timeout>
     <boot_mbr>true</boot_mbr>
     <suse_btrfs config:type="boolean">false</suse_btrfs>
     <terminal>console</terminal>
+    <secure_boot>false</secure_boot>
   </global>
   <general>
     <mode>
       <!-- Fully unattended => false -->
-      <confirm config:type="boolean">false</confirm>
+      <confirm config:type="boolean">true</confirm>
       <final_reboot config:type="boolean">true</final_reboot>
       <!-- NEW: Try avoid 2nd stage in automated install (behavior of normal distros) -->
       <second_stage config:type="boolean">false</second_stage>
@@ -51,7 +53,7 @@
   <interfaces config:type="list">
     <interface>
       <bootproto>static</bootproto>
-      <!-- Lecagy elem-name: device -->
+      <!-- Lecagy elem-name: device, new: name -->
       <name>em1</name>
       <startmode>auto</startmode>
       <ipaddr>{{{ net.ipaddress }}}</ipaddr>
@@ -158,7 +160,12 @@ exit 0
   </scripts>
   <software>
     <install_recommended config:type="boolean">false</install_recommended>
+    <patterns config:type="list">
+      <pattern>Minimal</pattern>
+    </patterns>
     <packages config:type="list">
+      <!-- https://www.suse.com/support/kb/doc/?id=000018432 -->
+      <package>kernel-firmware</package>
       <package>openssh</package>
       <package>python3</package>
       <package>iputils</package>
@@ -170,8 +177,12 @@ exit 0
       <package>mc</package>
       <package>nfs-client</package>
     </packages>
+    <remove-packages config:type="list">
+      <!--<package>postfix</package>-->
+    </remove-packages>
     <do_online_update config:type="boolean">false</do_online_update>
   </software>
+  
   <bootloader>
     <loader_type>grub2</loader_type>
   </bootloader>
