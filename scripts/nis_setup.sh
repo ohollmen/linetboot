@@ -67,13 +67,14 @@ if [  $suse_rc -eq 0 ]; then
   # https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-sw-cl.html
   # "zypper install --help" mentions -y (-r repo)
   # See also /etc/nscd.conf
-  zypper -y install ypbind
+  zypper -y install ypbind autofs nscd
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
   # NETCONFIG_NIS_POLICY='' Disables netconfig config updates to yp.conf
   perl -pi -e 's/^NETCONFIG_NIS_POLICY=.+/NETCONFIG_NIS_POLICY=""/;' /etc/sysconfig/network/config
   # Suse-ONLY Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
-  # Note:
-  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS={{{ nisservers_str }}}/;' /etc/sysconfig/network/config
+  # Note: What is delimiter in NETCONFIG_NIS_STATIC_SERVERS value ?
+  # Answer: space (https://github.com/openSUSE/sysconfig/blob/master/doc/README.netconfig)
+  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS="{{{ nisservers_str }}}"/;' /etc/sysconfig/network/config
   #perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
 fi
 ##############################
