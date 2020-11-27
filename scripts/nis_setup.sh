@@ -45,7 +45,8 @@ fi
 if [  $cen_rc -eq 0 ]; then
   # Related: authconfig (old), authselect (new)
   # Centos/RH 8: ypbind rpcbind. systemctl enable --now rpcbind ypbind nis-domainname oddjobd
-  # https://access.redhat.com/solutions/47192
+  # OLDER: https://access.redhat.com/solutions/7247
+  # NEWER: https://access.redhat.com/solutions/47192 (ypbind even in older - is it a dependency)
   yum -y install yp-tools nfs-utils autofs rpcbind nscd
 fi
 if [ $arch_rc -eq 0 ]; then

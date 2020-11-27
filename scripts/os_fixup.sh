@@ -28,9 +28,10 @@ if [ $ubu_rc -eq 0 ]; then
   # On package install use -yq
   apt-get update
 fi
-# RH/Centos
+# RH/Centos (SUSE may also need /etc/sudoers tweak)
 if [ $cen_rc -eq 0 ]; then
-   systemctl stop firewalld; systemctl disable firewalld
+   #systemctl stop firewalld; systemctl disable firewalld
+   systemctl disable --now firewalld
    yum list installed -q | grep -v '^Installed Packages' > ~{{{ username }}}/yum_pkgs.`date -Iminutes`.initial.txt
    # Fix sudoers to allow wheel group to sudo. Assume pristine default RH config.
    # Seems RH 7 already has this line uncommented
@@ -54,6 +55,8 @@ if [ -f "/etc/selinux/config" ]; then
 fi
 # Resolve perl scripts hashbang-line ambiguity
 [ ! -e /usr/local/bin/perl ] && ln -s /usr/bin/perl /usr/local/bin/perl
+# Record Install-time command-line (NOT: -p)
+cp /proc/cmdline /root/install_time_proc_cmdline
 
 # Ubuntu(18): /etc/pam.d/common-session ... "session	optional	pam_systemd.so " (Note space at end !)
 # Avoid SSH slow-downs
