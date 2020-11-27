@@ -95,6 +95,16 @@ Any completed install creates:
 - Testing by: yum install '@Base' *does* install 133 packages.
 - Note also (form same log): "INF dnf: You can remove cached packages by executing 'dnf clean packages'."
 
+#### RH After install problem (Not really a RH problem)
+
+When using yum immediately after installation (e.g.:  sudo yum list available):  
+```
+Updating Subscription Management repositories.
+Unable to read consumer identity
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+```
+Solution: enter license information for this system.
+
 #### RH8 problems about authconfig missing
 
 - Add package authconfig (authselect,authselect-compat) in %package section
@@ -122,6 +132,24 @@ Centos 7 does not do this).
 - Reboot after setting 'systemctl enable network' - Network fully works
 
 Solution: run `systemctl enable network` in %post scripts
+
+### openSUSE after install problem: No (ethernet) network after install
+
+During install network was fine, after install there is no (em1) network (see errors below when trying
+to reestablish network by systemctl).
+`systemctl status network` reports (most left out, wicked is openSUSE's network manager).
+```
+... wicked[3862]: lo    up
+... wicked[3862]: em1   device-not-running
+```
+Trying to restart:
+
+```
+> sudo systemctl restart network
+[...] bnx2x: [bnx2x_init_firmware:13557(em1)]Can't load firmware file bnx2x/bnx2x-e2-7.13.15.0.fw
+[...] bnx2x: [bnx2x_func_hw_init:6002(em1)]Error Loading firmware
+[...] bnx2x: [bnx2x_nic_load:2731(em1)]HW init failed, aborting
+```
 
 ### Centos troubleshooting commands
 
