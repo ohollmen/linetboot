@@ -88,6 +88,7 @@
       <uid>{{{ user.uidnum }}}</uid>
       <gid>{{{ user.uidnum }}}</gid>
       <home>{{{ user.homedir }}}</home>
+      <!-- Additional groups -->
       <groups>wheel</groups>
       <password_settings>
         <expire/>
@@ -106,8 +107,10 @@
         <filename>installevent_start.sh</filename>
         <source><![CDATA[
 #!/bin/sh
-echo "Starting installation"
+echo "Starting installation (in original root)"
 wget "http://{{ httpserver }}/installevent/start?uid=$UID&path="`pwd` || true
+# Copy /proc/cmdline to chroot target
+
 exit 0
 
 ]]>
@@ -158,9 +161,11 @@ exit 0
       <package>iputils</package>
       <package>sudo</package>
       <package>less</package>
-      <package>git-core</package>
+      <!-- Neither git or git-core exists ! -->
+      <!--<package>git-core</package>-->
       <package>wget</package>
       <package>mc</package>
+      <package>nfs-client</package>
     </packages>
     <do_online_update config:type="boolean">false</do_online_update>
   </software>

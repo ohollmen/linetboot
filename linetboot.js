@@ -567,13 +567,14 @@ function oninstallevent(req,res) {
   var ip = osinst.ipaddr_v4(req);
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   var p = req.params;  // :evtype
+  var q = req.query;
   if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
   // lookup facts
   var f = hostcache[ip];
   if (!f) { jr.msg += "Could not lookup facts for " + ip; return res.json(jr); }
   var now = new Date();
-  console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+p.path+", time:" + now.toISOString());
+  console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+q.path+", time:" + now.toISOString());
   //var sq = "INSERT INTO hostinstall () VALUES (?)";
   // sq = "UPDATE hostinstall SET ... WHERE ipadd = ?"
   // conn.exec(sq, params, function (err, result) {});

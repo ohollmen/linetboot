@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Setup NIS. Supports /(Debian GNU|Ubuntu)/ and /(Red Hat|CentOS)/
 # Net ("net") section should have:
 # - nisdomain - NIS domain name (Alternatively host params may have "nis")
@@ -69,14 +69,18 @@ if [  $suse_rc -eq 0 ]; then
   # "zypper install --help" mentions -y (-r repo)
   # See also /etc/nscd.conf
   zypper -y install ypbind autofs nscd
+  zyp_rc=$?
+  echo "Zypper (NIS) Install: rc=$zyp_rc" >> ~/nis_setup_report.txt
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
   # NETCONFIG_NIS_POLICY='' Disables netconfig config updates to yp.conf
+  # NETCONFIG_NIS_SETDOMAINNAME='' Allows domainname to come from /etc/defaultdomain (old school)
   perl -pi -e 's/^NETCONFIG_NIS_POLICY=.+/NETCONFIG_NIS_POLICY=""/;' /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_SETDOMAINNAME=.+/NETCONFIG_NIS_SETDOMAINNAME=""/;' /etc/sysconfig/network/config
   # Suse-ONLY Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
   # Note: What is delimiter in NETCONFIG_NIS_STATIC_SERVERS value ?
   # Answer: space (https://github.com/openSUSE/sysconfig/blob/master/doc/README.netconfig)
-  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS="{{{ nisservers_str }}}"/;' /etc/sysconfig/network/config
-  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS="{{{ nisservers_str }}}"/;' /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
 fi
 ##############################
 # Set domain (todo: make backups of old)
@@ -109,6 +113,7 @@ if [ -z "$NIS_SERVERS" ]; then
   exit 0
 else
   echo -n "" > /etc/yp.conf
+  # Is this line /bin/sh incompatible ?
   for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
 fi
 # Ubu 18: nis, but also ypbind works

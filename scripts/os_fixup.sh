@@ -17,6 +17,9 @@ grep -P '(Red Hat|CentOS)' /etc/os-release
 cen_rc=$?
 grep 'Arch Linux' /etc/os-release
 arch_rc=$?
+# "openSUSE Leap"
+grep 'openSUSE' /etc/os-release
+suse_rc=$?
 # ubuntu
 if [ $ubu_rc -eq 0 ]; then
   # Replace Lineboot host, port and osid pattern with globally good value
@@ -48,6 +51,14 @@ fi
 if [ $arch_rc -eq 0 ]; then
   # Arch Fixups ?
 fi
+if [ $suse_rc -eq 0 ]; then
+  # Suse Fixups ?
+  # {{{ homedir }}}/post-log.txt
+  /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"
+  # Seems SUSE preconfigured users and groups are lacking (e.g. official sudo/wheel group)
+  echo "{{ username }} ALL=(ALL) ALL" >> /etc/sudoers
+  
+fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.
 if [ -f "/etc/selinux/config" ]; then
@@ -55,8 +66,8 @@ if [ -f "/etc/selinux/config" ]; then
 fi
 # Resolve perl scripts hashbang-line ambiguity
 [ ! -e /usr/local/bin/perl ] && ln -s /usr/bin/perl /usr/local/bin/perl
-# Record Install-time command-line (NOT: -p)
-cp /proc/cmdline /root/install_time_proc_cmdline
+# Record Install-time command-line (NOT: -p). Problem: file is not in chroot
+#cp /proc/cmdline /root/install_time_proc_cmdline
 
 # Ubuntu(18): /etc/pam.d/common-session ... "session	optional	pam_systemd.so " (Note space at end !)
 # Avoid SSH slow-downs
