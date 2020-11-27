@@ -785,7 +785,7 @@ function script_send(req, res) {
       p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
     // Universal setup
-    if (p.nisservers) { p.nisservers = p.nisservers.join(' '); }
+    if (p.nisservers) { p.nisservers_str = p.nisservers.join(' '); }
     if (f && f.ansible_distribution) { p.distro = f.ansible_distribution; } // Others: ansible_os_family
     p.httpserver = global.httpserver;
     // console.error("Params: ", p);

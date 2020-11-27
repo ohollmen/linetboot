@@ -13,8 +13,9 @@
   </global>
   <general>
     <mode>
+      <!-- Fully unattended => false -->
       <confirm config:type="boolean">true</confirm>
-      <final_reboot config:type="boolean">true</final_reboot>
+      <final_reboot config:type="boolean">false</final_reboot>
     </mode>
     <self_update config:type="boolean">false</self_update>
   </general>
@@ -31,6 +32,39 @@
   </timezone>
   
   {{> yastdrive }}
+  <networking>
+  <dns>
+    <dhcp_hostname config:type="boolean">false</dhcp_hostname>
+    <domain>{{ net.domain }}</domain>
+    <hostname>{{{ net.hostname }}}</hostname>
+    <nameservers config:type="list">
+      {{#net.nameservers}}<nameserver>{{{ . }}}</nameserver>{{/net.nameservers}}
+    </nameservers>
+    <resolv_conf_policy>auto</resolv_conf_policy>
+    <searchlist config:type="list">
+      {{#net.namesearch}}<search>{{{ . }}}</search>{{/net.namesearch}}
+    </searchlist>
+  </dns>
+  <interfaces config:type="list">
+    <interface>
+      <bootproto>static</bootproto>
+      <!-- Lecagy elem-name: device -->
+      <name>em1</name>
+      <startmode>auto</startmode>
+      <ipaddr>{{{ net.ipaddress }}}</ipaddr>
+      <netmask>{{{ net.netmask }}}</netmask>
+    </interface>
+  </interfaces>
+  <net-udev config:type="list">
+    <rule>
+      <name>em1</name>
+      <rule>ATTR{address}</rule>
+      <value>{{{ net.macaddress }}}</value>
+    </rule>
+  </net-udev>
+  <ipv6 config:type="boolean">false</ipv6>
+  <managed config:type="boolean">false</managed>
+  </networking>
   <firewall>
     <enable_firewall config:type="boolean">false</enable_firewall>
     <start_firewall  config:type="boolean">false</start_firewall>
@@ -44,8 +78,8 @@
   </groups>
   <users config:type="list">
     <user>
-      <user_password>{{{ user.password }}}</user_password>
       <username>root</username>
+      <user_password>{{{ user.password }}}</user_password>
     </user>
     <user>
       <username>{{{ user.username }}}</username>
@@ -68,7 +102,7 @@
   <scripts>
     <pre-scripts config:type="list">
       <script>
-        <filename>start.sh</filename>
+        <filename>installevent_start.sh</filename>
         <source><![CDATA[
 #!/bin/sh
 echo "Starting installation"
@@ -84,11 +118,11 @@ exit 0
     <chroot-scripts config:type="list">
       <script>
         <chrooted config:type="boolean">true</chrooted>
-        <filename>end.sh</filename>
+        <filename>installevent_post.sh</filename>
         <source><![CDATA[
 #!/bin/sh
 echo "Starting installation"
-wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
+wget "http://{{ httpserver }}/installevent/post?uid=$UID&path="`pwd` || true
 exit 0
 ]]>
 
@@ -101,12 +135,27 @@ exit 0
         <location>http://{{{ httpserver }}}/scripts/{{{ . }}}</location>
       </script>
 {{/postscripts}}
+      <script>
+        <chrooted config:type="boolean">true</chrooted>
+        <filename>installevent_end.sh</filename>
+        <source><![CDATA[
+#!/bin/sh
+echo "Starting installation"
+wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
+exit 0
+]]>
+
+        </source>
+      </script>
     </chroot-scripts>
   </scripts>
   <software>
     <packages config:type="list">
       <package>openssh</package>
       <package>python3</package>
+      <package>less</package>
+      <package>git</package>
+      <package>wget</package>
     </packages>
     <do_online_update config:type="boolean">false</do_online_update>
   </software>

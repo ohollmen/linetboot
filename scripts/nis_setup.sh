@@ -4,10 +4,11 @@
 # - nisdomain - NIS domain name (Alternatively host params may have "nis")
 # - nismm - NIS master map (without nay preceding '+' sign
 # - nisservers - (array of) NIS server fqdn names or IP addresses
+# TODO: Allow skipping if NIS is already setup by main recipe (e.g. Yast)
 # TEMPLATE_WITH: user
 NIS_DOM="{{{ nisdomain }}}"
 NIS_AUTO_MASTER_MAP="{{{ nisamm }}}"
-NIS_SERVERS="{{{ nisservers }}}"
+NIS_SERVERS="{{{ nisservers_str }}}"
 POST_LOG={{{ homedir }}}/post-log.txt
 if [ -z "$NIS_AUTO_MASTER_MAP" ]; then
   NIS_AUTO_MASTER_MAP=auto.master
@@ -28,6 +29,10 @@ grep -P '(Red Hat|CentOS)' /etc/os-release
 cen_rc=$?
 grep 'Arch Linux' /etc/os-release
 arch_rc=$?
+# "openSUSE Leap"
+grep 'openSUSE' /etc/os-release
+suse_rc=$?
+
 # Notes: nis deps on portmap, comes with yp.conf
 # rpcbind exists for 1804, replaces portmap
 if [ $ubu_rc -eq 0 ]; then
@@ -38,7 +43,10 @@ fi
 # RH/Centos
 # Seems yp-tools nfs-utils autofs are installed out-of-the-box ?
 if [  $cen_rc -eq 0 ]; then
-  yum -y install yp-tools nfs-utils autofs nscd
+  # Related: authconfig (old), authselect (new)
+  # Centos/RH 8: ypbind rpcbind. systemctl enable --now rpcbind ypbind nis-domainname oddjobd
+  # https://access.redhat.com/solutions/47192
+  yum -y install yp-tools nfs-utils autofs rpcbind nscd
 fi
 if [ $arch_rc -eq 0 ]; then
   # Arch AUR makepkg (https://wiki.archlinux.org/index.php/NIS https://wiki.archlinux.org/index.php/autofs)
@@ -54,6 +62,17 @@ if [ $arch_rc -eq 0 ]; then
   ln -s /etc/auto.master /etc/autofs/auto.master
   
 fi
+if [  $suse_rc -eq 0 ]; then
+  # Zypper ...
+  # https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-sw-cl.html
+  # "zypper install --help" mentions -y (-r repo)
+  # See also /etc/nscd.conf
+  zypper -y install ypbind
+  # Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS={{{ nisservers_str }}}/;' /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
+fi
+##############################
 # Set domain (todo: make backups of old)
 echo "$NIS_DOM" > /etc/defaultdomain
 # Arch: /etc/autofs/auto.master
@@ -74,6 +93,7 @@ if [ $cen_rc -eq 0 ]; then
     echo "NISDOMAIN=$NIS_DOM" >> /etc/sysconfig/network
   fi
 fi
+
 # Simple NIS-favouring naming ordering (removed inlining)
 #cat <<EOT > /etc/nsswitch.conf
 #EOT
@@ -94,6 +114,8 @@ fi
 #service autofs stop; sleep 5; service autofs start
 #service nscd enable
 #service nscd stop; sleep 5; service nscd start
-systemctl enable ypbind autofs nscd
-systemctl start ypbind autofs nscd
-# rpcbind ?
+# Daemon useage: rpcbind (6,7) portmap (8)
+# Centos/RH 8: systemctl enable --now ypbind portmap
+systemctl enable --now ypbind rpcbind autofs nscd 
+# systemctl start ypbind autofs nscd rpcbind
+
