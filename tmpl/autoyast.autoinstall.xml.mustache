@@ -72,7 +72,7 @@
   <groups config:type="list">
     <group>
       <gid>{{{ user.uidnum }}}</gid>
-      <groupname>users</groupname>
+      <groupname>{{{ user.username }}}</groupname>
       <userlist/>
     </group>
   </groups>
@@ -88,6 +88,7 @@
       <uid>{{{ user.uidnum }}}</uid>
       <gid>{{{ user.uidnum }}}</gid>
       <home>{{{ user.homedir }}}</home>
+      <groups>wheel</groups>
       <password_settings>
         <expire/>
         <flag/>
@@ -150,6 +151,7 @@ exit 0
     </chroot-scripts>
   </scripts>
   <software>
+    <install_recommended config:type="boolean">false</install_recommended>
     <packages config:type="list">
       <package>openssh</package>
       <package>python3</package>

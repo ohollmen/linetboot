@@ -68,9 +68,13 @@ if [  $suse_rc -eq 0 ]; then
   # "zypper install --help" mentions -y (-r repo)
   # See also /etc/nscd.conf
   zypper -y install ypbind
-  # Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
-  perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS={{{ nisservers_str }}}/;' /etc/sysconfig/network/config
-  perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
+  # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
+  # NETCONFIG_NIS_POLICY='' Disables netconfig config updates to yp.conf
+  perl -pi -e 's/^NETCONFIG_NIS_POLICY=.+/NETCONFIG_NIS_POLICY=""/;' /etc/sysconfig/network/config
+  # Suse-ONLY Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
+  # Note:
+  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS={{{ nisservers_str }}}/;' /etc/sysconfig/network/config
+  #perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
 fi
 ##############################
 # Set domain (todo: make backups of old)
@@ -95,8 +99,6 @@ if [ $cen_rc -eq 0 ]; then
 fi
 
 # Simple NIS-favouring naming ordering (removed inlining)
-#cat <<EOT > /etc/nsswitch.conf
-#EOT
 wget "http://{{ httpserver }}/scripts/nsswitch.conf" -O /etc/nsswitch.conf
 
 # TODO: /etc/yp.conf (NIS servers: "ypserver nis1.mycomp.com" ....)

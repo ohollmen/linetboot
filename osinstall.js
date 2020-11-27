@@ -764,6 +764,7 @@ function script_send(req, res) {
       p.hps = hps;
       // See NIS info -  "nisservers", "nisdomain" from global.net
       p.nisservers = global.net.nisservers || [];
+      console.log("NIS Servers: ", p.nisservers);
       p.nisdomain  = hps.nis || global.net.nisdomain || "";
       p.nisamm     = hps.nisamm || global.net.nisamm || "auto.master"; // Fall to empty, let script defaut ?
     }
