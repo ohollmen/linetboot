@@ -68,7 +68,10 @@ if [  $suse_rc -eq 0 ]; then
   # https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-sw-cl.html
   # "zypper install --help" mentions -y (--no-confirm, note: must be after install, -r repo)
   # See also /etc/nscd.conf
-  zypper install -y --no-recommends yp-tools nfs-client autofs nscd
+  # yast2-nis-client is a graphical utility
+  # rpcbind
+  # NOTE: ypbind is missing from ISO, os_fixup.sh adds a repo that has it.
+  zypper install -y --no-recommends yp-tools ypbind nfs-client autofs nscd
   zyp_rc=$?
   echo "Zypper (NIS) Install: rc=$zyp_rc" >> ~/nis_setup_report.txt
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.

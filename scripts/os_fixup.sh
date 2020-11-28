@@ -58,7 +58,9 @@ if [ $suse_rc -eq 0 ]; then
   /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"
   # Seems SUSE preconfigured users and groups are lacking (e.g. official sudo/wheel group)
   echo "{{ username }} ALL=(ALL) ALL" >> /etc/sudoers
-  
+  # Add Internet repo for packages missing from ISO (!)
+  zypper addrepo https://download.opensuse.org/distribution/leap/15.2/repo/oss/ os152
+  sudo zypper refresh
 fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.
