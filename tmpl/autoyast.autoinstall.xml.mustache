@@ -18,8 +18,8 @@
       <!-- Fully unattended => false -->
       <confirm config:type="boolean">true</confirm>
       <final_reboot config:type="boolean">true</final_reboot>
-      <!-- NEW: Try avoid 2nd stage in automated install (behavior of normal distros) -->
-      <second_stage config:type="boolean">false</second_stage>
+      <!-- NEW: false => avoid 2nd stage in automated install (behavior of normal distros) -->
+      {{^stage2}}<second_stage config:type="boolean">false</second_stage>{{/stage2}}
       <forceboot config:type="boolean">true</forceboot>
     </mode>
     <self_update config:type="boolean">false</self_update>
@@ -68,8 +68,12 @@
       <value>{{{ net.macaddress }}}</value>
     </rule>
   </net-udev>
+  
   <ipv6 config:type="boolean">false</ipv6>
+  <!-- false means use Wicked, true means use NetworkManager -->
   <managed config:type="boolean">false</managed>
+  <keep_install_network config:type="boolean">true</keep_install_network>
+  
   </networking>
   <firewall>
     <enable_firewall config:type="boolean">false</enable_firewall>
@@ -160,6 +164,7 @@ exit 0
     </chroot-scripts>
   </scripts>
   <software>
+    <!-- Possibly use inst.install_recommends -->
     <install_recommended config:type="boolean">false</install_recommended>
     <!-- This could have pkg "pattern" ( profile ?) like: "Minimal" -->
     <!--<patterns config:type="list"></patterns>-->
@@ -171,8 +176,8 @@ exit 0
       <package>iputils</package>
       <!-- Not useful -->
       <package>net-tools</package>
-      <!-- Actually useful -->
-      <package>net-tools-deprecated</package>
+      <!-- Actually useful But N/A in 15.2 -->
+      <!--<package>net-tools-deprecated</package>-->
       <package>iproute2</package>
       <package>traceroute</package>
       <package>sudo</package>
