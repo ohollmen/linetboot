@@ -445,17 +445,18 @@ append iso
 #   https://github.com/picodotdev/alis - Arch Linux Install Script
 # Arch Linux Challenge: https://docs.google.com/document/d/1kWQRBDL_N0CImPV5t0W2xj7bsAFcZOLmRsf-kX-eR9M/edit#heading=h.kk1966kbedef
 # See also: https://github.com/wrzlbrmft/arch-install
-label archlinux
-menu label Arch Linux (Live Console, No Auto Install)
-kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 # INITRD also allowed instead of append initrd=. Allows multiple vals per https://wiki.archlinux.org/index.php/PXE
 # What is /archlinux/arch/boot/x86_64/initramfs-linux.img ?
 # Fixed "_" to "-" in intel-ucode.img, amd-ucode.img and x86_64/archiso.img => x86_64/initramfs-linux.img
+label archlinux
+menu label Arch Linux (Live Console, No Auto Install)
+kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 # initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
 sysappend 3
 
+# Same as above, but has script=... with alis installer run wrapper (gotten from Linetboot)
 label archlinux_auto
 menu label Arch Linux (Full Auto Install)
 kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
