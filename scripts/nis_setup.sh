@@ -70,6 +70,9 @@ if [  $suse_rc -eq 0 ]; then
   # See also /etc/nscd.conf
   # yast2-nis-client is a graphical utility
   # rpcbind
+  echo "Zypper locks listing follows" >> $POST_LOG
+  zypper locks >> $POST_LOG
+  echo "Start Zypper (NIS) Install ..." >> $POST_LOG
   # NOTE: ypbind is missing from ISO, os_fixup.sh adds a repo that has it.
   zypper install -y --no-recommends yp-tools ypbind nfs-client autofs nscd
   zyp_rc=$?
