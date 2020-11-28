@@ -669,6 +669,11 @@ function netconfig(net, f) {
     if ( ! dns_a.nameservers.includes('127.0.0.53')) { net.nameservers = dns_a.nameservers; }
     
   }
+  // NOTE: Do same for ansible dns_a.search / net.namesearch
+  // On smaller networks there is none.
+  // if (dns_a.search && Array.isArray(dns_a.search)) { net.namesearch = dns_a.search; }
+  
+  //function net_strversions() {
   // TODO: net.nameservers_first (Note: s)
   net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
   net.nameservers_csv  = net.nameservers.join(','); // Account for KS needing nameservers comma-separated
@@ -682,9 +687,15 @@ function netconfig(net, f) {
   // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
   
   net.nameserver_first = net.nameservers[0];
+  //}
+  
   // TODO: net.nameservers_ssv // Space separated values (?)
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
+  // With netmask locked in, calc cidr
+  net.cidr = netmask2CIDR(net.netmask);
+  // Derive network from gateway (for e.g. routing tables)
+  net.network = gateway2network(net.gateway);
   // Domain !
   if (f.ansible_domain) { net.domain = f.ansible_domain; }
   net.hostname = f.ansible_hostname; // What about DNS lookup ?
@@ -702,9 +713,31 @@ function netconfig(net, f) {
   net.ifnum = ifnum;
   console.log("netconfig: ", net);
   return net; // ???
+  
+  function countCharOccurences(string , char) { return string.split(char).length - 1; }
+  function decimalToBinary(dec) { return (dec >>> 0).toString(2); }
+  function getNetMaskParts(nmask) { return nmask.split('.').map(Number); }
+  // Main resolver
+  function netmask2CIDR(netmask) {
+     return countCharOccurences(
+       getNetMaskParts(netmask)
+        // .map(part => decimalToBinary(part)).join(''),'1');
+        .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
+  }
+  
 }
 // OLD: Disks
 
+// TODO: Design graceful recovery (from bad input)
+function gateway2network(gw) {
+  if (!gw || typeof gw != 'string') { console.log("GW not in string"); return ""; }
+  var octarr = gw.split(".");
+  if (octarr.length != 4) { console.log("Warning: Got "+octarr.length+ " octets, expected 4"); }
+  var last = octarr.pop();
+  if (last != '1') { console.log("Warning: Got "+last+ " as last octet of GW, expected 1"); }
+  octarr.push("0");
+  return octarr.join(".");
+}
 ////// Scripts and templating //////////////
 // Little nodepad type list of scripts
 // 
