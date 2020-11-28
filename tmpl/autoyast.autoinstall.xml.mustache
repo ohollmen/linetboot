@@ -72,10 +72,28 @@
   <ipv6 config:type="boolean">false</ipv6>
   <!-- false means use Wicked, true means use NetworkManager -->
   <managed config:type="boolean">false</managed>
-  <keep_install_network config:type="boolean">true</keep_install_network>
-  
+  <!-- <keep_install_network config:type="boolean">true</keep_install_network> -->
+  <!-- Explicit routing (section) to configure network gateway ? -->
+  <routing>
+    <routes config:type="list">
+      <route>
+        <destination>{{{ net.network }}}</destination>
+        <gateway>0.0.0.0</gateway>
+        <netmask>{{{ net.netmask }}}</netmask>
+	<device>em1</device>
+      </route>
+      <route>
+        <destination>default</destination>
+        <gateway>{{{ net.gateway }}}</gateway>
+        <netmask>-</netmask>
+        <device>em1</device>
+      </route>
+      
+    </routes>
+  </routing>
   </networking>
   <firewall>
+    <!-- NOTE: Despite these sysconfig/network/config FIREWALL="yes" -->
     <enable_firewall config:type="boolean">false</enable_firewall>
     <start_firewall  config:type="boolean">false</start_firewall>
   </firewall>
