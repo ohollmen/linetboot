@@ -161,9 +161,8 @@ exit 0
   </scripts>
   <software>
     <install_recommended config:type="boolean">false</install_recommended>
-    <patterns config:type="list">
-      <!-- <pattern>Minimal</pattern> -->
-    </patterns>
+    <!-- This could have pkg "pattern" ( profile ?) like: "Minimal" -->
+    <!--<patterns config:type="list"></patterns>-->
     <packages config:type="list">
       <!-- https://www.suse.com/support/kb/doc/?id=000018432 -->
       <package>kernel-firmware</package>
@@ -172,6 +171,8 @@ exit 0
       <package>iputils</package>
       <!-- Not useful -->
       <package>net-tools</package>
+      <!-- Actually useful -->
+      <package>net-tools-deprecated</package>
       <package>iproute2</package>
       <package>traceroute</package>
       <package>sudo</package>
