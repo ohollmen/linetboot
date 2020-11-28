@@ -68,7 +68,7 @@ if [  $suse_rc -eq 0 ]; then
   # https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-sw-cl.html
   # "zypper install --help" mentions -y (-r repo)
   # See also /etc/nscd.conf
-  zypper -y install ypbind autofs nscd
+  zypper -y install yp-tools nfs-client autofs nscd
   zyp_rc=$?
   echo "Zypper (NIS) Install: rc=$zyp_rc" >> ~/nis_setup_report.txt
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
@@ -113,9 +113,14 @@ if [ -z "$NIS_SERVERS" ]; then
   exit 0
 else
   echo -n "" > /etc/yp.conf
+  echo "Add NIS servers: $NIS_SERVERS to /etc/yp.conf ." >> $POST_LOG
+  echo "NIS servers var: $NIS_SERVERS ... literal: {{{ nisservers_str }}}." >> $POST_LOG
   # Is this line /bin/sh incompatible ?
   for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
+  ls -al /etc/yp.conf >> $POST_LOG
 fi
+
+echo "Restart NIS-client, autofs, nscd services" >> $POST_LOG
 # Ubu 18: nis, but also ypbind works
 #service ypbind enable
 #service ypbind stop; service ypbind start
