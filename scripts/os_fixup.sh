@@ -61,6 +61,8 @@ if [ $suse_rc -eq 0 ]; then
   # Add Internet repo for packages missing from ISO (!)
   zypper addrepo https://download.opensuse.org/distribution/leap/15.2/repo/oss/ os152
   sudo zypper refresh
+  # Log packages
+  zypper search -i > ~{{{ username }}}/zypper_pkgs.`date -Iminutes`.initial.txt
 fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.

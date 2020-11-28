@@ -174,6 +174,7 @@ exit 0
 #!/bin/sh
 echo "Ending installation"
 wget "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
+zypper search -i > /root/zypper_pkgs.`date -Iminutes`.endofinstall.txt
 exit 0
 ]]>
 
@@ -190,6 +191,7 @@ exit 0
       <!-- https://www.suse.com/support/kb/doc/?id=000018432 -->
       <package>kernel-firmware</package>
       <package>openssh</package>
+      <package>curl</package>
       <package>python3</package>
       <package>iputils</package>
       <!-- Not useful -->

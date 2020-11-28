@@ -73,7 +73,8 @@ if [  $suse_rc -eq 0 ]; then
   # NOTE: ypbind is missing from ISO, os_fixup.sh adds a repo that has it.
   zypper install -y --no-recommends yp-tools ypbind nfs-client autofs nscd
   zyp_rc=$?
-  echo "Zypper (NIS) Install: rc=$zyp_rc" >> ~/nis_setup_report.txt
+  echo "Zypper (NIS) Install: rc=$zyp_rc" >> $POST_LOG
+  # OLD: ~/nis_setup_report.txt
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
   # NETCONFIG_NIS_POLICY='' Disables netconfig config updates to yp.conf
   # NETCONFIG_NIS_SETDOMAINNAME='' Allows domainname to come from /etc/defaultdomain (old school)
