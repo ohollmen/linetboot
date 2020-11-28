@@ -53,6 +53,7 @@ if [ $arch_rc -eq 0 ]; then
 fi
 if [ $suse_rc -eq 0 ]; then
   # Suse Fixups ?
+  # zypper refresh
   # {{{ homedir }}}/post-log.txt
   /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"
   # Seems SUSE preconfigured users and groups are lacking (e.g. official sudo/wheel group)
@@ -68,7 +69,7 @@ fi
 [ ! -e /usr/local/bin/perl ] && ln -s /usr/bin/perl /usr/local/bin/perl
 # Record Install-time command-line (NOT: -p). Problem: file is not in chroot
 # Per golinuxhub.com /mnt is the mount point
-cp /proc/cmdline /mnt/root/install_time_proc_cmdline
+# cp /proc/cmdline /mnt/root/install_time_proc_cmdline
 
 # Ubuntu(18): /etc/pam.d/common-session ... "session	optional	pam_systemd.so " (Note space at end !)
 # Avoid SSH slow-downs

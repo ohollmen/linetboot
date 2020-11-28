@@ -66,9 +66,9 @@ fi
 if [  $suse_rc -eq 0 ]; then
   # Zypper ...
   # https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-sw-cl.html
-  # "zypper install --help" mentions -y (-r repo)
+  # "zypper install --help" mentions -y (--no-confirm, note: must be after install, -r repo)
   # See also /etc/nscd.conf
-  zypper -y install yp-tools nfs-client autofs nscd
+  zypper install -y --no-recommends yp-tools nfs-client autofs nscd
   zyp_rc=$?
   echo "Zypper (NIS) Install: rc=$zyp_rc" >> ~/nis_setup_report.txt
   # Prefer old-school universal NIS setup by disabling Suse specific config as advised by SUSE.
@@ -112,7 +112,9 @@ if [ -z "$NIS_SERVERS" ]; then
   echo "Warning: No NIS server configured !" >> $POST_LOG
   exit 0
 else
-  echo -n "" > /etc/yp.conf
+  # suse seems to have yp.conf as symlink. Unlink first
+  #echo -n "" > /etc/yp.conf
+  rm /etc/yp.conf; touch /etc/yp.conf
   echo "Add NIS servers: $NIS_SERVERS to /etc/yp.conf ." >> $POST_LOG
   echo "NIS servers var: $NIS_SERVERS ... literal: {{{ nisservers_str }}}." >> $POST_LOG
   # Is this line /bin/sh incompatible ?
