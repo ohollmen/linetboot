@@ -660,8 +660,8 @@ function mirror_info(global, osid) {
 */
 function netconfig(net, f) {
   if (!f) { console.log("netconfig: No Facts !"); return net; } // No facts, cannot do overrides
-  var anet = f.ansible_default_ipv4; // Ansible Net
-  var dns_a = f.ansible_dns; // Has search,nameservers
+  var anet = f.ansible_default_ipv4 || {}; // Ansible Net
+  var dns_a = f.ansible_dns || {}; // Has search,nameservers
   
   // Override nameservers, gateway and netmask from Ansible facts (if avail)
   if (dns_a.nameservers && Array.isArray(dns_a.nameservers)) {
@@ -695,9 +695,8 @@ function netconfig(net, f) {
   // Rules for extraction:
   // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
   var ifnum; var marr;
-  if      ( (marr = anet.interface.match(/^eth(\d+)/)) )      { ifnum = parseInt(marr[1]); ifnum++; } // Old 0-based
-  
-  else if ( (marr = anet.interface.match(/^(em|eno)(\d+)/)) ) { ifnum = parseInt(marr[2]); } // New 1-based
+  if      ( anet.interface && (marr = anet.interface.match(/^eth(\d+)/)) )      { ifnum = parseInt(marr[1]); ifnum++; } // Old 0-based
+  else if ( anet.interface && (marr = anet.interface.match(/^(em|eno)(\d+)/)) ) { ifnum = parseInt(marr[2]); } // New 1-based
   else { console.log("None of the net-if patterns matched: " + anet.interface); ifnum = 1; } // Guess / Default
   net.ifnum = ifnum;
   /////// Current network Baroadcast //////
