@@ -670,25 +670,14 @@ function netconfig(net, f) {
     
   }
   // NOTE: Do same for ansible dns_a.search / net.namesearch
+  if (dns_a.namesearch && Array.isArray(dns_a.namesearch)) {
+    net.namesearch = dns_a.namesearch;
+  }
   // On smaller networks there is none.
   // if (dns_a.search && Array.isArray(dns_a.search)) { net.namesearch = dns_a.search; }
   
-  //function net_strversions() {
-  // TODO: net.nameservers_first (Note: s)
-  net.nameserver_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
-  net.nameservers_csv  = net.nameservers.join(','); // Account for KS needing nameservers comma-separated
   
-  // NOT: net.nameservers = net.nameservers.join(" ");
-  net.nameservers_ssv = net.nameservers.join(" ");
-  net.nameservers_str = net.nameservers.join(" ");
-  //OLD:net.nameservers = net.nameservers.join(" "); // Debian: space separated
-  // namesearch
-  net.namesearch_str = net.namesearch.join(" ");
-  // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
-  
-  net.nameserver_first = net.nameservers[0];
-  //}
-  
+  net_strversions(net);
   // TODO: net.nameservers_ssv // Space separated values (?)
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
@@ -711,6 +700,11 @@ function netconfig(net, f) {
   else if ( (marr = anet.interface.match(/^(em|eno)(\d+)/)) ) { ifnum = parseInt(marr[2]); } // New 1-based
   else { console.log("None of the net-if patterns matched: " + anet.interface); ifnum = 1; } // Guess / Default
   net.ifnum = ifnum;
+  /////// Current network Baroadcast //////
+  var gwarr = net.gateway.split(".");
+  gwarr[3] = "255";
+  net.broadcast = gwarr.join(".");
+  
   console.log("netconfig: ", net);
   return net; // ???
   
@@ -726,6 +720,34 @@ function netconfig(net, f) {
   }
   
 }
+
+function net_strversions(net) {
+  //var aprops = ["nameservers", "namesearch", "nisservers"];
+  //aprops.forEach((prop) => {
+  //  if (net[prop] && Array.isArray(net[prop])) {
+  //    net[prop+"_str"] = net[prop+"_ssv"] = net[prop].join(" ");
+  //    net[prop+"_csv"] = net[prop].join(",");
+  //    net[prop+"_first"] = net[prop][0];
+  //  }
+  //});
+  // TODO: net.nameservers_first (Note: s)
+  net.nameservers_first = net.nameservers[0]; // E.g. for BSD, that only allows one ?
+  net.nameservers_csv  = net.nameservers.join(','); // Account for KS needing nameservers comma-separated
+  
+  // NOT: net.nameservers = net.nameservers.join(" ");
+  net.nameservers_ssv = net.nameservers.join(" ");
+  net.nameservers_str = net.nameservers.join(" ");
+  //OLD:net.nameservers = net.nameservers.join(" "); // Debian: space separated
+  // namesearch
+  if (net.namesearch) { net.namesearch_str = net.namesearch.join(" "); net.namesearch_csv = net.namesearch.join(","); }
+  // OLD: if (ctype == 'ks') {  } // Eliminate ctype and "ks", make universal
+  
+  // ABOVE: net.nameservers_first = net.nameservers[0];
+  
+  net.nisservers_str = net.nisservers.join(' ');
+  
+  }
+
 // OLD: Disks
 
 // TODO: Design graceful recovery (from bad input)
@@ -881,7 +903,8 @@ module.exports = {
   
   script_send: script_send,
   netconfig: netconfig,
-  
+  net_strversions: net_strversions,
+  // Web Handlers
   recipe_view: recipe_view,
   // Disk
   // OLD: disk_params: disk_params,
