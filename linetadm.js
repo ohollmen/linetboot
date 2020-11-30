@@ -116,6 +116,15 @@ var acts = [
     "needfacts": 1,
     "opts": [],
   },
+  
+  {
+    "id": "dnsmasq",
+    "title": "Generate DNSMasq (DNS/DHCP) configurations",
+    "cb": dnsmasq,
+    "needfacts": 1,
+    "opts": [],
+  },
+  
   /*
   {
     "id": "",
@@ -587,9 +596,10 @@ function bootbins(opts) {
     // Bootloaders: i386-pc/core.0, x86_32-efi/core.efi, x86_64-efi/core.efi
     // Each dir has a bunch of grub *.mod module files.
     // Grub has: grub-mknetdir
-    // ["/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed", "grub/grubnetx64.efi.signed"], // Also grubx64.efi.signed
-    // ["/usr/lib/shim/shimx64.efi.signed", "grub/shimx64.efi.signed"], // Also shimx64.efi
-    // ["", "grub/"] // grub.cfg (menu file)
+    // What is /usr/lib/shim/mmx64.efi
+    ["/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed", "grub/grubnetx64.efi.signed"], // Also grubx64.efi.signed
+    ["/usr/lib/shim/shimx64.efi.signed", "grub/shimx64.efi.signed"], // Also shimx64.efi
+    // NOTHERE: ["", "grub/"] // grub.cfg (menu file)
     // BSD PXE Bootloader from FreeBSD 12 ISO
     // NOTE: Shoud chmod u+w 
     ["/isomnt/freebsd12/boot/pxeboot", "pxeboot"],
@@ -759,11 +769,10 @@ function copydirfiles(srcdir, destdir) {
  * 
  */
 function dhcpconf(opts) {
-  //var mcfg = mc.mainconf_load(process.env["LINETBOOT_GLOBAL_CONF"] || cfg.mainconf);
-  //mc.mainconf_process(mcfg);
   mcfg.fact_path = mcfg.fact_path || process.env["FACT_PATH"];
   // TODO: load from resolved config location, not ./tmpl !!
-  var tmplfn = "./tmpl/isc.dhcpd.conf.mustache";
+  var tmplfn = opts.tmplfn || "./tmpl/isc.dhcpd.conf.mustache";
+  var outbn  = opts.outbn || "/dhcpd.conf";
   if (!fs.existsSync(tmplfn)) { console.error("DHCP Config Template "+tmplfn + " does not exist"); return; }
   var tmpl = fs.readFileSync(tmplfn, 'utf8');
   // Setup params. Possibly embed to a library (osinstall ?)
@@ -771,17 +780,20 @@ function dhcpconf(opts) {
   var net = mcfg.net;
   var dhcp = mcfg.dhcp;
   if (!net) { usage("No network config"); }
-  if (!dhcp) { console.error("Error: No 'dhcp' section in main config (need it for 'range')"); process.exit(1); }
-  net.nameservers = net.nameservers.join(",");
+  if (!dhcp) { apperror("Error: No 'dhcp' section in main config (need it for 'range')");  }
+  //net.nameservers = net.nameservers.join(","); // OLD, see below
+  osinst.netconfig(net, {}); // f = {}
+  //osinst.net_strversions(net); // Called by osinst.netconfig
   // Validate, turn into space separated
-  if (!Array.isArray(dhcp.range) || dhcp.range.length != 2) { console.error("Error:dhcp.range not an array or does not have len==2."); process.exit(1); }
-  dhcp.range = dhcp.range.join(" ");
+  if (!Array.isArray(dhcp.range) || dhcp.range.length != 2) { apperror("Error:dhcp.range not an array or does not have len==2."); }
+  dhcp.range_str = dhcp.range_ssv = dhcp.range.join(" "); // ISC
+  dhcp.range_csv = dhcp.range.join(","); // ???
   var fnet = net_fallback(net);
   // Allow broadcast and subnet to originate from mcfg.net.*, fall back on computed.
   net.broadcast = net.broadcast || fnet.broadcast;
   // Same ... for subnet
   net.subnet = net.subnet || fnet.subnet;
-  console.log(net);
+  console.log("NETWORK:\n", net);
   ////////////////////////////////////////////////
   // Add hosts to mcfg
   //hlr.init(mcfg); // global, gcolls (opt)
@@ -795,16 +807,18 @@ function dhcpconf(opts) {
   hnames = hostarr.map(function (it) { return it.ansible_fqdn; });
   // console.error(hostarr); // Huge
   ////////////// Create Params /////////////////
-  // TODO: Add (temporarily, not de-facto) the NBP if configured
+  // TODO: Add (temporarily, not de-facto) the NBP, nfsroot to facts if configured
   hostarr.forEach(function (f) {
     var p = hlr.hostparams(f) || {};
-    console.log("Params: ", p);
+    //console.log("Params: ", p);
     if (p.nbp) { f.nbp = p.nbp; } // Add NBP
     if (p.nfsroot) { f.nfsroot = p.nfsroot; }
   });
   mcfg.hosts = hostarr;
+  // TODO: partials (as 3rd) ?
   var cont = Mustache.render(tmpl, mcfg);
-  var fn = dhcp.conf_path + "/dhcpd.conf";
+  // TODO: dnsmasq: dhcp.conf_path + "/dnsmasq.conf"
+  var fn = dhcp.conf_path + outbn; // "/dhcpd.conf";
   // Save ?
   if (dhcp.conf_path && fs.existsSync(dhcp.conf_path) && opts.save) {
     console.error("Check "+dhcp.conf_path+" writeability ...");
@@ -814,11 +828,13 @@ function dhcpconf(opts) {
     catch (ex) {console.error("Cannot write "+dhcp.conf_path + " - consider sharing it to a group"); process.exit(0); }
     
     fs.writeFileSync(fn, cont); // {encoding: 'utf8'}
-    console.error("Wrote to ISC DHCP COnfig file: "+fn);
+    // TODO: Parametrize name
+    console.error("Wrote to ISC DHCP Config file: "+fn);
   }
   else {
     console.log(cont);
     console.error("# Redirect output (stdout) to a 'dhcpd.conf' or use --save option to save to "+fn+"");
+    process.exit(0); // If not saved, do not sync either
   }
   // Sync output to remote server and restart ? Any method used / tried here bases on passwordless SSH (scp,rsync,git)
   // For dnsmasq command could refer to /var/run/dnsmasq.pid
@@ -847,7 +863,7 @@ function dhcpconf(opts) {
     var gwarr = net.gateway.split(".");
     gwarr[3] = "255";
     fnet.broadcast = gwarr.join(".");
-    // Subnet
+    // Subnet (aka network)
     var snarr = net.gateway.split(".");
     gwarr[3] = "0";
     fnet.subnet = gwarr.join(".");
@@ -1015,4 +1031,26 @@ If this appeals to you, run:\n  pushd ${cpath}; git init; git add .; git commit 
     
     return 0;
   }
+}
+/** Generate DNSMasq Configs:
+ * - Main config: dnsmasq.conf (dhcp-range, dhcp-boot)
+ * - UNIX/Linux standard: ethers, dnsmasq.hosts (like /etc/hosts)
+ * See also dhcpconf()
+ */
+function dnsmasq(opts) {
+  
+  // TODO: Mark opts tmpl=... and call dhcpconf()
+  opts.tmplfn = "./tmpl/dnsmasq.conf.mustache";
+  opts.oubn   = "/dnsmasq.conf";
+  return dhcpconf(opts);
+  ghcp_conf_gen(mcfg.dhcp);
+  // TODO: dclone() !
+  //var net = osinst.netconfig(mcfg.net);
+  // Must have dhcp,net (net prepared w. variants)
+  mcfg.net = net; // Replace
+  apperror("subcommand dnsmasq is work in progress.");
+}
+
+function ghcp_conf_gen(dhcp) {
+  dhcp.range_csv = dhcp.range.join(",");
 }
