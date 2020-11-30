@@ -151,6 +151,31 @@ Trying to restart:
 [...] bnx2x: [bnx2x_nic_load:2731(em1)]HW init failed, aborting
 ```
 
+
+### openSUSE ...
+
+At successful login
+```
+warning: setlocale: LC_COLLATE: cannot change locale: (en_US.UTF-8): No such file or directory
+```
+sudo systemctl restart network
+```
+Failed to restart network.service: the name org.freedesktop.PolicyKit1 was not provided by any .service files
+```
+Same boot: no 'ip, 'route', 'which'. lsmod | grep bnx shows bnx2x loaded ok.
+Pinging 10.75 network works, but not e.g. 192.* (and route cannot be used to troubleshoot)
+
+Note Something (in XML "software" ?) dropped the package count from ~320+ to ~250 
+
+After default routing can only reach local network. Try testing with manual fix:
+```
+# N/A in openSUSE 15
+sudo route add default gw 192.168.1.1 dev eth1
+# Try
+sudo ip route add default via 192.168.1.1
+```
+If you get an error "Error: Nexthop has invalid gateway", check the gateway (via...) address.
+
 ### Centos troubleshooting commands
 
 ```

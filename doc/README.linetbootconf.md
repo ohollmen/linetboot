@@ -135,9 +135,10 @@ Lineboot Admin tool (hostsetup.js) can assist in populating TFTP directories wit
 config files and bootloader binaries. The settings for "tftp" are:
 
 - host (str) - Remote host where TFTP server operates. Used in high level contexts where (host)name resolution is available (e.g.
-  some lineboot templates for high level purposes), but this name should resolve to tftp.ipaddr below 
-- ipaddr (str) - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file
-  (and its next-server variable)
+  some lineboot templates for high level purposes) and as DHCP option 66 ("TFTP Server name"). This name should resolve to tftp.ipaddr below.
+- ipaddr (str) - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file (and its next-server variable),
+ TFTP Option 150 ("TFTP server address")
+  
 - root (str) - TFTP server data root directory as absolute path. There's currently expectation of this path matching between
   local TFTP dirs and remote TFTP dirs. A very common value (e.g. among linux distros) for this is "/var/lib/tftpboot/" 
 - bootfile (str) - The default/global bootloader file (found under TFTP server) for configuring DHCP server NBP

@@ -65,3 +65,10 @@ echo "install-disk /dev/sda" > /tmp/olay/install_recipe.txt
 sudo mount -t overlay overlay -o lowerdir=/isomnt/archlinux/,upperdir=/tmp/olay/,workdir=/tmp/olay_work /merged
 ```
 The downside is if loop mount already exists, a new dir (/merged) is created.
+
+#### Q: I'm getting Error: listen EADDRINUSE: address already in use :::3000 and Linetboot does not start - what is happening ?
+
+You already have one Linetboot (process) instance running and the tcp/ip port 3000 is in use by that server.
+Grep the process list (e.g. by pattern "node") for the earlier instance and get rid of it (kill $PID).
+Then start the new lineboot instance. If you used PM2 or systemd to launch the old instance, prefer to use them
+to terminate earlier process, instead of "raw" kill.

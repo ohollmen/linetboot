@@ -143,6 +143,11 @@ References:
 https://social.technet.microsoft.com/Forums/office/en-US/df523791-7424-4be7-b468-548bbd0c95ed/discconfiguration-error-0x80042565?forum=w8itproinstall  Windows could not create partition on disk 0. The error occurred while applying the unattend answer file's <DiskConfiguration> setting. Error code: 0x80042565
 0x80042565: The specified partition type is not valid for this operation.
 https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh824989(v=win.10)?redirectedfrom=MSDN Adding device drivers
+- https://www.linuxjournal.com/magazine/pxe-magic-flexible-network-booting-menus Linux Journal "starter" article (by Kyle Rankin)
+
+Bootloaders, comparisons:
+- https://askubuntu.com/questions/651902/what-is-the-difference-between-grub-and-syslinux - Grub vs. syslinux
+- https://wiki.archlinux.org/index.php/kernel_parameters - Arch Wiki on Kernel CL params in various bootloaders
 
 Filesystem access and perms
 
