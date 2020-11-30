@@ -13,7 +13,7 @@ option broadcast-address {{{ net.broadcast }}};
 ## option routers 192.168.1.254;
 option routers {{{ dhcp.gateway }}};
 # Comma separated (like RH)
-option domain-name-servers {{{ net.nameservers }}};
+option domain-name-servers {{{ net.nameservers_csv }}};
 option domain-name "{{{ net.domain }}}";
 # Needed (by what) Seems to be very optional ?
 # server-name "";
@@ -32,17 +32,17 @@ ignore-client-uids true;
 # Change /etc/syslog.conf to define final log file
 # log-facility local7;
 
-subnet {{{ net.subnet }}} netmask {{{ net.netmask }}} {
+subnet {{{ net.network }}} netmask {{{ net.netmask }}} {
   # Possibly multiple ranges
-  range {{{ dhcp.range }}};
+  range {{{ dhcp.range_str }}};
   # range 192.168.1.150 192.168.1.200;
   # This can have subnet specific options
   # option subnet-mask {{{ net.netmask }}};
   # option broadcast-address {{{ net.broadcast }}};
   # option routers {{{ dhcp.gateway }}};
   ### Core PXE Settings ##############
-  # Needed ? Does PXE firmware even have ability to resolve the DNS name ?
-  # server-name "{{{ tftp.host }}}";
+  # Needed (Opt. 66) ? Does PXE firmware even have ability to resolve the DNS name ?
+  server-name "{{{ tftp.host }}}";
   next-server {{ tftp.ipaddr }};
   filename "{{{ tftp.bootfile }}}";
   {{#hosts}}
