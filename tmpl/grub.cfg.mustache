@@ -29,10 +29,20 @@
 # - Package grub-efi-amd64-signed grubnetx64.efi.signed (rename to - optional) => grubx64.efi
 # - package grub-common has unicode.pf2 (grub/fonts/unicode.pf2)
 # - Package grub-imageboot - important for booting ISO/raw images
+#
+# Note: grub seems to be lacking the "append" ()
 set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 set default 0
 set timeout=10
+
+menuentry 'Gparted Live' {
+  ##label gparted
+  ## menu label GpartEd Live (Ramdisk Netboot)
+  linux http://{{ httpserver }}/gparted/live/vmlinuz boot=live  components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs keyb=us gl_kbd=us gl_lang=en_US gl_numlk=off gl_batch nolocales
+  initrd http://{{ httpserver }}/gparted/live/initrd.img
+  #append 
+}
 
 menuentry "Ubuntu 18 Server Non-auto" {
   set gfxpayload=keep
@@ -48,3 +58,4 @@ menuentry 'Centos 7 Auto Install' {
   initrdefi http://{{ httpserver }}/centos7/images/pxeboot/initrd.img
   echo "Booting installation kernel"
 }
+
