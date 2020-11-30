@@ -1,0 +1,57 @@
+# DNSMasq Main Config (by Linetboot)
+# Stripped-down content with no extensive config kw documentation.
+# https://github.com/imp/dnsmasq/blob/master/dnsmasq.conf.example
+
+# Do NOT read /etc/hosts
+no-hosts
+# Read hosts from dnsmasq dedicated hosts file.
+addn-hosts=/etc/dnsmasq_hosts
+
+# Read /etc/ethers (for MAC ... IP associations)
+read-ethers
+
+# Range, Lease duration
+dhcp-range={{{ dhcp.range_csv }}},24h
+
+dhcp-lease-max=200
+dhcp-authoritative
+# State files, logs
+dhcp-leasefile=/var/lib/dhcp/dnsmasq.leases
+pid-file=/var/run/dnsmasq.pid
+# Example of host-ino triplet in dnsmasq.dhcp-hosts.conf
+# dhcp-host=E8:5B:5B:69:0A:47,LG-NAS,192.168.1.62
+conf-file=/etc/dnsmasq.dhcp-hosts.conf
+# Onlease callback-script
+# dhcp-script=/etc/dnsmasq.onlease.sh
+log-dhcp
+log-facility=/var/log/dnsmasq.log
+
+domain={{{ net.domain }}}
+
+# Router/Gateway (DHCP Option 3) other than host running dnsmasq (ICS option routers)
+dhcp-option=option:router,{{{ dhcp.gateway }}}
+# For compat for weird MS oriented clients (Name servers)
+dhcp-option=5,{{{ net.nameservers_csv }}}
+
+# Boot server for VOIP Phones
+dhcp-option=128,{{{ tftp.ipaddr }}}
+# 120 sip-server ...
+
+# Label efi client
+dhcp-match=set:efi64,option:client-arch,7
+
+
+#  bootfile, next server, boot server (Options: )
+# Global Default
+dhcp-boot=lpxelinux.0,{{{ tftp.host }}},{{{ tftp.ipaddr }}}
+# Machines tagged "efi64"
+dhcp-boot=tag:efi64,efi64/syslinux.efi,{{{ tftp.host }}},{{{ tftp.ipaddr }}}
+
+# NIS
+{{#nisservers}}
+#dhcp-option=40,{{{ . }}}
+{{/nisservers}}
+#dhcp-option=40,{{{ net.nisservers_csv }}}
+
+# DNS Name search
+#dhcp-option=option:domain-search,{{{ net.namesearch_csv }}}
