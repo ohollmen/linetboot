@@ -28,7 +28,7 @@ chown -R {{ username }}:{{ username }} {{{ homedir }}}/.ssh
 # ssh-keygen needs write access (After install -rw-r--r--)
 chmod a+rw /dev/null
 ls -al /dev/null >> $POST_LOG
-/bin/su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
+su -l '{{ username }}' -p -c '/usr/bin/ssh-keygen -t rsa -b 4096 -f {{{ homedir }}}/.ssh/id_rsa -N ""' >> $POST_LOG 2>&1
 echo "Created SSH keys: rc=$?" >> $POST_LOG
 #if [ ! -d "{{{ homedir }}}/.ssh" ]; then
 if [ ! -f "{{{ homedir }}}/.ssh/id_rsa.pub" ]; then
@@ -41,7 +41,8 @@ fi
 SSH_AKFN={{{ homedir }}}/.ssh/authorized_keys
 SSH_HKEY_PATH=/etc/ssh/
 SSH_BK_PATH=/etc/ssh/keybackup
-/bin/su -l '{{ username }}' -c "/usr/bin/curl -v -X POST -H 'content-type: application/octet-stream' http://{{{ httpserver }}}/keyxchange --data-binary @{{{ homedir }}}/.ssh/id_rsa.pub -o ${SSH_AKFN}" >> $POST_LOG 2>&1
+# Suse: /usr/bin/su (Others: /bin/su)
+su -l '{{ username }}' -c "/usr/bin/curl -v -X POST -H 'content-type: application/octet-stream' http://{{{ httpserver }}}/keyxchange --data-binary @{{{ homedir }}}/.ssh/id_rsa.pub -o ${SSH_AKFN}" >> $POST_LOG 2>&1
 echo "Uploaded self-key and downloaded linet-user-key (for authorized_keys): $?" >> $POST_LOG
 chown {{ username }}:{{ username }} ${SSH_AKFN}
 mkdir -p $SSH_BK_PATH

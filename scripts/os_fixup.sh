@@ -6,6 +6,7 @@
 # TEMPLATE_WITH: user
 
 OS_DISTRO_PREV="{{{ distro }}}"
+POST_LOG={{{ homedir }}}/fixup-log.txt
 # /dev/null seems to be needed at least by apt-key and ssh-keygen (!), rights broken in Ubuntu
 chmod a+rw /dev/null
 # Detect OS (See also: $OSTYPE, `uname` (Linux), uname -a (Ubuntu))
@@ -20,6 +21,12 @@ arch_rc=$?
 # "openSUSE Leap"
 grep 'openSUSE' /etc/os-release
 suse_rc=$?
+# Intial (unconditional) loggings
+cp /etc/os-release "{{{ homedir }}}/os-release"
+echo "Paths of essentials (curl,wget)" >> $POST_LOG
+echo "uname result: "`uname -a` >> $POST_LOG
+which curl >> $POST_LOG
+which wget >> $POST_LOG
 # ubuntu
 if [ $ubu_rc -eq 0 ]; then
   # Replace Lineboot host, port and osid pattern with globally good value
@@ -53,6 +60,9 @@ if [ $arch_rc -eq 0 ]; then
 fi
 if [ $suse_rc -eq 0 ]; then
   # Suse Fixups ?
+  # Replace with internal-sftp (It's enough if enabled at next boot)
+  perl -pi -e 's/^(Subsystem\s+sftp.+)/## $1/;' /etc/ssh/sshd_config
+  echo "Subsystem sftp internal-sftp" >> /etc/ssh/sshd_config
   # zypper refresh
   # {{{ homedir }}}/post-log.txt
   /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"

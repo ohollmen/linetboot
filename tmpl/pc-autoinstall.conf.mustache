@@ -14,5 +14,5 @@ nic_config: dhcp-all
 # Cannot do someting like:
 # nic_config: em0 {{ net.ipaddress }} {{ net.netmask }}
 # If 2 or more, what's delimiter ?
-nic_dns: {{ net.nameserver_first }}
+nic_dns: {{ net.nameservers_first }}
 nic_gateway: {{ net.gateway }}

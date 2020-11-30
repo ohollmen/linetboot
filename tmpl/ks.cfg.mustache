@@ -136,6 +136,7 @@ sshpw --username={{{ user.username }}} '{{{ user.password }}}' --plaintext
 # NOTE: "--nobase option was removed in version F22, but you are using kickstart syntax version RHEL8)
 # Prefix '@' installs a named group. --nodefaults only installs mandatory pkgs
 # '-' in front excludes (a pkg or group)
+# RH8 may need authconfig (or latter substitute)
 %packages --ignoremissing
 @Core
 # @Base

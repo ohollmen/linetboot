@@ -19,4 +19,4 @@ POST_LOG={{{ homedir }}}/post-log.txt
 touch $POST_LOG; chown {{ username }}:{{ username }} $POST_LOG
 echo "Running as:"`id` >> $POST_LOG
 echo User root PATH $PATH >> $POST_LOG
-sudo su -l '{{ username }}' -c 'echo User: $USER PATH: $PATH' > $POST_LOG
+sudo su -l '{{ username }}' -c 'echo User(su): $USER PATH: $PATH' >> $POST_LOG
