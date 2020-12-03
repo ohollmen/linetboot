@@ -833,7 +833,7 @@ function script_send(req, res) {
       }
       // Already have NIS servers if needed ...
     } // TODO: adjust
-    if (tpc == 'global') { p = global; }
+    if (tpc == 'global') { p = global; p.postscripts = p.inst.postscripts; }
     // Custom ... how to formulate this into more static config ? clone global and add ?
     if (tpc == 'sysinfo') {
       // process.getgid(); // Need to translate
