@@ -27,6 +27,7 @@ echo "Paths of essentials (curl,wget)" >> $POST_LOG
 echo "uname result: "`uname -a` >> $POST_LOG
 which curl >> $POST_LOG
 which wget >> $POST_LOG
+echo "Grep ret: ubu: $ubu_rc , cen: $cen_rc , arch: $arch_rc , suse: $suse_rc"
 # ubuntu
 if [ $ubu_rc -eq 0 ]; then
   # Replace Lineboot host, port and osid pattern with globally good value
@@ -57,24 +58,45 @@ if [ $cen_rc -eq 0 ]; then
 fi
 if [ $arch_rc -eq 0 ]; then
   # Arch Fixups ?
+  echo "Arch fixups"
+  # Enable and Start ssh (installed earlier)
+  systemctl enable --now sshd
+  # Create minimal yay config for initial user
+  yay_conf=~{{{ username }}}/.config/yay/config.json
+  echo '{"sudoloop": true}' > $yay_conf; chown {{{ username }}}:{{{ username }}} $yay_conf
 fi
 if [ $suse_rc -eq 0 ]; then
-  # Suse Fixups ?
+  echo "Suse Fixups starting" >> $POST_LOG
+  echo "os_fixup: Try killing zypper locks." >> $POST_LOG
+  # NOTE: This will sadly kill (parent) Yast
+  # kill `cat /var/run/zypp.pid`
   # Replace with internal-sftp (It's enough if enabled at next boot)
-  perl -pi -e 's/^(Subsystem\s+sftp.+)/## $1/;' /etc/ssh/sshd_config
-  echo "Subsystem sftp internal-sftp" >> /etc/ssh/sshd_config
+  # Note: strage perl replace behaviour - lot of backup files (env. vars ? aliases ? special ramdisk perl)
+  # perl -pi -e 's/^(Subsystem\s+sftp.+)/## $1/;' /etc/ssh/sshd_config
+  # Even Single replace makes not difference
+  # perl -pi -e 's/^(Subsystem\s+sftp.+)/Subsystem sftp internal-sftp/;' /etc/ssh/sshd_config
+  # Seems to verrite despite append (?)
+  # echo "Subsystem sftp internal-sftp" >> /etc/ssh/sshd_config
+  ls -al /etc/ssh/sshd_config >> $POST_LOG
   # zypper refresh
   # {{{ homedir }}}/post-log.txt
   /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"
   # Seems SUSE preconfigured users and groups are lacking (e.g. official sudo/wheel group)
   echo "{{ username }} ALL=(ALL) ALL" >> /etc/sudoers
   # Add Internet repo for packages missing from ISO (!). -p for priority
+  echo "Start adding repo ..." >> $POST_LOG
   zypper addrepo https://download.opensuse.org/distribution/leap/15.2/repo/oss/ os152
-  zypper refresh os152
+  zyp_rc=$?
+  echo "addrepo: rc=$zyp_rc" >> $POST_LOG
+  zypper refresh os152 >> $POST_LOG 2>&1
+  zyp_rc=$?
+  echo "refresh: rc=$zyp_rc" >> $POST_LOG
   # If locks left, e.g. rc=7 later (also: cleanlocks)
   #zypper removelock -r os152 ...
   # Log packages
   zypper search -i > ~{{{ username }}}/zypper_pkgs.`date -Iminutes`.initial.txt
+  zyp_rc=$?
+  echo "search(all-inst): rc=$zyp_rc" >> $POST_LOG
 fi
 # Universal, but because of distro file layout (e.g. /etc) differences these may
 # target only particular distros.
