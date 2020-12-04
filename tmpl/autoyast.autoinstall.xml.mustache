@@ -194,6 +194,17 @@ exit 0
       </script>
     </chroot-scripts>
   </scripts>
+<add-on>
+  <add_on_others config:type="list">
+    <listentry>
+      <media_url>https://download.opensuse.org/distribution/leap/15.2/repo/oss/</media_url>
+      <!--<media_url>https://download.opensuse.org/repositories/YaST:/Head/openSUSE_Leap_15.2/</media_url>-->
+      <alias>os152</alias>
+      <priority config:type="integer">99</priority>
+      <name>OpenSUSE Internet Repo</name>
+    </listentry>
+  </add_on_others>
+</add-on>
   <software>
     <!-- Possibly use inst.install_recommends -->
     <install_recommended config:type="boolean">false</install_recommended>
@@ -225,6 +236,9 @@ exit 0
       <package>vim</package>
       <package>ca-certificates</package>
       <package>ca-certificates-mozilla</package>
+      <package>ypbind</package>
+      <package>autofs</package>
+      <package>nscd</package>
     </packages>
     <remove-packages config:type="list">
       <!--<package>postfix</package>-->
