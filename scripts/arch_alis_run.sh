@@ -38,3 +38,4 @@ chmod a+x {{{ . }}}
 ./{{{ . }}}
 {{/postscripts}}
 curl "http://{{ httpserver }}/installevent/end?uid=$UID&path="`pwd` || true
+#./alis-reboot.sh
