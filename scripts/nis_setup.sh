@@ -9,14 +9,16 @@
 NIS_DOM="{{{ nisdomain }}}"
 NIS_AUTO_MASTER_MAP="{{{ nisamm }}}"
 NIS_SERVERS="{{{ nisservers_str }}}"
-POST_LOG={{{ homedir }}}/post-log.txt
+POST_LOG={{{ homedir }}}/nis-log.txt
+
+touch $POST_LOG; chown {{{ username }}}:{{{ username }}} $POST_LOG
 if [ -z "$NIS_AUTO_MASTER_MAP" ]; then
   NIS_AUTO_MASTER_MAP=auto.master
   echo "Falling back to auto master map name auto.master" >> $POST_LOG
 fi
 
 
-if [ -z "$NIS_DOM"]; then
+if [ -z "$NIS_DOM" ]; then
   echo "No NIS domain is configured globally or for this machine. Skip NIS setup" >> $POST_LOG
   exit 0
 fi
@@ -51,7 +53,17 @@ if [  $cen_rc -eq 0 ]; then
 fi
 if [ $arch_rc -eq 0 ]; then
   # Arch AUR makepkg (https://wiki.archlinux.org/index.php/NIS https://wiki.archlinux.org/index.php/autofs)
-  #
+  # Install AUR helper yay here (NOT Necessary if alis AUR="yay !aurman" !)
+  #git clone https://aur.archlinux.org/yay-git.git
+  #cd yay-git
+  #makepkg -si --noconfirm
+  # ypbind / ypbind-mt
+  ###### AUR (yay, aurman) installations #########
+  # Avoid Interactivity ?
+  # su -l '{{ username }}' -p -c 'yes | yay -S ypbind-mt' > {{{ homedir }}}/yay_install.txt 
+  # We seem to have now: ypbind, rpcbind, nscd (automount as pacman pkg)
+  # Delay start after config writing ?
+  # sudo systemctl start ypbind
   #pacman -S yp-tools ypbind-mt autofs nscd
   echo "NISDOMAINNAME=\"$NIS_DOM\"" > /etc/nisdomainname
   # nscd -i <database> ?
@@ -70,11 +82,25 @@ if [  $suse_rc -eq 0 ]; then
   # See also /etc/nscd.conf
   # yast2-nis-client is a graphical utility
   # rpcbind
+  # Note: there are logs of script runs in: /var/adm/autoinstall/logs/*.sh
+  # ZYPP_LOCKFILE_ROOT="/var/run/autoyast"
+  ps -ef >> {{{ homedir }}}/processes.txt
+  zypper removelock >> $POST_LOG
+  zyp_rc=$?
+  echo "Zypper rm-locks: rc=$zyp_rc" >> $POST_LOG
+  echo "Zypper pid: "`cat /var/run/zypp.pid` >> $POST_LOG
+  # kill `cat /var/run/zypp.pid`
+  echo "ZYPP_LOCKFILE_ROOT=$ZYPP_LOCKFILE_ROOT" >> $POST_LOG
+  ls -al /etc/zypp/locks >> $POST_LOG
   echo "Zypper locks listing follows" >> $POST_LOG
-  zypper locks >> $POST_LOG
+  zypper locks >> $POST_LOG 2>&1
+  zyp_rc=$?
+  echo "zypper-locks: rc=$zyp_rc"
   echo "Start Zypper (NIS) Install ..." >> $POST_LOG
-  # NOTE: ypbind is missing from ISO, os_fixup.sh adds a repo that has it.
-  zypper install -y --no-recommends yp-tools ypbind nfs-client autofs nscd
+  # NOTE: ypbind is missing from ISO, autoyast (os_fixup.sh can't add) adds a repo that has it.
+  # Somehow autofs, nscd missing. nfs-client ypbind, yp-tools ok (ypbind deps on rpcbind, yp-tools).
+  # --no-recommends
+  zypper install -y  yp-tools ypbind nfs-client autofs nscd >> $POST_LOG 2>&1
   zyp_rc=$?
   echo "Zypper (NIS) Install: rc=$zyp_rc" >> $POST_LOG
   # OLD: ~/nis_setup_report.txt
