@@ -87,6 +87,15 @@ provisioning commands. Here are some suggestions.
 - Use sudo command with normal user - with passwordless sudo authorization
 - Run ansible ad-hoc commands or playbooks (as ansible is very good at switching to supervisory mode) 
 
+### Environment variables set up for Post Install
+
+The following environment variables are setup for Post Install shell command (postinst.js):
+
+- POSTOP_IP: IP Address of Client host 
+- POSTOP_USER: The username of Initial user 
+- LINETBOOT_URL: The lineboot server http user (with port, without trailing slash)
+- LINETBOOT_HOSTS_FILE: Linetboot hosts filename (as absolute path)
+
 <!--
 ### Examples of JS callbacks and shell commands
 

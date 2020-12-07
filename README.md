@@ -52,15 +52,16 @@ concurrently tasking aplications.
 - MacOS (effectively BSD UNIX, tested on MacOS "High Sierra")
 - Likely in any Linux distro (or UNIX-like OS) that has node.js available
 
-Install and config instructions aim to advice on the minute config differences needed on various platforms
+Install and config instructions aim to advise on the minute config differences needed on various platforms
 (Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
 
 -------------------------------------------------
 
-## Systems Linetboot Collaborates with
+## Systems Linetboot Collaborates with:
 
-- DHCP Server - PXE Bootload process starts here
-- TFTP Server - Hosts 1st stage bootloaders
+- DHCP Server - PXE Bootload process starts here, DHCP gives instructions to PXE on where to look for bootloader (TFTP server name or IP,
+  filename within the server)
+- TFTP Server - Hosts 1st stage bootloaders and bootloader config file(s) (e.g. menu with boot targets, also possible bootloader add-on modules)
 - LDAP Directory (Optional) - Used for optional authentication
 
 If you use Lineboot only as Asset Inventory, the DHCP and TFTP would note be needed.
