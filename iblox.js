@@ -116,7 +116,7 @@ function ib_show_hosts(req, res) {
       // Assign IB info
       n.ipaddr_ib  = ibent.ipv4addr || '';
       n.macaddr_ib = ibent.mac || '';
-      n.usedhcp    = ibent.configure_for_dhcp || '';
+      n.usedhcp    = ibent.configure_for_dhcp;
       return n;
     });
     res.json({status: "ok", data: ress2});
