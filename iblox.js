@@ -110,8 +110,10 @@ function ib_show_hosts(req, res) {
       //it.ipaddr = anet.address;
       //it.macaddr = anet.macaddress;
       // TODO: Add Iblox -side info on top already here ?
-      var ibent = (it.data && it.data.ipv4addrs && it.data.ipv4addrs[0]) ? it.data.ipv4addrs[0] : null;
+      //var ibent = (it.data && it.data.ipv4addrs && it.data.ipv4addrs[0]) ? it.data.ipv4addrs[0] : null;
+      var ibent = (it.ibi) ? it.ibi : null;
       if (!ibent) { return n; }
+      // Assign IB info
       n.ipaddr_ib  = ibent.ipv4addr || '';
       n.macaddr_ib = ibent.mac || '';
       n.usedhcp    = ibent.configure_for_dhcp || '';
