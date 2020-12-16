@@ -71,6 +71,7 @@ var tset = [
 ];
 
 /** Web handler for the Iblox info view.
+ * Fetch info from iblox REST API, transform and forward to Lineboot view.
  */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
@@ -128,7 +129,7 @@ function ib_show_hosts(req, res) {
 function ibhs_fetch(syncarr, cb, res, jr) {
   async.map(syncarr, ibh_fetch, function (err, ress) {
     if (err) { jr.msg += "async.map error:"+err; console.log(jr.msg); return res.json(jr); }
-    // Filter out faulty
+    // Filter out faulty (e.g. null - items)
     ress = ress.filter((it) => { return it; });
     //ipmac_cmds_gen(ress, res);
     cb(ress, res);
@@ -142,15 +143,18 @@ function ibhs_fetch(syncarr, cb, res, jr) {
  * @return Return object with HTTP level info and PUT data parameters or null if update info object cannot be created.
  */
 function ipmac_gen(f, ibh) {
-  var ipi = ibh.ipv4addrs;
+  var ipi = ibh.ipv4addrs; // IP information
   if (!ipi) { return null; }
   if (ipi.length > 1) { return null; }
   // --data '{"ipv4addrs": [{"ipv4addr": "10.0.0.1", "mac": "01:23:45:67:89:ab"}]}'
   
   if (ipi[0].ipv4addr != f.ansible_default_ipv4.address) { console.log("IP address conflict IB vs. Ans. Skipping..."); return null; }
+  // Sync/update to force (data below)
   var addrs = [{ipv4addr: f.ansible_default_ipv4.address, mac: f.ansible_default_ipv4.macaddress, configure_for_dhcp: true}];
+  // Info from IB
+  var ibi = {ipv4addr: f.ansible_default_ipv4.address, mac: ipi[0].mac, configure_for_dhcp: ipi[0].configure_for_dhcp };
   // URL with ibh._ref works because this is host level change. Network level: ipi[0]._ref
-  var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}};
+  var o = {method: 'PUT', url: ibconf.url+"/"+ibh._ref, data: {ipv4addrs: addrs}, ibi: ibi};
   o.hname = f.ansible_fqdn;
   return o;
 }
