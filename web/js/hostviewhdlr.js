@@ -467,6 +467,9 @@ function ibloxlist(ev, act) {
     */
     d.data.forEach((item) => {
       if ((item.ipaddr_ib != item.ipaddr) || (item.macaddr_ib != item.macaddr)) { item.needsync = 1; }
+      // Bug in jsgrid ? boolean false in "usedhcp" (type: "string") shows as "", but true shows as "true" (!).
+      // See also jsgrid doc and jsGrid.fields for type-extensibility.
+      item.usedhcp = typeof item.usedhcp == 'undefined' ? "" : item.usedhcp.toString();
     });
     showgrid(act.gridid, d.data, fldinfo.iblox);
     $('.syncbutt').click(function () {
