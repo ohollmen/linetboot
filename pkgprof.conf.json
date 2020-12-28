@@ -1,4 +1,5 @@
 {
   "note": "Resolve from . and ~/.linetboot .. separate cfg var ?",
-  "deb:build": ["pkgprofs/bld.txt"]
+  "deb:build": ["pkgprofs/ubu-miniserv.txt", "pkgprofs/bld.txt",
+"docker.io", "wget", {}, ["pidgin"], "#nothing"]
 }

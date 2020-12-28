@@ -118,5 +118,6 @@ module.exports = {
   pkgset: pkgset,
   intersect: intersect,
   diff: diff,
-  union: union
+  union: union,
+  pkgs_from_txt: pkgs_from_txt
 };
