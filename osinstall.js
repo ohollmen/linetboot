@@ -134,7 +134,7 @@ var recipes = [
   {"url":"/alis.conf",       "ctype":"arch",       "tmpl":"alis.conf.mustache"},
   // Ubuntu 20 ("focal") "autoinstall" yaml (not template-only) ?
   // https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
-  {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", pp: pp_subiquity},
+  {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", "pp": pp_subiquity},
 ];
 function pp_subiquity(out, d) {
   var out2 = out;
@@ -373,6 +373,7 @@ function preseed_gen(req, res) {
   //MAYBE:else  if (p.insttmpl) {} // Load overriden template - BAD Because cannot hard-wire for arbitrary OS
   //var skip = skip_host_params(url); // skip_host_params[req.route.path];
   var d; // Final template params
+  // Test implied osid
   if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
   if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
   if (url.match(/\buser-data\b/i)) { osid = 'ubuntu20'; } // As this *cannot* be fitted into URL
@@ -559,7 +560,8 @@ function host_params(f, global, ip,  osid) { // ctype,
   netconfig(net, f);
   ///////////////////////// DISK /////////////////////////////////
   // Ansible based legacy calc (imitation of original disk).
-  console.error("Calling disk_params(f) (by:" + f + ")");
+  // TODO: Disable, as this is not currently used (make configurable / optional).
+  console.error("Calling (Ansible-based) disk_params(f) (by:" + f + ")");
   var disk = osdisk.disk_params(f);
   
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
@@ -627,17 +629,49 @@ function host_params(f, global, ip,  osid) { // ctype,
   return d;
 }
 
+/** Choose final package repo mirror servers for currently installed OS.
+ * Use (global config and) osid (passed as query variable from boot menu) to drive the decision.
+ * Set "hostname" and "directory" (path on mirror server) into the returned object.
+ * @param global - Main config structure
+ * @param osid - OS id label (from boot menu recipe URL) passed to server as query parameter
+ * @return Mirror config with "hostname" and "directory".
+ */
 function mirror_info(global, osid) {
+  osid = osid || "";
   var choose_mirror = function (mir) {
     return mir.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
   };
+  // Logic for missing osid but calls via URL "/preseed.cfg" (e.g. "Recipes Preview")
+  // if (!osid && somerecipe.url.match(/^preseed.cfg/)) { osid = 'ubuntu'; } // Force Default on missing osid ?
+  var mirrcfg = {osid: osid, hostname: global.httpserver, directory: ""}; // Default to local linetboot server and loop mounted media as mirror
+  // Lookup table from osid to directory name and optional internet mirror.
+  // Keep items ordered with most specific first (e.g. ^ubuntu16 before ^ubuntu).
+  var mirrmatch = [
+    {patt: "^ubuntu16", dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com", useinet: true},
+    {patt: "^ubuntu",   dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com"}, // ^ubuntu(\d+) ?
+    {patt: "^debian",   dir: "/debian", inetmirrhost: "ftp.us.debian.org"}
+  ];
+  var mn = mirrmatch.find((mn) => { return osid.match(new RegExp(mn.patt)); });
+  if (mn) {
+     
+     mirrcfg.directory = mn.dir; // Always
+     if (global.inst.inetmirror || mn.useinet) { mirrcfg.hostname = mn.inetmirrhost; }
+     console.log("Got-mn:", mn);
+     console.log("Generated-mirrcfg:", mirrcfg);
+     return mirrcfg;
+  }
   // For ubuntu / debian set params to use in mirror/http/hostname and mirror/http/directory
   if (global.inst.inetmirror) {
     if (osid.match(/^ubuntu/)) { return {hostname: "us.archive.ubuntu.com", directory: "/ubuntu"}; }
-    // See: https://www.debian.org/mirror/list
-    // http://ftp.us.debian.org/debian/
+    // See: https://www.debian.org/mirror/list (http://ftp.us.debian.org/debian/)
     if (osid.match(/^debian/)) { return {hostname: "ftp.us.debian.org", directory: "/debian"}; }
   }
+  // Local linetboot based mirror (from loopmounted ISO image), only hostname changes
+  else {
+    if (osid.match(/^ubuntu/)) { return {hostname: global.httpserver, directory: "/ubuntu"}; }
+    if (osid.match(/^debian/)) { return {hostname: global.httpserver, directory: "/debian"}; }
+  }
+  // Legacy (to-be-discontinued) way of choosing mirror
   var mirror = global.mirrors.filter(choose_mirror)[0]; // NOT: Set {} by default
   if (!mirror) {
     console.log("No Mirror"); return null;
