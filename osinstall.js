@@ -221,13 +221,13 @@ function templates_load() {
 function init(conf, _patch_params) { // TODO: 2nd: _mod
   // ["hostcache", "global", "iptrans", "user"];
   hostcache = conf.hostcache ;
-  if (!hostcache) {throw "No hostcache"}
+  if (!hostcache) { throw "No hostcache"; }
   global = conf.global;
-  if (!global) {throw "No global config";}
+  if (!global)    { throw "No global config"; }
   iptrans = conf.iptrans;
-  if (!iptrans) {throw "No iptrans config";}
+  if (!iptrans)   { throw "No iptrans config"; }
   user = conf.user;
-  if (!user) { throw "No initial user config"; }
+  if (!user)      { throw "No initial user config"; }
   // TODO: patch_params
   if (_patch_params) { console.log("Got patch_params customization CB"); patch_params_custom = _patch_params; }
   // NEW: if (_mod) { mod = _mod; }
@@ -355,7 +355,7 @@ function preseed_gen(req, res) {
   // OLD location for tmplmap = {}, skip_host_params = {}
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
   var recipe = recipes_idx[url]; // Lookup recipe
-  if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return }
+  if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return; }
   var ctype = url_config_type(url); // tmplmap[req.route.path]; // config type
   // TODO: Allow manually authored kickstart, preseed, etc. to come in here
   // Look fname up from host inventory parameters (tmpl=) ? Allow it to be either fixed/literal or template ?
@@ -592,7 +592,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   // This produces content, not params for partials
   if (osid.match(/ubu/) || osid.match(/deb/)) { // /(ubu|deb)/
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
-    var out = osdisk.disk_out_partman(parts);
+    let out = osdisk.disk_out_partman(parts);
     console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
     
     out = osdisk.partman_esc_multiline(out);
@@ -601,13 +601,13 @@ function host_params(f, global, ip,  osid) { // ctype,
   }
   if (osid.match(/ubuntu20/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
-    var out = osdisk.disk_out_subiquity(parts);
+    let out = osdisk.disk_out_subiquity(parts);
     console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
   if (osid.match(/(centos|redhat)/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'centos');
-    var out = osdisk.disk_out_ks(parts);
+    let out = osdisk.disk_out_ks(parts);
     console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
@@ -755,6 +755,7 @@ function netconfig(net, f) {
 }
 
 function net_strversions(net) {
+  if (typeof net != 'object') { return; } // TODO: "Real" Object (not null, bool)
   //var aprops = ["nameservers", "namesearch", "nisservers"];
   //aprops.forEach((prop) => {
   //  if (net[prop] && Array.isArray(net[prop])) {
@@ -777,9 +778,9 @@ function net_strversions(net) {
   
   // ABOVE: net.nameservers_first = net.nameservers[0];
   
-  net.nisservers_str = net.nisservers.join(' ');
+  net.nisservers_str = Array.isArray(net.nisservers) ? net.nisservers.join(' ') : "";
   
-  }
+}
 
 // OLD: Disks
 
@@ -918,7 +919,7 @@ function recipe_view(req, res) {
   // OLD: keys. NEW: recipes.
   recipes.forEach((k) => { // OLD: k == URL NEW: k == Object 
     //var fld = {name: tmplmap[k],  title: tmplmap[k], type: "text", width: 80, itemTemplate: null};
-    var fld = {name: k.ctype, title: k.ctype, type: "text", width: 80, itemTemplate: null}
+    var fld = {name: k.ctype, title: k.ctype, type: "text", width: 80, itemTemplate: null};
     // Add to URL:s and Grid cols side-by-side
     //urls.push(k); // OLD
     urls.push(k.url);
