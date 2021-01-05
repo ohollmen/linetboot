@@ -770,8 +770,10 @@ function rfinfo(hname, dialogsel, cb) {
 
 // $("#jsGrid").jsGrid("sort", field);
 function showgrid (divid, griddata, fields) {
-  if (!Array.isArray(griddata)) { alert("No Grid data " + divid); return; }
-  if (!Array.isArray(fields)) { alert("No fields data " + divid); return; }
+  // toastr.error
+  if (!divid || typeof divid != 'string') { return toastr.error("showgrid: Div id not passed !"); }
+  if (!Array.isArray(griddata)) { toastr.error("No Grid data " + divid); return; }
+  if (!Array.isArray(fields)) { toastr.error("No fields data " + divid); return; }
   console.log("showgrid: Generating grid into div (id): " + divid + " w. "+griddata.length+" items.");
   $("#" + divid).jsGrid({ // "#jsGrid"
     // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
