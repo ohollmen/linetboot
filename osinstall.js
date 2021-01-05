@@ -647,15 +647,23 @@ function mirror_info(global, osid) {
   // Lookup table from osid to directory name and optional internet mirror.
   // Keep items ordered with most specific first (e.g. ^ubuntu16 before ^ubuntu).
   var mirrmatch = [
+    // dir is the default *internet* mirrror dir. TODO: Have separate dir/inetdir
     {patt: "^ubuntu16", dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com", useinet: true},
     {patt: "^ubuntu",   dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com"}, // ^ubuntu(\d+) ?
-    {patt: "^debian",   dir: "/debian", inetmirrhost: "ftp.us.debian.org"}
+    // NOT: Assume "netboot" (netboot.tar.gz) and NO repos/packages in tar.gz
+    {patt: "^debian",   dir: "/debian", inetmirrhost: "ftp.us.debian.org"} // useinet: true
   ];
+  // lookup match node
   var mn = mirrmatch.find((mn) => { return osid.match(new RegExp(mn.patt)); });
   if (mn) {
      
-     mirrcfg.directory = mn.dir; // Always
-     if (global.inst.inetmirror || mn.useinet) { mirrcfg.hostname = mn.inetmirrhost; }
+     // Check for global preference for internet mirrors or osid-based preference for internet mirrors
+     if (global.inst.inetmirror || mn.useinet) {
+       mirrcfg.hostname  = mn.inetmirrhost;
+       mirrcfg.directory = mn.dir; // grab internet mirror dir from mn
+     }
+     // Local mirror: Change mirror dir to match osid (assumed to be the local mount dir)
+     else { mirrcfg.directory = "/" + osid; }
      console.log("Got-mn:", mn);
      console.log("Generated-mirrcfg:", mirrcfg);
      return mirrcfg;
