@@ -39,17 +39,22 @@ Also adjusting iDRAC Settings => Services => Local Configuration => "Disable iDR
 A: The loop mount "slots" have a corresponding device file in the file system. When there are no more numbered loop mount device
 files left , this error triggers. Create more loop device files by:
 ```
-# -m640 - perms, b special blod dev, 7 = major (every loopN device), 8 = minor (match N in loopN) 
+# -m640 - perms, b special block dev, 7 = major (every loopN device), 8 = minor (match N in loopN) 
 sudo mknod -m640 /dev/loop8 b 7 8
 ```
 
 #### Q: Lineboot Newbie: Whats the best user account to use with Lineboot ?
 
-Use your own personal account (and own computer). You have (very likely) already done ssh-copy-id operation to create trust to between your
+To start and evaluate linetboot, use your own personal account (and own computer). You have (very likely) already done ssh-copy-id operation to create trust to between your
 account + host and the machines you would manage. If you account homedirectory is on network drive (NFS or Samba), the machine where you
 run Lineboot can be any machine that has access to your homedirectory and you can still take advantage of your personal SSH keys.
 This makes Ansible facts collection (part of install) a breeze ! then proceed to gather facts by `ansible -m setup ....`
 (See REAME.install.md for more details). Having passwordless SSH connectivity already established is an effort saver.
+
+if you have a service account that has it's user SSH key copied to all your hosts, it's better to use it, and you can run linetboot
+under that account (even on permanent basis).
+
+  
 
 #### Q: I'd need to to a single file change on otherwise perfect ISO. Do I need to take it copy its contents to filesystem and use it from there instead on the nice loop mount method ?
 
