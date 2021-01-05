@@ -111,6 +111,34 @@ initrd http://{{ httpserver }}/clzilla/live/initrd.img
 # nolocales
 append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
 
+# Abitti Exam Environment (file is a multi-partition image)
+# file koe.img: DOS/MBR boot sector; partition 1 ... partition 4 ... (all info given in "sectors")
+# bad file number
+# https://serverfault.com/questions/841493/pxe-booting-img-and-dd-images
+# Try also append harddisk
+#label abitti
+#menu label Abitti Exam Environment
+#kernel /memdisk
+#initrd http://{{ httpserver }}/koe.img
+##append raw
+##sysappend 3
+
+# Debian MATE. Boots up to installer, but installer obscesses about CD/DVD being present (!)
+#label debian10mate
+#menu label Debian 10 MATE Live
+#kernel http://{{ httpserver }}/debian10mate/d-i/vmlinuz
+#initrd http://{{ httpserver }}/debian10mate/d-i/initrd.gz
+#append interface=auto
+
+# Debian 10 basic
+label debian10
+menu label Debian 10 Buster (Full Automated / WIP)
+# These paths are from a debian-10.7.0-amd64-DVD-1.iso (3.9GB)
+kernel http://{{ httpserver }}/debian10/install.amd/vmlinuz
+initrd http://{{ httpserver }}/debian10/install.amd/initrd.gz
+# initrd http://{{ httpserver }}/debian1070-installer/initrd.gz
+append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=debian10
+
 # Ubuntu 18 Desktop
 # https://askubuntu.com/questions/1069907/why-is-it-not-possible-to-pxe-boot-ubuntu-desktop-editions
 # https://askubuntu.com/questions/1029017/pxe-boot-of-18-04-iso
