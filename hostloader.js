@@ -36,7 +36,9 @@ function hostsfile_load(hfn) {
     // source - line oriented text fire and json array have the same format (refine stuff in common section)
     var hnames_f = fs.readFileSync(hfn, 'utf8').split("\n");
     hnames_f = hnames_f.filter(function (it) { return it.match(/^\s*$/) ? false : true; }); // Weed out empties
+    hnames_f = hnames_f.map((l) => { return l.trim(); });
     if (Array.isArray(hnames_f)) { hnames = hnames_f; }
+    
   }
   return hnames;
 }
@@ -81,97 +83,155 @@ minimalistic loading of hosts for a generic app:
 * - Change global to opts object w. grpattr
 */
 function hosts_load(global) {
-  var hnames = global.hostnames;
+  var hlines = global.hostnames;
   var hfn = global.hostsfile;
-  // Line oriented text file. Rename hnames ?
-  if (hfn) { hnames = hostsfile_load(hfn); }
-  if (!hnames || !Array.isArray(hnames)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
-  debug && console.error(hnames.length + " Hostlines (before parsing):", hnames); // global.debug && ...
+  // Line oriented text file. Renamed hnames => hlines
+  if (hfn) { hlines = hostsfile_load(hfn); }
+  if (!hlines || !Array.isArray(hlines)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
+  debug && console.error(hlines.length + " Hostlines (before parsing):", hlines); // global.debug && ...
   // Allow easy commenting-out as JSON itself does not have comments.
-  hnames = hnames.filter(function (hn) { return ! hn.match(/^#/); }); // OLD: ^(#|\[)/ - keep [...] in and handle later
-  if (!hnames.length) { console.error("No hosts remain after filtering"); process.exit(1); }
-  //
-  
+  // Possibly Use /^\s+/ instead of /^\s*$/ to eliminate *any* line with space in front of it.
+  hlines = hlines.filter(function (hn) { return (! hn.match(/^#/)) && (! hn.match(/^\s*$/)); }); // OLD: ^(#|\[)/ - keep [...] in and handle later
+  // Trim all lines ? Seems trailing space used to crash parsing, now eliminated by pre-processing
+  if (!hlines.length) { console.error("No hosts remain after filtering"); process.exit(1); }
   // NEW: Parse inventory-style free-form params here
   global.hostparams = {};
   colls.hostparams = {};
-  var i = 0;
+  var sectypes = {
+    "": 1, // No sections encountered (yet)
+    "group": 1,
+    "groupvar": 1,
+    "groupofgroup": 1,
+  };
+  //var i = 0;
+  // Main "data" to collect - Groups, group vars, hnames
   var groups = {}; // record group members
-  var groupvars = {};
+  var groupvars = {}; // Collected group vars (assign at end)
+  //var groupofgroup = {}; var hostparams = {};
+  var hnames2 = [];
+  // use same group state var for g,gv,gg ?
   var curr_g = ''; // Current group
   var curr_gvg = ''; // Group var group (Could re-use/overload curr_g)
-  var re_g = /^\[([^\]]+)\]/; // Group RE TODO: ^\[([\w+\-]+?)\] # Non-greedy with symbol, term at literal ']' 
-  var re_gv = /^\[([\w+\-]+?)\:vars\]/; // Group Vars RE
+  // var patts = {'gvar': //, 'gname': //};
+  //var re_g = /^\[([^\]]+)\]/; // Group RE TODO: ^\[([\w+\-]+?)\] # Non-greedy with symbol, term at literal ']'
+  // var pre = {g: //, gv: //, chld: //}; // parser-re
+  var re_g = /^\[(\w+)\]/;
+  var re_gv = /^\[(\w+?)\:vars\]/; // Group Vars RE. Elim: \-
+  var re_chld = /^\[(\w+?)\:children\]/; // Children of a group
   var grpattr = (global.core && global.core.grpattr) ? global.core.grpattr : 'grpid'; // grplbl ?
   var in_gv = 0; // State: In group vars section
-  var hnames2 = [];
-  hnames.forEach(function (hnline) {
-    var g; var gv;
-    // Av k-v pair in Group vars section (for curr_gvg)
-    /////// Parser state changes /////////////////
-    // Note: Currently this must be first to test (Improve re_g to make order independent)
+  var state = ''; // New state
+  hlines.forEach(function (hnline) {
+    var g; var gv; // Match arrays
+    
+    /////// Parser state changes - new section [...] /////////////////
+    // Group Var (gv) section
+    // DONE/OLD: Currently this must be first to test (Improve re_g to make matching order independent)
     if (gv = hnline.match(re_gv)) {
-      console.log("Group var tag: "+gv[1]);
-      curr_gvg = gv[1];
-      in_gv = 1;
-      return;
+      console.log("Group var tag: '"+gv[1]+"' (line: "+hnline+")");
+      curr_gvg = gv[1]; // Grab group name
+      in_gv = 1; state = 'gv';
+      return state;
     }
     // Group (mark as curr_g)
     else if (g = hnline.match(re_g)) {
-      debug && console.log("Got group: '" + g[1] + "'");
+      debug && console.log("new group-section: '" + g[1] + "'");
       curr_g = g[1];
+      if (groups[g[1]]) { console.log("Warning: Duplicated group: "+g[1]); }
       groups[g[1]] = [];
-      in_gv = 0;
-      return;
+      in_gv = 0; state = 'g';
+      return state;
     }
-    //////// Group Var //////
-    if (in_gv) {
+    else if (g = hnline.match(re_chld)) {
+      // No action
+      in_gv = 0;
+      curr_g = ''; // g[1]
+      // groupofgroup[curr_g] = [];
+      state = 'gg';
+      return state;
+    }
+    //////////////////////////// Line in a section (hnline) ////////////////////
+    //////// Group Var Line //////
+    // Av k-v pair in Group vars section (for curr_gvg)
+    if (in_gv) { // state == 'gv';
       var kv = hnline.split(/\s*=\s*/);
       let key = kv[0];
-      let val = kv[1];
+      let val = kv[1]; // trim ?
       // This may be unnecessary with group var post-population
       if (!groups[curr_gvg]) { console.log("Group '"+curr_gvg+"' not encountered yet, skipping"); return; }
       if ( ! groupvars[curr_gvg]) { groupvars[curr_gvg] = {}; }
       groupvars[curr_gvg][key] = val;
       return;
     }
-    ///////// Hostline //////////////////
+    if (state == 'gg') {
+      // groupofgroup[curr_g] = groupofgroup[curr_g] || [];
+      //groupofgroup[curr_g].push(hnline);
+      return;
+    }
+    ///////// Hostline (group or no-sect-yet) //////////////////
     // hent has "hn" (hostname) and "p" (params)
-    var hent  = hline_parse(hnline); // hnames, i, ...
+    if (state == '' || state == 'g') {
+    var hent  = hline_parse(hnline); // Parses to "hn", "p"
     var hn = hent.hn;
-    global.hostparams[hn] = hent.p; // original (Bad)
-    colls.hostparams[hn]  = hent.p; // Module encapsulated
+    //global.hostparams[hn] = hent.p; // original (Bad)
+    colls.hostparams[hn] = hent.p; // Module encapsulated
     debug && console.log("HN:" + hn);
     if (curr_g) {
       groups[curr_g].push(hn);
-      if (grpattr && !hent.p[grpattr]) { hent.p[grpattr] = curr_g; }
+      // TODO: Post-process this *after* parsing
+      //if (grpattr && !hent.p[grpattr]) { hent.p[grpattr] = curr_g; }
     }
     // NOT VALID: Collect hostnames later after parsing is fully complete.
     // Must be part of hostline parsing
     hnames2.push(hn);
-    i++;
+    }
+    //i++;
   });
-  global.hostnames = hnames2; // NEW (OLD: hnames)
+  // 
+  global.hostparams = colls.hostparams; // = hostparams;
+  global.hostnames = hnames2; // NEW (OLD: hlines)
   colls.hostnames = hnames2;
-  debug && console.log("Inventory Hostnames: " + JSON.stringify(global.hostnames)); // hnames
+  debug && console.log("Inventory Hostnames: " + JSON.stringify(global.hostnames));
   console.log(colls.hostnames.length+" Hosts from loop");
   //console.log(colls.hostnames.length+" Hosts dynamically post-loop");
   
   debug && console.log("Inventory Groups: ", groups);
   //debug && console.log("Final Hostparams: ", colls.hostparams);
   debug && console.log("Final Groupvars: ", groupvars);
+  applygroupvars([], groups, groupvars);
   // NEW: Return for third party app (with no real global conf)
   return colls.hostnames;
+  
+}
+
+
+/** Apply group variables to individual hosts after collecting groups and group vars.
+   * Full parsing should be done at this point.
+   * @param hnames {array} - Dummy
+   * @param groups  {object} - Object with keys mapped to array list of group member hosts
+   * @param groupvars {object} - Object of objects with outer objects keyed by groupnames and inner groups containing vars as key-val pairs
+   */
   function applygroupvars(hnames, groups, groupvars) {
     // Drive by groupvars or groups (valid existing groups)
     Object.keys(groups).forEach((gn) => {
+      
       var gvs = groupvars[gn];
+      var hnames = groups[gn];
       if (!gvs) { return; } // No groupvars for current group
+      if (!hnames || !Array.isArray(hnames)) { return; }
       // gvs or groups ?
       //Object.keys(gvs).forEach(() => {});
+      hnames.forEach((hn) => {
+        // Make sure colls.hostparams[hn] is object
+        colls.hostparams[hn] = colls.hostparams[hn] || {};
+        console.log("Assigning group vars for group "+gn+"");
+        Object.keys(gvs).forEach((varkey) => {
+          colls.hostparams[hn][varkey] = gvs[varkey];
+        });
+        //colls.hostparams[hn][]
+      });
     });
   }
-}
 //var p  = hline_parse(hnames, i, hnline);
     //var hn = hnames[i];
     //global.hostparams[hn] = p;
