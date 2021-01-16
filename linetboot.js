@@ -439,13 +439,27 @@ function app_init() { // global
   else { http_start(); }
 }
 function ldcopts_by_conf(ldc) {
-  var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
+  var proto = ldc.ssl ? "ldaps" : "ldap";
+  var port  = ldc.ssl ? "636" : "389";
+  var ldcopts = { url: proto+'://' + ldc.host + ":"+port, strictDN: false};
   ldcopts.reconnect = true;
   if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
   // Certificate ?
-  //if (ldc.cert) {
+  if (ldc.nonsec) {
     ldcopts.tlsOptions = {'rejectUnauthorized': false};
-  //}
+  }
+  // https://github.com/ldapjs/node-ldapjs/issues/307
+  // NOT Complete yet
+  if (ldc.cert) {
+    var certpath = "";
+    var tls = {
+      host: 'plat.com',
+      key: fs.readFileSync(certpath+'/clientkey.pem'),
+      cert: fs.readFileSync(certpath+'/clientcrt.pem'),
+      ca: fs.readFileSync(certpath+'/cacert.pem') // !!
+    };
+    //ldcopts.tlsOptions = tls;
+  }
   return ldcopts;
 }
 // Bind LDAP Connection and call an (optional) cb
