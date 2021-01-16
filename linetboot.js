@@ -442,6 +442,10 @@ function ldcopts_by_conf(ldc) {
   var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
   ldcopts.reconnect = true;
   if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
+  // Certificate ?
+  //if (ldc.cert) {
+    ldcopts.tlsOptions = {'rejectUnauthorized': false};
+  //}
   return ldcopts;
 }
 // Bind LDAP Connection and call an (optional) cb
@@ -744,6 +748,7 @@ function netplan_yaml(req, res) {
   if (!f) { console.log("# No Facts found for IP Address '"+ip+"' (or maybe mac ?).\n");  } // ${ip} return;
   // Validate gotten cache artifact (TODO: Move into respective wrapper)
   if (f && !f.ansible_architecture) { console.log("WARNING: Facts gotten from cache, but no expected props present"); }
+  //////////////////////////////////////////////////////////////////////////////
   if (f) { console.log("netplan_yaml: Using cached facts ..."); }
   // Dummy facts with all set to false (for fallback to global settings)
   var f_dummy = {"ansible_default_ipv4": {}, "ansible_dns": null};
@@ -1775,8 +1780,8 @@ function tftp_listing(req, res) { // global
   list.sort(byname);
   res.json({"status": "ok", data: list});
 }
-/** Reset the earlier set custom PXE boot back to default boot menu.
- * Pass "macfname" or allow lineboot to auto-detect IP address.
+/** Reset the earlier set custom PXE boot (target) back to default boot menu.
+ * Pass "macaddr" or allow lineboot to auto-detect mac based on IP address.
  * Implicitly also resets the (RedFish) boot setting "BootSourceOverrideTarget" to "None".
  * TODO: Allow reset by hostname "" to allow access from linet.js
  * Testing by client ip auto-detection: curl http://linethost:3000/bootreset
@@ -1836,7 +1841,8 @@ function bootreset(req, res) {
   // NOTE: If rmgmt NOT in use.. respond syncronously by: return 
   // Lookup rmgmt
   // var rmgmtpath = global.ipmi.path;
-  if (!ipmicfg.path) { hdl_redfish_succ({});   jr.msg += "No rmgmt path in config"; return res.json(jr);}
+  // TODO: Why double response(s) (by hdl_redfish_succ / AND res.json(jr) ) !!!!
+  if (!ipmicfg.path) { hdl_redfish_succ({});   jr.msg += "No rmgmt path in config"; return res.json(jr); }
   var rmgmt = ipmi.rmgmt_load(f, ipmicfg.path);
   if (!rmgmt) { hdl_redfish_succ({}); jr.msg += "No rmgmt info by facts"; return res.json(jr); }
   
