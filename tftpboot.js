@@ -87,7 +87,7 @@ function bootlabels(fn) {
   //fn = "./tmpl/default.installer.menu.mustache";
   if (!fs.existsSync(fn)) { return null; }
   var menucont = fs.readFileSync(fn, 'utf8');
-  var m = [];
+  var m = []; // Menu array
   var i = 1;
   console.log("bootlabels: Starting matching");
   //console.log(menucont);
@@ -125,7 +125,7 @@ function menu_deflbl(fn) {
 */
 function bootlbl2bootitem(bootlbl, tcfg) {
   tcfg = tcfg || {}; // module init stored ?
-  var mfn = tcfg.menutmpl;
+  var mfn = tcfg.menutmpl; // The main menu template
   if (!mfn) { throw "No Boot Menu file found in config for label validation "; }
   if (!fs.existsSync(mfn)) { throw "Boot Menu file "+mfn+" does not exist!"; }
   // Validate boot label against 
@@ -177,6 +177,10 @@ function bootmenu_save(tcfg, global, bootlbl, f) {
 /** Remove old file and recreate symlink to "default".
 * Validate filename as correcly formatted MAC based filename and
 * check presence on filesystem.
+* Throws exceptions on any problems.
+* @param tcfg {object} - TFTP Config Object (from main config)
+* @param macfname {string} - MAC-named pxelinux filename
+* @return None
 */
 function bootmenu_link_default(tcfg, macfname) {
   if (!tcfg) { throw "No TFTP Config"; }
