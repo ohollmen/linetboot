@@ -555,8 +555,8 @@ window.onload = function () {
     }
     // Enable extra fields in OS/Version tab (cfg.xflds)
     if (cfg && cfg.xflds) {
-      //if (!Array.isArray(cfg.xflds)) { return; }
-      //if (!fldinfo.dist) { return; } // 
+      if (!Array.isArray(cfg.xflds)) { return; }
+      if (!fldinfo.dist) { return; } // 
       var farr = fldinfo.dist;
       console.log("Add flds: ", cfg.xflds);
       // Choose out of 2 ways (drive by farr
