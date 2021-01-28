@@ -45,7 +45,7 @@ Lineboot can be made to perform/organize/manage:
 Linetboot is written in Javascript and Node.js, which is one of the best languages / runtimes to create high-performing network based
 concurrently tasking aplications.
 
-## What does Lineboot Run on ?
+## What platforms does Lineboot (Server) Run on ?
 
 - Ubuntu / Debian (Tested on x86 and ARM)
 - RedHat/Centos (tested on RH 6 and VMWare hosted Centos 7)
@@ -55,6 +55,14 @@ concurrently tasking aplications.
 Install and config instructions aim to advise on the minute config differences needed on various platforms
 (Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
 
+## What OS:s can be PXE installed with Lineboot ?
+
+- Ubuntu Server (LTS): 14.04, 16.04, 18.04, 20.04
+- Debian 10 ("Buster", possibly older Debians)
+- Redhat, Centos: 6, 7, 8
+- OpenSuse 15.2
+- Arch Linux
+- Ubuntu Desktop - in (non-automated) Live Install mode
 -------------------------------------------------
 
 ## Systems Linetboot Collaborates with:

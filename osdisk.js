@@ -1,6 +1,18 @@
 /** @file
  * # OS Install Disk Related Functionality
  * 
+ * This module generates disk part of the OS Install recipes in the formats the recipes require.
+ * The module supports a "disk partition layout model" (AoO - an array of objects) in neutral format,
+ * which can then be output in various formats. The module also accounts for some variations in distro
+ * prederences - e.g. if a separate /boot partition is used for particular distro.
+ * 
+ * ## Supported Disk partitioning and formatting output formats
+ * 
+ * - kickstart (separate /boot)
+ * - preseed
+ * - autoinst.xml (separate /boot)
+ * - Autounattend.xml (MS Windows documented layout)
+ * 
  * ## Lineboot Disk Definition Format
  * 
  * Describes a set of disk partitions:
@@ -11,21 +23,24 @@
  *   - EFI/GPT: "Primary" (default value)
  *   - EFI/GPT Special: Windows has also types "MSR","EFI" for GPT
  * - fmt - File system type (format, TODO: fstype, Windows uses upper case, e.g. "NTFS", "FAT32")
- * - lbl - Partition or filesystem label
- * - extend - Expand partition to take up remaining space (expand ?)
+ * - lbl - Partition or filesystem label (It depends on OS and FS used, where the label is located)
+ * - extend - Expand partition to take up remaining space (TODO: expand ? See terminology in various places, docs, programs)
  * 
- * # Refs
-https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-setup-diskconfiguration
-https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825686(v=win.10)
-https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701(v=win.10) - BIOS/mbr
-https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825702(v=win.10) - EFI/gpt
-* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825205(v=win.10) - BIOS/mbr - More than 4
-* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825675(v=win.10) - More than 4 (refs to type=0x27)
-* https://social.technet.microsoft.com/Forums/windows/en-US/e2463292-e2c5-4896-97ea-58a2443b6ec6/what-is-type-id-inside-windows-aik-20-under-modify-and-how-to-use-type-id?forum=w7itproinstall
-* https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701%28v%3dwin.10%29#example-automatically-install-the-default-partition-configuration
-* 
-* Windows part typeid: 0x27 does not receive drive letter
-*/
+ * # References
+ * 
+ * Microsoft documentation of Disk partitioning, layouts and FS Formats:
+ * 
+ * - https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-setup-diskconfiguration
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825686(v=win.10)
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701(v=win.10) - BIOS/mbr
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825702(v=win.10) - EFI/gpt
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825205(v=win.10) - BIOS/mbr - More than 4
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825675(v=win.10) - More than 4 (refs to type=0x27)
+ * - https://social.technet.microsoft.com/Forums/windows/en-US/e2463292-e2c5-4896-97ea-58a2443b6ec6/what-is-type-id-inside-windows-aik-20-under-modify-and-how-to-use-type-id?forum=w7itproinstall
+ * - https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-8.1-and-8/hh825701%28v%3dwin.10%29#example-automatically-install-the-default-partition-configuration
+ * 
+ * Windows part typeid: 0x27 does not receive drive letter
+ */
 var Mustache = require("mustache");
 var yaml  = require('js-yaml'); // subiquity
 // NOTE: Loading osinstall.js here on top shows it's
