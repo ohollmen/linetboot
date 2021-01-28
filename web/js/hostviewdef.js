@@ -68,7 +68,7 @@
      {name: "distname",  title: "Distro", type: "text", width: 80, itemTemplate: distrocell }, // css: "osicon"
      {name: "distver",   title: "Ver", type: "number", width: 50},
      {name: "kernelver", title: "Kernel", type: "text", width: 90},
-     // Dynamic (visible: false)
+     // Dynamic (visible: false). Enable by web.xflds
      {name: "use", title: "Usage", type: "text", width: 80},
      {name: "loc", title: "Location", type: "text", width: 80},
      {name: "dock", title: "Docker", type: "text", width: 40, itemTemplate: hasdockcell},
@@ -359,7 +359,7 @@ function ibip_cell(val, item) {
      {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20},
      {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, Xvisible: false},
      {name: "nbp", title: "Boot File", type: "text", width: 80, Xvisible: false},
-     // Need rethink. Most of time host is no known in IB
+     // Need rethink. Most of time host is not known in IB
      {name: "sync", title: "Sync", type: "text", width: 30, visible: false, itemTemplate: ibsync_cell},
 
    ];

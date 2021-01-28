@@ -478,8 +478,8 @@ window.onload = function () {
   // Data Load
   var dl = new DataLoader(dnodes, {dstore: datasets});
   dl.load(initapp);
-  
-  function initapp (response) {
+  // Init after loading mandatory data/config with DataLoader
+  function initapp (response_dummy) {
     var cfg = datasets["cfg"] || {};
     var tabui = cfg.tabui;
     // TODO: Navigation, e.g. var acts_menu = acts.filter((it) => { return it.menu; });
@@ -487,7 +487,8 @@ window.onload = function () {
   /////////////// Setup Tabs (Dynamic) ////////////////////
   var tabs = tabloadacts.filter((ti) => { return ti.elsel; });
   //acts_uidisable(tabs);
-  let ccfg = datasets["cfg"];
+  let ccfg = datasets["cfg"]; // Why cfg vs. ccfg ???
+  // Disabled menu items
   if (ccfg && Array.isArray(ccfg.disabled)) {
     ccfg.disabled.forEach((p) => { $("nav a[href='#"+p+"']").parent().hide(); });
   }
@@ -504,7 +505,7 @@ window.onload = function () {
   }
   var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
   router.add(acts);
-    // Page Branding
+    // Page Branding (title, image)
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
     db.hosts = datasets["hostlist"];
@@ -551,6 +552,21 @@ window.onload = function () {
       //$('nav a[href=\'#eflowlist\']').parent().hide(); // css('display', 'none');
       router.start();
       location.hash = "basicinfo"; // ~defpath
+    }
+    // Enable extra fields in OS/Version tab (cfg.xflds)
+    if (cfg && cfg.xflds) {
+      //if (!Array.isArray(cfg.xflds)) { return; }
+      //if (!fldinfo.dist) { return; } // 
+      var farr = fldinfo.dist;
+      console.log("Add flds: ", cfg.xflds);
+      // Choose out of 2 ways (drive by farr
+      // if (farr.includes(e.name)) {  }
+      cfg.xflds.forEach((fname) => {
+      var fld = farr.find((e) => {
+        return e.name == fname;
+      });
+      if (fld) { fld.visible = true; console.log("Enable(visible): ", fld);  }
+      });
     }
   } // initapp
   
