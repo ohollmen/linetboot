@@ -111,13 +111,13 @@ initrd http://{{ httpserver }}/clzilla/live/initrd.img
 # nolocales
 append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
 
-# Abitti Exam Environment (file is a multi-partition image)
+# Digabi OS / Abitti Exam Environment (file is a multi-partition image)
 # file koe.img: DOS/MBR boot sector; partition 1 ... partition 4 ... (all info given in "sectors")
 # bad file number
 # https://serverfault.com/questions/841493/pxe-booting-img-and-dd-images
 # Try also append harddisk
 #label abitti
-#menu label Abitti Exam Environment
+#menu label Digabi OS / Abitti Exam Environment
 #kernel /memdisk
 #initrd http://{{ httpserver }}/koe.img
 ##append raw
@@ -130,12 +130,38 @@ append boot=live username=user union=overlay config components  noswap edd=on no
 #initrd http://{{ httpserver }}/debian10mate/d-i/initrd.gz
 #append interface=auto
 
-# Debian 10 basic
+# TODO: Debian 8 Jessie
+
+# TODO: Debian 9 Stretch
+# Per Erik Debian 9 can PXE directly from ISO w/o netboot.tar.gz
+
+# Debian 10 Buster
+# # Debian - General
+# Note: Debian calls PXE bootting "netboot" and term PXE appears practically in none of Debian documentation.
+# Like with many other distros, the kernel used has to be perfect version match to Package content as some packages
+# are (possibly) kernel modules.
+# Root for different distro versions (e.g. 8,9,10): http://ftp.us.debian.org/debian/dists/
+# See: https://www.debian.org/distrib/netinst
+# For cleanest and most supported Debian PXE boot we need (try replace distro name for your distro, e.g. "stretch"
+# these 2 are usually alwasy side-by-side in same website directory):
+# - http://http.us.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/netboot.tar.gz (~35MB) OR 
+# - http://http.us.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/mini.iso - netboot installer (~48MB)
+# 
+# ## Unpacking netboot.tar.gz
+# Example for Debian 10/Buster
+# ```
+# sudo mkdir /isomnt/debian10net; cd /isomnt/debian10net
+# wget http://http.us.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/netboot.tar.gz
+# sudo tar zxvf netboot.tar.gz
+# ```
 label debian10
 menu label Debian 10 Buster (Full Automated / WIP)
-# These paths are from a debian-10.7.0-amd64-DVD-1.iso (3.9GB)
-kernel http://{{ httpserver }}/debian10/install.amd/vmlinuz
-initrd http://{{ httpserver }}/debian10/install.amd/initrd.gz
+# These paths are valid for (e.g) debian-10.7.0-amd64-DVD-1.iso, debian-10.4.0-amd64-DVD-1.iso (both ~3.9GB)
+# kernel http://{{ httpserver }}/debian10/install.amd/vmlinuz
+# initrd http://{{ httpserver }}/debian10/install.amd/initrd.gz
+# Paths for netboot.tar.gz (Unpackaged with instructions above)
+kernel http://{{ httpserver }}/debian10net/debian-installer/amd64/linux
+initrd http://{{ httpserver }}/debian10net/debian-installer/amd64/initrd.gz
 # initrd http://{{ httpserver }}/debian1070-installer/initrd.gz
 append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=debian10
 
@@ -199,8 +225,8 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # append initrd=http://{{ httpserver }}/initrd.gz -- ks=http://192.168.1.141/ks.cfg
 # #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
-# Ubuntu Server 20.04
-# Relies on completely new subiquity installer ("live-installer") and YAML autoinstall mechanism (non-preseed).
+# Ubuntu Server 20.04 w. Subiquity based "modern" installer
+# Default image relies on completely new subiquity installer ("live-installer") and YAML autoinstall mechanism (non-preseed).
 # Seems to not work without special kernel options on 2GB RAM machines
 # - No settings: ("79% 717 MB ... (initramfs) wget: short write: No space left on device")
 # - root=/dev/ram0 ramdisk_size=1500000 Freeze at "System time synchronized"
@@ -208,21 +234,29 @@ append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netbo
 # https://ubuntu.com/server/docs/install/autoinstall-quickstart
 # https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
 # OLDER: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
-# See also: http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/mini.iso
+# See also next boot item for preseed based "legacy" installer.
 # Discussed on: https://discourse.ubuntu.com/t/netbooting-the-live-server-installer/14510/9
 # Seems file / URL path downloaded is "user-data"
 # Needs also file (in same path): "meta-data: instance-id: focal-autoinstall
-# Seems loop-mounted dir is not accepted url=... must be an ISO file.
+# Seems loop-mounted dir is not accepted url=... must be an ISO file. Note: must have kernel param autoinstall.
 label ubuntu2004
 menu label Install Ubuntu 20.04 Server (TODO: Automated)
 kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu20/casper/initrd
-# Note: add kenel param autoinstall. Should not need /isoimages (as it's an added root)
 append ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
 # NONEED(?): priority=critical auto=true interface=auto ipv6.disable=1
 # MAY NEED: root=/dev/ram0 ramdisk_size=1500000
 # Also append syntax: ds=nocloud-net;local-hostname=server01;seedfrom=http://{{ httpserver }}/
 # "s" seems to be alias for "seedfrom"
+
+# Ubuntu 20.04 Legacy (preseed) installer
+# http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/mini.iso
+# http://cdimage.ubuntu.com/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso <= USE THIS for preseed
+label ubuntu2004legacy
+menu label Install Ubuntu 20.04 Server - legacy preseed (TODO: Automated)
+kernel http://{{ httpserver }}/ubuntu20legacy/install/netboot/ubuntu-installer/amd64/linux
+initrd http://{{ httpserver }}/ubuntu20legacy/install/netboot/ubuntu-installer/amd64/initrd.gz
+append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu20
 
 label ubuntu1804
 menu label Install Ubuntu 18.04 Server (Full Automated)
