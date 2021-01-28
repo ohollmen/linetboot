@@ -1,5 +1,11 @@
 /** @file
- * # OS Installations recipe generation and disk recipe calculations
+ * # OS Installations recipe generation
+ * 
+ * - Derive OS installation context (OS, Distro, etc. mainly by URL and "osid" param passed by OS installer recipe URL call)
+ * - Detect OS Install client IP and host identity, lookup host details / facts
+ * - By OS install context, lookup correct template for current OS install
+ * - Define partitioning layout (call disk recipe generation)
+ * - Configure Network settings
  * 
  * ## Request Headers from OS installers
 *
@@ -31,7 +37,13 @@
  * ### Linting yaml
 node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.safeLoad(fs.readFileSync('tmpl/subiquity.autoinstall.yaml.mustache')); console.log(JSON.stringify(y, null, 2));"
 
- * ### Funcs moved
+ * 
+ * # TODO
+ * - Possibly load initial user here, keep as priv variable ?
+ */
+ 
+/*
+ * ### Refactor: Funcs moved
  * ```
  * {
  * ipaddr_v4 ( ~ l. 328)
@@ -50,9 +62,6 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.saf
  * script_send DONE
  * needs_template DONE (~l. 1020)
  * ```
- * 
- * # TODO
- * - Possibly load initial user here, keep as priv variable ?
  */
 var fs = require("fs");
 var Mustache = require("mustache");
@@ -72,50 +81,6 @@ var user = {};
 var patch_params_custom; // CB
 var setupmod = {}; // custom CB Module
 
-// Map URL to symbolic template name needed. template names get mapped by global.tmplfiles (Object-map, See main config)
-// {url: ..., ctype: ..., tmpl: "", nopara: ...}
-// The value of the map is "ctype" (for "config type")
-/*
-var tmplmap = {
-// var recipes =[
-   "/preseed.cfg": "preseed",
-   "/ks.cfg":      "ks",
-   //"/partition.cfg": "part",
-   // "interfaces" :  "netif", // Near-duplicate
-   "/sysconfig_network": "netw_rh",
-   "/interfaces" : "netif",
-   "/preseed.desktop.cfg": "preseed_dt",
-   "/preseed_mini.cfg": "preseed_mini",
-   // ???? Not used yet ?
-   "/boot/pc-autoinstall.conf": "pcbsd",
-   "/cust-install.cfg": "pcbsd2", // freebsd/pcbsd
-   // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls
-   // https://github.com/CanonicalLtd/subiquity/tree/master/examples
-   // https://wiki.ubuntu.com/FoundationsTeam/AutomatedServerInstalls/QuickStart
-   // "/user-data": "ubu20", // Ubuntu 20.04 YAML
-   // "/autoinst.xml": "suse",
-   // https://www.packer.io/guides/automatic-operating-system-installs/autounattend_windows
-   // https://github.com/StefanScherer/packer-windows
-   "/Autounattend.xml": "win", // Windows "autounattend.xml" 
-   //"boot.ipxe": "" // E.g. https://coreos.com/matchbox/docs/latest/network-booting.html
-//];
-};
-*/
-// TODO: Create tmplmap (k-v) here for compat.
-// ctype => tmplfile
-/*
-var tmplfiles = {
-    "preseed": "preseed.cfg.mustache",
-    "ks":      "ks.cfg.mustache",
-    "netif":   "interfaces.mustache",
-    "netw_rh": "sysconfig_network.mustache",
-    "preseed_dt": "preseed.desktop.cfg.mustache",
-    "preseed_mini": "preseed_mini.cfg.mustache",
-    "pcbsd":   "pc-autoinstall.conf.mustache",
-    "pcbsd2":   "pcinstall.cfg.mustache",
-    "win": "", // mime: "text/xml"
-};
-*/
 //var tmpls = {};
 var recipes = [
   {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache"},
@@ -351,7 +316,7 @@ function preseed_gen(req, res) {
   res.type('text/plain');
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
-  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+")"); // osid=
+  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+", odid: "+osid+")"); // osid=
   // OLD location for tmplmap = {}, skip_host_params = {}
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
   var recipe = recipes_idx[url]; // Lookup recipe
@@ -916,21 +881,22 @@ function needs_template(cont) {
   if (tcs.length > 1) { console.error("Ambiguous TEMPLATE_WITH tagging ...."); return null; }
   return tcs[0];
 }
-/** Produce a listing of Recipes.
+/** Produce a listing of Recipes too allow reviewing recipe content.
  * Let recipes (module variable) drive the generation of grid.
  */
 function recipe_view(req, res) {
   var hostfld = {name: "hname", title: "Host", type: "text", css: "hostcell", width: 200};
-  var grid = [hostfld]; // Grid def
+  var grid = [hostfld]; // Grid def (stub to add recipes to - as cols)
   // var keys = Object.keys(tmplmap);
   var urls = []; // Add various URL:s from structure
   // OLD: keys. NEW: recipes.
   recipes.forEach((k) => { // OLD: k == URL NEW: k == Object 
     //var fld = {name: tmplmap[k],  title: tmplmap[k], type: "text", width: 80, itemTemplate: null};
+    // NOTE: ctype gets used here (for name,title) and overlapping ctype values will cause problems !!!
     var fld = {name: k.ctype, title: k.ctype, type: "text", width: 80, itemTemplate: null};
     // Add to URL:s and Grid cols side-by-side
     //urls.push(k); // OLD
-    urls.push(k.url);
+    urls.push(k.url); // AoString
     grid.push(fld);
   });
   res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes, scriptnames: scriptnames});
@@ -952,4 +918,5 @@ module.exports = {
   // OLD: disk_params: disk_params,
   //OLD: diskinfo: diskinfo
   //scriptnames: scriptnames
+  recipes: recipes, // Recipes config data
 };
