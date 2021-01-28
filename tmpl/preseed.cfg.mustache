@@ -2,6 +2,7 @@
 # 
 ############# Essential / Intial #############
 # See https://www.debian.org/releases/stable/i386/apbs02.html.en
+# https://wiki.debian.org/DebianInstaller/Preseed
 # Equivalent of "auto" kernel parameter, See also debconf/priority
 # https://www.debian.org/releases/lenny/hppa/apbs02.html.en Explains:
 #  delays the locale and keyboard questions until after there has been a chance to preseed them
@@ -22,9 +23,11 @@ d-i auto-install/enable boolean true
 # 2x N/A on Ubu18 ?
 #d-i debian-installer/quiet  boolean false
 #d-i debian-installer/splash boolean false
-# String ? Debian Only ? Allow unautheticated repos using known gpg key
-d-i debian-installer/allow_unauthenticated string true
-
+# String ? Debian Only ? Allow unautheticated repos using known gpg key (No Release.gpg)
+# d-i debian-installer/allow_unauthenticated string true
+d-i debian-installer/allow_unauthenticated boolean true
+# Non-autoritative (self-signed) certificates on mirror (Similar to curl -k / --insecure)
+d-i debian-installer/allow_unauthenticated_ssl boolean true
 # Prompt *all* questions interactively (even if defaults by preseed are filled out).
 # Useful for debugging. Seems debconf/priority overrides this preseed/interactive (?)
 #d-i preseed/interactive boolean true
@@ -33,17 +36,24 @@ d-i debian-installer/allow_unauthenticated string true
 #d-i debconf-apt-progress/info seen true
 
 ############# Locale / Keymaps ###################
+# https://superuser.com/questions/724294/set-keyboard-layout-in-debian-wheezy-with-preseed
 # en_US, en_NZ, en_GB (en_US.UTF-8) {{ locale }}
 d-i debian-installer/locale string en_US
 # Individual step approach to previous
 #d-i debian-installer/language en
-# US, NL
+# E.g. US, NL Debian installer sets default to US
 #d-i debian-installer/country string US
+#d-i debian-installer/locale string en_US.UTF-8
+
 #d-i debian-installer/theme string dark # UI Looks. e.g. "dark" OK
 d-i console-setup/ask_detect boolean false
 # Is following /layoutcode valid at all ? https://serverfault.com/questions/682245/debian-preseed-cfg-language-not-set
 #d-i console-setup/layoutcode string us
 #d-i console-keymaps-at/keymap select us
+# NEW: 2021-01
+d-i keyboard-configuration/xkb-keymap select us
+# Set explicitly to empty ?
+#d-i keyboard-configuration/variantcode string
 # Important / working (See similar above) {{ keymap }} OK
 d-i keyboard-configuration/layoutcode string us
 # for Debian 7 and later
@@ -136,7 +146,7 @@ d-i mirror/protocol string http
 #d-i mirror/country string US
 d-i mirror/country string manual
 # Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com, Debian: ftp.us.debian.org)
-d-i mirror/http/hostname string {{ mirror.hostname }}
+d-i mirror/http/hostname string {{{ mirror.hostname }}}
 # Check /ubuntu/dists/bionic (e.g. "/ubuntu-11.04-server-i386", "/ubuntu14.04", "/ubuntu". In Debian "/debian")
 # For official Mirrors this seems to be: Ubuntu: /ubuntu , Debian: /debian
 d-i mirror/http/directory string {{{ mirror.directory }}}
@@ -148,8 +158,8 @@ d-i mirror/http/proxy string
 # Consider (parametrize). is this Ubuntu only ? This seems to be redundant and it seems distro is always able to "know" this.
 #d-i mirror/suite string stretch
 #d-i mirror/codename string stretch
-# This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname) e.g. my.local.mirror
-d-i mirror/http/mirror select {{ mirror.hostname }}
+# This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname)
+d-i mirror/http/mirror select {{{ mirror.hostname }}}
 
 # TODO: Possibly support local0
 #d-i apt-setup/local0/repository string http://apt.example.net/ubuntu &releasename; main
@@ -326,7 +336,10 @@ d-i passwd/user-default-groups string {{ user.groups_str }}
 
 d-i user-setup/allow-password-weak boolean true
 d-i user-setup/encrypt-home boolean false
-
+# Debian seems to require explicit root-login = false
+{{^rootlogin}}
+d-i passwd/root-login boolean false
+{{/rootlogin}}
 {{#rootlogin}}
 d-i passwd/root-login boolean true
 # Use root-password for clear
