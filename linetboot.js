@@ -454,9 +454,9 @@ function ldcopts_by_conf(ldc) {
     var certpath = "";
     var tls = {
       host: 'plat.com',
-      key: fs.readFileSync(certpath+'/clientkey.pem'),
+      key:  fs.readFileSync(certpath+'/clientkey.pem'),
       cert: fs.readFileSync(certpath+'/clientcrt.pem'),
-      ca: fs.readFileSync(certpath+'/cacert.pem') // !!
+      ca:   fs.readFileSync(certpath+'/cacert.pem') // !!
     };
     //ldcopts.tlsOptions = tls;
   }
@@ -1630,8 +1630,8 @@ function config_send(req, res) {
   // Current sess
   cfg.username = req.session.user ? req.session.user.username : "";
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
-  // OS/Version view columns
-  if (web && web.xtabs) { cfg.xtabs = web.xtabs; }
+  // OS/Version view columns/fields
+  if (web && web.xflds) { cfg.xflds = web.xflds; }
   res.json(cfg);
 }
 
