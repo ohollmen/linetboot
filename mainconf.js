@@ -19,6 +19,8 @@
 */
 var fs = require("fs");
 
+var osinst = require("./osinstall.js"); // for recipes. TODO: Pass recipes (arr) separately ?
+
 /** Exit the app process on fatal config errors.
 * @param msg {string} - Error message String to output to STDERR before existing.
 */
@@ -97,8 +99,34 @@ function mainconf_process(global) {
   else { global.inst.postscripts = []; }
   // Detect disabled features 
   var dis = disabled_detect(global);
-  
-  
+  // NEW: Allow pushing (appending, add to end) or unshifting (add to head) recipe items
+  if (global.recipes) {
+    // TODO: function recipes_add(global, recipes) {
+    // ra = recipe array, ri = recipe item
+    var nra = global.recipes;
+    var ora = osinst.recipes;
+    console.log("Add to recipes ...", nra); // ora, nra
+    if ( ! Array.isArray(nra)) { console.error("'recipes' ('add') config not in array"); return; }
+    nra.forEach((nri) => {
+      // Find matching item in old
+      var oridx = ora.findIndex((ori) => { return ori.url == nri.url; });
+      // Need idx. TODO: Allow remove, then push/unshift (new location)
+      if (oridx > -1) {
+        console.log("Found old - replace (at index)"+oridx);
+        ora[oridx] = nri;
+      } 
+      else {
+        // Default to adding in front !
+        var op = nri.push ? "push" : "unshift";
+        console.log("New item - add by "+op);
+        // Call push/unshift
+        ora[op](nri);
+      }
+    });
+    console.log(osinst.recipes);
+    //  
+    //} // recipes_add
+  }
 }
 
 function hasnofiles(dir) {
