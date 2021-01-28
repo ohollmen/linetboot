@@ -341,7 +341,7 @@ to `"192.168.1.141"`. This way the dynamic files (preseed.cfg and ks.cfg) will s
 
 The problem with PXE Boot error messages are that they remain on screen for a very short time.
 
-- `PXE-E53: No boot filename received` - DHCP config option "filename" was not gotten in DHCP offer (response for discovery).
+- `PXE-E53: No boot filename received` - DHCP config option "filename" was not gotten in DHCP offer (response for IP address discovery).
   The lineboot compatible value for this is "lpxelinux.0". Check your DHCP Configuration.
 - `Failed to load COM32 file ....c32` - PXELinux module (*.c32) defined in menu was not found on tftp server path relative to root  or a path relative to "path" directive (also found in menu). Follow TFTP server log to see what files were being tried. You likely forgot to place the *.c32 modules onto your TFTP server.
 - PXE-T01 File Not Found, PXE-E38 TFTP Error - Filename was given in response from by DHCP Server, but file by that name was not found on the TFTP Server
@@ -355,6 +355,7 @@ The problem with PXE Boot error messages are that they remain on screen for a ve
 
 - PXE-E11 - ARP Timeout (Lenovo Z580 Laptop, on-n-off). Serverfault.com suggests bad network switch as origin of problem. It could also be single bad port on switch.
 - PXE-E18 Server Response Timeout
+- PXE-E61: Media Test Failure, Check Cable
 
 # Bootloader Errors (various stages after Firmware PXE)
 

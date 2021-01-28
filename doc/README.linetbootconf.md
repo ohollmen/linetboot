@@ -70,14 +70,14 @@ Sharing variables / variable names with ansible is okay as long as they have the
 During server startup it will run a user created custom module, which gets called to do misc setup work.
 One common use for this is to populate host params, for example based on hostname (which often have conventions grouping
 together a set of hosts with similar patterns in name). See Documentation on main config "lboot_setup_module".
-Note: Because these variables are dynamically populated in linetboot runtime data structures, they are not available to ansible.
+Note: Because these variables are dynamically populated in linetboot runtime data structures, they are **not** available to ansible.
 If you must have params/vars available to ansible, you must statically populate them in inventory.
 
 ### Effective hosts by 'hosts' file and facts
 
 For host to be considered effective, valid host it must **appear in hosts file** and it **must have facts**.
 This means / implies:
-- Hosts can be disabled by commenting them out or removing their host-line from hosts file (revert is as easy, remove comenting or add hostline bac)  
+- Hosts can be disabled by commenting them out or removing their host-line from hosts file (revert is as easy, remove commenting or add hostline back)  
 - Hosts that have a host-line in hosts file, but do not have facts are ineffective
 
 At linetboot startup (in console) there are warning messages displayed on hosts that are registered in hosts, but do not have facts.
@@ -220,6 +220,18 @@ Note: for hosts which do not comply to global BMC credentials, there's a way to 
 - pass (str) - API password
 - ro (bool) - Indication that Web API access will be read-only
 - syncall (bool) - Consider all inventoried hosts to be synced (not only ones with host parameter ibsync=1)
+
+### Section "recipes" - Additional OS Install Recipes
+
+Recipes section expects an array of recipe objects with following properties:
+- url (str) - Recipe (e.g. kickstart, preseed, autoinst.xml) URL as referred to by OS installer (usually set on kernel CL)
+- ctype (str) - Recipe config type - a "hint string" for recipe generation (may or may not be used for particular OS installation).
+     Keep this unique among all recipes.
+- tmpl - Template file Basename or relative path. This file is resolved from the template path (See inst.tmpl_path or env. LINETBOOT_TMPL_PATH)
+
+Adding recipes is an expert option for special OS installations, but may be necessary for:
+- OS installations not supported out-of-the-box by Lineboot
+- OS Installs that need extreme customization for their recipes
 
 ## Linetboot Environment Variables
 

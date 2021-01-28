@@ -1,11 +1,13 @@
-# Administering Boot (ISO) media
+# Administering and Setting up Boot (ISO) media
 
 ## Using ISO Images as boot media
 
 The lineboot basic boot examples have been all successful using
-plain (non-modified) ISO image content as content to boot.
+plain (non-modified) ISO image content as content to boot for most distributions.
 This means distribtion ISO authors have generally done good job preparing
-their ISO:s to be PXE bootable. What all gets utilized from ISO boot media and what point of boot or install ?
+their ISO:s to be boot media agnostic and PXE bootable. 
+
+What all gets utilized from ISO boot media and what point of boot or install ?
 
 - **OS kernel** and **Initial RAM disk**
   - These get downloaded by *bootloader* (lpxelinux.0)
@@ -21,11 +23,49 @@ their ISO:s to be PXE bootable. What all gets utilized from ISO boot media and w
   - Linetboot favors hinting (on Kernel CLI) installer to use HTTP always when it can (Sometime fallback on e.g. NFS is necessary
     because of malfunctioning or missing HTTP access)
   - Most OS Distros have a good set (even if not complete set) of packages on ISO image, but some of the "slimmest" distributions
-  leave out the packages altogether out from ISO image and fetch packages from internet mirror repos
-  - These "slim" distributions are often recognizable by \*net\* or \*mini\* in their name *or* by their ISO size - a 100MB ISO
+    leave out the packages altogether out from ISO image and fetch packages from internet mirror repos
+  - These "slim" distributions are often recognizable by \*net\* or \*mini\* in their name *or* by their ISO size - a 40MB..100MB ISO
     is likely to use internet repos and not contain much packages at all on ISO, and a > 900MB is likely to be "self contained" and
     not use internet repos for install at all (although the models mix too, e.g. for recent updates not contained on ISO).
   - 
+
+Example of distribution that strongly differentiates booting between media is Debian. The ISO image is exclusively
+dedicated for booting from DVD or USB and  a separate tar.gz package containing PXE netboot kernel (linux) and initrd (initrd.gz) is needed
+to boot:
+- netboot.tar.gz package has kernel and initrd (and lot of bootloader and TFTP related files that you don't need with linetboot) to enable
+  PXE booting
+- The large size (~4GB) ISO is unable to PXE boot, but has all the packages needed for installation
+- By combining the 2 you can produce a PXE bootable, linetboot mirrored Debian OS installation setup
+
+## Debian PXE Boot setup
+
+The netboot.tar.gz and ISO must be an exactly matched pair by their minor version (e.g. number "7" in 10.7.0, i.e. 10.4.0 would not be compatible).
+Note that the netboot.tar.gz does not have any version info in it's filename and after collecting a few of them you will have hard time telling
+rhem apart if you did not track the version. Luckily a file "version.info" in package root dir has a hint of major and minor versions.
+However it's best to label the file with version by renaming it (See below).
+
+The steps to carry out installation are:
+```
+# Download netboot.tar.gz package (e.g. Debian 10.7.0)
+wget http://.../netboot.tar.gz -O netboot-debian-10.7.0.tar.gz
+# And make the kernel and initrd available for PXE booting
+mkdir /isomnt/debian10netboot
+cp netboot-debian-10.7.0.tar.gz /isomnt/debian10netboot
+cd /isomnt/debian10netboot
+# Unpackage - creates subdir debian-installer/
+sudo tar zxvf netboot-debian-10.7.0.tar.gz
+# Use paths debian-installer/amd64/linux and debian-installer/amd64/initrd.gz in pxelinux menu kernel and initrd respectively
+```
+Download ISO containing the packages used during install:
+```
+# Download matching ISO (If you do the download ISO from same Debian ISO mirror as netboot.tar.gz at one point in time, they should be matched).
+# Keep name as-is. ISO names are well thought out (unlike netboot.tar.gz)
+wget http://.../debian-10.7.0-amd64-DVD-1.iso
+# Create a mountpoint dir for ISO and loop mount it
+mkdir /isomnt/debian10
+sudo mount -o loop debian-10.7.0-amd64-DVD-1.iso /isomnt/debian10
+
+```
 
 ## Downloading ISO Images
 
@@ -48,27 +88,25 @@ Example ISO image download (for Ubuntu 18.04 server):
 
     # Download by wget or curl
     wget http://cdimage.ubuntu.com/releases/18.04.1/release/ubuntu-18.04.1-server-amd64.iso
-    #  For good habit, check MD5 (or SHA...) against checksum given at download site.
+    #  For good habit, check MD5 (or SHA...) against checksum (typically) given at download site.
     md5sum ubuntu-18.04.1-server-amd64.iso
 
 ## Creating ISO Image mount dirs
 
-All the images used by linetboot can be mounted
-with linux loop-mount method, after which image content appears as directory tree under the
-mountpoint. All you need for booting by PXE will be there.
+Most of the Linux ISO distro images used by linetboot can be mounted with linux loop-mount method, after
+which image content appears as directory tree under the mountpoint. All you need for booting by PXE will be there.
 
-Choose short but descriprive labels on the mounpoints. For systematic approach,
-these same names may be refleced in the pxelinux boot menu "menu label ..." lines.
+The lineboot default (conventional) top mount directory is /isomnt/. Under this directory reside the mountpoint
+subdirectories.
 
-    /isomnt/
-      ubuntu18/ (mount -o loop ...) -> /usr/local/iso/ubuntu-14.04.5-server-amd64.iso
-      centos7/  (mount -o loop ...) -> /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso
-      gparted/  (mount -o loop ...) -> /usr/local/iso/gparted-live-0.31.0-1-amd64.iso
+Choose descriptive names for the mountpoints. For systematic approach match the name labels used as /isomnt subdir names:
+- in `?osid=...` lable passed in recipe (kickstart, preseed) parameter on kernel command line.
+- Additionally/optionally you could reflect the same names in boot menu "menu label ..." lines
 
-You can make these mounts permanent in /etc/fstab as needed (to re-establish them after reboot).
+For examples on default out-of-box directory labeling conventions see the `tmpl/default.installer.menu.mustache`.
 
-The linetboot example setup uses a single top mount directory /isomnt/. Creating it and the
-individual distro directories will be one of the rare root user operations needed:
+The linetboot example setup uses top mount directory `/isomnt/`. Creating it and the
+individual distro directories will be one of the rare root user operations needed in administering linetboot:
 
     # Create top dir
     sudo mkdir /isomnt/
@@ -78,14 +116,16 @@ individual distro directories will be one of the rare root user operations neede
 ## Mounting ISO Images
 
 Mount images with super user privileges:
+```
+# For ease of typing, first cd to /usr/local/iso/
+# For explicit demo of what mounts where, paths are fully shown
+sudo mount -o loop /usr/local/iso/ubuntu-18.04.1-server-amd64.iso   /isomnt/ubuntu18
+sudo mount -o loop /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso  /isomnt/centos7
+sudo mount -o loop /usr/local/iso/gparted-live-0.31.0-1-amd64.iso   /isomnt/gparted
+```
 
-    # For ease of typing, you could first cd to /usr/local/iso/
-    # For explicit demo of what mounts where, paths are shown
-    sudo mount -o loop /usr/local/iso/ubuntu-18.04.1-server-amd64.iso   /isomnt/ubuntu18
-    sudo mount -o loop /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso  /isomnt/centos7
-    sudo mount -o loop /usr/local/iso/gparted-live-0.31.0-1-amd64.iso   /isomnt/gparted
-
-The corresponding /etc/fstab entries would be (to allow mounts to persist over a boot):
+You can make these mounts permanent in /etc/fstab as needed (to re-establish them after reboot).
+The corresponding /etc/fstab entries for above mounts would be (to allow mounts to persist over a boot):
 ```
 /usr/local/iso/ubuntu-18.04.1-server-amd64.iso      /isomnt/ubuntu18 iso9660 loop 0 0
 /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso     /isomnt/centos7  iso9660 loop 0 0

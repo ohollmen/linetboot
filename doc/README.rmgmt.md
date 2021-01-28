@@ -17,7 +17,7 @@ RedFish
 - Protocol / communication is easy to debug
 - Find PDF docs by (e.g.): iDRAC9 Redfish API Guide
 
-## Mini FAQ
+## Remote management Mini FAQ
 
 Q: I'm getting "Get Session Challenge command failed" from ipmitool - what's up with this ?
 A: Check your credentials. Check the administrative level (e.g. "user", "administrator", etc) and experiment with -L switch (also check the value in BMC side config). Things that may also help: 1) Reset (reboot) IDrac 2) Have a dedicated network interface for BMC, do not share LOM (LAN on motherboard).
@@ -25,3 +25,6 @@ A: Check your credentials. Check the administrative level (e.g. "user", "adminis
 Q: How long does BMC reset take ?
 A: Approximately 2 minutes.
 
+## Remote Management References
+
+- The beauty of IPMI (2014) https://www.endpoint.com/blog/2014/08/01/the-beauty-of-ipmi (chassis status, change bootdev, power on)
