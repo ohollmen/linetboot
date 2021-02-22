@@ -1987,10 +1987,10 @@ function ldaptest(req,res) {
   if (!ldconn || !ldbound) { jr.msg += "No Connection"; jr.qs = req.session; return res.json(jr); }
     var ents = [];
     var d1 = new Date();
-    //  +
+    //  TODO: Only select 
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
-    lds.filter = "("+ldc.unattr+"="+q.uname+")";
+    lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
       var d2 = new Date();
