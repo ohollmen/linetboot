@@ -140,7 +140,18 @@
 /* Counteract bootstrap (?) not showing links (hover: #23527c) */
 a:link { color: #203090; }
 
-#routerdiv {margin: 0; padding: 0; border : 0; }
+#routerdiv {margin: 0; padding: 12px; border : 0; }
+.xui > div {padding: 10px; }
+  </style>
+  <!-- Todo find states -->
+  <style desc="Process States pss_...">
+  .pss_S { background-color: #000000, color: #AAAAAA; }
+  .pss_R { background-color: #AA0000, color: #FFFFFF; }
+  /*
+  .pss_S { background-color: #000000, color: #AAAAAA; }
+  .pss_S { background-color: #000000, color: #AAAAAA; }
+  .pss_S { background-color: #000000, color: #AAAAAA; }
+  */
   </style>
 </head>
 <!--
@@ -239,6 +250,9 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}" data-info="NFS Dialog">
   <div id="jsGrid_nfs" class="fwgrid"></div>
+</div>
+<div id="proclist" title="Host Process List" todo="for {{ hn }}" data-info="Process Dialog">
+  <div id="jsGrid_procs" class="fwgrid"></div>
 </div>
 <div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
 <div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}"  data-info="Boot Image Dialog"></div>
