@@ -61,7 +61,7 @@ Install and config instructions aim to advise on the minute config differences n
 - Debian 10 ("Buster", possibly older Debians)
 - Redhat, Centos: 6, 7, 8
 - OpenSuse 15.2
-- Arch Linux
+- Arch Linux (assisted by Alis-installer)
 - Ubuntu Desktop - in (non-automated) Live Install mode
 -------------------------------------------------
 
