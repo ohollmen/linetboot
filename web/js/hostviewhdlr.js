@@ -48,7 +48,7 @@ function hostgroups(ev, act) {
 function rmgmt(ev, act) {
   
   axios.get('/hostrmgmt').then(function (resp) {
-    // SHared global for event handler... on_rmgmt_click
+    // Shared global for event handler... on_rmgmt_click
     rmgmt_data = resp.data; // TODO: .data
     // console.log("Remote Mgmt data: ", rmgmt_data);
     if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
@@ -109,7 +109,7 @@ function pkgstat(jev, act) {
   var tgtid = jev.viewtgtid;
   rapp.templated("simplegrid", act, tgtid);
   var deflist = "wget,x11-common,python2.7,patch,xauth,build-essential";
-  $('.xui').html("<input type='text' name='pkgs' value='"+deflist+"' size='80'><input id='pkgcheck' type='button' value='Lookup'>").show();
+  $('.xui').html("<div><input type='text' name='pkgs' value='"+deflist+"' size='80'><input id='pkgcheck' type='button' value='Lookup'></div>").show();
   function lookup() {
   // Params to pass
   var upara = $("input[name='pkgs']").val();
@@ -406,25 +406,27 @@ function showpeople(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
   $("#"+ev.viewtgtid).prepend(rapp.templated("searchui"));
   function search(p) {
-    
-    axios.get("/ldaptest", {params: p}).then(function (resp) {
+    // TODO: Analyze params to support different use cases
+    // "/ldaptest"
+    axios.get(act.url, {params: p}).then(function (resp) {
       // Populate AoO to grid
       var d = resp.data;
       if (d.status == 'err') { return toastr.error("Failed search: " + d.msg); }
       if (!d.data) { return toastr.error("No Data Found."); }
       if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
       var uarr = d.data;
-      showgrid(act.gridid, d.data, fldinfo.ldad);
+      showgrid(act.gridid, uarr, fldinfo.ldad);
       // if (cb) { cb(d.data); }
       // Need to index or populate id / sequence numbers
       var idx = {};
       d.data.forEach((it) => { idx[it.sAMAccountName] = it; });
       console.log("Assign click hdlr");
+      // TODO: Alternatively fetch by DN
       $('.unamecell').click(function (jev) {
-        console.log("Calling click hdlr");
+        //console.log("Calling click hdlr");
         var un = this.dataset.uid;
-        var e = idx[un];
-        if (!e) { toastr.error("No data looked up (locally)"); return; }
+        var e = idx[un]; // From idx
+        if (!e) { toastr.error("No data looked up (locally)"); return false; }
         console.log(e);
         //var out = rapp.templated("lduser", e); // app.gridid
         //console.log(out);
@@ -436,11 +438,14 @@ function showpeople(ev, act) {
       });
       
     }).catch (function (ex) { console.log(ex); });
-  } // search
+  } // search (on top)
   $('#sbutt').click(function () {
     var p = {uname: $("#uname").val()};
+    toastr.info("Search by: "+p.uname);
     search(p);
   });
+  // Contacts
+  
 }
 /** List Infoblox Info In a grid/summary view.
  * However drive list by "all hosts" so that missing or bad info can be clearly seen.
