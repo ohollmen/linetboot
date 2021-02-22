@@ -104,15 +104,22 @@ function on_rmgmt_click(ev) {
   
 //}
 
-/** Create dialog for view described in event elem.
+/** Create dialog for host and view described in event elem (by data-hname, data-tgt).
+ * The "data-tgt" attribute (For now..) on event target el. determines the
+ * specific handler called from here (by if-elsing).
+ * This func: dispatch to custom fetcher -> custom fetcher -> dialogcb (here), calls showgrid()
+ * Note: 
 */
 function on_docker_info(ev) {
+  // Final dialog handler
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
     if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
-    console.log("dialogcb: called (#-sel)" + dialogsel);
+    console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
+    // class fwgrid is on grid-wrapping div-element
     var id = $("#"+ dialogsel + " .fwgrid").attr("id");
     console.log("jsGrid elem id: "+id);
+    if (!id) { toastr.error("No grid id found from dialog by id: "+dialogsel); return; }
     // 
     if (!fldinfo[dialogsel]) { alert("No grid info for '"+ dialogsel+"' "); return; }
     showgrid(id, pinfo, fldinfo[dialogsel]); // OLD(1st)gridsel ... "dockerimg"
@@ -127,12 +134,14 @@ function on_docker_info(ev) {
   var tgt = ev.target.getAttribute("data-tgt"); // 
   console.log("Dlg-HNAME:"+hn+", data-tgt: " + tgt);
   // hn - from ev element
-  // gridsel - grid selector (id) ... replace w. dialog
+  // gridsel - grid selector (id) (from data-tgt=...)... replace w. dialog
+  // dialogc - dialogcb
   if (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
   else if (tgt == "nfsinfo") { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
   else if (tgt == "rfdialog") {
     rfinfo(hn, "rfdialog", dialogcb); return;
   }
+  else if (tgt == "proclist") { procinfo(hn, "proclist", dialogcb); }
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
@@ -287,11 +296,12 @@ function tabsetview(ev, act) {
 }
 
 // Converted to more action-like: title => name
-// Note: template might be of early (at tab creation) or late (at data load) type.
+// Note: template/tamplating might be of early (at tab creation) or late (at data load) type.
 // For now late templated should have tmpl: .. to false val and do templating themselves (because early templating is automatic by tmpl).
 // Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
 var tabloadacts = [
   {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
+  // Non-routables
   {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", uisetup: osview_guisetup}, // url: "/list" (All 3)
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw", uisetup: osview_guisetup},
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
@@ -302,7 +312,7 @@ var tabloadacts = [
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt"},
   {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
   {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", 
-    uisetup: function () { $('.rfop').click(on_docker_info); } },
+    uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
   {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", path: "hostkeys"}, // DUAL
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats"}, //DUAL
@@ -310,14 +320,14 @@ var tabloadacts = [
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
   {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
-  // Sub Tabs
-  {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq", hdlr: bootgui, url: "", path: ""},
+  // Sub Tabs (for Boot/Install, non-routable)
+  {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq",    hdlr: bootgui, url: "", path: ""},
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
   {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist",  gridid: "jsGrid_bootmedia", path: ""},
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes, url: "/recipes",  gridid: "jsGrid_recipes", path: ""},
-  {"name": "Login",   "elselXX": "tabs-14", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
-  // logout
-  {"name": "Logout",   "elselXX": "tabs-14", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
+  {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
+  // logout (todo: literal template)
+  {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
   // Directory  (TODO: composite templating)
   {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
@@ -699,7 +709,7 @@ function pkg_stats(ev, act) {
 */
 function dockerinfo(hname, dialogsel, cb) { // gridsel
   var port = 4243; // cfg.
-  if (!hname) { console.error("No hostname (from ui) for docker info"); return; }
+  if (!hname) { toastr.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling docker ...");
   axios.get('http://'+hname+':'+port+'/v1.24/images/json').then(function (resp) {
@@ -781,8 +791,24 @@ function rfinfo(hname, dialogsel, cb) {
   .catch(function (error) { console.log(error); alert("No RF info, "+ error); })
   .finally(() => { toastr.clear(); });
 }
-
-
+/** Process Info.
+ * See also: dockerinfo and http://$HOST:4243/v1.24/images/json
+ */
+function procinfo(hname, dialogsel, cb) {
+  var port = 8181; // cfg.
+  if (!hname) { toastr.error("No hostname (from ui) for proc info"); return; } // proc
+  if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
+  //console.log("Calling docker ...");
+  axios.get('http://'+hname+':'+port+'/proclist').then(function (resp) { // /proclist
+    var pinfo = resp.data; // NO: data.data
+    //console.log("Proc data: "+ JSON.stringify(pinfo, null, 2));
+    if (!pinfo ) { toastr.error("No data from " + hname); return; }
+    if (!pinfo.length) { toastr.warning("No procs found", "... on " + hname); return; } // procs
+    console.log("procinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
+    cb(pinfo, dialogsel);
+    // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
+  }).catch(function (error) { console.log(error); toastr.error("No Process info:", error); });
+}
 
 // $("#jsGrid").jsGrid("sort", field);
 function showgrid (divid, griddata, fields) {

@@ -52,12 +52,10 @@
    ];
    function hasdockcell(value, item) {
      var n = item.hname;
-     // onclick=\"on_docker_info();\"
      return value ? "<span class=\"drinfo\" data-tgt=\"dockerimg\" data-hname=\""+n+"\">Docker Info</span>" : "";
    }
    function hasnfscell(value, item) {
      var n = item.hname;
-     // onclick=\"on_docker_info();\"
      return value ? "<span class=\"nfsinfo\" data-tgt=\"nfsinfo\" data-hname=\""+n+"\">NFS</span>" : "";
    }
    // TODO: Populate dynamic fields separately (at server or client ?)
@@ -190,6 +188,10 @@
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"?pxe\">PXE Boot</a>" +
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"\">Reboot</a>";
    }
+   function procps_cell(val, item) {
+     // TODO: Image/Icon
+     return "<span data-tgt=\"proclist\" data-hname=\""+item.hname+"\"class=\"procps\">Proc</span>";
+   }
    var fldinfo_proc = [
      hostfld, // Need hn ?
      {name: "pcnt",     title: "# Procs", type: "number", width: 30},
@@ -198,6 +200,7 @@
      {name: "loadsarr",    title: "Load Avg", type: "text", width: 50, itemTemplate: loads_cell},
      {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 100}, // 
      {name: "rfop",    title: "RedFish", type: "text", width: 50, itemTemplate: redfish_cell}, // 
+     {name: "proc",    title: "Proc", type: "text", width: 50, itemTemplate: procps_cell}, // visible: false
    ];
    function hkeycell(value, item) {
      // 
@@ -377,12 +380,34 @@ function ibip_cell(val, item) {
      {name: "steplimit",  title: "Step Limit", type: "text", width: 25},
      {name: "ena", title: "Enabled", type: "text", width: 25, Xvisible: false, itemTemplate: efena_cell},
    ];
-   
+   function pstate_cell(val, item) {
+     return "<span class=\"pss_"+val+"\">"+val+"</span>";
+   }
+   function pstime_cell(val, item) {
+     
+     return val;
+   }
+   var fldinfo_proclist = [
+      {name: "pid", title: "Pid", type: "number", width: 30},
+      {name: "ppid", title: "PPid", type: "number", width: 30},
+      {name: "state", title: "State", type: "text", width: 30, itemTemplate: pstate_cell},
+      {name: "owner", title: "User", type: "text", width: 50},
+      {name: "cmd", title: "Cmd", type: "number", width: 60},
+      {name: "cmdline", title: "Cmdline", type: "number", width: 150, visible: false}, // Or grab substr.
+      
+      {name: "rss", title: "RSS(kB)", type: "number", width: 50},
+      {name: "starttime", title: "Start Time", type: "number", width: 50, itemTemplate: null},
+      {name: "utime", title: "User T", type: "number", width: 50},
+      {name: "stime", title: "System T", type: "number", width: 50},
+      
+      {name: "cpuid", title: "Core #", type: "number", width: 50},
+      
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
-      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow
+      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist
    };
    

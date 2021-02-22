@@ -95,10 +95,10 @@
   },
   "docker": {
     "desc": "Settings for environments that use Docker",
-    "port": "4243",
+    "port": 4243,
     "config": "~/docker.conf.json",
     "catalog": "~/dockercat.conf.json",
-    "hostgrp":"nuc",
+    "hostgrp": "nuc",
     "insecreg": ""
   },
   "net": {
@@ -154,6 +154,10 @@
     "poolprod": "SWSHOP_DEBIAN",
     "wsname":   "SWSHOP_WS",
     "agenthost": "efagent.mycomp.com"
+  },
+  "remote": {
+    "port": 8181,
+    "urlpath": ""
   },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
