@@ -143,14 +143,19 @@ a:link { color: #203090; }
 #routerdiv {margin: 0; padding: 12px; border : 0; }
 .xui > div {padding: 10px; }
   </style>
-  <!-- Todo find states -->
-  <style desc="Process States pss_...">
-  .pss_S { background-color: #000000, color: #AAAAAA; }
-  .pss_R { background-color: #AA0000, color: #FFFFFF; }
+  <!-- Todo find states desc=Process States pss_... man ps -->
+  <style >
+  .pss { width: 100%; text-align: center; padding-left: 5px; padding-right: 5px;}
+  .pss_D { background-color: #CC0000; color: #AAAAAA; }
+  .pss_R { background-color: #00AA00; color: #FFFFFF; } /* Run */
+  .pss_S { background-color: #333333; color: #CCCCCC; } /* Sleep */
+  .pss_T { background-color: #888888; color: #FFFFFF; } /* stopped (gray) */
+  .pss_W { background-colorX: #000000; colorX: #AAAAAA; } /* paging */
+  .pss_Z { background-color: #000000; color: #FF0000; } /* defunct/zombie */
   /*
-  .pss_S { background-color: #000000, color: #AAAAAA; }
-  .pss_S { background-color: #000000, color: #AAAAAA; }
-  .pss_S { background-color: #000000, color: #AAAAAA; }
+  
+  .pss_S { background-color: #000000; color: #AAAAAA; }
+  .pss_S { background-color: #000000; color: #AAAAAA; }
   */
   </style>
 </head>
@@ -251,7 +256,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <div id="nfsinfo" title="NFS Exports" todo="for {{ hn }}" data-info="NFS Dialog">
   <div id="jsGrid_nfs" class="fwgrid"></div>
 </div>
-<div id="proclist" title="Host Process List" todo="for {{ hn }}" data-info="Process Dialog">
+<div id="proclist" title="Host Process List" todo="for {{ hn }}" data-info="Process List Dialog">
   <div id="jsGrid_procs" class="fwgrid"></div>
 </div>
 <div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
@@ -259,6 +264,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <div id="userdialog" class="infodia" title="User Info"   data-info="User Dialog" data-dsize="580x550"></div>
 <div id="recipedialog" class="" title="OS Install Recipe"   data-info="Recipe Dialog" ></div>
 
+<div id="procdialog" class="" title="Host OS Process"   data-info="Process Dialog" ></div>
+<!-- Templates -->
 <script id="singlehost" type="text/template">
 <h3>Host {{ hname }}</h3>
 
@@ -533,5 +540,33 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <iframe src="{{ url }}" type="{{ type }}" title="Recipe for ..." height="90%" width="98%"></iframe>
 </script>
 
+<script id="process" type="text/template">
+<style>.pssX {widthX: 20px; text-align: left; }</style>
+<h3>Host {{ hname }} Process {{ pid }} </h3>
+<ul>
+<li>Parent PID: {{ ppid }}</li>
+<li>State: {{{ stateview }}}</li>
+
+<li>Belongs to User: {{ owner }}</li>
+<li>Cmd Basename: <tt>{{{ cmd }}}</tt></li>
+<li>Full Cmdline: <tt>{{{ cmdline }}}</tt></li>
+
+<li>Runs Currently on Core #: {{ cpuid }}</li>
+</ul>
+<h3>Times</h3>
+<ul>
+<li>Started On: {{ starttimeview }}</li>
+<li>Cumulated User Time (s.): {{ utime }}</li>
+<li>Cumulated System Time (s.): {{ stime }}</li>
+</ul>
+
+<h3>Memory Stats (kB)</h3>
+<ul>
+<li>Resident Set Size(RSS): {{ rss }}</li>
+<li>Memory Size(SIZE): {{ size }}</li>
+</ul>
+<input type="button" value="Kill Process">
+<input type="button" value="Kill Process Group">
+</script>
 </body>
 </html>
