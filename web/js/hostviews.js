@@ -104,14 +104,15 @@ function on_rmgmt_click(ev) {
   
 //}
 
-/** Create dialog for host and view described in event elem (by data-hname, data-tgt).
+/** Create dialog+grid for host and view described in event elem (by data-hname, data-tgt).
  * The "data-tgt" attribute (For now..) on event target el. determines the
  * specific handler called from here (by if-elsing).
  * This func: dispatch to custom fetcher -> custom fetcher -> dialogcb (here), calls showgrid()
  * Note: 
 */
 function on_docker_info(ev) {
-  // Final dialog handler
+  // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
+  // Works both as grid (cache index-object) and dialog (DOM-id) selector id
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
     if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
     console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
@@ -126,22 +127,40 @@ function on_docker_info(ev) {
     console.log("Call showgrid dialog CB ... #" + dialogsel);
     if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
     $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
+    // TODO: How to Hook UI handlers after this (by name dialogsel ?)
+    // alert("Got setup");
+    if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
   }
-  
+  var uisetup = {"proclist": (pinfo) => {
+      
+      $('.psact').click(function (ev) {
+        var pid = this.dataset.pid;
+        // Where to get process ?
+        //toastr.info("Find: "+pid+ "..."); // Distraction
+        var proc = pinfo.find((p) => { return p.pid == pid; });
+        var proc2 = rapp.dclone(proc); // For extending for template
+        proc2.stateview = pstate_cell(proc2.state, proc2);
+        proc2.starttimeview = pstime_cell(proc2.starttime, proc2);
+        console.log("Show:", proc2);
+        var out = rapp.templated("process", proc2, "procdialog");
+        
+        var dopts = {modal: true, width: 650, height: 600};
+        $("#procdialog").dialog(dopts);
+      });
+    }
+  };
   //console.log("ARG[0]:"+ev);
   // Note: also the 
   var hn  = ev.target.getAttribute("data-hname"); // Hostname (to do op on)
   var tgt = ev.target.getAttribute("data-tgt"); // 
   console.log("Dlg-HNAME:"+hn+", data-tgt: " + tgt);
   // hn - from ev element
-  // gridsel - grid selector (id) (from data-tgt=...)... replace w. dialog
-  // dialogc - dialogcb
-  if (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
-  else if (tgt == "nfsinfo") { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
-  else if (tgt == "rfdialog") {
-    rfinfo(hn, "rfdialog", dialogcb); return;
-  }
-  else if (tgt == "proclist") { procinfo(hn, "proclist", dialogcb); }
+  // gridsel - grid/dialog selector (id) (from data-tgt=...)... replace w. dialog
+  // dialogcb - dialogcb
+  if      (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
+  else if (tgt == "nfsinfo")   { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
+  else if (tgt == "rfdialog")  { rfinfo(hn, "rfdialog", dialogcb); return; }
+  else if (tgt == "proclist")  { procinfo(hn, "proclist", dialogcb); }
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
@@ -798,13 +817,15 @@ function procinfo(hname, dialogsel, cb) {
   var port = 8181; // cfg.
   if (!hname) { toastr.error("No hostname (from ui) for proc info"); return; } // proc
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
-  //console.log("Calling docker ...");
+  //console.log("Calling procps ...");
   axios.get('http://'+hname+':'+port+'/proclist').then(function (resp) { // /proclist
     var pinfo = resp.data; // NO: data.data
     //console.log("Proc data: "+ JSON.stringify(pinfo, null, 2));
     if (!pinfo ) { toastr.error("No data from " + hname); return; }
     if (!pinfo.length) { toastr.warning("No procs found", "... on " + hname); return; } // procs
-    console.log("procinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
+    //console.log("procinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
+    // Could this roll back V8 object optimizations
+    pinfo.forEach((it) => { it.hname = hname; });
     cb(pinfo, dialogsel);
     // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
   }).catch(function (error) { console.log(error); toastr.error("No Process info:", error); });
