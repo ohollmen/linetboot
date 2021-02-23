@@ -188,7 +188,7 @@ function hosts_load(global) {
     //i++;
   });
   // 
-  global.hostparams = colls.hostparams; // = hostparams;
+  global.hostparams = colls.hostparams; // = hostparams; // For e.g. custom setup
   global.hostnames = hnames2; // NEW (OLD: hlines)
   colls.hostnames = hnames2;
   debug && console.log("Inventory Hostnames: " + JSON.stringify(global.hostnames));
@@ -226,6 +226,7 @@ function hosts_load(global) {
         colls.hostparams[hn] = colls.hostparams[hn] || {};
         console.log("Assigning group vars for group "+gn+"");
         Object.keys(gvs).forEach((varkey) => {
+          if (colls.hostparams[hn][varkey]) { return; } // Do not override ! Consider: != undefined ?
           colls.hostparams[hn][varkey] = gvs[varkey];
         });
         //colls.hostparams[hn][]

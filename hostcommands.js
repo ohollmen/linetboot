@@ -1,5 +1,5 @@
 /** @file
- * # Host Command
+ * # Host Command (Generation)
  * 
  * Allow running generated commands related to hosts of host inventory:
  * - Remotely on remote host via SSH
