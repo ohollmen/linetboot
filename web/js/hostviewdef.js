@@ -380,27 +380,40 @@ function ibip_cell(val, item) {
      {name: "steplimit",  title: "Step Limit", type: "text", width: 25},
      {name: "ena", title: "Enabled", type: "text", width: 25, Xvisible: false, itemTemplate: efena_cell},
    ];
+   var pss_state_map = { 'D':'NI-Sleep','R':'Run', 'S': 'Sleep', 'T':'Stop','t':'Stop(D)','W':'Page','X':'Dead','Z':'Zombie'};
    function pstate_cell(val, item) {
-     return "<span class=\"pss_"+val+"\">"+val+"</span>";
+     // styleX=\"display: block; color: red;\"
+     return "<span class=\"pss pss_"+val+"\" >"+pss_state_map[val]+"</span>";
    }
    function pstime_cell(val, item) {
-     
-     return val;
+     // TODO: Color progressively by delta:
+     //var dts = (Date().now()/1000) - val; // delta seconds // leave out "new" !
+     return intlDate.format(new Date(val*1000));
+     //return val;
    }
+   function psact_cell(val, item) {
+     // 
+     return "<span data-pid=\""+item.pid+"\" class=\"psact\">View</span>";
+   }
+   var intlopts = {year: 'numeric', month: 'numeric',day: 'numeric',
+     hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false,}; // timeZone: ""
+  //var intlDate = new Intl.DateTimeFormat( undefined, intlopts );
+  var intlDate = Intl.DateTimeFormat('sv-SE', intlopts);
    var fldinfo_proclist = [
-      {name: "pid", title: "Pid", type: "number", width: 30},
-      {name: "ppid", title: "PPid", type: "number", width: 30},
-      {name: "state", title: "State", type: "text", width: 30, itemTemplate: pstate_cell},
-      {name: "owner", title: "User", type: "text", width: 50},
-      {name: "cmd", title: "Cmd", type: "number", width: 60},
-      {name: "cmdline", title: "Cmdline", type: "number", width: 150, visible: false}, // Or grab substr.
+      {name: "pid", title: "Pid", type: "number", width: 25},
+      {name: "ppid", title: "PPid", type: "number", width: 25},
+      {name: "state", title: "State", type: "text", width: 25, itemTemplate: pstate_cell},
+      {name: "owner", title: "User", type: "text", width: 45},
+      {name: "cmd", title: "Cmd", type: "text", width: 60},
+      {name: "cmdline", title: "Cmdline", type: "text", width: 150, visible: false}, // Or grab substr.
       
-      {name: "rss", title: "RSS(kB)", type: "number", width: 50},
-      {name: "starttime", title: "Start Time", type: "number", width: 50, itemTemplate: null},
-      {name: "utime", title: "User T", type: "number", width: 50},
-      {name: "stime", title: "System T", type: "number", width: 50},
+      {name: "rss", title: "RSS(kB)", type: "number", width: 30},
+      {name: "starttime", title: "Start Time", type: "number", width: 60, itemTemplate: pstime_cell},
+      {name: "utime", title: "User T", type: "number", width: 30},
+      {name: "stime", title: "System T", type: "number", width: 30},
       
-      {name: "cpuid", title: "Core #", type: "number", width: 50},
+      {name: "cpuid", title: "Core #", type: "number", width: 30},
+      {name: "act", title: "View", type: "text", width: 30, itemTemplate: psact_cell},
       
    ];
    // TODO: Send sets as AoO, index by id
