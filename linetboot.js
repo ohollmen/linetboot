@@ -655,7 +655,7 @@ function pkg_counts (req, res) {
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
     var err;
     if (!fs.existsSync(path))   { err = "No pkg file for host: " + hn; console.log(err); return cb(null, stat); }
-    if (path.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
+    if (hn.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
     cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
       if (error) { return cb(error, null); }
