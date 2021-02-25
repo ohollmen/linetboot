@@ -131,6 +131,7 @@ function on_docker_info(ev) {
     // alert("Got setup");
     if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
   }
+  // Process *grid* UI - hook additional UI actions
   var uisetup = {"proclist": (pinfo) => {
       
       $('.psact').click(function (ev) {
@@ -146,6 +147,8 @@ function on_docker_info(ev) {
         
         var dopts = {modal: true, width: 650, height: 600};
         $("#procdialog").dialog(dopts);
+        // Hook Buttons pkill, pgkill
+        
       });
     }
   };

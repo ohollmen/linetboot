@@ -146,7 +146,7 @@ a:link { color: #203090; }
   <!-- Todo find states desc=Process States pss_... man ps -->
   <style >
   .pss { width: 100%; text-align: center; padding-left: 5px; padding-right: 5px;}
-  .pss_D { background-color: #CC0000; color: #AAAAAA; }
+  .pss_D { background-color: #990000; color: #CCCCCC; } /* NI-Sleep */
   .pss_R { background-color: #00AA00; color: #FFFFFF; } /* Run */
   .pss_S { background-color: #333333; color: #CCCCCC; } /* Sleep */
   .pss_T { background-color: #888888; color: #FFFFFF; } /* stopped (gray) */
@@ -565,8 +565,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li>Resident Set Size(RSS): {{ rss }}</li>
 <li>Memory Size(SIZE): {{ size }}</li>
 </ul>
-<input type="button" value="Kill Process">
-<input type="button" value="Kill Process Group">
+<input type="button" id="pkill" value="Kill Process">
+<input type="button" id="pgkill" value="Kill Process Group">
 </script>
 </body>
 </html>

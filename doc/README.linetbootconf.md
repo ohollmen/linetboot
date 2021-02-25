@@ -271,3 +271,14 @@ who relies on default recipes and does not modify or extreme lineboot developer,
 and upstreams them frequently.
 - "~/.linetboot/tmpl/:./tmpl" - Opposite: First search under config dir ... . A good choice for user, who changes templates, but
 does not have plans to upstream them or only upstreams them much less frequently than doing git-pull updates.
+
+## Auto-detection of features
+
+When linetboot start, it goes through the configuration sections and evaluates
+them for completeness and validity. If configuration section is does not have
+sufficient data or has invalid data (e.g it names files or dirs that do not exist), the feature associated with config section is marked as disabled.
+This disablement reflects all the way to Web GUI, where respective menu
+item is suppressed (it disappears).
+
+
+
