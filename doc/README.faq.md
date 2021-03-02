@@ -77,3 +77,11 @@ You already have one Linetboot (process) instance running and the tcp/ip port 30
 Grep the process list (e.g. by pattern "node") for the earlier instance and get rid of it (kill $PID).
 Then start the new lineboot instance. If you used PM2 or systemd to launch the old instance, prefer to use them
 to terminate earlier process, instead of "raw" kill.
+
+#### Q: My PXE Linux Installer DHCP request is timing out. Preseed/kickstart (to set timeout) is not loaded yet. What to do about this chicken and egg problem ?
+
+Whatever can be set in recipe (KS/Preseed) but needs to be set before loading it, can oftern be seton kernel command line (See your installer documenattion for details). In this case, se on kernel CLI (bootitem append-line. e.g. Debian/Ubuntu:) among other key-value parameters:
+```
+... netcfg/link_wait_timeout=30 netcfg/dhcp_timeout=60 ...
+
+```
