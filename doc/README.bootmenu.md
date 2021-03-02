@@ -10,6 +10,24 @@ showing lineboot operation. See: https://www.syslinux.org/wiki/index.php?title=P
 
 For more info on pxelinux boot menu file structure and directives, read `man syslinux`.
 
+## Lineboot "safe" menu format convention
+
+To make most sure your menu is most compatible with Linetboot (which parses
+the contents of menu under few circumstances), order the fields of your
+your single boot item entry in following way:
+
+- `label` - Boot label symbol
+- `menu label` - Human readable description of boot item
+- `kernel` - Kernel to load
+- `initrd` - Intial ramdisk to load for 1st stage boot
+- `append` - Additional (key=value) kernel commandline parameters for boot.
+
+For raw and ISO image based boots the initrd and kernel are usually missing,
+see example boot menu file for examples.
+
+You should note that while initrd info can be given as `initrd=...` on append line, it should be given as separate field in menu file (also Grub bootloader
+mandates it as a separate line and does not allow blending it with kernel CL options).
+
 ## Menu Template Fill-in
 
 The menu template gets "filled-in" with parameters and turned into a usable menu with Mustache templating engine command:
