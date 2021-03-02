@@ -3,8 +3,10 @@
   "groups": {
     "gen":"General",
     "ins":"Lineboot Installation",
-    "osi":"OS Installlation"
+    "osi":"OS Installlation",
+    "maint": "Admin & Maintenance"
   },
+  "defdoc" : "doc/about.html",
   "docs" : [
   	{
       "title" : "About LinetBoot",
@@ -75,6 +77,11 @@
       "title" : "Troubleshooting",
       "urlpath" : "doc/README.troubleshoot.md",
       "grp":"osi"
+    },
+    {
+      "title" : "Instance Data Migration",
+      "urlpath" : "doc/README.migrate.md",
+      "grp":"maint"
     }
   ]
 }
