@@ -127,7 +127,7 @@ function on_docker_info(ev) {
     console.log("Call showgrid dialog CB ... #" + dialogsel);
     if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
     $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
-    // TODO: How to Hook UI handlers after this (by name dialogsel ?)
+    // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
     // alert("Got setup");
     if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
   }
@@ -155,7 +155,7 @@ function on_docker_info(ev) {
   //console.log("ARG[0]:"+ev);
   // Note: also the 
   var hn  = ev.target.getAttribute("data-hname"); // Hostname (to do op on)
-  var tgt = ev.target.getAttribute("data-tgt"); // 
+  var tgt = ev.target.getAttribute("data-tgt"); // id-lbl 
   console.log("Dlg-HNAME:"+hn+", data-tgt: " + tgt);
   // hn - from ev element
   // gridsel - grid/dialog selector (id) (from data-tgt=...)... replace w. dialog
@@ -167,12 +167,12 @@ function on_docker_info(ev) {
   //showgrid(gridsel, response.data, fldinfo.net);
 }
 
-/** Display host details (Shared click handler for hostname click)
+/** Display host details (Shared click handler for hostname click).
 */
 function on_host_click(ev, barinfo) {
   // console.log("Ev:", ev, " Val:"); //  // , "td"
   var tmplsel = "#singlehost";
-  var hname; // Get some other way than just html
+  var hname; // Get some other way than just html (data-hname="+e.hname+") ... ev.target.dataset.hname;
   hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
   // Try treating this as Chart.js event (w. barinfo Array)
   if (!hname && barinfo && Array.isArray(barinfo)) { hname = barinfo[0]._model.label; }
@@ -180,10 +180,11 @@ function on_host_click(ev, barinfo) {
   // Lookup host
   var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
   if (!ent) { return alert("No host ent by name "+ hname); }
-  var tmpl = $(tmplsel).html();
-  var output = Mustache.render(tmpl, ent); // {hname: hname}
+  //var tmpl = $(tmplsel).html();
+  //var output = Mustache.render(tmpl, ent); // {hname: hname}
+  //$( "#dialog" ).html(output);
+  rapp.templated('singlehost', ent, 'dialog');
   
-  $( "#dialog" ).html(output);
   $( "#dialog" ).dialog(dopts);
 }
 
@@ -418,6 +419,8 @@ var dopts = {modal: true, width: 600, // See min,max versions
 // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
 //////////////////// Tabs and Grids ////////////////////////
+// Tab Activation mediator.
+// Treat new tab activation almost like routing event
 // ui has: newTab, newPanel, oldTab, oldPanel
 function ontabactivate( event, ui ) {
   //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
@@ -436,7 +439,7 @@ function ontabactivate( event, ui ) {
   // TODO: Dispatch like a route handler
   if (an.hdlr) { an.hdlr(event, an); }
 }
-
+// Initialize tab content (w/o loading data, for cases where data is not initially needed)
 function inittabcontent(tabs) {
   // Populate tab templated (or literal) content (run before .tabs() ?)
   tabs.forEach((titem) => { /// INEFFECTIVE
@@ -444,7 +447,7 @@ function inittabcontent(tabs) {
     if (!titem.tsel) { return; }
     // rapp.templated(); // document.getElementById ?
     console.log("Setting template for:"+titem.tsel);
-    document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl
+    document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl rapp.templated(titem.tsel, titem, titem.elsel);
   });
 }
 function tabui_setup(tabs) {
@@ -787,8 +790,9 @@ function rfinfo(hname, dialogsel, cb) {
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
     var out = Mustache.render(tc, d);
-    $('#rfdialog').html(out);
+    $('#'+ dialogsel ).html(out); // '#rfdialog'
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
+    // 
     function uisetup() {
       $('.bbut').click(function (jev, ui) {
         console.log(jev); // JQuery.Event (has originalEvent)

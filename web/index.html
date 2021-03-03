@@ -157,6 +157,7 @@ a:link { color: #203090; }
   .pss_S { background-color: #000000; color: #AAAAAA; }
   .pss_S { background-color: #000000; color: #AAAAAA; }
   */
+  .psact {color: #3333EE; }
   </style>
 </head>
 <!--
@@ -246,9 +247,10 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
     
     <!--<button type="button" id="proberun2" class="btn btn-default">Reload <i id="reloadsym" class="glyphicon glyphicon-refresh" > </i></button>-->
 
-<!-- Dialogs -->
+<!-- Dialogs. See also generic/simple grid template: id="simplegrid" (with {{name}} class="xui" {{ gridid }})-->
 <div id="dialog" class="infodia" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
+
 <div id="dockerimg" title="Docker Images" todo="for {{ hn }}" data-info="Docker Dialog">
   <div id="jsGrid_dockerimg_d" class="fwgrid" comm="Unused"></div>
 </div>
@@ -257,6 +259,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <div id="jsGrid_nfs" class="fwgrid"></div>
 </div>
 <div id="proclist" title="Host Process List" todo="for {{ hn }}" data-info="Process List Dialog">
+  <!-- <h3>{{ hname }}</h3> -->
   <div id="jsGrid_procs" class="fwgrid"></div>
 </div>
 <div id="rfdialog" title="RedFish Info" todo="for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
