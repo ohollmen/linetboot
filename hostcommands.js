@@ -51,6 +51,12 @@ var Mustache = require("mustache");
       // Note: Env. HOSTNAME seems to be a problem in Mac
       return "ssh -t " + info.hname + " 'sudo rsync /etc/ssh/ssh_host_* "+ info.username +"@"+ process.env['HOSTNAME'] + ":"+ info.userhome +"/.linetboot/sshkeys/"+info.hname+"'";
     }},
+    {"lbl": "sshkeyscan", name: "SSH Host Key Scan",
+      // "tmpl": "ssh-keyscan {{ info.hname }} >> ~/.ssh/known_hosts"
+      "cb": function (info, f) {
+      // Note: Env. HOSTNAME seems to be a problem in Mac
+      return "ssh-keyscan -H -t rsa " + info.hname + " >> ~/.ssh/known_hosts";
+    }},
     // Also supports -f fn.txt (safer)
     {"lbl": "sshcopyid", name: "SSH Copy ID",
      "tmpl": "sshpass -p $SSHPASS ssh-copy-id {{username}}@{{ hname }}",
