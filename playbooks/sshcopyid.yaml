@@ -1,9 +1,11 @@
 # # Copy remote host SSH user key to central Ansible machine
+# 
 # Do effective (reverse) ssh-copy-id, except deal with few files
 # and text content to avoid password promting interactivity
 # during automation (root has rights to do the file shuffle).
 # Refs:
 # - https://docs.ansible.com/ansible/latest/modules/synchronize_module.html
+# 
 # Also: lookup('vars', Component) ~ vars[Component]
 # hostvars[inventory_hostname][Component]
 # lookup('file', 'pubkeys/foo.com.invalid')
@@ -11,11 +13,18 @@
 # Ansible Concurrency/File synchronization problem (in lineinfile) ?
 # All keys were registered properly and showed in debug: output, but only 3/5 ended
 # up in file. 2nd run captured the remaining 2 keys.
+# 
+# # Params to pass (in -e)
+# - remoteuser - bare username
+# - remotepass - remote SSH pass
+# - remoteuserhome
 - name: Copy remote keys to ansible machine
   become: yes
   hosts: '{{ host }}'
   vars:
     # Remote
+    remoteuser: ''
+    remotepass: ''
     remoteuserhome: '/root'
     remotesshdir: '{{ remoteuserhome }}/.ssh'
     localuserhome: '{{ lookup("env","HOME") }}'
@@ -60,13 +69,19 @@
       delegate_to: localhost
     # Do we need to also add to known_hosts ?
     # https://gist.github.com/shirou/6928012
-    - name: Add host to known_hosts    
+    # https://serverfault.com/questions/132970/can-i-automatically-add-a-new-host-to-known-hosts
+    - name: Eliminate possibility of duplicate hostkeys
+      # ssh-keygen -R {{inventory_hostname}},{{ansible_default_ipv4.address}}
+      shell: 'ssh-keygen -R {{ inventory_hostname }}; ssh-keygen -R {{ ansible_default_ipv4.address }}'
+    - name: Add host to known_hosts
       # Also -H name,ipaddr
-      # shell: 'ssh-keyscan -H {{ inventory_hostname }}' >> ~/.ssh/known_hosts ? Ansible known_hosts ?
-      lineinfile:
-        dest: '{{ localuserhome }}/.ssh/known_hosts'
-        create: yes
-        state: present
-        # -p' + ansible_ssh_port + ' Need -H 
-        line: "{{ lookup('pipe', 'ssh-keyscan -t rsa -H ' + inventory_hostname) }}"
+      shell: 'ssh-keyscan -t rsa -H {{ inventory_hostname }} >> ~/.ssh/known_hosts; ssh-keyscan -t rsa -H {{ansible_default_ipv4.address}} >> ~/.ssh/known_hosts'
+      #lineinfile:
+      #  dest: '{{ localuserhome }}/.ssh/known_hosts'
+      #  create: yes
+      #  state: present
+      #  # -p' + ansible_ssh_port + ' Need -H 
+      #  line: "{{ lookup('pipe', 'ssh-keyscan -t rsa -H ' + inventory_hostname) }}"
       delegate_to: localhost
+    - name: SSH Copy Id
+      shell: 'sshpass -p {{ remotepass }} ssh-copy-id {{ remoteuser }}@{{ inventory_hostname }}'

@@ -1,6 +1,8 @@
 # Notes:
+# 
 # - {{ ansible_user_id }} with become is root (except > 2.8.3)
 # - This playbook requires also passwordless reverse connectivity (from ansible remote host to ansible running host)
+#   - Depends on earlier ssh-copy-id (See e.g. sshcopyid.yaml)
 # Use for env variables (e.g): lookup("env","USER")
 # Refs:
 # https://stackoverflow.com/questions/38143647/set-fact-with-dynamic-key-name-in-ansible
@@ -16,7 +18,6 @@
     # Should work in Debian distros
     keygroup: '{{ lookup("env","USER") }}'
     thishost: '{{ lookup("env","HOSTNAME") }}'
-    #thishost: 'nuc7'
     thisuser: '{{ lookup("env","USER") }}'
   tasks:
     #- name: Make sure file is there
@@ -30,30 +31,30 @@
         path: '{{ keyarchpath }}/{{ inventory_hostname }}'
         state: directory
         owner: '{{ keyuser }}'
-        group: '{{ keygroup }}'
+        # group: '{{ keygroup }}'
       delegate_to: localhost
     # 
     - name: Register Name of current host
       shell: 'hostname -f'
       register: hostnameinfo
       delegate_to: localhost
-    - name: run cmd
-      #shell: echo "{{ inventory_hostname }}"
-      shell: 'cat {{ sshdir }}/ssh_host_rsa_key'
-      register: 'sshkey'
+    #- name: run cmd
+    #  #shell: echo "{{ inventory_hostname }}"
+    #  shell: 'cat {{ sshdir }}/ssh_host_rsa_key'
+    #  register: 'sshkey'
     # Then (after) use: with_items: "{{ keylist.stdout_lines }}"
     - name: list keys
       shell: 'ls {{ sshdir }}/ssh_host*'
       register: keylist
-    - name: Store Locally
+    - name: Store RSA Locally
       copy:
         dest: '{{ keyarchpath }}/{{ inventory_hostname }}/ssh_host_rsa_key'
         content: "{{ sshkey.stdout }}"
         owner: '{{ keyuser }}'
-        group: '{{ keygroup }}'
+        #group: '{{ keygroup }}'
         mode: 0600
       delegate_to: localhost
       #when: 0
-    - name: Sync Keys
+    - name: Sync Keys form remote to local
       shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath}}/{{ inventory_hostname }}'
       #when: 0
