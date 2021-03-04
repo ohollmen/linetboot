@@ -256,13 +256,13 @@ sudo chgrp -R $LINETBOOT_USER_GROUP /var/lib/tftpboot/
 # Create menu and mac address based symlinks.
 # To dry run and only preview menu: node hostsetup.js tftpsetup --dryrun | less
 # Run this again whenever you add hosts that you want to be PXE bootable
-node hostsetup.js tftpsetup
+node linetadm.js tftpsetup
 ###### TFTP - Bootloader binaries ######
 # Can be run on Ubuntu Only:
 # Install first various OS packages (see prerequisite docs) containing PXE bootloader binaries.
 # Populate bootloader binaries from installed packages to dirs under TFTP root.
 # (Currently installs in temp directory, directory name is echoed at the end of operation)
-node hostsetup.js bootbins
+node linetadm.js bootbins
 
 ```
 If you have older Debian/Ubuntu/Raspian, you can change legacy tftp root dir `/srv/tftp` to match the concurrent
