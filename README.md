@@ -59,7 +59,7 @@ Install and config instructions aim to advise on the minute config differences n
 
 - Ubuntu Server (LTS): 14.04, 16.04, 18.04, 20.04
 - Debian 10 ("Buster", possibly older Debians)
-- Redhat, Centos: 6, 7, 8
+- Redhat, Centos: 6, 7 (7.6), 8 (8.2)
 - OpenSuse 15.2
 - Arch Linux (assisted by Alis-installer)
 - Ubuntu Desktop - in (non-automated) Live Install mode
