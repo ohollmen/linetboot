@@ -1,0 +1,18 @@
+- name: Inital ssh-copy-id
+  # become: yes
+  hosts: '{{ host }}'
+  connection: local
+  #gather_facts: false
+  #NOT:serial: 1
+  vars:
+    remoteuser: 'none'
+    remotepass: 'none'
+  forks: 50
+  tasks:
+    - name: SSH Copy id
+      # -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+      shell: 'sshpass -p {{ remotepass }} ssh-copy-id {{ remoteuser }}@{{ inventory_hostname }}'
+      delegate_to: localhost
+      #when: inventory_hostname != "local"
+      #when:  inventory_hostname  != 'ecmdr-irv-03.lvn.broadcom.net'
+      #when: 0
