@@ -1,0 +1,29 @@
+# # Register 
+- name: Register Hosts (keyscan)
+  # become: yes
+  hosts: '{{ host }}'
+  connection: local
+  #gather_facts: false
+  serial: 1
+  vars:
+    khfile: ~/.ssh/known_hosts
+  tasks:
+    #- name: Reset temp file
+    #  shell: rm -f ~/.ssh/known_hosts.temp
+    #  run_once: True
+    #  delegate_to: localhost
+    #  when: 0
+    - name: Eliminate possibility of duplicate hostkeys (in known_hosts)
+      #
+      shell: 'ssh-keygen -R {{ inventory_hostname }}; ssh-keygen -R {{ ansible_default_ipv4.address }}; ssh-keygen -R {{inventory_hostname}},{{ansible_default_ipv4.address}}'
+      delegate_to: localhost
+      #when: inventory_hostname != "local"
+      #when: 0
+    - name: Add host (RSA) key to known_hosts
+      # Also -H name,ipaddr
+      # -t rsa  -t rsa
+      shell: 'ssh-keyscan  -H {{ inventory_hostname }} >> ~/.ssh/known_hosts; ssh-keyscan -H {{ansible_default_ipv4.address}} >> ~/.ssh/known_hosts'
+      #throttle: 1
+      #serial: 1
+      delegate_to: localhost
+      #when: 0
