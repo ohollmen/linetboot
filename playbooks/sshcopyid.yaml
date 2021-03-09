@@ -7,7 +7,7 @@
   vars:
     remoteuser: 'none'
     remotepass: 'none'
-  forks: 50
+  serial: 50
   tasks:
     - name: SSH Copy id
       # -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
