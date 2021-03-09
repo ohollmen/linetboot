@@ -534,14 +534,15 @@ function eflowlist(ev, act) {
 function esxilist(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
   var cfg = datasets["cfg"];
-  
+  toastr.clear();
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
   var ds = ev.target.dataset;
   var host;
   if (ds && ds.ghost) { host = ds.ghost; }
-  if (!host) { host = "esxi1"; }
+  if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
+  if (!host) { return toastr.error("No Default host available."); }
   console.log("Search by: "+ host);
   var url = act.url + host;
   toastr.info("Request ESXI Host VM Info ... please wait...");

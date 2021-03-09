@@ -422,6 +422,7 @@ function ibip_cell(val, item) {
       
    ];
    function gstate_cell(val, item) {
+     // "running", "notRunning", (others?)
      var col = (val == "running") ? "#00AA00" : "#AA0000";
      return "<span style=\"color: white; background-color: "+col+"; width: 100%; padding-left: 10px; padding-right: 10px;\">"+val+"</span>";
    }
