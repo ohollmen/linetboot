@@ -1,0 +1,27 @@
+---
+# Example of setting up a (Debian Ubuntu) filer.
+# TODO: parametrize for Centos RH (by when).
+- name: Establish NFS and SMB Filer
+  hosts: '{{ host }}'
+  become: yes
+  tasks:
+    - name: Install deps
+      apt: name={{ item }} update_cache=yes state=present force_apt_get=yes install_recommends=no
+      with_items:
+        - autofs
+        # deps: portmap
+        - nis
+        - nscd
+        - python
+        # These contain extensive sub-deps
+        # (e.g. samba-common-bin => samba-libs)
+        - nfs-kernel-server
+        - samba
+        # - samba-vfs-modules # ?
+        - jed
+        - silversearcher-ag
+        - mc
+        - curl
+        - ipmitool
+        - nodejs
+
