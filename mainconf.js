@@ -101,29 +101,30 @@ function mainconf_process(global) {
   var dis = disabled_detect(global);
   // NEW: Allow pushing (appending, add to end) or unshifting (add to head) recipe items
   if (global.recipes) {
+    let debug = 0;
     // TODO: function recipes_add(global, recipes) {
     // ra = recipe array, ri = recipe item
     var nra = global.recipes;
     var ora = osinst.recipes;
-    console.log("Add to recipes ...", nra); // ora, nra
+    debug && console.log("Add to recipes ...", nra); // ora, nra
     if ( ! Array.isArray(nra)) { console.error("'recipes' ('add') config not in array"); return; }
     nra.forEach((nri) => {
       // Find matching item in old
       var oridx = ora.findIndex((ori) => { return ori.url == nri.url; });
       // Need idx. TODO: Allow remove, then push/unshift (new location)
       if (oridx > -1) {
-        console.log("Found old - replace (at index)"+oridx);
+        debug && console.log("Found old - replace (at index)"+oridx);
         ora[oridx] = nri;
       } 
       else {
         // Default to adding in front !
         var op = nri.push ? "push" : "unshift";
-        console.log("New item - add by "+op);
+        debug && console.log("New item - add by "+op);
         // Call push/unshift
         ora[op](nri);
       }
     });
-    console.log(osinst.recipes);
+    debug && console.log(osinst.recipes);
     //  
     //} // recipes_add
   }
