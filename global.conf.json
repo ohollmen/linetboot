@@ -160,7 +160,7 @@
     "urlpath": ""
   },
   "esxi": {
-    "url": "",
+    "desc": "List ESXi Guest VM:s on various ESXi Host Machines",
     "username":"",
     "password":"",
     "cachepath":"~/.linetboot/esxi",
