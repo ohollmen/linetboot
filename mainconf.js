@@ -138,7 +138,7 @@ function hasnofiles(dir) {
   }
 
 /** Detect completeness of various configs and mark things that are not in use as disabled.
-  * Use these to customize Web UI. Use UI terms here for ease at that end (and aim to sync terminology in time).
+  * Use these to customize Web UI. Use UI terms here for ease at UI end (and aim to sync terminology in time).
   * All this means the push() - keywords *must* be in sync with web frontend.
   * IPMI: See if dir exists and if any info collected
   */
@@ -168,6 +168,8 @@ function disabled_detect(global) {
   if (global.groups && 1) {
     //dis.push("groups");
   }
+  var esxi = global.esxi;
+  if (esxi && !esxi.password) { dis.push("esxiguests"); } // Note UI term
   return dis;
 } // diabled_detect
 
