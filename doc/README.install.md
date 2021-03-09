@@ -134,7 +134,16 @@ copied onto that remote account. Copying SSH keys can be accomplished by:
     ssh-copy-id remoteuser@ws-001.comp.com
     
 Do this for all the machines (If you did not have SSH key to start with, generate it with `ssh-keygen -t rsa -b 4096`, use no passphrase).
+The ssh-copy-id will prompt you to treat machine as trustworthy machine and
+add it to your ~/.ssh/known_hosts.
 
+The above flow is fine for few machines, but if you have larger set of machines, you can (and probabl;y should) run the ansible playbooks from `linetboot/playbooks` directory:
+
+     # Register all inventoried hosts as trusted
+     ansible-playbook -i ~/.linetboot/hosts  playbooks/sshreghosts.yaml -e "host=all"
+     # Copy local SSH public key to remote (ssh-copy-id)
+     ansible-playbook -i ~/.linetboot/hosts  playbooks/sshcopyid.yaml \
+       -e "remoteuser=... remotepass=... ansible_sudo_pass=... host=all"
 
 Record facts (for all hosts in single step) by running command:
 
