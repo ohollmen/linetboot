@@ -75,7 +75,7 @@ function mainconf_process(global) {
   //if (global.ipmi.path)     { global.ipmi.path     = global.ipmi.path.replace('~', home); }
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
-  
+  tilde_expand(global.esxi, ["cachepath"]);
   tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path"]);
   if (global.docker) {
     var dkr = global.docker;

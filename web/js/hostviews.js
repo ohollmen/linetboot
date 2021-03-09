@@ -357,6 +357,9 @@ var tabloadacts = [
   // Iblox
   {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", path: "ibloxlist"},
   {"name": "EFlow", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": eflowlist,    url: "/eflowrscs", gridid: "jsGrid_eflow", path: "eflowlist"},
+  // esxi
+  {"name": "ESXI Hosts",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
+  
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -377,10 +380,11 @@ function gendialog(ev, act) {
   })
   .catch(function (ex) { console.log(""); });
   function showdialog(data) {
-    if (!act.dialogid) { return alert("No dialog indicated");}
-    rapp.templated(act.tmpl, data, act.dialogid); // 
+    if (!act.dialogid) { return alert("No dialog indicated (by 'dialogid')"); }
+    // Check existence of elem by act.dialogid
     var diael = document.getElementById(act.dialogid);
     if (!diael) { alert("No dialog by id:" + act.dialogid); return; }
+    rapp.templated(act.tmpl, data, act.dialogid);
     var dopts = {modal: true, width: 500, height: 200};
     console.log("Dialog.dataset", diael.dataset);
     // Look for size in ... target elem (jev: this)
@@ -419,9 +423,11 @@ var dopts = {modal: true, width: 600, // See min,max versions
 // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
 //////////////////// Tabs and Grids ////////////////////////
-// Tab Activation mediator.
-// Treat new tab activation almost like routing event
-// ui has: newTab, newPanel, oldTab, oldPanel
+/** Tab Activation handler.
+* Treat new tab activation almost like routing event. Mediate tab activate to handlers.
+* @param event {object} - JQuery UI event
+* @param ui {object} - JQuery UI object (has: newTab, newPanel, oldTab, oldPanel
+*/
 function ontabactivate( event, ui ) {
   //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
   var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
@@ -459,6 +465,8 @@ function tabui_setup(tabs) {
   $( "#tabs" ).tabs({ activate: ontabactivate });
   $("#nav").hide();
 }
+/** Pass set of actions whose validation item is to be hidden from menu.
+ */
 function acts_rmitem(acts, attr, val) {
   var remok = 0;
   for (var i = 0;i<acts.length;i++) {

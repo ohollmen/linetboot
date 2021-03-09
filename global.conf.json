@@ -159,6 +159,13 @@
     "port": 8181,
     "urlpath": ""
   },
+  "esxi": {
+    "url": "",
+    "username":"",
+    "password":"",
+    "cachepath":"~/.linetboot/esxi",
+    "vmhosts": ["esxi1","esxi2"]
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],

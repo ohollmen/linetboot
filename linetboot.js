@@ -261,6 +261,8 @@ function app_init() { // global
   
   app.get("/eflowrscs",  eflowrscs);
   app.get("/eflowrsctoggle",  eflowrsctoggle);
+  // ESXI
+  app.get("/esxi/:host", listguests);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -1616,6 +1618,7 @@ function config_send(req, res) {
   var core = global.core;
   var tftp = global.tftp;
   var web  = global.web;
+  var esxi  = global.esxi;
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
   // Core
@@ -1632,6 +1635,7 @@ function config_send(req, res) {
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
   // OS/Version view columns/fields
   if (web && web.xflds) { cfg.xflds = web.xflds; }
+  if (esxi.vmhosts) { cfg.vmhosts = esxi.vmhosts; }
   res.json(cfg);
 }
 
@@ -2312,3 +2316,28 @@ function eflowrsctoggle(req, res) {
  * var url = efc.url + "/resourcePools/"+q.poolname;
  * - On top (intermed): resourcePool
  */
+// function () {}
+
+/** List Guests for a VM Host Server (GET /esxi/:host).
+ * 
+ */
+function listguests(req, res) {
+  var jr = {"status":"err", "msg":"Error getting info for esxi guests. "};
+  var esxi = require("./esxi.js");
+  var ecfg = global.esxi || null;
+  if (!ecfg) { return res.json(jr); }
+  var host = req.params.host;
+  console.log("Got VM host name: '"+host+"'");
+  console.log("Known names: ", ecfg.vmhosts);
+  if (!ecfg.vmhosts.includes(host)) { jr.msg += host + " is not one of registered hosts"; return res.json(jr);  }
+  var fname = ecfg.cachepath+"/"+host+".xml";
+  console.log("Try esxi file: "+fname);
+  if (!fs.existsSync(fname)) { jr.msg += "No file for "+host; return res.json(jr);  }
+  var cont = fs.readFileSync(fname, 'utf8');
+  // XML ? JSON ?
+  esxi.getGuests(cont, {debug: 0}, function (err, data) {
+    if (err) { jr.msg += host + " problems extracting guests info"; return res.json(jr); }
+    res.json(data); // {status: "ok", data: data}
+  });
+  
+}

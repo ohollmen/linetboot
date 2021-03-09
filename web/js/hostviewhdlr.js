@@ -528,4 +528,45 @@ function eflowlist(ev, act) {
   }).catch (function (ex) { console.log(ex); });
 }
 
+/** Show all guests from a VM Host.
+ * TODO: Use xui to show navi list of servers ?
+ */
+function esxilist(ev, act) {
+  rapp.templated("simplegrid", act, ev.viewtgtid);
+  var cfg = datasets["cfg"];
+  
+  if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
+  // Figure out host (default to ... (first?) ?)
+  // From a-element (may be a global navi link, or host specific link)
+  var ds = ev.target.dataset;
+  var host;
+  if (ds && ds.ghost) { host = ds.ghost; }
+  if (!host) { host = "esxi1"; }
+  console.log("Search by: "+ host);
+  var url = act.url + host;
+  toastr.info("Request ESXI Host VM Info ... please wait...");
+  axios.get(url).then(function (resp) {
+    var d = resp.data;
+    toastr.clear();
+    if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
+    if (!d) { return toastr.error("No Data Found."); } // d.data
+    if (!Array.isArray(d)) { return toastr.error("Data Not in Array."); } // d.data
+    console.log(d); // d.data
+    showgrid(act.gridid, d, fldinfo.esxilist); // d.data
+    
+  }).catch (function (ex) { console.log(ex); });
+  //function loadhostglist(host) {
+  //  
+  //}
+}
+/* */
+function esxihostmenu(act, vmhosts) {
+  var cont = "";
+  //var ghnames = ["esxi1","esxi2","esxi3"];
+  vmhosts.forEach((h) => { cont += "<span class=\"vmglink\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
+  $(".xui").html(cont);
+  $(".xui").show();
+  $(".vmglink").click(function (ev) { esxilist(ev, act); });
+  //return cont;
+}
 //////////// Dialog handlers ////////////////////

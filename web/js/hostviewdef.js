@@ -400,8 +400,8 @@ function ibip_cell(val, item) {
    }
    var intlopts = {year: 'numeric', month: 'numeric',day: 'numeric',
      hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false,}; // timeZone: ""
-  //var intlDate = new Intl.DateTimeFormat( undefined, intlopts );
-  var intlDate = Intl.DateTimeFormat('sv-SE', intlopts);
+   //var intlDate = new Intl.DateTimeFormat( undefined, intlopts );
+   var intlDate = Intl.DateTimeFormat('sv-SE', intlopts);
    var fldinfo_proclist = [
       {name: "pid", title: "Pid", type: "number", width: 25, itemTemplate: pidlink_cell},
       {name: "ppid", title: "PPid", type: "number", width: 25},
@@ -421,11 +421,26 @@ function ibip_cell(val, item) {
       {name: "act",   title: "View", type: "text", width: 30, visible: false, itemTemplate: psact_cell},
       
    ];
+   function gstate_cell(val, item) {
+     var col = (val == "running") ? "#00AA00" : "#AA0000";
+     return "<span style=\"color: white; background-color: "+col+"; width: 100%; padding-left: 10px; padding-right: 10px;\">"+val+"</span>";
+   }
+   var fldinfo_esxi = [
+     // 
+     {name: "guestId",       title: "Guest ID", type: "text", width: 90, itemTemplate: null},
+     {name: "guestFullName", title: "OS Type", type: "text", width: 120, itemTemplate: null},
+     {name: "numCPU", title: "#CPU", type: "number", width: 25, itemTemplate: null},
+     
+     {name: "hostName", title: "Hostname", type: "text", width: 80, itemTemplate: null},
+     {name: "ipAddress", title: "IP Addr", type: "text", width: 60, itemTemplate: null},
+     // 
+     {name: "guestState", title: "State", type: "text", width: 50, itemTemplate: gstate_cell},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
-      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist
+      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi
    };
    
