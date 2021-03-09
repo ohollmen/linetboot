@@ -502,6 +502,7 @@ function acts_uidisable(actitems) {
     if (fstr == 'pkgstats')  { acts_rmitem(actitems, "path", "pkgstats"); }
     if (fstr == 'ibloxlist') { acts_rmitem(actitems, "path", "ibloxlist"); }
     if (fstr == 'eflowlist') { acts_rmitem(actitems, "path", "eflowlist"); }
+    if (fstr == 'esxiguests') { acts_rmitem(actitems, "path", "esxiguests"); }
     // acts_rmitem(actitems, rmby, lbl);
   });
 }
