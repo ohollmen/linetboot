@@ -99,17 +99,26 @@ var esxiqmsg = `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmln
 `;
 // https://stackoverflow.com/questions/43002444/make-axios-send-cookies-in-its-requests-automatically
 axios.defaults.withCredentials = true;
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+var maincfg;
+
+function init(global) {
+  if (maincfg) { return; }
+  maincfg = global;
+  return module.exports;
+}
 /* Get listing of guest info as XML.
 * TODO: Login ?
 */
 function getGuestResponse(host, cb) {
   if (!host) { console.error("getGuestResponse: No host passed"); return; }
-  if (!cb) { console.error("getGuestResponse: No CB"); return; }
-  var maincfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
-  var cfg = maincfg.esxi;
+  if (!cb)   { console.error("getGuestResponse: No CB"); return; }
+  var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  var cfg  = mcfg.esxi;
   var cont = Mustache.render(logmsg, {username: cfg.username, password: cfg.password});
   // SOAPAction: 'http://schemas.facilinformatica.com.br/Facil.Credito.WsCred/IEmprestimo/CalcularPrevisaoDeParcelas'
-  var p = {headers: {'Content-Type': 'text/xml'}};
+  var p = { headers: {'Content-Type': 'text/xml'} };
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, p).then((resp) => {
     console.error("Respdata: "+resp.data);
@@ -242,11 +251,18 @@ module.exports = {
 // test main
 // node esxi.js ./esxi_guest_info_sample.xml
 if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
-  var async = require("async");
+  var async = require("async"); // Move up later
+  var mainconf = require("./mainconf.js");
   //console.error("Run sample main");
   var ops = {"parse":"1", "login":"1"};
   var op = process.argv[2];
   if (!ops[op]) { console.error("No such subcommand, try "+process.argv[1]+" parse|login"); }
+  // Simple: 
+  //var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  // Too fancy ?
+  var mcfg = mainconf.mainconf_load(process.env["HOME"]+"/.linetboot/global.conf.json");
+  mainconf.mainconf_process(mcfg);
+  ///////////////////////
   if (op == "parse") {
   var fname = process.argv[3]; // "./esxi_guest_info_sample.xml"; // 2 => 3
   if (!fname) { console.error("No filename (as first arg) passed"); process.exit(1); }
@@ -259,6 +275,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     console.log(JSON.stringify(hosts, null, 2));
   }
   }
+  /////////////////
   else if (op == 'login') {
     var host = process.argv[3];
     if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); }
@@ -266,5 +283,9 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (err) { console.error("login error: "+ err); return; }
       console.log(data);
     });
+  }
+  else if (op == 'list') {
+    // List machines and chek their cached files
+    
   }
 }
