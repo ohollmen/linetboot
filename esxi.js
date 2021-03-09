@@ -101,11 +101,11 @@ var esxiqmsg = `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmln
 axios.defaults.withCredentials = true;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-var maincfg;
+var mcfg;
 
 function init(global) {
-  if (maincfg) { return; }
-  maincfg = global;
+  if (mcfg) { return; }
+  mcfg = global;
   return module.exports;
 }
 /* Get listing of guest info as XML.
@@ -114,7 +114,7 @@ function init(global) {
 function getGuestResponse(host, cb) {
   if (!host) { console.error("getGuestResponse: No host passed"); return; }
   if (!cb)   { console.error("getGuestResponse: No CB"); return; }
-  var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   var cfg  = mcfg.esxi;
   var cont = Mustache.render(logmsg, {username: cfg.username, password: cfg.password});
   
@@ -125,10 +125,18 @@ function getGuestResponse(host, cb) {
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, p).then((resp) => {
     console.error("Respdata: "+resp.data);
+    console.error("Respdata-Type: "+(typeof resp.data));
     // Parse, grab LoginResponse => returnval => key
-    //xjs
-    cb(null, resp.data);
+    
+    // Check content-type ?
+    xjs.parseString(resp.data, function (err, data) {
+      if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
+      console.log("Launch and forget data:", data);
+      cb(null, resp.data);
+    });
+    //cb(null, resp.data);
   })
+  // Note: <faultstring> has an description/explanation of error
   .catch((error) => {
     console.error("getGuestResponse error: "+ error);
     var resp = error.response;
@@ -263,7 +271,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   var async = require("async"); // Move up later
   var mainconf = require("./mainconf.js");
   //console.error("Run sample main");
-  var ops = {"parse":"1", "login":"1"};
+  var ops = {"parse":"1", "login":"1", "list": 1};
   var op = process.argv[2];
   if (!ops[op]) { console.error("No such subcommand, try "+process.argv[1]+" parse|login"); }
   // Simple: 
@@ -271,6 +279,8 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   // Too fancy ?
   var mcfg = mainconf.mainconf_load(process.env["HOME"]+"/.linetboot/global.conf.json");
   mainconf.mainconf_process(mcfg);
+  if (!mcfg.esxi) { console.error("No esxi config !"); }
+  init(mcfg);
   ///////////////////////
   if (op == "parse") {
   var fname = process.argv[3]; // "./esxi_guest_info_sample.xml"; // 2 => 3
@@ -287,14 +297,21 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   /////////////////
   else if (op == 'login') {
     var host = process.argv[3];
-    if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); }
+    if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); process.exit(1); }
     getGuestResponse(host, function (err, data) {
       if (err) { console.error("login error: "+ err); return; }
-      console.log(data);
+      console.log("MAIN:"+data);
     });
   }
   else if (op == 'list') {
-    // List machines and chek their cached files
+    // List machines and check their cached files
+    mcfg.esxi.vmhosts.forEach((h) => {
+      var fok = fs.existsSync(mcfg.esxi.cachepath+"/"+h+".xml") ? 1 : 0;
+      console.log("- "+h+ " (Exists: "+fok+")");
+    });
+  }
+  // Cache (all). Starts like "list"+"login"+...
+  else if (op == 'cache') {
     
   }
 }
