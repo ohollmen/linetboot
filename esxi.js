@@ -22,8 +22,8 @@ See also "runtime": (also: summary.runtime)
 summary.quickStats .. uptimeSeconds
 */
 
-var xjs = require('xml2js');
-var fs  = require("fs");
+var xjs  = require('xml2js');
+var fs   = require("fs");
 var path = require("path");
 var Mustache = require("mustache");
 var axios = require("axios");
@@ -117,8 +117,11 @@ function getGuestResponse(host, cb) {
   var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
   var cfg  = mcfg.esxi;
   var cont = Mustache.render(logmsg, {username: cfg.username, password: cfg.password});
+  
   // SOAPAction: 'http://schemas.facilinformatica.com.br/Facil.Credito.WsCred/IEmprestimo/CalcularPrevisaoDeParcelas'
-  var p = { headers: {'Content-Type': 'text/xml'} };
+  var p = { headers: {'Content-Type': 'text/xml'} }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
+  console.log("Send (SOAP/XML) content: "+cont);
+  console.log("Send Headers: "+ JSON.stringify(p, null, 2));
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, p).then((resp) => {
     console.error("Respdata: "+resp.data);
@@ -126,7 +129,13 @@ function getGuestResponse(host, cb) {
     //xjs
     cb(null, resp.data);
   })
-  .catch((error) => { console.error("getGuestResponse error: "+ error); cb(error, null); });
+  .catch((error) => {
+    console.error("getGuestResponse error: "+ error);
+    var resp = error.response;
+    console.error("RESP:",resp); // resp.data
+    if (resp && resp.data) { console.error("RESP.DATA:",resp.data); }
+    cb(error, null);
+   });
 }
 function login() {
   
