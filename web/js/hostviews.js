@@ -106,11 +106,17 @@ function on_rmgmt_click(ev) {
 
 /** Create dialog+grid for host and view described in event elem (by data-hname, data-tgt).
  * The "data-tgt" attribute (For now..) on event target el. determines the
- * specific handler called from here (by if-elsing).
+ * specific handler called from here (by if-elsing, todo: model).
  * This func: dispatch to custom fetcher -> custom fetcher -> dialogcb (here), calls showgrid()
  * Note: 
 */
-function on_docker_info(ev) {
+function on_docker_info(ev) { // TODO:
+  var actsmodel = [ // Dialogs. TODO: Add gridid for grid based views
+    {tgtid: "dockerimg", dcb: dockerinfo, grid: null},
+    {tgtid: "nfsinfo",   dcb: nfsinfo, },
+    {tgtid: "rfdialog",  dcb: rfinfo, },
+    {tgtid: "proclist",  dcb: procinfo, grid: "jsGrid_procs"},
+  ];
   // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
   // Works both as grid (cache index-object) and dialog (DOM-id) selector id
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
@@ -131,7 +137,8 @@ function on_docker_info(ev) {
     // alert("Got setup");
     if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
   }
-  // Process *grid* UI - hook additional UI actions
+  // Process *grid* UI - hook additional UI actions.
+  // If further 
   var uisetup = {"proclist": (pinfo) => {
       
       $('.psact').click(function (ev) {
@@ -147,8 +154,27 @@ function on_docker_info(ev) {
         
         var dopts = {modal: true, width: 650, height: 600};
         $("#procdialog").dialog(dopts);
-        // Hook Buttons pkill, pgkill
-        
+        // Hook Buttons pkill, pgkill. Must have host,pid
+        $('#pkill').click((jev) => {
+          // Check role
+          var bel = document.getElementById("pkill");
+          // Note: this.dataset does behave differently (hname not avail !?)
+          if (!bel.dataset) { return alert("No dataset"); }
+          var pi = {hname: bel.dataset.hname, pid: bel.dataset.pid};
+          console.log("PI:", bel.dataset); // this.dataset is DOMStringMap
+          toastr.info("Should kill "+pi.hname+" Proc: "+pi.pid);
+          //return;
+          axios.get("http://"+pi.hname+":8181/kill/"+pid).then((resp) => {
+            console.log(resp.data);
+            toastr.info("Killed  "+pi.hname+" Proc: "+pi.pid+ "!");
+            // Close
+            $("#procdialog").dialog("close");
+            // Reload ps listing dialog OR possibly data only ()
+            //procinfo(pi.hname, "proclist", dialogcb);
+          }).catch((err) => {
+            console.error("Kill error: "+err);
+          });
+        });
       });
     }
   };
@@ -823,7 +849,7 @@ function rfinfo(hname, dialogsel, cb) {
     uisetup();
     // No grid based dialog here
   })
-  .catch(function (error) { console.log(error); alert("No RF info, "+ error); })
+  .catch(function (error) { console.log(error); alert("No RF info, "+ error); }) // toastr.error
   .finally(() => { toastr.clear(); });
 }
 /** Process Info.
