@@ -145,7 +145,7 @@ function soapCall(host, p, sopts, cb) {
   if (!tmpl) { console.error("No template for call id:"+sopts.id); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
   // 
-  var p = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml'} }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
+  var p = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1"} }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send Headers: "+ JSON.stringify(p, null, 2));
   // cfg.url
