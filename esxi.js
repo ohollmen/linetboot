@@ -114,8 +114,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 var mcfg;
 
 var callmods = [
-  {id: "login",  ea: false,      pcb: null, pp: (d, p) => { p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key; } },
-  {id: "glist0", ea: false,      pcb: null, pp: (d, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
+  // Also at login, extract Set-cookie ?
+  {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => { p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key; } },
+  {id: "glist0", ea: false,      pcb: null, pp: (d, resp, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
   {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
 ];
 function dclone(d) {
@@ -146,8 +147,12 @@ function soapCall(host, p, sopts, cb) {
   if (!tmpl) { console.error("No template for call id:"+sopts.id); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
   // 
-  var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1"},
-     withCredentials: true }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
+  var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
+       // "Access-Control-Allow-Origin": "https://a.com",
+       'Access-Control-Allow-Origin': '*'
+     },
+     withCredentials: true
+  }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
   // cfg.url
@@ -164,7 +169,8 @@ function soapCall(host, p, sopts, cb) {
         if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
         // console.log("Launch and forget data:", data);
         console.log("Launch and forget data:", JSON.stringify(data, null, 2));
-	if (sopts.pp) { sopts.pp(data, p); } // Patch Params ?
+	// TODO: Add resp
+	if (sopts.pp) { sopts.pp(data, resp, p); } // Patch Params ?
         cb(null, resp.data);
       });
     }
