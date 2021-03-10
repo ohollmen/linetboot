@@ -2132,7 +2132,7 @@ events.js:167
 Error: read ECONNRESET
     at TCP.onStreamRead (internal/stream_base_commons.js:111:27)
 Emitted 'error' event at:
-    at Socket.onSocketError (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/ldapjs/lib/client/client.js:964:12)
+    at Socket.onSocketError (/projects/linetuser/linetboot/node_modules/ldapjs/lib/client/client.js:964:12)
     at Socket.emit (events.js:182:13)
     at emitErrorNT (internal/streams/destroy.js:82:8)
     at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
