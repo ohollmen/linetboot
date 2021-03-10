@@ -14,5 +14,5 @@
       shell: 'sshpass -p {{ remotepass }} ssh-copy-id {{ remoteuser }}@{{ inventory_hostname }}'
       delegate_to: localhost
       #when: inventory_hostname != "local"
-      #when:  inventory_hostname  != 'ecmdr-irv-03.lvn.broadcom.net'
+      #when:  inventory_hostname  != 'myhost.somewhere.com'
       #when: 0
