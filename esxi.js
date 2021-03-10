@@ -21,8 +21,9 @@ See also "runtime": (also: summary.runtime)
 - powerState (Array, e.g. "poweredOn")
 - bootTime[] (ISO)
 summary.quickStats .. uptimeSeconds
-# xml2js
-- https://www.npmjs.com/package/xml2js
+# Node modules
+- xml2js - https://www.npmjs.com/package/xml2js
+- axios - https://www.npmjs.com/package/axios
 */
 
 var xjs  = require('xml2js');
@@ -115,7 +116,17 @@ var mcfg;
 
 var callmods = [
   // Also at login, extract Set-cookie ?
-  {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => { p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key; } },
+  {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => {
+      p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key;
+      if (resp && resp.headers) {
+        console.log("Got cookie(s): ", resp.headers['set-cookie']);
+	var m;
+	if (resp.headers['set-cookie'] && (m = resp.headers['set-cookie'].match(/vmware_soap_session="(\w+)"/))) {
+	  p.cookie = m[1];
+	}
+      }
+    }
+  },
   {id: "glist0", ea: false,      pcb: null, pp: (d, resp, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
   {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
 ];
@@ -146,13 +157,17 @@ function soapCall(host, p, sopts, cb) {
   var tmpl = msgs[sopts.id];
   if (!tmpl) { console.error("No template for call id:"+sopts.id); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
-  // 
+  // Note axios internal config-props: xsrfCookieName, xsrfHeaderName: 'X-XSRF-TOKEN'
+  // To see what is *actually* sent, see resp.request._header (req line + headers)
   var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
-       // "Access-Control-Allow-Origin": "https://a.com",
+       // "Access-Control-Allow-Origin": "https://"+host,
        'Access-Control-Allow-Origin': '*'
      },
      withCredentials: true,
-     credentials: 'include', // Suggested on make-axios-send-cookies...
+     //credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
+     Connection: 'keep-alive', // Sent from browser app
+     // responseType: 'text', // closest for XML
+     // maxContentLength: 2000, // maxContentLength: 2000,
   }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
