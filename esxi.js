@@ -73,12 +73,7 @@ var msgs = {
 // Early 300K call (not 500). Response May have almost all the same info (?) Request does not need parametrization !
 // One possibility: Call this (no params), get below, where all within filter is needed for complete call
 // <filter type="PropertyFilter">session[52a56aec-3858-365e-d534-df8d1ed50509]52af59a9-6fc8-4139-535e-97716ca2192d</filter>
-"glist0": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
-<WaitForUpdatesEx xmlns="urn:vim25">
-<_this type="PropertyCollector">ha-property-collector</_this>
-<version>1</version>
-<options><maxWaitSeconds>60</maxWaitSeconds></options>
-</WaitForUpdatesEx></Body></Envelope>`,
+"glist0": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body><WaitForUpdatesEx xmlns="urn:vim25"><_this type="PropertyCollector">ha-property-collector</_this><version>1</version><options><maxWaitSeconds>60</maxWaitSeconds></options></WaitForUpdatesEx></Body></Envelope>`,
 // Is this 19th call ?
 "glist": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <RetrievePropertiesEx xmlns="urn:vim25">
@@ -116,7 +111,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 var mcfg;
 
 var callmods = [
-  {id: "login",  ea: false,      pcb: null }, // mt: msgs.login,
+  {id: "login",  ea: false,      pcb: null, pp: (d, p) => { p.key = d["soapenv:Body"].LoginResponse.returnval.key; } },
   {id: "glist0", ea: false,      pcb: null, pp: (d, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
   {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
 ];
