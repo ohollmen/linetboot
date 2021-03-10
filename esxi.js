@@ -111,7 +111,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 var mcfg;
 
 var callmods = [
-  {id: "login",  ea: false,      pcb: null, pp: (d, p) => { p.key = d["soapenv:Body"].LoginResponse.returnval.key; } },
+  {id: "login",  ea: false,      pcb: null, pp: (d, p) => { p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key; } },
   {id: "glist0", ea: false,      pcb: null, pp: (d, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
   {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
 ];
