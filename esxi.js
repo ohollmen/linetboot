@@ -151,7 +151,8 @@ function soapCall(host, p, sopts, cb) {
        // "Access-Control-Allow-Origin": "https://a.com",
        'Access-Control-Allow-Origin': '*'
      },
-     withCredentials: true
+     withCredentials: true,
+     credentials: 'include', // Suggested on make-axios-send-cookies...
   }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
@@ -195,7 +196,7 @@ function login() {
 function getGuests(cont, opts, cb) {
   if (!cont) { return cb("No (XML) content to parse\n", null); }
   opts = opts || {debug: 0};
-  if (!cb) { console.error("must have CB for astnc parsing"); return; }
+  if (!cb) { console.error("must have CB for async parsing"); return; }
   var xopts = { explicitArray: true }; // ignoreAttrs: true
   xjs.parseString(cont, function (err, data) {
     if (err) { console.error("Error Parsing XML from "+fname+""); return cb("XML Parse error: "+ err, null); }
