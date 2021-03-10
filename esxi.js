@@ -107,6 +107,7 @@ var msgs = {
 `
 };
 // https://stackoverflow.com/questions/43002444/make-axios-send-cookies-in-its-requests-automatically
+// Also opts: {withCredentials: true}
 axios.defaults.withCredentials = true;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -145,11 +146,12 @@ function soapCall(host, p, sopts, cb) {
   if (!tmpl) { console.error("No template for call id:"+sopts.id); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
   // 
-  var p = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1"} }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
+  var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1"},
+     withCredentials: true }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
-  console.log("Send-Hdrs: "+ JSON.stringify(p, null, 2));
+  console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
   // cfg.url
-  axios.post("https://" + host + "/sdk/", cont, p).then((resp) => {
+  axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
     console.error("Resp-data: "+resp.data);
     console.error("Resp-data-Type: "+(typeof resp.data));
     console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2));
