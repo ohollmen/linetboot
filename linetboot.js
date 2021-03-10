@@ -740,14 +740,14 @@ function gen_allhost_output(req, res) {
 *      cd /etc/netplan
 *      sudo mv 01-netcfg.yaml 01-netcfg.yaml.org
 *      # By ip address
-*      sudo wget -O 01-netcfg.yaml http://ash-test-ccx-01.ash.broadcom.net:3000/netplan.yaml?ip=10.75.159.27
+*      sudo wget -O 01-netcfg.yaml http://linetboot.myorg.org:3000/netplan.yaml?ip=10.75.159.27
 *      # By mac address (e.g. when current ip on-hot is wrong)
-*      sudo wget -O 01-netcfg.yaml http://ash-test-ccx-01.ash.broadcom.net:3000/netplan.yaml?mac=02:07:07:00:c7:9c
+*      sudo wget -O 01-netcfg.yaml http://linetboot.myorg.org:3000/netplan.yaml?mac=02:07:07:00:c7:9c
 *      sudo netplan apply
 * 
 * @todo Convert netmask to CIDR notation.
 * @todo Make Reusable and http/express request agnostic to use part of ubuntu 20
-* @todo Generate all values first (osinstall.js / netconfig() ?) then produce yaml, not as-yu-go.
+* @todo Generate all values first (osinstall.js / netconfig() ?) then produce yaml, not as-you-go.
 * See also: https://netplan.io/examples
 */
 function netplan_yaml(req, res) {
