@@ -1,9 +1,10 @@
 /**
 
 General about ESXI "query guests":
-- Seems all guests are in same file
+- Seems all guests are in same XML
 - To has "soapenv:Envelope" => "soapenv:Body" => RetrievePropertiesExResponse => ...
-
+- Note: many apis (in ...Response) have a wrapping elem <returnval> (VMWare) or <rval> (Google ads)
+- There is also another call (13.th call)
 Look for patts (for individual guest)
 
 - node.name[0] = config.guestFullName   node.val[0]."_": Microsoft Windows 10 (64-bit)
@@ -20,6 +21,8 @@ See also "runtime": (also: summary.runtime)
 - powerState (Array, e.g. "poweredOn")
 - bootTime[] (ISO)
 summary.quickStats .. uptimeSeconds
+# xml2js
+- https://www.npmjs.com/package/xml2js
 */
 
 var xjs  = require('xml2js');
@@ -42,34 +45,42 @@ var axios = require("axios");
 // RetrievePropertiesExResponse <key>52a56aec-3858-365e-d534-df8d1ed50509</key>
 // 7. <WaitForUpdatesExResponse: <filter type="PropertyFilter">session[52a56aec-3858-365e-d534-df8d1ed50509]52b5186b-a8c7-b850-6146-209a27060f90</filter>
 
-var logmsg = `
+var msgs = {
+  "login": `
 <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <Login xmlns="urn:vim25"><_this type="SessionManager">ha-sessionmgr</_this>
 <userName>{{ username }}</userName>
 <password>{{ password }}</password>
 <locale>en-US</locale></Login>
 </Body></Envelope>
-`;
-var getkeymsg = `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
+`,
+"getkey": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <WaitForUpdatesEx xmlns="urn:vim25">
 <_this type="PropertyCollector">ha-property-collector</_this>
 <version></version>
 <options><maxWaitSeconds>60</maxWaitSeconds></options>
 </WaitForUpdatesEx>
 </Body></Envelope>
-`;
-
-
-var sessmsg = `
+`,
+"session": `
 <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <RetrievePropertiesEx xmlns="urn:vim25">
 <_this type="PropertyCollector">ha-property-collector</_this>
 <specSet><propSet><type>SessionManager</type><all>false</all><pathSet>currentSession</pathSet></propSet><objectSet><obj type="SessionManager">ha-sessionmgr</obj><skip>false</skip></objectSet></specSet><options/>
 </RetrievePropertiesEx>
 </Body></Envelope>
-`;
-
-var esxiqmsg = `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
+`,
+// Early 300K call (not 500). Response May have almost all the same info (?) Request does not need parametrization !
+// One possibility: Call this (no params), get below, where all within filter is needed for complete call
+// <filter type="PropertyFilter">session[52a56aec-3858-365e-d534-df8d1ed50509]52af59a9-6fc8-4139-535e-97716ca2192d</filter>
+"glist0": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
+<WaitForUpdatesEx xmlns="urn:vim25">
+<_this type="PropertyCollector">ha-property-collector</_this>
+<version>1</version>
+<options><maxWaitSeconds>60</maxWaitSeconds></options>
+</WaitForUpdatesEx></Body></Envelope>`,
+// Is this 19th call ?
+"glist": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <RetrievePropertiesEx xmlns="urn:vim25">
 <_this type="PropertyCollector">ha-property-collector</_this>
 <specSet><propSet><type>VirtualMachine</type>
@@ -96,13 +107,28 @@ var esxiqmsg = `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmln
 </propSet><objectSet>
 <obj type="ContainerView">session[52e748f1-e74e-2c34-c72a-1a3849c9d654]5269e8e7-80ef-d032-0fe3-db49f537825c</obj>
 <skip>true</skip><selectSet xsi:type="TraversalSpec"><name>view</name><type>ContainerView</type><path>view</path><skip>false</skip></selectSet></objectSet></specSet><options/></RetrievePropertiesEx></Body></Envelope>
-`;
+`
+};
 // https://stackoverflow.com/questions/43002444/make-axios-send-cookies-in-its-requests-automatically
 axios.defaults.withCredentials = true;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 var mcfg;
 
+var callmods = [
+  {id: "login",  ea: false,      pcb: null }, // mt: msgs.login,
+  {id: "glist0", ea: false,      pcb: null, pp: (d, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
+  {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
+];
+function dclone(d) {
+  var d2 = JSON.parse(JSON.stringify(d));
+  if (!Array.isArray(d)) {
+    Object.keys(d).forEach((k) => {
+      if (typeof d[k] == 'function') { d2[k] = d[k]; }
+    });
+  }
+  return d2;
+}
 function init(global) {
   if (mcfg) { return; }
   mcfg = global;
@@ -111,14 +137,17 @@ function init(global) {
 /* Get listing of guest info as XML.
 * TODO: Login ?
 */
-function getGuestResponse(host, cb) {
-  if (!host) { console.error("getGuestResponse: No host passed"); return; }
-  if (!cb)   { console.error("getGuestResponse: No CB"); return; }
+function soapCall(host, p, sopts, cb) {
+  if (!host) { console.error("SOAP Call: No host passed"); return; }
+  if (!cb)   { console.error("SOAP Call: No CB"); return; }
   // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
+  console.error("Making call for: ", sopts);
   var cfg  = mcfg.esxi;
-  var cont = Mustache.render(logmsg, {username: cfg.username, password: cfg.password});
-  
-  // SOAPAction: 'http://schemas.facilinformatica.com.br/Facil.Credito.WsCred/IEmprestimo/CalcularPrevisaoDeParcelas'
+  var p = sopts.pcb ? sopts.pcb(cfg) : cfg;
+  var tmpl = msgs[sopts.id];
+  if (!tmpl) { console.error("No template for call id:"+sopts.id); }
+  var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
+  // Accept: 
   var p = { headers: {'Content-Type': 'text/xml'} }; // SOAPAction: urn:vim25/6.7.1 VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send Headers: "+ JSON.stringify(p, null, 2));
@@ -129,16 +158,21 @@ function getGuestResponse(host, cb) {
     // Parse, grab LoginResponse => returnval => key
     
     // Check content-type ?
-    xjs.parseString(resp.data, function (err, data) {
-      if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
-      console.log("Launch and forget data:", data);
-      cb(null, resp.data);
-    });
-    //cb(null, resp.data);
+    if (typeof sopts.ea != 'undefined') {
+    var xopts = { explicitArray: sopts.ea };
+      xjs.parseString(resp.data, xopts, function (err, data) {
+        if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
+        // console.log("Launch and forget data:", data);
+        console.log("Launch and forget data:", JSON.stringify(data, null, 2));
+	if (sopts.pp) { sopts.pp(data, p); } // Patch Params ?
+        cb(null, resp.data);
+      });
+    }
+    cb(null, resp.data);
   })
   // Note: <faultstring> has an description/explanation of error
   .catch((error) => {
-    console.error("getGuestResponse error: "+ error);
+    console.error("SOAP Call error: "+ error);
     var resp = error.response;
     console.error("RESP:",resp); // resp.data
     if (resp && resp.data) { console.error("RESP.DATA:",resp.data); }
@@ -156,8 +190,9 @@ function getGuests(cont, opts, cb) {
   if (!cont) { return cb("No (XML) content to parse\n", null); }
   opts = opts || {debug: 0};
   if (!cb) { console.error("must have CB for astnc parsing"); return; }
+  var xopts = { explicitArray: true }; // ignoreAttrs: true
   xjs.parseString(cont, function (err, data) {
-    if (err) { console.error("Error Parsing XML from "+fname+""); return cb("XML Parse error: "+ err, null); } // process.exit(1);
+    if (err) { console.error("Error Parsing XML from "+fname+""); return cb("XML Parse error: "+ err, null); }
     
     data = getRealData(data);
     if (!Array.isArray(data)) { return cb("Not an Array (... of guests ...for further processing)", null);  }
@@ -178,6 +213,9 @@ function getGuests(cont, opts, cb) {
 /** Convert xml2js parsed (from XML) host to simple form.
 @param esh {object} - Guest object (as is from xml2js)
 @return Guest in simple format
+
+TODO: VirtualMachinePowerState, npivTemporaryDisabled, createDate, changeVersion (also date)
+
 */
 function gethost(esh) {
   var h = {};
@@ -226,7 +264,35 @@ function getRealData(data) {
   if (data && !Array.isArray(data)) { return null; }
   return data;
 }
-
+/** Access SOAP response data-section from the xml2js parsed form.
+* This is ESXI specific accessor, looking for <returnval>.
+* Assumes xml2js to be parsed with explicitArray: false.
+* 
+*/
+function getSOAPRespData(rdata, ea) {
+  if (typeof rdata != 'object') { return null; }
+  var b = rdata["soapenv:Body"]; // Same for ean and !ea
+  if (!b) { return null; }
+  var k;
+  if (ea) {
+    if (!Array.isArray(b) || (typeof b[0] != 'object')) { return null; }
+    //var ks = Object.keys(b[0]);
+    //if (ks.length != 1) { return 0; }
+    // var k = ks[0];
+    //b[0][k][0];
+    k = getrespkey(b[0]);
+  }
+  // Compact, easier
+  else {
+    k = getrespkey(b);
+  }
+  function getrespkey(o) {
+    if (typeof o != 'object') { return ''; }
+    var ks = Object.keys(o);
+    if (ks.length != 1) { return ''; }
+    return o[ks[0]];
+  }
+}
 function isArrayWithOneitem(data, memname) {
   if (!Array.isArray(data)) { console.error(memname+" does not contain array\n"); return null; }
   var type = (typeof data[0]);
@@ -298,9 +364,14 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   else if (op == 'login') {
     var host = process.argv[3];
     if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); process.exit(1); }
-    getGuestResponse(host, function (err, data) {
+    var p = dclone(mcfg.esxi); // Copy of params as base for call chain
+    soapCall(host, p, dclone(callmods[0]), function (err, data) {
       if (err) { console.error("login error: "+ err); return; }
-      console.log("MAIN:"+data);
+      console.log("MAIN-Login:"+data);
+      soapCall(host, p, dclone(callmods[1]), function (err, data) {
+        if (err) { console.error("glist0 error: "+ err); return; }
+	console.log("MAIN-glist0:"+data);
+      });
     });
   }
   else if (op == 'list') {
