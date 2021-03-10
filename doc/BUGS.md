@@ -163,21 +163,21 @@ Try to document (better) or disambiguate these (in implementation).
 Exception (w. server crash)
 
 ```
-/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:155
+/project/software/linetuser/linetboot/node_modules/q/q.js:155
                 throw e;
                 ^
 
 Error: Callback was already called.
-    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/async/dist/async.js:966:32
-    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/async/dist/async.js:1137:13
-    at /projects/ccxsw/home/ccxswbuild/linetboot/netprobe.js:80:32
-    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/ping/lib/ping-sys.js:41:9
-    at _rejected (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:864:24)
-    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:890:30
-    at Promise.when (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:1142:31)
-    at Promise.promise.promiseDispatch (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:808:41)
-    at /projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:624:44
-    at runSingle (/projects/ccxsw/home/ccxswbuild/linetboot/node_modules/q/q.js:137:13)
+    at /project/software/linetuser/linetboot/node_modules/async/dist/async.js:966:32
+    at /project/software/linetuser/linetboot/node_modules/async/dist/async.js:1137:13
+    at /project/software/linetuser/linetboot/netprobe.js:80:32
+    at /project/software/linetuser/linetboot/node_modules/ping/lib/ping-sys.js:41:9
+    at _rejected (/project/software/linetuser/linetboot/node_modules/q/q.js:864:24)
+    at /project/software/linetuser/linetboot/node_modules/q/q.js:890:30
+    at Promise.when (/project/software/linetuser/linetboot/node_modules/q/q.js:1142:31)
+    at Promise.promise.promiseDispatch (/project/software/linetuser/linetboot/node_modules/q/q.js:808:41)
+    at /project/software/linetuser/linetboot/node_modules/q/q.js:624:44
+    at runSingle (/project/software/linetuser/linetboot/node_modules/q/q.js:137:13)
 ```
 
 In code section
