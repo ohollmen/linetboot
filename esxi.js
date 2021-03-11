@@ -123,13 +123,13 @@ var callmods = [
 	var m;
 	if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
 	  p.cookie = m[1];
-	  console.log("Captured and stored cookie: \n"+m[1]);
+	  console.log("Captured and stored cookie: "+m[1]);
 	}
       }
     }
   },
   {id: "glist0", ea: false,      pcb: null, pp: (d, resp, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
-  {id: "glist",  ea: undefined,  pcb: (c) => { return c; } },
+  {id: "glist",  ea: undefined,  pcb: null },
 ];
 function dclone(d) {
   var d2 = JSON.parse(JSON.stringify(d));
@@ -154,7 +154,7 @@ function soapCall(host, p, sopts, cb) {
   // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   console.error("Making call for: ", sopts);
   var cfg  = mcfg.esxi;
-  var p = sopts.pcb ? sopts.pcb(cfg) : cfg;
+  // var p = sopts.pcb ? sopts.pcb(cfg) : cfg;
   var tmpl = msgs[sopts.id];
   if (!tmpl) { console.error("No template for call id:"+sopts.id); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
