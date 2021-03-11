@@ -123,6 +123,7 @@ var callmods = [
 	var m;
 	if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
 	  p.cookie = m[1];
+	  console.log("Captured and stored cookie: \n"+m[1]);
 	}
       }
     }
