@@ -160,20 +160,25 @@ function soapCall(host, p, sopts, cb) {
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
   // Note axios internal config-props: xsrfCookieName, xsrfHeaderName: 'X-XSRF-TOKEN'
   // To see what is *actually* sent, see resp.request._header (req line + headers)
-  var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
-       // "Access-Control-Allow-Origin": "https://"+host,
-       'Access-Control-Allow-Origin': '*',
-       cookie: "", //[],
-     },
-     withCredentials: true,
+  var rp = {
+    withCredentials: true,
      //credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
-     Connection: 'keep-alive', // Sent from browser app
+    headers: {
+       'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
+       //"Access-Control-Allow-Origin": "https://"+host,
+       'Access-Control-Allow-Origin': '*',
+       //cookie: "", //[],
+       Connection: 'keep-alive', // Sent from browser app. resp.request has shouldKeepAlive: false, resp.agent keepAlive: false,
+       //Origin: "https://"+host
+    },
+    
+     
      // responseType: 'text', // closest for XML
      // maxContentLength: 2000, // maxContentLength: 2000,
   }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
-  if (p && p.cookie) { rp.headers.cookie += "vmware_soap_session=\""+p.cookie+"\""; } // push("vmware_soap_session=\""+p.cookie+"\"")
+  if (p && p.cookie) { rp.headers.cookie = "vmware_soap_session=\""+p.cookie+"\""; } // push("vmware_soap_session=\""+p.cookie+"\"")
   console.log("Send (SOAP/XML) content: "+cont);
-  console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
+  console.log("Send-Reqpara: "+ JSON.stringify(rp, null, 2));
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
     console.error("Resp-data: "+resp.data);
@@ -200,6 +205,7 @@ function soapCall(host, p, sopts, cb) {
     console.error("SOAP Call error: "+ error);
     var resp = error.response;
     console.error("RESP:",resp); // resp.data
+    console.log(resp.request.agent._sessionCache);
     if (resp && resp.data) { console.error("RESP.DATA:",resp.data); }
     cb(error, null);
    });
