@@ -391,7 +391,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (err) { console.error("login error: "+ err); return; }
       console.log("MAIN-Login:"+data);
       soapCall(host, p, dclone(callmods[1]), function (err, data) {
-        if (err) { console.error("glist0 error: "+ err); return; }
+        if (err) { console.error("glist0 error: "+ err);  } // return;
 	console.log("MAIN-glist0:"+data);
 	console.log("Params-gathered:"+ JSON.stringify(p, null, 2));
       });
