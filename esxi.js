@@ -121,7 +121,7 @@ var callmods = [
       if (resp && resp.headers) {
         console.log("Got cookie(s): ", resp.headers['set-cookie']);
 	var m;
-	if (resp.headers['set-cookie'] && (m = resp.headers['set-cookie'].match(/vmware_soap_session="(\w+)"/))) {
+	if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
 	  p.cookie = m[1];
 	}
       }
@@ -180,7 +180,7 @@ function soapCall(host, p, sopts, cb) {
     
     // Check content-type ?
     if (typeof sopts.ea != 'undefined') {
-    var xopts = { explicitArray: sopts.ea };
+      var xopts = { explicitArray: sopts.ea };
       xjs.parseString(resp.data, xopts, function (err, data) {
         if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
         // console.log("Launch and forget data:", data);
@@ -393,6 +393,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       soapCall(host, p, dclone(callmods[1]), function (err, data) {
         if (err) { console.error("glist0 error: "+ err); return; }
 	console.log("MAIN-glist0:"+data);
+	console.log("Params-gathered:"+ JSON.stringify(p, null, 2));
       });
     });
   }
