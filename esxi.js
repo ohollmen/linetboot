@@ -162,7 +162,8 @@ function soapCall(host, p, sopts, cb) {
   // To see what is *actually* sent, see resp.request._header (req line + headers)
   var rp = { headers: {'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
        // "Access-Control-Allow-Origin": "https://"+host,
-       'Access-Control-Allow-Origin': '*'
+       'Access-Control-Allow-Origin': '*',
+       cookie: "", //[],
      },
      withCredentials: true,
      //credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
@@ -170,6 +171,7 @@ function soapCall(host, p, sopts, cb) {
      // responseType: 'text', // closest for XML
      // maxContentLength: 2000, // maxContentLength: 2000,
   }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
+  if (p && p.cookie) { rp.headers.cookie += "vmware_soap_session=\""+p.cookie+"\""; } // push("vmware_soap_session=\""+p.cookie+"\"")
   console.log("Send (SOAP/XML) content: "+cont);
   console.log("Send-Hdrs: "+ JSON.stringify(rp, null, 2));
   // cfg.url
