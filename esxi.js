@@ -205,7 +205,7 @@ function soapCall(host, p, sopts, cb) {
     console.error("SOAP Call error: "+ error);
     var resp = error.response;
     console.error("RESP:",resp); // resp.data
-    console.log(resp.request.agent._sessionCache);
+    if (resp && resp.request && resp.request.agent) { console.log("SESS-CACHE:", resp.request.agent._sessionCache); }
     if (resp && resp.data) { console.error("RESP.DATA:",resp.data); }
     cb(error, null);
    });
