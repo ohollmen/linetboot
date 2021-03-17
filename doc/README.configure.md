@@ -195,10 +195,12 @@ However booting ARM boot clients should be quite feasible with some DIY by follo
 
 #### Bootloader
 
-Possible bootloader solutions (not fully tried):
-- Use Grub 2 with its net booting capabilities (NBP: grubaa64.efi)
+Possible EFI bootloader solutions (not fully tried):
+- Use Grub 2 with its net booting capabilities (e.g. ARM NBP: grubaa64.efi)
 - Use syslinux.efi (Separate binaries for efi32,efi64, seems to support also http)
-- Use iPXE
+  - Boots most/all Linux distros fine
+  - Can use the same menu as pxelinux
+- Use iPXE (certain EFI compatible variant)
 
 #### Hardware Settings
 
@@ -209,8 +211,8 @@ References:
 
 #### UEFI HTTP Settings
 
-For each network device (e.g. 1...4). (Dell) BIOS Explains: "When this setting is Enabled, the BIOS will create a UEFI boot option
-for the HTTP sevice."
+For each network device (e.g. 1...4). (Dell) BIOS Explains: "When this setting is Enabled, the BIOS will create a UEFI
+boot option for the HTTP sevice.".
 May be also seen (in server BIOS) as: "UEFI PXE Settings" 1..4, Enabled/Disable, set enabled for network interface you plan to use 
 
 Other notable settings:
