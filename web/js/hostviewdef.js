@@ -353,6 +353,10 @@ function ibip_cell(val, item) {
      
      return "<input class=\"syncbutt\" type=\"button\" data-hname=\""+item.hname+"\" value=\"Sync\" >";
    }
+   function ibdhcp_cell(val, item) {
+     if (val == true) { return "<span style='font-weight: bold;'>"+val+"</span>"; }
+     return "<span style='color: #888888;'>"+val+"</span>";
+   }
    var fldinfo_iblox = [
      hostfld, // "Joined"
      {name: "ipaddr",  title: "IP Addr", type: "text", width: 100},

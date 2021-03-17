@@ -96,7 +96,7 @@ function sshkeys(ev, act) {
   axios.get(act.url).then(function (resp) { // '/ssh/keylist'
     var pinfo = resp.data.data;
     //console.log("SSH Key data: ", pinfo);
-    if (!pinfo || !pinfo.length) { alert("No SSH Key data"); return; }
+    if (!pinfo || !pinfo.length) { toastr.error("No SSH Key data"); return; }
     showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
     // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
   }).catch(function (error) { console.log(error); });
@@ -108,12 +108,15 @@ function sshkeys(ev, act) {
 function pkgstat(jev, act) {
   var tgtid = jev.viewtgtid;
   rapp.templated("simplegrid", act, tgtid);
+  //setuphelp(act, "#routerdiv h3");
   var deflist = "wget,x11-common,python2.7,patch,xauth,build-essential";
+  // TODO: (Pre-)Load and Add distro options (e.g. load by DataLoader ?). How to default a distro (first ?)?
+  // Distro: <select id="osname"></select>
   $('.xui').html("<div><input type='text' name='pkgs' value='"+deflist+"' size='80'><input id='pkgcheck' type='button' value='Lookup'></div>").show();
   function lookup() {
   // Params to pass
   var upara = $("input[name='pkgs']").val();
-  var url = act.url + "?pkgs=" + encodeURIComponent(upara);
+  var url = act.url + "?pkgs=" + encodeURIComponent(upara); // +"&osname="+$('#osname').val()
   axios.get(url).then(function (resp) {
     var pinfo = resp.data.data;
     var gdef  = resp.data.grid;

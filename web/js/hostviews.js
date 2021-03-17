@@ -6,7 +6,8 @@
    // Value transform: callback(vue-table), cellTemplate (ui-grid) itemTemplate(cb in js-grid)
    // Sortability: sortField(vue-table, must set), All(ui-grid: sort: {direction(asc/desc), priority}, sortingAlgorithm: cb)
    // https://blog.logrocket.com/how-to-make-http-requests-like-a-pro-with-axios/ (Making simultaneous requests)
-   
+
+var rapp;var fldinfo;var Chart;var window;var Mustache; var webview;
 /**   # TODO
  
  Create emit/subscribe mechanism to (e.g.) setup link event handlers on grid
@@ -136,7 +137,7 @@ function on_docker_info(ev) { // TODO:
     // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
     // alert("Got setup");
     if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
-  }
+  };
   // Process *grid* UI - hook additional UI actions.
   // If further 
   var uisetup = {"proclist": (pinfo) => {
@@ -164,7 +165,8 @@ function on_docker_info(ev) { // TODO:
           console.log("PI:", bel.dataset); // this.dataset is DOMStringMap
           toastr.info("Should kill "+pi.hname+" Proc: "+pi.pid);
           //return;
-          axios.get("http://"+pi.hname+":8181/kill/"+pid).then((resp) => {
+          var port = datasets.cfg.procster.port || 8181;
+          axios.get("http://"+pi.hname+":"+port+"/kill/"+pid).then((resp) => {
             console.log(resp.data);
             toastr.info("Killed  "+pi.hname+" Proc: "+pi.pid+ "!");
             // Close
@@ -364,7 +366,7 @@ var tabloadacts = [
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
   {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", path: "hostkeys"}, // DUAL
-  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats"}, //DUAL
+  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats", "help": "x.md"}, //DUAL
   //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
@@ -568,13 +570,13 @@ window.onload = function () {
   var acts = tabloadacts.filter((ti) => { return ti.path; });
   // Can we do async preroute-op ?
   function preroute(ev, act) {
-    console.log("Routing: "+act.name+" ('"+location.hash+"')");
+    console.log("Routing: "+act.name+" ('"+location.hash+"' ... "+act.path+")");
     if (!datasets.cfg.username) { location.hash = "loginform";  } // return;
     // Need to override in action for e.g. dialog (e.g. viewid)
     event.viewtgtid = "routerdiv";
   }
   var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
-  router.add(acts);
+  router.add(acts); /// ...filtered
     // Page Branding (title, image)
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
@@ -709,7 +711,7 @@ function pkg_stats(ev, act) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = { lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000};
+    var chdef = {title: "Package Stats", lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000};
     createchart(data, chdef); // "Packages", "pkgcnt", 'canvas_pkg'
   }).catch(function (ex) { console.log(ex); });
   
@@ -718,7 +720,7 @@ function pkg_stats(ev, act) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10};
+    var chdef = { title: "CPU Counts", lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10};
     createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
   }).catch(function (ex) { console.log(ex); });
   // 
@@ -726,7 +728,7 @@ function pkg_stats(ev, act) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = {lblprop: "hname", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10};
+    var chdef = { title: "Memory Stats", lblprop: "hname", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10};
     createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
   }).catch(function (ex) { console.log(ex); });
   // Uses global: cmap, global scales, outer: gscale (for ... suggestedMax)
@@ -750,7 +752,7 @@ function pkg_stats(ev, act) {
     var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
     //window.myBar =
     new Chart(ctx, { type: 'bar', data: cdata, options: copts });
-  }; // createchart
+  } // createchart
 } // pkg_stats
 
 //var idx = {};
@@ -768,7 +770,7 @@ function pkg_stats(ev, act) {
 * @param gridsel {string} - Selector (id, "#...") for grid (TODO: dialogsel)
 */
 function dockerinfo(hname, dialogsel, cb) { // gridsel
-  var port = 4243; // cfg.
+  var port = datasets.cfg.docker.port || 4243;
   if (!hname) { toastr.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling docker ...");
@@ -813,10 +815,10 @@ function rfinfo(hname, dialogsel, cb) {
     // Setup Extra
     d.hname = hname; // hname - here or server ?
     // Reset Types
-    var resettypes; try { resettypes = d.Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"]; } catch (ex) {};
+    var resettypes; try { resettypes = d.Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"]; } catch (ex) {}
     if (resettypes && Array.isArray(resettypes)) { d.ResetValues = resettypes; }
     // Boot media Types
-    var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {};
+    var mediatypes; try { mediatypes = d.Boot["BootSourceOverrideTarget@Redfish.AllowableValues"]; } catch (ex) {}
     if (mediatypes && Array.isArray(mediatypes)) { d.MediaValues = mediatypes; }
     // TODO: map esp. resettypes (maybe also mediatypes) to clickable links here or do on template ?
     // TODO: Add "Boot Options" that pops up options.
@@ -856,7 +858,7 @@ function rfinfo(hname, dialogsel, cb) {
  * See also: dockerinfo and http://$HOST:4243/v1.24/images/json
  */
 function procinfo(hname, dialogsel, cb) {
-  var port = 8181; // cfg.
+  var port = datasets.cfg.procster.port || 8181;
   if (!hname) { toastr.error("No hostname (from ui) for proc info"); return; } // proc
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling procps ...");
@@ -900,4 +902,35 @@ function showgrid (divid, griddata, fields) {
   });
   // Emit (done divid) !
   ee.emit("on_"+divid+"_done", {msg: "Hello!", divid: divid});
+}
+
+/** Setup help for an routed app action with help markdown.
+ * https://stackoverflow.com/questions/18838964/add-bootstrap-glyphicon-to-input-box
+ * https://stackoverflow.com/questions/18567098/css-bootstrap-add-icon-to-h1
+ */
+function setuphelp(act, sel) {
+  var hp = act.help; // Help page
+  if (!hp) { return; }
+  // Nest-Select from router div ? What about dialog ?
+  // First heading within router element
+  var usel = sel || '';
+  var hid = act.path + "_help";
+  console.log("Append to: "+usel);
+  //$(usel).append("<span id=\"" + hid +"\">FOO</span>"); // Help Icon
+  // span makes a difference here.
+  $(usel).append("<span id=\""+hid+"\" class=\"glyphicon glyphicon-question-sign\" style=\"position: relative;top: 1px;display: inline;padding-left: 10px;\"></span>");
+  $("#"+hid).click(function (jev) {
+    var url = "/web/help/"+act.help;
+    console.log("Fetch help: "+url);
+    axios.get(url).then((resp) => {
+      var cont = resp.data;
+      if (!cont) { return toastr.error("Empty doc !"); }
+      // Wrapping Template ?: rapp.templated("");
+      var c = new showdown.Converter();
+      cont = c.makeHtml(cont);
+      $("#helpdialog").html(cont); // act.name
+      $("#helpdialog").dialog();
+      //alert("Help:" + act.name);
+    }).catch((err) => { toastr.error("Help Error:"+err);});
+  });
 }
