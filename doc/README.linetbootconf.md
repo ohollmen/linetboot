@@ -202,16 +202,19 @@ Note: for hosts which do not comply to global BMC credentials, there's a way to 
 
 ### Section "ldap" - LDAP Authentication settings
 
+Thse settings are used for logging onto Linetboot web UI. Understanding LDAP terminology is useful
+for understanding the settings.
+
 - disa (bool) - Force disabling LDAP authentication/connectivity (e.g. temporarily) even if config is complete and working (0/1)
 - host (str) - LDAP Server host (add port to end if needed, e.g. "myhost:8389")
 - binddn (str) - Bind DN (Distinguished name) for user that LDAP connection is bound as (must be authorized to do searches)
-- bindpass (str) - LDAP Bind password for the user
-- userbase (str) - base to seacrh users from (LDAP authentication always involves user search as a first step)
+- bindpass (str) - LDAP Bind password for the user (clear, not encrypted)
+- userbase (str) - base DN to search users from (LDAP authentication always involves user search as a first step)
 - scope (str) - LDAP search scope (base, one, sub). You likely want "sub" here.
 - unattr (str) - Username attribute for your LDAP schema (AD: "sAMAccountName", Typical OpenLDAP: "uid")
-- idletout (int) - Idle timeout for LDAP API
+- idletout (int) - Idle timeout (ms.) for LDAP API
 - rebindonerror (bool) - Rebind if error occurs on connection (Default: 1)
-- rebindwait (int) - Wait (ms.) delay for binding after client API has encountered and is reconnecting (Default: 5000)
+- rebindwait (int) - Wait (ms.) delay for binding after client has detected lost connection and is reconnecting (Default: 5000)
 
 ### Section "iblox" - InfoBlox IPAM
 
@@ -224,6 +227,7 @@ Note: for hosts which do not comply to global BMC credentials, there's a way to 
 ### Section "recipes" - Additional OS Install Recipes
 
 Recipes section expects an array of recipe objects with following properties:
+
 - url (str) - Recipe (e.g. kickstart, preseed, autoinst.xml) URL as referred to by OS installer (usually set on kernel CL)
 - ctype (str) - Recipe config type - a "hint string" for recipe generation (may or may not be used for particular OS installation).
      Keep this unique among all recipes.
