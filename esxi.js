@@ -5,7 +5,7 @@ General about ESXI "query guests":
 - To has "soapenv:Envelope" => "soapenv:Body" => RetrievePropertiesExResponse => ...
 - Note: many apis (in ...Response) have a wrapping elem <returnval> (VMWare) or <rval> (Google ads)
 - There is also another call (13.th call)
-Look for patts (for individual guest)
+I Guest result (parsed XML) Look for patts (for individual guest):
 
 - node.name[0] = config.guestFullName   node.val[0]."_": Microsoft Windows 10 (64-bit)
 - node.name[0] == "config.guestFullName"
@@ -21,9 +21,13 @@ See also "runtime": (also: summary.runtime)
 - powerState (Array, e.g. "poweredOn")
 - bootTime[] (ISO)
 summary.quickStats .. uptimeSeconds
+* 
 # Node modules
 - xml2js - https://www.npmjs.com/package/xml2js
 - axios - https://www.npmjs.com/package/axios
+# References
+- API Methods documented (e.g. Login) https://blogs.vmware.com/developer/2014/08/hello-vmware-objects.html
+* 
 */
 
 var xjs  = require('xml2js');
@@ -162,11 +166,11 @@ function soapCall(host, p, sopts, cb) {
   // To see what is *actually* sent, see resp.request._header (req line + headers)
   var rp = {
     withCredentials: true,
-     //credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
+    credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
     headers: {
-       'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1",
+       'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1", // VMware ESXi 6.7.0 API vers 6.7.1
        //"Access-Control-Allow-Origin": "https://"+host,
-       'Access-Control-Allow-Origin': '*',
+       'Access-Control-Allow-Origin': '*', // Server hdr ?
        //cookie: "", //[],
        Connection: 'keep-alive', // Sent from browser app. resp.request has shouldKeepAlive: false, resp.agent keepAlive: false,
        //Origin: "https://"+host
