@@ -326,17 +326,37 @@ iPXE:
 
 ### Grub and Shim (for PXE UEFI setup)
 
-sudo apt-get install grub-efi-amd64-signed shim-signed
-sudo cp /usr/lib/shim/shim.efi.signed                         /var/lib/tftpboot/bootx64.efi
-sudo cp /usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed /var/lib/tftpboot/grubx64.efi
+Quick notes about Grub:
+- With Grub config lines "linux" and "initrd" are always separate (No nesting initrd=... on linux kernel line)
+- Choice of bootloader should not affect choice of kernel, initrd. Use the same ones as with other bootloaders.
+- Do not install package "grub-efi-amd64" - this activates Grub as current bootloader on system (we only want bootloader copyable binaries for PXE-based bootloading)
+- Redhat Instructions advice to use Grub config keywords "linuxefi" and "initrdefi"
 
-Configuration dir (Very commong grub Netboot convention)
+Grub EFI Installation:
+
+```
+# grub-efi-amd64-bin is for booting the installed system (non-PXE)
+sudo apt-get install grub-efi-amd64-signed shim-signed
+# Primary boot-loadable, as registered in DHCP (Use conditionality to detect EFI booting machine: client-arch,7)
+# Note: Bootloaders must be in same dir as configs (?)
+#OLD: sudo cp /usr/lib/shim/shim.efi.signed                         /var/lib/tftpboot/grub/bootx64.efi
+sudo cp /usr/lib/shim/shimx64.efi.signed                       /var/lib/tftpboot/grub/bootx64.efi
+sudo cp /usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed /var/lib/tftpboot/grub/grubx64.efi
+# Optional: /usr/share/grub/unicode.pf2 /var/lib/tftpboot/grub/fonts/unicode.pf2
+
+```
+
+Configuration dir "grub" under TFTP root (Very common grub Netboot convention):
 ```
 mkdir /var/lib/tftpboot/grub/
 touch /var/lib/tftpboot/grub/grub.cfg
-```
-grub.cfg
+# x86_64-efi for modules from package grub-efi-amd64-bin
+mkdir /var/lib/tftpboot/grub/x86_64-efi
+cp /usr/lib/grub/x86_64-efi/*.mod /var/lib/tftpboot/grub/x86_64-efi/
 
+```
+Example grub.cfg contents:
+```
 set default=master
 set timeout=5
 set hidden_timeout_quiet=false
@@ -344,9 +364,20 @@ set hidden_timeout_quiet=false
 menuentry "master"  {
 configfile /tftpboot/$net_default_mac.conf
 }
+```
 
+#### References
+
+- Google: grub pxe uefi, grub uefi pxe boot, grub efi netboot
 - http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
 - Ubuntu 20.04 Netboot (w. Grub) https://ubuntu.com/server/docs/install/netboot-amd64
+- Ubuntu UEFI netboot: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
+- https://wiki.ubuntu.com/UEFI/SecureBoot/PXE-IPv6
+- Diskless Grub boot: https://gist.github.com/kvaps/4a61233e4427740c636a0cbd885e54cd
+- https://www.redhat.com/sysadmin/pxe-boot-uefi
+- https://www.ietf.org/assignments/dhcpv6-parameters/dhcpv6-parameters.txt
+- Ubuntu/Dev vs. Fedora grubnetx64.efi (config search): https://kscherer.github.io/linux/2017/03/20/pxe-install-on-uefi-using-foreman-and-grub2
+- https://misperious.wordpress.com/2018/02/03/uefi-and-pxe-boot-setup-on-ubuntu-17-10/
 
 ### Configuring Samba Server on Linux
 
