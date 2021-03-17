@@ -1618,9 +1618,11 @@ function config_send(req, res) {
   var core = global.core;
   var tftp = global.tftp;
   var web  = global.web;
+  var proc  = global.procster;
   var esxi  = global.esxi;
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
+  if (proc && proc.port)    { cfg.procster.port = proc.port; }
   // Core
   if (core && core.appname) { cfg.appname = core.appname; }
   if (core && core.hdrbg)   { cfg.hdrbg = core.hdrbg; } // BG Image
@@ -2283,9 +2285,10 @@ function eflowrscs(req, res) {
     }).catch((ex) => { console.log("EFlow Rsc EX: "+ex); cb(null, null); }); // jr.msg += "EFlow EX: "+ex; console.log(jr.msg); return res.json(jr);
   }
 }
-/** Enable / Disable resource.
+/** Enable / Disable resource (by "rscname=...").
  * Initially: Change the enablement state to requested one.
  * TODO: Allow pool changes.
+ * https://storage.googleapis.com/cloudbees-docsite-downloads-production/docs/electric-cloud/eflow_doc/9_0/API/PDF/FlowAPI_Guide_9_0.pdf?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=docsite-server-app%40ops-production-294812.iam.gserviceaccount.com%2F20210317%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20210317T035943Z&X-Goog-Expires=3601&X-Goog-SignedHeaders=host&X-Goog-Signature=bbf47485dd637f453dda7b12346717fd51e3e63558663af2f53ab5a34f75fe627df0be5b516b40ec6b7fe30a713fc587b0caa32138b0b78d229e23abc3cbfd727628d8981f78cb21dd2bda9087051dc8d82e4c82e108214656f68da24caa16ced99144d6b88e43357f5c2bf080dad9cd0b8be25edf5d6b87b8485e47c14e5db6cb9688c20db8861d395f7c09e9db6e55ea690d956c9252c1df8b92c6f3e20cf82ef80bdc78d07c991b7f0d8002e87d443d78a5176a60c9168ac317e2a19e4f9227a2548fde5002b436abb97d5695642ec13e3c570d98b4bd61865624f79603272e4ef1c83bbee89e0f2337be99d42f5631b0da0f96b1692bbed57bbb932bcc44
  */
 function eflowrsctoggle(req, res) {
   var jr = {status : "err", msg : "Error Toggling EFlow resource on/off."};
@@ -2297,6 +2300,12 @@ function eflowrsctoggle(req, res) {
   var p = {resourceDisabled: !parseInt(q.ena) }; // PUT. TODO: resourcePools: "a,b,c"
   var axpara = { auth: {username: efc.user, password: efc.pass } };
   var efurl = efc.url + "/resources/"+q.rscname; // "?resourceDisabled="
+  // Being enabled. Lookup hname by rscname ?
+  //var para = {hname: };
+  if (efc.resetdesc && ! p.resourceDisabled) {
+    
+    // p.description = Mustache.render(efc.resetdesc, para); // p. 1200 / 1260 API guide
+  }
   console.log("PUT:", p);
   // Seems these *can* be sent PUT with params in URL ?
   axios.put(efurl, p, axpara).then((resp) => {
