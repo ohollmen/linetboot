@@ -1612,7 +1612,7 @@ function dockerenv_info(req, res) {
  * Config info is taken or derived from global config structure.
  */
 function config_send(req, res) {
-  var cfg = {docker: {}, core: {}, bootlbls: []};
+  var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}};
   // Docker host group
   var dock = global.docker;
   var core = global.core;
