@@ -153,9 +153,10 @@
     "pooltest": "SWSHOP_DEBIAN_TEST",
     "poolprod": "SWSHOP_DEBIAN",
     "wsname":   "SWSHOP_WS",
-    "agenthost": "efagent.mycomp.com"
+    "agenthost": "efagent.mycomp.com",
+    "resetdesc": ""
   },
-  "remote": {
+  "procster": {
     "port": 8181,
     "urlpath": ""
   },
