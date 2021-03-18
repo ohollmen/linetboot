@@ -27,7 +27,9 @@ summary.quickStats .. uptimeSeconds
 - axios - https://www.npmjs.com/package/axios
 # References
 - API Methods documented (e.g. Login) https://blogs.vmware.com/developer/2014/08/hello-vmware-objects.html
-* 
+* - https://code.vmware.com/docs/1682/vsphere-web-services-sdk-programming-guide/doc/PG_PropertyCollector.7.5.html
+* - https://vdc-download.vmware.com/vmwb-repository/dcr-public/d4fd4125-8683-4388-9bf0-7b73c0e5cc34/e5b8ce6d-969f-4e48-af05-d572c08e7b47/vsphere-web-services-sdk-70-ga.pdf
+*   - See e.g. p. 60-80
 */
 
 var xjs  = require('xml2js');
@@ -114,21 +116,25 @@ var msgs = {
 // https://stackoverflow.com/questions/43002444/make-axios-send-cookies-in-its-requests-automatically
 // Also opts: {withCredentials: true}
 axios.defaults.withCredentials = true;
+axios.defaults.headers.post['Content-Type'] = 'text/xml';
+//axios.defaults.headers.post['SOAPAction'] = 'urn:vim25/6.7.1';
+//axios.defaults.headers.post['Connection'] = 'keep-alive';
+//axios.defaults.headers.post['Accept'] = 'text/xml'; // Orig: */*
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 var mcfg;
-
+// Call models
 var callmods = [
   // Also at login, extract Set-cookie ?
   {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => {
       p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key;
       if (resp && resp.headers) {
         console.log("Got cookie(s): ", resp.headers['set-cookie']);
-	var m;
-	if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
-	  p.cookie = m[1];
-	  console.log("Captured and stored cookie: "+m[1]);
-	}
+        var m;
+        if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
+          p.cookie = m[1];
+          console.log("Captured and stored cookie: "+m[1]);
+        }
       }
     }
   },
@@ -166,7 +172,7 @@ function soapCall(host, p, sopts, cb) {
   // To see what is *actually* sent, see resp.request._header (req line + headers)
   var rp = {
     withCredentials: true,
-    credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual
+    credentials: 'include', // Suggested on make-axios-send-cookies... but not present in manual include: ''
     headers: {
        'Content-Type': 'text/xml', Accept: 'text/xml', SOAPAction: "urn:vim25/6.7.1", // VMware ESXi 6.7.0 API vers 6.7.1
        //"Access-Control-Allow-Origin": "https://"+host,
@@ -197,8 +203,8 @@ function soapCall(host, p, sopts, cb) {
         if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
         // console.log("Launch and forget data:", data);
         console.log("Launch and forget data:", JSON.stringify(data, null, 2));
-	// TODO: Add resp
-	if (sopts.pp) { sopts.pp(data, resp, p); } // Patch Params ?
+        // TODO: Add resp
+        if (sopts.pp) { sopts.pp(data, resp, p); } // Patch Params ?
         cb(null, resp.data);
       });
     }
@@ -219,7 +225,8 @@ function login() {
 }
 
 /** Extract guests from XML content (Async).
-* 
+* @param cont {string} - XML Content string (to be parsed)
+* @param opts {object} - Object 
 */
 function getGuests(cont, opts, cb) {
   if (!cont) { return cb("No (XML) content to parse\n", null); }
@@ -396,6 +403,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   }
   }
   /////////////////
+  // TODO: Use async
   else if (op == 'login') {
     var host = process.argv[3];
     if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); process.exit(1); }
@@ -405,8 +413,8 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       console.log("MAIN-Login:"+data);
       soapCall(host, p, dclone(callmods[1]), function (err, data) {
         if (err) { console.error("glist0 error: "+ err);  } // return;
-	console.log("MAIN-glist0:"+data);
-	console.log("Params-gathered:"+ JSON.stringify(p, null, 2));
+        console.log("MAIN-glist0:"+data);
+        console.log("Params-gathered:"+ JSON.stringify(p, null, 2));
       });
     });
   }
