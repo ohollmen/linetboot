@@ -402,9 +402,9 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   var async    = require("async"); // Move up later
   var mainconf = require("./mainconf.js");
   //console.error("Run sample main");
-  var ops = {"parse":"1", "login":"1", "list": 1};
+  var ops = {"parse":"1", "cache":"1", "cacheall":"1", "list": 1};
   var op = process.argv[2];
-  if (!ops[op]) { console.error("No such subcommand, try "+process.argv[1]+" parse|login"); }
+  if (!ops[op]) { console.error("No such subcommand, try "+process.argv[1]+" "+Object.keys(ops).join('|')); } // 
   // Simple: 
   //var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
   // Too fancy ?
@@ -414,27 +414,32 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   init(mcfg);
   ///////////////////////
   if (op == "parse") {
-  var fname = process.argv[3]; // "./esxi_guest_info_sample.xml"; // 2 => 3
-  if (!fname) { console.error("No filename (as first arg) passed"); process.exit(1); }
-  if (!fs.existsSync(fname)) { console.error("No file by name "+fname+") exists"); process.exit(1); }
-  var debug = process.env['LINETBOOT_ESXI_DEBUG'] || 0;
-  var cont = fs.readFileSync(fname, 'utf8');
-  getGuests(cont, {debug: 0}, parsedone);
-  function parsedone(err, hosts) {
-    if (err) { console.error("Error getting hosts: "+ err); return; }
-    console.log(JSON.stringify(hosts, null, 2));
-  }
+    var fname = process.argv[3]; // "./esxi_guest_info_sample.xml"; // 2 => 3
+    if (!fname) { console.error("No filename (as first arg) passed"); process.exit(1); }
+    if (!fs.existsSync(fname)) { console.error("No file by name "+fname+") exists"); process.exit(1); }
+    var debug = process.env['LINETBOOT_ESXI_DEBUG'] || 0;
+    var cont = fs.readFileSync(fname, 'utf8');
+    getGuests(cont, {debug: 0}, parsedone);
+    function parsedone(err, hosts) {
+      if (err) { console.error("Error getting hosts: "+ err); return; }
+      console.log(JSON.stringify(hosts, null, 2));
+    }
   }
   /////////////////
-  // TODO: Use async
-  else if (op == 'login') {
+  // Cache single host
+  else if (op == 'cache') {
     var host = process.argv[3];
     if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); process.exit(1); }
-    var p = dclone(mcfg.esxi); // Copy of params as base for call chain
-    delete(p.vmhosts_BAD);
-    delete(p.vmhosts);
+    //var p = dclone(mcfg.esxi); // Copy of params as base for call chain
+    //delete(p.vmhosts_BAD);
+    //delete(p.vmhosts);
     p = {username: mcfg.esxi.username, password: mcfg.esxi.password }; // Simple (add cachepath ?)
-    var ccb = null; // function (err, data) { savecache(hinfo); }
+    var ccb = function (err, hinfo) {
+      if (err) { return console.log("fetchguestinfo Error: " + err); }
+      //savecache(hinfo);
+      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
+      else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
+    }
     var opts = {};
     fetchguestinfo(host, p, opts, ccb);
     
@@ -445,12 +450,27 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     // List machines and check their cached files
     mcfg.esxi.vmhosts.forEach((h) => {
       var fok = fs.existsSync(mcfg.esxi.cachepath+"/"+h+".xml") ? 1 : 0;
-      console.log("- "+h+ " (Exists: "+fok+")");
+      console.log("- "+h+ " (Cached: "+fok+")");
     });
   }
   // Cache (all). Starts like "list"+"login"+...
-  else if (op == 'cache') {
-    
+  else if (op == 'cacheall') {
+    p = {username: mcfg.esxi.username, password: mcfg.esxi.password };
+    var hostnames = mcfg.esxi.vmhosts;
+    var opts = {};
+    async.eachSeries(hostnames, worker, function (err) {
+      if (err) { return console.log("cacheall error: "+err); }
+      console.log("cacheall success (see output above) ");
+    });
+    var ccb = function (err, hinfo) {
+      //savecache(hinfo);
+      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
+      else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
+    }
+    function worker(hname, cb) {
+      fetchguestinfo(hname, p, opts, ccb);
+      cb(null, 1);
+    }
   }
 }
 /** Fetch a guest info from ESXi and optionally store.
@@ -475,14 +495,16 @@ function fetchguestinfo(host, p, opts, cb) {
     // See linetboot
     // eachSeries ... Data
     var resarr = []; // Let soapit()
-    async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err) { // results
-      if (err) { return console.log("eachSeries Error: "+ err); }
+    var hcallarr = [callmods[0], callmods[1], callmods[2]]; // HTTP Call array
+    if (p.cookie) { hcallarr.shift(); } // Has cookie from login
+    async.eachSeries(hcallarr, soapit, function (err) { // results
+      if (err) { var xerr = "eachSeries Error: "+ err; console.log(xerr); return cb(xerr, null); }
       //if (!results) { return console.log("Results not avail at completion ("+results+"), err="+err); }
       //console.log("Results len: "+ results.length);
-      // Save last
+      // Forward (e.g. for saving) last
       var hinfo = resarr[resarr.length -1 ];
-      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
-      if (cb) { console.log("Should call ballback ..."); }
+      
+      if (cb) { console.log("Should call ballback ..."); return cb(null, hinfo); }
     });
 }
 
