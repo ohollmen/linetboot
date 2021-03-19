@@ -172,13 +172,13 @@ function init(global) {
 */
 function soapCall(host, p, sopts, cb) {
   if (!host) { console.error("SOAP Call: No host passed"); return cb("No host"); }
-  if (!cb)   { console.error("SOAP Call: No CB"); return cb("No cb"); }
+  if (!cb)   { console.error("SOAP Call: No CB"); return; } // return cb("No cb");
   // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   console.error("Making call for: ", sopts);
   var cfg  = mcfg.esxi;
   // var p = sopts.pcb ? sopts.pcb(cfg) : cfg;
   var tmpl = msgs[sopts.id];
-  if (!tmpl) { console.error("No template for call id:"+sopts.id); }
+  if (!tmpl) { console.error("No template for call id:"+sopts.id); return cb("No template"); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
   // Note axios internal config-props: xsrfCookieName, xsrfHeaderName: 'X-XSRF-TOKEN'
   // To see what is *actually* sent, see resp.request._header (req line + headers)
@@ -212,7 +212,7 @@ function soapCall(host, p, sopts, cb) {
     if (typeof sopts.ea != 'undefined') {
       var xopts = { explicitArray: sopts.ea };
       xjs.parseString(resp.data, xopts, function (err, data) {
-        if (err) { console.log("Failed to parse XML"); return cb(null, resp.data); }
+        if (err) { console.log("Failed to parse XML"); return cb("XML Parse Error", null); } // cb(null, resp.data);
         // console.log("Launch and forget data:", data);
         console.log("Launch and forget data:", JSON.stringify(data, null, 2));
         // TODO: Add resp
@@ -229,7 +229,7 @@ function soapCall(host, p, sopts, cb) {
     console.error("RESP:",resp); // resp.data
     if (resp && resp.request && resp.request.agent) { console.log("SESS-CACHE:", resp.request.agent._sessionCache); }
     if (resp && resp.data) { console.error("RESP.DATA:",resp.data); }
-    cb(error, null);
+    return cb(error, null);
    });
 }
 function login() {
@@ -458,8 +458,11 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     
     async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err, results) {
       if (err) { return console.log("eachSeries Error: "+ err); }
+      if (!results) { return console.log("Results not avail at completion"); }
       console.log("Results len: "+ results.length);
       // Save last
+      var hinfo = results[results.length -1 ];
+      //if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
     }); 
     
   }
