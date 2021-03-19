@@ -432,6 +432,7 @@ function ibip_cell(val, item) {
    }
    var fldinfo_esxi = [
      // 
+     {name: "num",       title: "#", type: "number", width: 15, itemTemplate: null},
      {name: "guestId",       title: "Guest ID", type: "text", width: 90, itemTemplate: null},
      {name: "guestFullName", title: "OS Type", type: "text", width: 120, itemTemplate: null},
      {name: "numCPU", title: "#CPU", type: "number", width: 25, itemTemplate: null},
