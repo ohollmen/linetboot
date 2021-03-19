@@ -136,7 +136,7 @@ var callmods = [
   {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => {
       p.key = d["soapenv:Envelope"]["soapenv:Body"].LoginResponse.returnval.key;
       if (resp && resp.headers) {
-        console.log("Got cookie(s): ", resp.headers['set-cookie']);
+        //console.log("Got cookie(s): ", resp.headers['set-cookie']);
         var m;
         if (resp.headers['set-cookie'] && resp.headers['set-cookie'][0] && (m = resp.headers['set-cookie'][0].match(/vmware_soap_session="(\w+)"/))) {
           p.cookie = m[1];
@@ -148,7 +148,7 @@ var callmods = [
   // glist0
   {id: "contview", ea: false,      pcb: null, pp: (d, resp, p) => {
     console.log("TODO: Patch sess-p w. above !"); // p["ZZZ"] = "HOHUU";
-    console.log("contview-data:", d);
+    //console.log("contview-data:", d);
     p.viewid = d["soapenv:Envelope"]["soapenv:Body"].CreateContainerViewResponse.returnval["_"]
   }},
   {id: "glist",    ea: undefined,  pcb: null, pp: null},
@@ -429,9 +429,14 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
         if (err) { console.error("glist0 error: "+ err);  } // return;
         console.log("MAIN-glist0:"+data);
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
-        // soapCall(host, p, dclone(callmods[2]), function (err, data) {
-        //   
-        // });
+        soapCall(host, p, dclone(callmods[2]), function (err, data) {
+          if (err)  { console.error("final guest info error: "+ err); }
+          if (!data) { console.error("final data is empty !", data); }
+          console.log("Got Data: "+data.length+" B");
+          var fname = "/tmp/"+host+".xml";
+          fs.writeFileSync(fname, data, {encoding: "utf8"} );
+          console.log("Wrote: "+fname);
+        });
       });
     });
     function soapit(cm, cb) {
