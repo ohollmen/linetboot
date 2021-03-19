@@ -82,7 +82,13 @@ var msgs = {
 // <filter type="PropertyFilter">session[52a56aec-3858-365e-d534-df8d1ed50509]52af59a9-6fc8-4139-535e-97716ca2192d</filter>
 "glist0": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body><WaitForUpdatesEx xmlns="urn:vim25"><_this type="PropertyCollector">ha-property-collector</_this><version>1</version><options><maxWaitSeconds>60</maxWaitSeconds></options></WaitForUpdatesEx></Body></Envelope>
 `,
-//`<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body><WaitForUpdatesEx xmlns="urn:vim25"><_this type="PropertyCollector">ha-property-collector</_this><version>1</version><options><maxWaitSeconds>60</maxWaitSeconds></options></WaitForUpdatesEx></Body></Envelope>`,
+"contview": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body><CreateContainerView
+xmlns="urn:vim25"><_this type="ViewManager">ViewManager</_this>
+<container type="Folder">ha-folder-root</container><type>VirtualMachine</type><recursive>true</recursive></CreateContainerView></Body></Envelope>`,
+//~ //`<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body><WaitForUpdatesEx xmlns="urn:vim25"><_this type="PropertyCollector">ha-property-collector</_this><version>1</version><options><maxWaitSeconds>60</maxWaitSeconds></options></WaitForUpdatesEx></Body></Envelope>`,
+// RetrievePropertiesEx for Guests based on CreateContainerViewResponse <returnval>...</returnval> elem value
+// e.g. session[52e748f1-e74e-2c34-c72a-1a3849c9d654]5269e8e7-80ef-d032-0fe3-db49f537825c
 // Is this 19th call ?
 "glist": `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Body>
 <RetrievePropertiesEx xmlns="urn:vim25">
@@ -109,7 +115,7 @@ var msgs = {
 <pathSet>effectiveRole</pathSet>
 
 </propSet><objectSet>
-<obj type="ContainerView">session[52e748f1-e74e-2c34-c72a-1a3849c9d654]5269e8e7-80ef-d032-0fe3-db49f537825c</obj>
+<obj type="ContainerView">{{ viewid }}</obj>
 <skip>true</skip><selectSet xsi:type="TraversalSpec"><name>view</name><type>ContainerView</type><path>view</path><skip>false</skip></selectSet></objectSet></specSet><options/></RetrievePropertiesEx></Body></Envelope>
 `
 };
@@ -124,6 +130,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 var mcfg;
 // Call models
+// - ea - explicitArray option for XML parser (true, false, undefined = No parsing)
 var callmods = [
   // Also at login, extract Set-cookie ?
   {id: "login",  ea: false,      pcb: null, pp: (d, resp, p) => {
@@ -138,8 +145,12 @@ var callmods = [
       }
     }
   },
-  {id: "glist0", ea: false,      pcb: null, pp: (d, resp, p) => { console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU"; }},
-  {id: "glist",  ea: undefined,  pcb: null },
+  // glist0
+  {id: "contview", ea: false,      pcb: null, pp: (d, resp, p) => {
+    console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU";
+    console.log("contview-data:", d);
+  }},
+  {id: "glist",    ea: undefined,  pcb: null, pp: null},
 ];
 function dclone(d) {
   var d2 = JSON.parse(JSON.stringify(d));
@@ -414,9 +425,24 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       soapCall(host, p, dclone(callmods[1]), function (err, data) {
         if (err) { console.error("glist0 error: "+ err);  } // return;
         console.log("MAIN-glist0:"+data);
-        console.log("Params-gathered:"+ JSON.stringify(p, null, 2));
+        console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
+        // soapCall(host, p, dclone(callmods[2]), function (err, data) {
+        //   
+        // });
       });
     });
+    function soapit(cm, cb) {
+      soapCall(host, p, dclone(cm), function (err, data) {
+        if (err) { console.error("glist0 error: "+ err);  } // return;
+        console.log(cm.id+":"+data);
+        console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
+      });
+    }
+    // See linetboot
+    // // eachSeries ... Data
+    // async.eachSeries([callmods[0], allmods[1], allmods[2]], soapit, function (err, results) {
+    //  
+    //}); 
   }
   else if (op == 'list') {
     // List machines and check their cached files
