@@ -203,7 +203,7 @@ function soapCall(host, p, sopts, cb) {
   console.log("Send-Reqpara: "+ JSON.stringify(rp, null, 2));
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
-    console.error("Resp-data: "+resp.data);
+    if (resp.data && resp.data.length < 2000) { console.error("Resp-data: "+resp.data); }
     console.error("Resp-data-Type: "+(typeof resp.data));
     console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2));
     // Parse, grab LoginResponse => returnval => key
@@ -433,6 +433,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
           if (err)  { console.error("final guest info error: "+ err); }
           if (!data) { console.error("final data is empty !", data); }
           console.log("Got Data: "+data.length+" B");
+          // TODO: mcfg.esxi.cachepath
           var fname = "/tmp/"+host+".xml";
           fs.writeFileSync(fname, data, {encoding: "utf8"} );
           console.log("Wrote: "+fname);
