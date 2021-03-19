@@ -204,7 +204,7 @@ function soapCall(host, p, sopts, cb) {
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
     if (resp.data && (resp.data.length < 2000)) { console.error("Resp-data: "+resp.data); }
     console.error("Resp-data-Type: "+(typeof resp.data)); // + 
-    console.error("Resp-data-Len: "+((typeof resp.data) == 'string') ? resp.data.length : "Not string => N/A");
+    console.error("Resp-data-Len: "+ ( ((typeof resp.data) == 'string') ? resp.data.length : "Not string => N/A" ) );
     if (p.debug && (p.debug > 1)) { console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2)); }
     // Parse, grab something from resp (e.g. LoginResponse => returnval => key)
     // Check content-type ?
@@ -436,7 +436,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     var ccb = function (err, hinfo) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
       if (hinfo && (hinfo.length > 10000)) { savecache(host, hinfo); }
-      else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
+      else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
     }
     var opts = {};
     fetchguestinfo(host, p, opts, ccb);
@@ -464,10 +464,10 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     var ccb = function (err, hinfo) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
       if (hinfo && (hinfo.length > 10000)) { savecache(hname, hinfo); }
-      else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
+      else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
     }
       
-      
+      // This runs away
       fetchguestinfo(hname, p, opts, ccb);
       console.log("worker for "+hname+" finished");
       cb(null, 1); // Always forward success
@@ -505,7 +505,7 @@ function fetchguestinfo(host, p, opts, cb) {
       // Forward (e.g. for saving) last
       var hinfo = resarr[resarr.length -1 ];
       
-      if (cb) { console.log("Should call ballback ..."); return cb(null, hinfo); }
+      if (cb) { console.log("fetchguestinfo/eachSeries completion: Should call ballback ..."); return cb(null, hinfo); }
     });
 }
 
