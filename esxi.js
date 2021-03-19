@@ -203,7 +203,7 @@ function soapCall(host, p, sopts, cb) {
   console.log("Send-Reqpara: "+ JSON.stringify(rp, null, 2));
   // cfg.url
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
-    if (resp.data && resp.data.length < 2000) { console.error("Resp-data: "+resp.data); }
+    if (resp.data && (resp.data.length < 2000)) { console.error("Resp-data: "+resp.data); }
     console.error("Resp-data-Type: "+(typeof resp.data));
     console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2));
     // Parse, grab LoginResponse => returnval => key
@@ -388,7 +388,7 @@ module.exports = {
 // test main
 // node esxi.js ./esxi_guest_info_sample.xml
 if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
-  var async = require("async"); // Move up later
+  var async    = require("async"); // Move up later
   var mainconf = require("./mainconf.js");
   //console.error("Run sample main");
   var ops = {"parse":"1", "login":"1", "list": 1};
@@ -422,6 +422,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     var p = dclone(mcfg.esxi); // Copy of params as base for call chain
     delete(p.vmhosts_BAD);
     delete(p.vmhosts);
+    /*
     soapCall(host, p, dclone(callmods[0]), function (err, data) {
       if (err) { console.error("login error: "+ err); return; }
       console.log("MAIN-Login:"+data);
@@ -433,28 +434,34 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
           if (err)  { console.error("final guest info error: "+ err); }
           if (!data) { console.error("final data is empty !", data); }
           console.log("Got Data: "+data.length+" B");
-          // TODO: mcfg.esxi.cachepath
-          var fname = "/tmp/"+host+".xml";
-          fs.writeFileSync(fname, data, {encoding: "utf8"} );
-          console.log("Wrote: "+fname);
+          savecache(data);
         });
       });
     });
+    */
+    function savecache(data) {
+      // TODO: mcfg.esxi.cachepath
+      var fname = "/tmp/"+host+".xml";
+      fs.writeFileSync(fname, data, {encoding: "utf8"} );
+      console.log("Wrote: "+fname);
+    }
     function soapit(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
-        if (err) { console.error("glist0 error: "+ err);  } // return;
-        console.log(cm.id+":"+data);
+        if (err) { console.error("glist0 error: "+ err); return cb(err, null); } // return;
+        console.log(cm.id+" result:"+data.length+" B");
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
         cb(null, data);
       });
     }
     // See linetboot
     // eachSeries ... Data
-    /*
+    
     async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err, results) {
+      if (err) { return console.log("eachSeries Error: "+ err); }
       console.log("Results len: "+ results.length);
+      // Save last
     }); 
-    */
+    
   }
   else if (op == 'list') {
     // List machines and check their cached files
