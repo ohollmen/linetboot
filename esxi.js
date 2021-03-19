@@ -380,7 +380,7 @@ function getPropSetprop(obj, name, rettype) {
   return pnode; // Node itself
 }
 
-function savecache(data) {
+function savecache(host, data) {
   // TODO: var fname = mcfg.esxi.cachepath
   var fname = "/tmp/"+host+".xml";
   try {
@@ -435,8 +435,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     p = { username: mcfg.esxi.username, password: mcfg.esxi.password, debug: mcfg.esxi.debug }; // Simple (add cachepath ?)
     var ccb = function (err, hinfo) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
-      //savecache(hinfo);
-      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
+      if (hinfo && (hinfo.length > 10000)) { savecache(host, hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
     }
     var opts = {};
@@ -459,13 +458,16 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (err) { return console.log("cacheall error: "+err); }
       console.log("cacheall success (see output above) ");
     });
+    
+    function worker(hname, cb) {
+      
     var ccb = function (err, hinfo) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
-      //savecache(hinfo);
-      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
+      if (hinfo && (hinfo.length > 10000)) { savecache(hname, hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
     }
-    function worker(hname, cb) {
+      
+      
       fetchguestinfo(hname, p, opts, ccb);
       console.log("worker for "+hname+" finished");
       cb(null, 1); // Always forward success
