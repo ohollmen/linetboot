@@ -535,20 +535,21 @@ function eflowlist(ev, act) {
  * TODO: Use xui to show navi list of servers ?
  */
 function esxilist(ev, act) {
-  rapp.templated("simplegrid", act, ev.viewtgtid);
+  var host;
   var cfg = datasets["cfg"];
   toastr.clear();
+  rapp.templated("simplegrid", act, ev.viewtgtid);
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
   var ds = ev.target.dataset;
-  var host;
   if (ds && ds.ghost) { host = ds.ghost; }
   if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
   if (!host) { return toastr.error("No Default host available."); }
+  $("#routerdiv h3").html(act.name + " on VM Host " +host);
   console.log("Search by: "+ host);
   var url = act.url + host;
-  toastr.info("Request ESXI Host VM Info ... please wait...");
+  toastr.info("Request ESXI Host "+host+" VM Info ... please wait...");
   axios.get(url).then(function (resp) {
     var d = resp.data;
     toastr.clear();
