@@ -164,18 +164,18 @@ function dclone(d) {
 }
 function init(global) {
   if (mcfg) { return; }
-  mcfg = global;
+  mcfg = global || {};
+  if (!mcfg.esxi) { mcfg.esxi = {}; }
   return module.exports;
 }
-/* Get listing of guest info as XML.
+/* Issue an ESXi SOAP call.
 * TODO: Login ?
 */
 function soapCall(host, p, sopts, cb) {
   if (!host) { console.error("SOAP Call: No host passed"); return cb("No host"); }
   if (!cb)   { console.error("SOAP Call: No CB"); return; } // return cb("No cb");
-  // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   console.error("Making call for: ", sopts);
-  var cfg  = mcfg.esxi;
+  // NOT: var cfg  = mcfg.esxi;
   // var p = sopts.pcb ? sopts.pcb(cfg) : cfg; // pcb deprecated
   var tmpl = msgs[sopts.id];
   if (!tmpl) { console.error("No template for call id:"+sopts.id); return cb("No template"); }
@@ -347,6 +347,8 @@ function getSOAPRespData(rdata, ea) {
     return o[ks[0]];
   }
 }
+/** Check xml2js object member (parsed with ExplicitArray set to true - default).
+ */
 function isArrayWithOneitem(data, memname) {
   if (!Array.isArray(data)) { console.error(memname+" does not contain array\n"); return null; }
   var type = (typeof data[0]);
@@ -377,6 +379,15 @@ function getPropSetprop(obj, name, rettype) {
   // Overload and return different things ?
   if (rettype == "val") { return pnode.val[0]._; }
   return pnode; // Node itself
+}
+
+function savecache(data) {
+  // TODO: var fname = mcfg.esxi.cachepath
+  var fname = "/tmp/"+host+".xml";
+  try {
+    fs.writeFileSync(fname, data, {encoding: "utf8"} );
+  } catch (ex) { console.error("esxi cache file write error: "+ ex); return; }
+  console.log("Wrote: "+fname);
 }
 
 module.exports = {
@@ -422,30 +433,35 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     var p = dclone(mcfg.esxi); // Copy of params as base for call chain
     delete(p.vmhosts_BAD);
     delete(p.vmhosts);
-    /*
-    soapCall(host, p, dclone(callmods[0]), function (err, data) {
-      if (err) { console.error("login error: "+ err); return; }
-      console.log("MAIN-Login:"+data);
-      soapCall(host, p, dclone(callmods[1]), function (err, data) {
-        if (err) { console.error("glist0 error: "+ err);  } // return;
-        console.log("MAIN-glist0:"+data);
-        console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
-        soapCall(host, p, dclone(callmods[2]), function (err, data) {
-          if (err)  { console.error("final guest info error: "+ err); }
-          if (!data) { console.error("final data is empty !", data); }
-          console.log("Got Data: "+data.length+" B");
-          savecache(data);
-        });
-      });
+    p = {username: mcfg.esxi.username, password: mcfg.esxi.password }; // Simple (add cachepath ?)
+    var ccb = null; // function (err, data) { savecache(hinfo); }
+    var opts = {};
+    fetchguestinfo(host, p, opts, ccb);
+    
+    
+    
+  }
+  else if (op == 'list') {
+    // List machines and check their cached files
+    mcfg.esxi.vmhosts.forEach((h) => {
+      var fok = fs.existsSync(mcfg.esxi.cachepath+"/"+h+".xml") ? 1 : 0;
+      console.log("- "+h+ " (Exists: "+fok+")");
     });
-    */
-    function savecache(data) {
-      // TODO: mcfg.esxi.cachepath
-      var fname = "/tmp/"+host+".xml";
-      fs.writeFileSync(fname, data, {encoding: "utf8"} );
-      console.log("Wrote: "+fname);
-    }
-    function soapit(cm, cb) {
+  }
+  // Cache (all). Starts like "list"+"login"+...
+  else if (op == 'cache') {
+    
+  }
+}
+/** Fetch a guest info from ESXi and optionally store.
+ * @param host {string} - ESXi Host VM hostname
+ * @param p {object} - Per host-fetch param object (w. e.g. username,password, but do not use mcfg.esxi directly).
+ * @param opts {object} - Options like ...
+ * @param cb {function} - 
+ * @return No value, but call cb at completion
+ */
+function fetchguestinfo(host, p, opts, cb) {
+  function soapit(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
         if (err) { console.error("soapit error: "+ err); return cb(err, null); } // return;
         if (!data || !data.length) { console.log("No error, but no data either !!!"); return cb("No Error, no Data !", null); }
@@ -466,18 +482,24 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       // Save last
       var hinfo = resarr[resarr.length -1 ];
       if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
-    }); 
-    
-  }
-  else if (op == 'list') {
-    // List machines and check their cached files
-    mcfg.esxi.vmhosts.forEach((h) => {
-      var fok = fs.existsSync(mcfg.esxi.cachepath+"/"+h+".xml") ? 1 : 0;
-      console.log("- "+h+ " (Exists: "+fok+")");
+      if (cb) { console.log("Should call ballback ..."); }
     });
-  }
-  // Cache (all). Starts like "list"+"login"+...
-  else if (op == 'cache') {
-    
-  }
 }
+
+/*
+    soapCall(host, p, dclone(callmods[0]), function (err, data) {
+      if (err) { console.error("login error: "+ err); return; }
+      console.log("MAIN-Login:"+data);
+      soapCall(host, p, dclone(callmods[1]), function (err, data) {
+        if (err) { console.error("glist0 error: "+ err);  } // return;
+        console.log("MAIN-glist0:"+data);
+        console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
+        soapCall(host, p, dclone(callmods[2]), function (err, data) {
+          if (err)  { console.error("final guest info error: "+ err); }
+          if (!data) { console.error("final data is empty !", data); }
+          console.log("Got Data: "+data.length+" B");
+          savecache(data);
+        });
+      });
+    });
+    */
