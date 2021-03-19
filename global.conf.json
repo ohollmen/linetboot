@@ -165,7 +165,8 @@
     "username":"",
     "password":"",
     "cachepath":"~/.linetboot/esxi",
-    "vmhosts": ["esxi1","esxi2","esxi3","esxi4","esxi5","esxi6"]
+    "vmhosts": ["esxi1","esxi2","esxi3","esxi4","esxi5","esxi6"],
+    "debug": 1
   },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
