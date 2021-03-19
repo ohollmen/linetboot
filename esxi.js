@@ -149,7 +149,7 @@ var callmods = [
   {id: "contview", ea: false,      pcb: null, pp: (d, resp, p) => {
     console.log("TODO: Patch sess-p w. above !"); // p["ZZZ"] = "HOHUU";
     //console.log("contview-data:", d);
-    p.viewid = d["soapenv:Envelope"]["soapenv:Body"].CreateContainerViewResponse.returnval["_"]
+    p.viewid = d["soapenv:Envelope"]["soapenv:Body"].CreateContainerViewResponse.returnval["_"];
   }},
   {id: "glist",    ea: undefined,  pcb: null, pp: null},
 ];
@@ -176,7 +176,7 @@ function soapCall(host, p, sopts, cb) {
   // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   console.error("Making call for: ", sopts);
   var cfg  = mcfg.esxi;
-  // var p = sopts.pcb ? sopts.pcb(cfg) : cfg;
+  // var p = sopts.pcb ? sopts.pcb(cfg) : cfg; // pcb deprecated
   var tmpl = msgs[sopts.id];
   if (!tmpl) { console.error("No template for call id:"+sopts.id); return cb("No template"); }
   var cont = Mustache.render(tmpl, p); // { username: cfg.username, password: cfg.password }
@@ -448,21 +448,24 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     function soapit(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
         if (err) { console.error("soapit error: "+ err); return cb(err, null); } // return;
-        console.log(cm.id+" result:"+data.length+" B");
+        if (!data || !data.length) { console.log("No error, but no data either !!!"); return cb("No Error, no Data !", null); }
+        console.log("SOAP Call '"+cm.id+"' result:"+data.length+" B");
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
-        cb(null, data);
+        resarr.push(data);
+        // res[cm.id] = data; // Object ?
+        return cb(null, data); // Try Forward XML
       });
     }
     // See linetboot
     // eachSeries ... Data
-    
-    async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err, results) {
+    var resarr = []; // Let soapit()
+    async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err) { // results
       if (err) { return console.log("eachSeries Error: "+ err); }
-      if (!results) { return console.log("Results not avail at completion"); }
-      console.log("Results len: "+ results.length);
+      //if (!results) { return console.log("Results not avail at completion ("+results+"), err="+err); }
+      //console.log("Results len: "+ results.length);
       // Save last
-      var hinfo = results[results.length -1 ];
-      //if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
+      var hinfo = resarr[resarr.length -1 ];
+      if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
     }); 
     
   }
