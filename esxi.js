@@ -147,7 +147,7 @@ var callmods = [
   },
   // glist0
   {id: "contview", ea: false,      pcb: null, pp: (d, resp, p) => {
-    console.log("TODO: Patch sess-p w. above !"); // p["ZZZ"] = "HOHUU";
+    //console.log("TODO: Patch sess-p w. above !"); // p["ZZZ"] = "HOHUU";
     //console.log("contview-data:", d);
     p.viewid = d["soapenv:Envelope"]["soapenv:Body"].CreateContainerViewResponse.returnval["_"];
   }},
@@ -203,8 +203,9 @@ function soapCall(host, p, sopts, cb) {
   // Call POST
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
     if (resp.data && (resp.data.length < 2000)) { console.error("Resp-data: "+resp.data); }
-    console.error("Resp-data-Type: "+(typeof resp.data));
-    console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2));
+    console.error("Resp-data-Type: "+(typeof resp.data)); // + 
+    console.error("Resp-data-Len: "+((typeof resp.data) == 'string') ? resp.data.length : "Not string => N/A");
+    if (p.debug && (p.debug > 1)) { console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2)); }
     // Parse, grab something from resp (e.g. LoginResponse => returnval => key)
     // Check content-type ?
     if (typeof sopts.ea != 'undefined') {
@@ -212,7 +213,7 @@ function soapCall(host, p, sopts, cb) {
       xjs.parseString(resp.data, xopts, function (err, data) {
         if (err) { console.log("Failed to parse XML"); return cb("XML Parse Error", null); } // cb(null, resp.data);
         // console.log("Launch and forget data:", data);
-        console.log("Launch and forget data:", JSON.stringify(data, null, 2));
+        if (p.debug && (p.debug > 1)) { console.log("Launch and forget data:", JSON.stringify(data, null, 2)); }
         // TODO: Add resp
         if (sopts.pp) { sopts.pp(data, resp, p); } // Patch Params ?
         return cb(null, resp.data); // Was missing return - callback leak
@@ -453,6 +454,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     p = {username: mcfg.esxi.username, password: mcfg.esxi.password };
     var hostnames = mcfg.esxi.vmhosts;
     var opts = {};
+    
     async.eachSeries(hostnames, worker, function (err) {
       if (err) { return console.log("cacheall error: "+err); }
       console.log("cacheall success (see output above) ");
@@ -466,7 +468,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     function worker(hname, cb) {
       fetchguestinfo(hname, p, opts, ccb);
       console.log("worker for "+hname+" finished");
-      cb(null, 1);
+      cb(null, 1); // Always forward success
     }
   }
 }
