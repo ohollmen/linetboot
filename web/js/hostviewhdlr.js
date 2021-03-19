@@ -566,7 +566,6 @@ function esxilist(ev, act) {
 /* */
 function esxihostmenu(act, vmhosts) {
   var cont = "";
-  //var ghnames = ["esxi1","esxi2","esxi3"];
   vmhosts.forEach((h) => { cont += "<span class=\"vmglink\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
   $(".xui").html(cont);
   $(".xui").show();
