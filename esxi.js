@@ -220,7 +220,7 @@ function soapCall(host, p, sopts, cb) {
         return cb(null, resp.data); // Was missing return - callback leak
       });
     }
-    cb(null, resp.data);
+    else { cb(null, resp.data); }
   })
   // Note: <faultstring> has an description/explanation of error
   .catch((error) => {
