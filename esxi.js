@@ -171,8 +171,8 @@ function init(global) {
 * TODO: Login ?
 */
 function soapCall(host, p, sopts, cb) {
-  if (!host) { console.error("SOAP Call: No host passed"); return; }
-  if (!cb)   { console.error("SOAP Call: No CB"); return; }
+  if (!host) { console.error("SOAP Call: No host passed"); return cb("No host"); }
+  if (!cb)   { console.error("SOAP Call: No CB"); return cb("No cb"); }
   // OLD: var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json"); // Let init()
   console.error("Making call for: ", sopts);
   var cfg  = mcfg.esxi;
@@ -217,7 +217,7 @@ function soapCall(host, p, sopts, cb) {
         console.log("Launch and forget data:", JSON.stringify(data, null, 2));
         // TODO: Add resp
         if (sopts.pp) { sopts.pp(data, resp, p); } // Patch Params ?
-        cb(null, resp.data);
+        return cb(null, resp.data); // Was missing return - callback leak
       });
     }
     cb(null, resp.data);
@@ -447,7 +447,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     }
     function soapit(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
-        if (err) { console.error("glist0 error: "+ err); return cb(err, null); } // return;
+        if (err) { console.error("soapit error: "+ err); return cb(err, null); } // return;
         console.log(cm.id+" result:"+data.length+" B");
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
         cb(null, data);
