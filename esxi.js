@@ -147,8 +147,9 @@ var callmods = [
   },
   // glist0
   {id: "contview", ea: false,      pcb: null, pp: (d, resp, p) => {
-    console.log("TODO: Patch sess-p w. above !"); p["ZZZ"] = "HOHUU";
+    console.log("TODO: Patch sess-p w. above !"); // p["ZZZ"] = "HOHUU";
     console.log("contview-data:", d);
+    p.viewid = d["soapenv:Envelope"]["soapenv:Body"].CreateContainerViewResponse.returnval["_"]
   }},
   {id: "glist",    ea: undefined,  pcb: null, pp: null},
 ];
@@ -419,6 +420,8 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     var host = process.argv[3];
     if (!host) { console.error("Pass host (and optional port for https url e.g. myhost or myhost:8443"); process.exit(1); }
     var p = dclone(mcfg.esxi); // Copy of params as base for call chain
+    delete(p.vmhosts_BAD);
+    delete(p.vmhosts);
     soapCall(host, p, dclone(callmods[0]), function (err, data) {
       if (err) { console.error("login error: "+ err); return; }
       console.log("MAIN-Login:"+data);
@@ -436,13 +439,16 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
         if (err) { console.error("glist0 error: "+ err);  } // return;
         console.log(cm.id+":"+data);
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
+        cb(null, data);
       });
     }
     // See linetboot
-    // // eachSeries ... Data
-    // async.eachSeries([callmods[0], allmods[1], allmods[2]], soapit, function (err, results) {
-    //  
-    //}); 
+    // eachSeries ... Data
+    /*
+    async.eachSeries([callmods[0], callmods[1], callmods[2]], soapit, function (err, results) {
+      console.log("Results len: "+ results.length);
+    }); 
+    */
   }
   else if (op == 'list') {
     // List machines and check their cached files
