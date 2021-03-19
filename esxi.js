@@ -199,15 +199,13 @@ function soapCall(host, p, sopts, cb) {
      // maxContentLength: 2000, // maxContentLength: 2000,
   }; //  VMware-CSRF-Token: lbsjwb8urwffmd3m4g2md314busolf77
   if (p && p.cookie) { rp.headers.cookie = "vmware_soap_session=\""+p.cookie+"\""; } // push("vmware_soap_session=\""+p.cookie+"\"")
-  console.log("Send (SOAP/XML) content: "+cont);
-  console.log("Send-Reqpara: "+ JSON.stringify(rp, null, 2));
-  // cfg.url
+  if (p.debug && (p.debug > 1)) { console.log("Send (SOAP/XML) content: "+cont); console.log("Send-Reqpara: "+ JSON.stringify(rp, null, 2)); }
+  // Call POST
   axios.post("https://" + host + "/sdk/", cont, rp).then((resp) => {
     if (resp.data && (resp.data.length < 2000)) { console.error("Resp-data: "+resp.data); }
     console.error("Resp-data-Type: "+(typeof resp.data));
     console.error("Resp-Hdrs: "+JSON.stringify(resp.headers, null, 2));
-    // Parse, grab LoginResponse => returnval => key
-    
+    // Parse, grab something from resp (e.g. LoginResponse => returnval => key)
     // Check content-type ?
     if (typeof sopts.ea != 'undefined') {
       var xopts = { explicitArray: sopts.ea };
@@ -433,7 +431,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     //var p = dclone(mcfg.esxi); // Copy of params as base for call chain
     //delete(p.vmhosts_BAD);
     //delete(p.vmhosts);
-    p = {username: mcfg.esxi.username, password: mcfg.esxi.password }; // Simple (add cachepath ?)
+    p = { username: mcfg.esxi.username, password: mcfg.esxi.password, debug: mcfg.esxi.debug }; // Simple (add cachepath ?)
     var ccb = function (err, hinfo) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
       //savecache(hinfo);
@@ -442,9 +440,6 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     }
     var opts = {};
     fetchguestinfo(host, p, opts, ccb);
-    
-    
-    
   }
   else if (op == 'list') {
     // List machines and check their cached files
@@ -463,12 +458,14 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       console.log("cacheall success (see output above) ");
     });
     var ccb = function (err, hinfo) {
+      if (err) { return console.log("fetchguestinfo Error: " + err); }
       //savecache(hinfo);
       if (hinfo && (hinfo.length > 10000)) { savecache(hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B"); }
     }
     function worker(hname, cb) {
       fetchguestinfo(hname, p, opts, ccb);
+      console.log("worker for "+hname+" finished");
       cb(null, 1);
     }
   }
