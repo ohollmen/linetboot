@@ -360,7 +360,7 @@ function getPropSetprop(obj, name, rettype) {
   if (!ps) { console.error("No propSet found !"); return null; }
   if (!Array.isArray(ps)) { console.error("propSet is not Array !"); return null; }
   var pnode = ps.find((p) => { return p.name == name; });
-  if (!pnode) { console.error("No property by name '"+p.name+"' found"); return null; }
+  if (!pnode) { console.error("No property by name '"+name+"' found"); return null; }
   if (!pnode.val) { console.error("property node ",pnode,"does not have 'value'"); return null;}
   // Overload and return different things ?
   if (rettype == "val") { return pnode.val[0]._; }
