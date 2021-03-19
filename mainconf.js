@@ -202,6 +202,7 @@ function env_merge(global) {
   if (process.env["ANSIBLE_PASS"]) { stub("ansible"); global.ansible.pass = process.env["ANSIBLE_PASS"]; }
   if (process.env['PLAYBOOK_PATH']) { stub("ansible"); global.ansible.pbpath = process.env["PLAYBOOK_PATH"]; }
   if (process.env["LINETBOOT_ANSIBLE_DEBUG"]) { stub("ansible"); global.ansible.debug = parseInt(process.env["LINETBOOT_ANSIBLE_DEBUG"]); }
+  if (process.env["LINETBOOT_ESXI_PASS"]) { stub("esxi"); global.esxi.password = process.env["LINETBOOT_ESXI_PASS"]; }
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
 function tilde_expand(obj, keyarr) {
