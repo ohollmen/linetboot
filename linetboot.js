@@ -2346,6 +2346,14 @@ function listguests(req, res) {
   // XML ? JSON ?
   esxi.getGuests(cont, {debug: 0}, function (err, data) {
     if (err) { jr.msg += host + " problems extracting guests info"; return res.json(jr); }
+    // Sort and number
+    data.sort((a,b) => {
+      if (!a.hostName ) { return 0; }
+      // if (!a.hostName || !a.hostName) { return 0; }
+      return a.hostName.localeCompare(b.hostName);
+    });
+    var i = 1;
+    data.forEach((h) => { h.num = i; i++; });
     res.json(data); // {status: "ok", data: data}
   });
   
