@@ -243,11 +243,13 @@ function getGuests(cont, opts, cb) {
   if (!cont) { return cb("No (XML) content to parse\n", null); }
   opts = opts || {debug: 0};
   if (!cb) { console.error("must have CB for async parsing"); return; }
-  var xopts = { explicitArray: true }; // ignoreAttrs: true
+  var xopts = { explicitArray: true, // Default/Original: true; 
+    // ignoreAttrs: true
+  };
   xjs.parseString(cont, function (err, data) {
     if (err) { console.error("Error Parsing XML from "+fname+""); return cb("XML Parse error: "+ err, null); }
     
-    data = getRealData(data);
+    data = getRealData(data); // _S
     if (!Array.isArray(data)) { return cb("Not an Array (... of guests ...for further processing)", null);  }
     //if (opts.debug > 1) { console.log(JSON.stringify(data[0], null, 2)); }
     var hosts = [];
@@ -264,7 +266,7 @@ function getGuests(cont, opts, cb) {
 }
 
 /** Convert xml2js parsed (from XML) host to simple form.
-@param esh {object} - Guest object (as is from xml2js)
+@param esh {object} - propSet section "guest" Guest object (as is from xml2js)
 @return Guest in simple format
 
 TODO: VirtualMachinePowerState, npivTemporaryDisabled, createDate, changeVersion (also date)
@@ -279,10 +281,15 @@ function gethost(esh) {
   if (!g.val) { console.error("Did not find GUEST VALUE node !\n"); return null; }
   if (!g.val[0]) { console.error("Did not find GUEST VALUE 0 node !\n"); return null; }
   //console.error(g);
-  //console.error(JSON.stringify(g, null, 2)); // return;
+  //if (1) { console.log("guest-branch:"+JSON.stringify(g, null, 2)); } // return;
+  if (1) { console.log("esh-top:"+JSON.stringify(esh, null, 2)); } // return;
   var gv = g.val[0]; // Guest value 0
-   
+     
   h.hostName = gv.hostName ? gv.hostName[0] : null; // Also ipStack[0].dnsConfig.hostName[0];
+  // h.dhcp     = gv.dhcp ? gv.dhcp[0] : "false"; // Note: remains string !
+  if (gv.ipStack) {}
+  if (gv.disk) {} // capacity
+  //if (gv.screen) {} // width +"x"+height
   //console.error("Work w. "+ h.hostName);
   
   h.ipAddress = gv.ipAddress ? gv.ipAddress[0] : null;
@@ -292,6 +299,41 @@ function gethost(esh) {
   h.guestState = gv.guestState ? gv.guestState[0] : null;
   h.guestId    = gv.guestId ? gv.guestId[0] : null; // Is this image ?
   return h;
+}
+// NOTE: rettype == "val" ONLY applicable for sects where val[0] has
+// prop "_". Should have "directval" or "val_")
+function getPropSetprop(obj, name, rettype) {
+  var ps = obj.propSet; // App props are under this (AoO), very nested.
+  // In AoO objs o.val (array) has one elem o.val[0]
+  if (!ps) { console.error("No propSet found !"); return null; }
+  if (!Array.isArray(ps)) { console.error("propSet is not Array !"); return null; }
+  var pnode = ps.find((p) => { return p.name == name; });
+  if (!pnode) { console.error("No property by name '"+name+"' found"); return null; }
+  if (!pnode.val) { console.error("property node ",pnode,"does not have 'value'"); return null;}
+  // Overload and return different things ?
+  if (rettype == "val") { return pnode.val[0]._; } // Direct val "val[0]._" object
+  // Refine to easy access object
+  if (rettype == "object") {
+    var o = {};
+    var v = pnode.val[0];
+    if (!v) { return {}; }
+    Object.keys(v).forEach((k) => {
+      if (Array.isArray(v[k]) && v[k].length == 1) { o[k] = v[k][0]; }
+    });
+    return o;
+  }
+  return pnode; // Node itself
+}
+
+/** ESXi XML & xml2js specific accessor for section properties.
+* After xml2js parsing these section properties are extremely awkward
+and "indirect" to access. Sturucture contains nested objects and arrays,
+each of which has to be checked before access (as they may be missing).
+Pass obj.propSet array here
+*/
+function getSectProps(psarr, foo) {
+  if (!Array.isArray(psarr)) { return null; }
+  
 }
 /** Strip WS response wrappings, get to actual data.
 @param data {object} - ESXI SOAP response (as parsed by xml2js)
@@ -317,10 +359,21 @@ function getRealData(data) {
   if (data && !Array.isArray(data)) { return null; }
   return data;
 }
+
+function getRealData_S(data) {
+  //console.log("SIMPLE-data:"+JSON.stringify(data, null, 2));
+  data = data["soapenv:Envelope"]["soapenv:Body"];
+  if (!data) { console.log("No Body/No Envelope"); }
+  console.log("SIMPLE-data:"+JSON.stringify(data, null, 2));
+  //data = data[0].RetrievePropertiesExResponse[0].returnval; //.objects;
+  //console.log("SIMPLE-data:"+JSON.stringify(data, null, 2));
+  process.exit(1);
+  return data;
+}
 /** Access SOAP response data-section from the xml2js parsed form.
 * This is ESXI specific accessor, looking for <returnval>.
 * Assumes xml2js to be parsed with explicitArray: false.
-* 
+* @todo Allow app specific (sync) callback to extract e.g. <returnval>
 */
 function getSOAPRespData(rdata, ea) {
   if (typeof rdata != 'object') { return null; }
@@ -368,17 +421,6 @@ function ObjInspect(obj) {
   
 }
 
-function getPropSetprop(obj, name, rettype) {
-  var ps = obj.propSet;
-  if (!ps) { console.error("No propSet found !"); return null; }
-  if (!Array.isArray(ps)) { console.error("propSet is not Array !"); return null; }
-  var pnode = ps.find((p) => { return p.name == name; });
-  if (!pnode) { console.error("No property by name '"+name+"' found"); return null; }
-  if (!pnode.val) { console.error("property node ",pnode,"does not have 'value'"); return null;}
-  // Overload and return different things ?
-  if (rettype == "val") { return pnode.val[0]._; }
-  return pnode; // Node itself
-}
 
 function savecache(host, data) {
   // TODO: var fname = mcfg.esxi.cachepath
@@ -437,7 +479,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
       if (hinfo && (hinfo.length > 10000)) { savecache(host, hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
-    }
+    };
     var opts = {};
     fetchguestinfo(host, p, opts, ccb);
   }
@@ -465,7 +507,7 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (err) { return console.log("fetchguestinfo Error: " + err); }
       if (hinfo && (hinfo.length > 10000)) { savecache(hname, hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
-    }
+    };
       
       // This runs away
       fetchguestinfo(hname, p, opts, ccb);
