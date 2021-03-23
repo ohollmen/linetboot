@@ -825,6 +825,7 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
  */
 function nfsinfo(hname, dialogsel, cb) {
   // Load data
+  toastr.info("Loading Exports for "+hname);
   // MOCKUP: return cb([], dialogsel);
   axios.get("/showmounts/" + hname).then(function (resp) {
     var pinfo = resp.data;
@@ -833,6 +834,27 @@ function nfsinfo(hname, dialogsel, cb) {
   })
   .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
 }
+
+
+function rfinfo_uisetup(d) { // d not used (in here)
+      $('.bbut').click(function (jev, ui) {
+        console.log(jev); // JQuery.Event (has originalEvent)
+        console.log(jev.originalEvent.target); // Same as this
+        console.log("THIS:", this); // 2 elems ?
+        console.log($(this).data('pxe'));
+        var op = $(this).data('op');
+        var url = "/rf/"+op+"/"+hname;
+        var btype = "";
+        if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
+        console.log("use URL: "+url);
+        // var tid = setTimeout(() => {}, 10000);
+        axios.get(url).then(function (resp) {
+          console.log(resp.data);
+          toastr.info("Op "+op+" executed on "+hname+btype); // in Progress
+        }).catch(function (err) { alert(err); });
+      });
+    }
+    
 /** RedFish Info dialog.
  * TODO: Allow to use boot methods other than default
  */
@@ -869,25 +891,8 @@ function rfinfo(hname, dialogsel, cb) {
     //rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
     // Note: Original impl. never calls the cb, not using grid part of framework
-    // 
-    function rfinfo_uisetup(d) { // d not used (in here)
-      $('.bbut').click(function (jev, ui) {
-        console.log(jev); // JQuery.Event (has originalEvent)
-        console.log(jev.originalEvent.target); // Same as this
-        console.log("THIS:", this); // 2 elems ?
-        console.log($(this).data('pxe'));
-        var op = $(this).data('op');
-        var url = "/rf/"+op+"/"+hname;
-        var btype = "";
-        if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
-        console.log("use URL: "+url);
-        // var tid = setTimeout(() => {}, 10000);
-        axios.get(url).then(function (resp) {
-          console.log(resp.data);
-          toastr.info("Op "+op+" executed on "+hname+btype); // in Progress
-        }).catch(function (err) { alert(err); });
-      });
-    }
+    // OLD Spot for rfinfo_uisetup
+    
     rfinfo_uisetup(d);
     // No grid based dialog here
   })
