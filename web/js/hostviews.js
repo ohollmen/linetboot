@@ -159,7 +159,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // Foold other use cases here (e.g. host, people, bootmedia, recipe prev.)
     {tgtid: "dockerimg", dcb: dockerinfo, gridid: "jsGrid_dockerimg_d"},
     {tgtid: "nfsinfo",   dcb: nfsinfo, gridid: "jsGrid_nfs"},
-    {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: null}, // templated (not grig) and never gets to dialogcb. TODO: rfinfo_uisetup
+    {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: rfinfo_uisetup}, // templated (not grig) and never gets to dialogcb. TODO: rfinfo_uisetup
     {tgtid: "proclist",  dcb: procinfo, gridid: "jsGrid_procs", uisetup: procinfo_uisetup},
   ];
   // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
@@ -886,9 +886,9 @@ function rfinfo(hname, dialogsel, cb) {
     else { d.ipaddr = ""; }
     // TODO: Could call cb() here (to delegate templating ...)
     // return cb(d, dialogsel);
-    var out = Mustache.render(tc, d);
-    $('#'+ dialogsel ).html(out); // '#rfdialog'
-    //rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
+    //var out = Mustache.render(tc, d);
+    //$('#'+ dialogsel ).html(out); // '#rfdialog'
+    rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
     // Note: Original impl. never calls the cb, not using grid part of framework
     // OLD Spot for rfinfo_uisetup
