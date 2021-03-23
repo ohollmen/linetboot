@@ -369,6 +369,7 @@ configfile /tftpboot/$net_default_mac.conf
 #### References
 
 - Google: grub pxe uefi, grub uefi pxe boot, grub efi netboot
+- Google: grub linux vs. linuxefi directives
 - http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
 - Ubuntu 20.04 Netboot (w. Grub) https://ubuntu.com/server/docs/install/netboot-amd64
 - Ubuntu UEFI netboot: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
