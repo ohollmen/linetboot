@@ -863,8 +863,8 @@ function rfinfo_uisetup(d) { // d not used (in here)
  * TODO: Allow to use boot methods other than default
  */
 function rfinfo(hname, dialogsel, cb) {
-  var tc = $('#redfish').html();
-  if (!tc) { return alert("No template content"); }
+  //var tc = $('#redfish').html();
+  //if (!tc) { return alert("No template content"); }
   
   toastr.info("Please wait ...", "Inquiring BMC Info");
   axios.get("/rf/info/" + hname).then(function (resp) {
@@ -890,8 +890,9 @@ function rfinfo(hname, dialogsel, cb) {
     else { d.ipaddr = ""; }
     d.hname = hname;
     // TODO: Could call cb() here (to delegate templating ...)
-    console.error("Returning to FW.");
+    //console.error("Returning to FW.");
     return cb(d, dialogsel);
+    /*
     //var out = Mustache.render(tc, d);
     //$('#'+ dialogsel ).html(out); // '#rfdialog'
     rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
@@ -901,6 +902,7 @@ function rfinfo(hname, dialogsel, cb) {
     
     rfinfo_uisetup(d);
     // No grid based dialog here
+    */
   })
   .catch(function (error) { console.log(error); alert("No RF info, "+ error); }) // toastr.error
   .finally(() => { toastr.clear(); });
