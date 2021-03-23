@@ -105,42 +105,7 @@ function on_rmgmt_click(ev) {
   
 //}
 
-/** Create dialog+grid for host and view described in event elem (by data-hname, data-tgt).
- * The "data-tgt" attribute (For now..) on event target el. determines the
- * specific handler called from here (by if-elsing, todo: model).
- * This func: dispatch to custom fetcher -> custom fetcher -> dialogcb (here), calls showgrid()
- * Note: 
-*/
-function on_docker_info(ev) { // TODO:
-  var actsmodel = [ // Dialogs. TODO: Add gridid for grid based views
-    {tgtid: "dockerimg", dcb: dockerinfo, grid: null},
-    {tgtid: "nfsinfo",   dcb: nfsinfo, },
-    {tgtid: "rfdialog",  dcb: rfinfo, },
-    {tgtid: "proclist",  dcb: procinfo, grid: "jsGrid_procs"},
-  ];
-  // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
-  // Works both as grid (cache index-object) and dialog (DOM-id) selector id
-  var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
-    if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
-    console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
-    // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
-    // class fwgrid is on grid-wrapping div-element
-    var id = $("#"+ dialogsel + " .fwgrid").attr("id");
-    console.log("jsGrid elem id: "+id);
-    if (!id) { toastr.error("No grid id found from dialog by id: "+dialogsel); return; }
-    // 
-    if (!fldinfo[dialogsel]) { alert("No grid info for '"+ dialogsel+"' "); return; }
-    showgrid(id, pinfo, fldinfo[dialogsel]); // OLD(1st)gridsel ... "dockerimg"
-    console.log("Call showgrid dialog CB ... #" + dialogsel);
-    if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
-    $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
-    // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
-    // alert("Got setup");
-    if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
-  };
-  // Process *grid* UI - hook additional UI actions.
-  // If further 
-  var uisetup = {"proclist": (pinfo) => {
+function procinfo_uisetup(pinfo) {
       
       $('.psact').click(function (ev) {
         var pid = this.dataset.pid;
@@ -179,20 +144,89 @@ function on_docker_info(ev) { // TODO:
         });
       });
     }
+
+/** Create dialog+grid for host and view described in event elem (by data-hname, data-tgt).
+ * The "data-tgt" attribute (For now..) on event target el. determines the
+ * specific handler called from here (by if-elsing, todo: model).
+ * This func: dispatch to custom fetcher -> custom fetcher -> dialogcb (here), calls showgrid()
+ * Note: 
+*/
+function on_docker_info(ev) { // TODO: datadialog (rapp.?)
+  var actsmodel = [ // Dialogs. TODO: Add gridid for grid based views. dcb = data cb.
+    // TODO: Add tmpl (default: simplegrid, do double templating to make {{ name }} into a nice title ?)
+    // - Come back tmplid => tmpl to sync with router (or other way around).
+    // Add name (could create dialog elem completely autom.) ?
+    // Foold other use cases here (e.g. host, people, bootmedia, recipe prev.)
+    {tgtid: "dockerimg", dcb: dockerinfo, gridid: "jsGrid_dockerimg_d"},
+    {tgtid: "nfsinfo",   dcb: nfsinfo, gridid: "jsGrid_nfs"},
+    {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: null}, // templated (not grig) and never gets to dialogcb. TODO: rfinfo_uisetup
+    {tgtid: "proclist",  dcb: procinfo, gridid: "jsGrid_procs", uisetup: procinfo_uisetup},
+  ];
+  // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
+  // Works both as grid (cache index-object) and dialog (DOM-id) selector id
+  var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
+    if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
+    if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
+    console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
+    // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
+    // class fwgrid is on grid-wrapping div-element
+    var del = $("#"+ dialogsel ).get(0); // Dialog element
+    // New: We give gridid directly in model, no need to probe it.
+    //var gel = $("#"+ dialogsel + " .fwgrid");
+    //var id = gel.attr("id");
+    var id = am.gridid;
+    console.log("jsGrid elem id: "+id);
+    if (!id) { toastr.error("No grid id found from dialog by id: "+dialogsel); return; }
+    var tmplid = am.tmplid || "simplegrid";
+    var titletmpl = del.getAttribute("nametmpl"); // TODO: Change proper
+    // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
+    if (titletmpl) { tpara.name = Mustache.render(titletmpl, tpara); } // toastr.info("Formulated title/name: "+tpara.name);
+    // TODO: Template into dialog container
+    
+    // If needtemplate ? // tpara => am (clone) ?
+    // Problem: You'd need to blend tpara (w. hname, gridid, ...) and data from server
+    if (tmplid) {
+      // Blend tpara and data from server (Assume it to be in object ? Which way ?) ?
+      if (typeof pinfo == 'object') { Object.keys(pinfo).forEach((k) => { tpara[k] = pinfo[k]; });}
+      rapp.templated(tmplid, tpara, dialogsel); // Place to dialog
+      //console.log("TEMPLATE_CONT: "+rapp.templated(tmplid, tpara));
+    }
+    if (!am.gridid) {}
+    //////////// Grid ///////////////////
+    else {
+      // Must have fldinfo by same name
+      if (!fldinfo[dialogsel]) { alert("No grid info for '"+ dialogsel+"' "); return; }
+      showgrid(id, pinfo, fldinfo[dialogsel]); // OLD(1st)gridsel ... "dockerimg"
+      console.log("Call showgrid dialog CB ... #" + dialogsel);
+      $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
+    }
+    // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
+    // if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
+    // TODO:
+    if (am.uisetup) { am.uisetup(pinfo); }
   };
+  // Process *grid* UI - hook additional UI actions.
+  // If further 
+  //var uisetup = {"proclist": procinfo_uisetup };
   //console.log("ARG[0]:"+ev);
   // Note: also the 
   var hn  = ev.target.getAttribute("data-hname"); // Hostname (to do op on)
-  var tgt = ev.target.getAttribute("data-tgt"); // id-lbl 
+  var tgt = ev.target.getAttribute("data-tgt"); // id-lbl for dialog and fldinfo
   console.log("Dlg-HNAME:"+hn+", data-tgt: " + tgt);
+  var am = actsmodel.find((am) => { return am.tgtid == tgt; });
+  if (!am) { return toastr.error("No Action model found for: "+tgt); }
+  // Consider: Clone am (PLUS functions in it), use in template.
+  // Future todo: Merge all elem data-* attributes to am
+  var tpara = {hname: hn, gridid: am.gridid, name: ""}; // Lookup actsmodel by tgt => use am.gridid
   // hn - from ev element
   // gridsel - grid/dialog selector (id) (from data-tgt=...)... replace w. dialog
   // dialogcb - dialogcb
-  if      (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
-  else if (tgt == "nfsinfo")   { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
-  else if (tgt == "rfdialog")  { rfinfo(hn, "rfdialog", dialogcb); return; }
-  else if (tgt == "proclist")  { procinfo(hn, "proclist", dialogcb); }
-  //showgrid(gridsel, response.data, fldinfo.net);
+  //if      (tgt == 'dockerimg') { dockerinfo(hn, "dockerimg", dialogcb); } // OLD: gridsel
+  //else if (tgt == "nfsinfo")   { nfsinfo(hn, "nfsinfo", dialogcb); return; } // alert("N/A");
+  //else if (tgt == "rfdialog")  { rfinfo(hn, "rfdialog", dialogcb); return; }
+  //else if (tgt == "proclist")  { procinfo(hn, "proclist", dialogcb); }
+  // TODO: Allow alternate dialogcb (for case templated) ?
+  am.dcb(hn, tgt, dialogcb);
 }
 
 /** Display host details (Shared click handler for hostname click).
@@ -779,7 +813,8 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
     if (!pinfo ) { toastr.error("No data from " + hname); return; }
     if (!pinfo.length) { toastr.warning("No images found", "... on " + hname); return; }
-    console.log("dockerinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
+    //  Creating grid to: '" + dialogsel + "'
+    console.log("dockerinfo: got data " + pinfo + ""); // gridsel
     cb(pinfo, dialogsel);
     // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
   }).catch(function (error) { console.log(error); toastr.error("No Docker info", error); });
@@ -804,6 +839,7 @@ function nfsinfo(hname, dialogsel, cb) {
 function rfinfo(hname, dialogsel, cb) {
   var tc = $('#redfish').html();
   if (!tc) { return alert("No template content"); }
+  
   toastr.info("Please wait ...", "Inquiring BMC Info");
   axios.get("/rf/info/" + hname).then(function (resp) {
     var rd = resp.data;
@@ -826,11 +862,15 @@ function rfinfo(hname, dialogsel, cb) {
     // BMC (MC) Info / Link
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
+    // TODO: Could call cb() here (to delegate templating ...)
+    // return cb(d, dialogsel);
     var out = Mustache.render(tc, d);
     $('#'+ dialogsel ).html(out); // '#rfdialog'
+    //rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
+    // Note: Original impl. never calls the cb, not using grid part of framework
     // 
-    function uisetup() {
+    function rfinfo_uisetup(d) { // d not used (in here)
       $('.bbut').click(function (jev, ui) {
         console.log(jev); // JQuery.Event (has originalEvent)
         console.log(jev.originalEvent.target); // Same as this
@@ -848,7 +888,7 @@ function rfinfo(hname, dialogsel, cb) {
         }).catch(function (err) { alert(err); });
       });
     }
-    uisetup();
+    rfinfo_uisetup(d);
     // No grid based dialog here
   })
   .catch(function (error) { console.log(error); alert("No RF info, "+ error); }) // toastr.error
