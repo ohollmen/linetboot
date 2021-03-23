@@ -253,24 +253,21 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <!-- Dialogs. See also generic/simple grid template: id="simplegrid" (with {{name}} class="xui" {{ gridid }})-->
 <div id="dialog" class="infodia" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
+<!-- <div id="jsGrid_dockerimg_d" class="fwgrid" comm="Unused"></div> -->
+<div id="dockerimg" title="Docker Images" nametmpl="Images for {{ hname }}" data-info="Docker Dialog"></div>
+<!-- <div id="jsGrid_nfs" class="fwgrid"></div> -->
+<div id="nfsinfo" title="NFS Exports" nametmpl="Exports for {{ hname }}" data-info="NFS Dialog"></div>
+<!-- <div id="jsGrid_procs" class="fwgrid"></div> -->
+<div id="proclist" title="Host Process List" nametmpl="Processes for {{ hname }}" data-info="Process List Dialog"></div>
+<div id="rfdialog" title="RedFish Info" nametmpl="RedFish Info for {{ hname }}" hint="Inject" data-info="RF Dialog"></div>
+<!-- class="" -->
+<div id="procdialog" title="Host OS Process" nametmplX="Host {{hname}} Process {{ pid }}"  data-info="Process Dialog" ></div>
 
-<div id="dockerimg" title="Docker Images" nametmpl="Images for {{ hname }}" data-info="Docker Dialog">
-  <div id="jsGrid_dockerimg_d" class="fwgrid" comm="Unused"></div>
-</div>
-
-<div id="nfsinfo" title="NFS Exports" nametmpl="Exports for {{ hname }}" data-info="NFS Dialog">
-  <div id="jsGrid_nfs" class="fwgrid"></div>
-</div>
-<div id="proclist" title="Host Process List" nametmpl="Processes for {{ hname }}" data-info="Process List Dialog">
-  <!-- <h3>{{ hname }}</h3> -->
-  <div id="jsGrid_procs" class="fwgrid"></div>
-</div>
-<div id="rfdialog" title="RedFish Info" nametmpl="RedFish Info for {{ hn }}" hint="Inject" data-info="RF Dialog"></div>
 <div id="midialog" title="ISO Boot Media Info" todo="for {{ hn }}"  data-info="Boot Image Dialog"></div>
 <div id="userdialog" class="infodia" title="User Info"   data-info="User Dialog" data-dsize="580x550"></div>
 <div id="recipedialog" class="" title="OS Install Recipe"   data-info="Recipe Dialog" ></div>
 
-<div id="procdialog" class="" title="Host OS Process"   data-info="Process Dialog" ></div>
+
 <div id="helpdialog" class="" title="Help on ..."   data-info="Help Dialog" ></div>
 <!-- Templates -->
 <script id="singlehost" type="text/template">
@@ -548,7 +545,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <iframe src="{{ url }}" type="{{ type }}" title="Recipe for ..." height="90%" width="98%"></iframe>
 </script>
 
-<script id="processtabs" type="text/template" desc="Process List and Tree Tabs">
+<script id="processtabs" type="text/template" desc="Process List and Tree Tabs. Use uisetup to load pane content on tab select">
 <h3>Processes on {{ hname }}</h3>
 
 </script>
