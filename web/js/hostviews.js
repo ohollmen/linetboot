@@ -189,6 +189,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
       if (typeof pinfo == 'object') { Object.keys(pinfo).forEach((k) => { tpara[k] = pinfo[k]; });}
       rapp.templated(tmplid, tpara, dialogsel); // Place to dialog
       //console.log("TEMPLATE_CONT: "+rapp.templated(tmplid, tpara));
+      $("#"+ dialogsel ).dialog(dopts_grid);
     }
     if (!am.gridid) {}
     //////////// Grid ///////////////////
@@ -202,6 +203,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
       console.log("Call showgrid dialog CB ... #" + dialogsel);
       $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
     }
+    // $("#"+ dialogsel ).dialog(dopts_grid); // TODO !
     // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
     // if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
     // TODO:
