@@ -175,9 +175,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // New: We give gridid directly in model, no need to probe it.
     //var gel = $("#"+ dialogsel + " .fwgrid");
     //var id = gel.attr("id");
-    var id = am.gridid;
-    console.log("jsGrid elem id: "+id);
-    if (!id) { toastr.error("No grid id found from dialog by id: "+dialogsel); return; }
+    
     var tmplid = am.tmplid || "simplegrid";
     var titletmpl = del.getAttribute("nametmpl"); // TODO: Change proper
     // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
@@ -195,6 +193,9 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     if (!am.gridid) {}
     //////////// Grid ///////////////////
     else {
+      var id = am.gridid;
+      console.log("jsGrid elem id: "+id);
+      if (!id) { toastr.error("No grid id found from dialog by id: "+dialogsel); return; }
       // Must have fldinfo by same name
       if (!fldinfo[dialogsel]) { alert("No grid info for '"+ dialogsel+"' "); return; }
       showgrid(id, pinfo, fldinfo[dialogsel]); // OLD(1st)gridsel ... "dockerimg"
