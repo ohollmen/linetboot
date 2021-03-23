@@ -847,14 +847,14 @@ function rfinfo_uisetup(d) { // d not used (in here)
         console.log("THIS:", this); // 2 elems ?
         console.log($(this).data('pxe'));
         var op = $(this).data('op');
-        var url = "/rf/"+op+"/"+hname;
+        var url = "/rf/"+op+"/"+d.hname;
         var btype = "";
         if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
         console.log("use URL: "+url);
         // var tid = setTimeout(() => {}, 10000);
         axios.get(url).then(function (resp) {
           console.log(resp.data);
-          toastr.info("Op "+op+" executed on "+hname+btype); // in Progress
+          toastr.info("Op "+op+" executed on "+d.hname+btype); // in Progress
         }).catch(function (err) { alert(err); });
       });
     }
@@ -888,6 +888,7 @@ function rfinfo(hname, dialogsel, cb) {
     // BMC (MC) Info / Link
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
+    d.hname = hname;
     // TODO: Could call cb() here (to delegate templating ...)
     console.error("Returning to FW.");
     return cb(d, dialogsel);
