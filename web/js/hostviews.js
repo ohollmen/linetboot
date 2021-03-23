@@ -885,7 +885,8 @@ function rfinfo(hname, dialogsel, cb) {
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
     // TODO: Could call cb() here (to delegate templating ...)
-    // return cb(d, dialogsel);
+    console.error("Returning to FW.");
+    return cb(d, dialogsel);
     //var out = Mustache.render(tc, d);
     //$('#'+ dialogsel ).html(out); // '#rfdialog'
     rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
