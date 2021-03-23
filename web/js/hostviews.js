@@ -165,7 +165,8 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
   // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
   // Works both as grid (cache index-object) and dialog (DOM-id) selector id
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
-    if (!pinfo || !Array.isArray(pinfo)) { console.log("No data set for grid"); return; }
+    if (!pinfo ) { console.log("No data set for grid"); return; }
+    if (am.gridid && !Array.isArray(pinfo)) { console.log("Data set not in Array for grid"); return; }
     if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
     console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
