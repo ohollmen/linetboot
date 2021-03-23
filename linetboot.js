@@ -1956,8 +1956,9 @@ function media_info(req, res) {
     console.log("imagestat: Size: "+stats.size);
     cb(null, stats.size);
   }
-  // Data Driven: async.eachSeries(arr, func, complcb)
-  // Funcs:       async.waterfall([f1, f2], complcb): 1st: cb only, further data, cb
+  // Data Driven: async.eachSeries(arr, func, complcb); Note: complcb does not get results !
+  // Funcs:       async.waterfall([f1, f2], complcb): 1st: cb only, further: data, cb
+  // Funcs:       async.series([f1, f2], complcb); All only cb
   /////////////////////////////////////////////////////
   var loopdev = "";
   var imgfull = "";
@@ -2339,10 +2340,15 @@ function listguests(req, res) {
   console.log("Got VM host name: '"+host+"'");
   console.log("Known names: ", ecfg.vmhosts);
   if (!ecfg.vmhosts.includes(host)) { jr.msg += host + " is not one of registered hosts"; return res.json(jr);  }
-  var fname = ecfg.cachepath+"/"+host+".xml";
-  console.log("Try esxi file: "+fname);
-  if (!fs.existsSync(fname)) { jr.msg += "No file for "+host; return res.json(jr);  }
-  var cont = fs.readFileSync(fname, 'utf8');
+  ////////// 
+  var cont;
+  if ((ecfg.usecache == undefined) || ecfg.usecache) {
+    var fname = ecfg.cachepath+"/"+host+".xml";
+    console.log("Try esxi file: "+fname);
+    if (!fs.existsSync(fname)) { jr.msg += "No file for "+host; return res.json(jr);  }
+    cont = fs.readFileSync(fname, 'utf8');
+  }
+  else { jr.msg += "Direct fetch not implemented"; return res.json(jr); }
   // XML ? JSON ?
   esxi.getGuests(cont, {debug: 0}, function (err, data) {
     if (err) { jr.msg += host + " problems extracting guests info"; return res.json(jr); }
