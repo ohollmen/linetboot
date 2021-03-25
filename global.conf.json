@@ -99,7 +99,8 @@
     "config": "~/docker.conf.json",
     "catalog": "~/dockercat.conf.json",
     "hostgrp": "nuc",
-    "insecreg": ""
+    "insecreg": "",
+    "syncgrps": ["nuc"]
   },
   "net": {
     "desc": "Installation Related Network Configuration",
