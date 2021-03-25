@@ -1620,8 +1620,11 @@ function config_send(req, res) {
   var web  = global.web;
   var proc  = global.procster;
   var esxi  = global.esxi;
+  // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
+  if (dock && dock.syncgrps){ cfg.docker.syncgrps = dock.syncgrps; }
+  // Procster
   if (proc && proc.port)    { cfg.procster.port = proc.port; }
   // Core
   if (core && core.appname) { cfg.appname = core.appname; }
