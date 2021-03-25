@@ -44,7 +44,7 @@ var console;
  * Note: To have table header (th) elements left aligned: Use style: `th { text-align: left; }`
  * (this is likely what you want as browsers still default to having th text center-aligned).
  */
-function listview (result, attrs, opts) { // als, plugs, ctx in opts ?
+function listview (result, attrs, opts) {
   // Do not check inner Objects in result - act in good faith
   // Check arrays
   if (! (result instanceof Array)) {throw "listview: result Not an array";}
@@ -88,6 +88,28 @@ function listview (result, attrs, opts) { // als, plugs, ctx in opts ?
   return (out);
 } // listview
 
+/** Variant of listview to accept JSGrid view definition to define grid.
+* Definition effectively combines attrs, aliases, plugs.
+* The "type" in grid field definition is not accounted for.
+* @param result {array} - Array of Objects to display as table
+* @param jsgdef {array} - JSGrid definition
+* @param opts  {object} - Options like for listview, but als, plugs are always taken from JSGrid definition.
+*/
+function listview_jsg(result, jsgdef, opts) {
+  opts = opts || {};
+  if (!Array.isArray(result)) { throw "Results not an array"; }
+  if (!Array.isArray(jsgdef)) { throw "JSGrid definition not an array"; }
+  var als = {}; var plugs = {}; var opts2 = {};
+  var attrs = jsgdef.map((fd) => { return fd.name; });
+  jsgdef.forEach((fd) => { als[fd.name] = fd.title;});
+  jsgdef.forEach((fd) => { plugs[fd.name] = fd.itemTemplate; });
+  Object.keys(opts).forEach((k) => { opts2[k] = opts[k]; });
+  opts2.als   = als;
+  opts2.plugs = plugs;
+  return listview(result, attrs, opts2);
+}
+
+
 /** webview.seview()
  * Create single entry view.
  * @param {Object} e - Entry to display as HTML (passed as Object)
@@ -95,8 +117,8 @@ function listview (result, attrs, opts) { // als, plugs, ctx in opts ?
  * @param {Object} opts - Additional options (optional, see below)
  * Options in opts:
  * - plugs - Callbacks for transforming values (see plugins doc below)
- * - ctx - Additiona "user data" for use in plugins (see plugins doc below)
  * - als - property/attribute names mapped to display names
+ * - ctx - Additiona "user data" for use in plugins (see plugins doc below)
  * 
  * ## Plugin interface
  * Plugins will be dispatched with following signature:
@@ -147,6 +169,19 @@ function seview (e, attrs, opts) {
   out += "</table>";
   return (out);
 }
+
+function seview_jsg (e, jsgdef, opts) {
+  // Identical (?) to listview_jsg
+  var als = {}; var plugs = {}; var opts2 = {};
+  var attrs = jsgdef.map((fd) => { return fd.name; });
+  jsgdef.forEach((fd) => { als[fd.name] = fd.title;});
+  jsgdef.forEach((fd) => { plugs[fd.name] = fd.itemTemplate; });
+  Object.keys(opts).forEach((k) => { opts2[k] = opts[k]; });
+  opts2.als   = als;
+  opts2.plugs = plugs;
+  seview (e, attrs, opts2);
+}
+
 /** Create a matrix view of items in AoO.
 * Matrix view creates a tabular view of items passed to it taking care of
 * table, rows and cells, generating HTML for them and closing everything
@@ -592,7 +627,10 @@ var webview = {
   matrix : matrix,
   list: list,
   multilist: multilist,
-  tabs: tabs
+  tabs: tabs,
+  // JSG variants
+  listview_jsg : listview_jsg,
+  seview_jsg : seview_jsg,
 };
 //var exports;
 //var module;
