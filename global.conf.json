@@ -100,7 +100,7 @@
     "catalog": "~/dockercat.conf.json",
     "hostgrp": "nuc",
     "insecreg": "",
-    "syncgrps": ["nuc"]
+    "syncgrps": ["nucs"]
   },
   "net": {
     "desc": "Installation Related Network Configuration",
