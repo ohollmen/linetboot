@@ -19,7 +19,7 @@ function init(global, gcolls) {
   // TODO: Store whole global config.
   fact_path = global.fact_path;
   if (!fact_path) { console.log("hlr.init: No fact path given - can't continue without it..");process.exit(1);}
-  colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [] };
+  colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [], groups: {} };
   debug = global.debug || 0;
 }
 /** Create filtered (non-empty) set of lines from hosts file.
@@ -199,6 +199,8 @@ function hosts_load(global) {
   //debug && console.log("Final Hostparams: ", colls.hostparams);
   debug && console.log("Final Groupvars: ", groupvars);
   applygroupvars([], groups, groupvars);
+  // NEW: Store groups
+  colls.groups = groups;
   // NEW: Return for third party app (with no real global conf)
   return colls.hostnames;
   
@@ -570,8 +572,17 @@ function hostparams(f) { // obj
   // SET: if (obj) { Object.keys(obj).forEach((k) => { colls.hostparams[hn][k] = obj[k]; }); }
   return colls.hostparams[hn];
 }
-
-
+/** Get group names list.
+ * @return Array of group names.
+ */
+function groupnames() {
+  if (!colls.groups || (typeof colls.groups != 'object')) { return null; }
+  var gnames = Object.keys(colls.groups);
+  return gnames;
+}
+function groupmemmap() {
+  return colls.groups;
+}
 module.exports = {
   init: init,
   hosts_load: hosts_load,
@@ -584,5 +595,7 @@ module.exports = {
   facts_load_all: facts_load_all,
   csv_parse: csv_parse,
   csv_parse_data: csv_parse_data,
-  hostparams: hostparams
+  hostparams: hostparams,
+  groupnames: groupnames,
+  groupmemmap: groupmemmap
 };
