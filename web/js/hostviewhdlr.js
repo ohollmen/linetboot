@@ -109,6 +109,7 @@ function pkgstat(jev, act) {
   var tgtid = jev.viewtgtid;
   rapp.templated("simplegrid", act, tgtid);
   //setuphelp(act, "#routerdiv h3");
+  // TODO: Allow server to config these datasets.cfg.NNN (Server has: pkglist_path)
   var deflist = "wget,x11-common,python2.7,patch,xauth,build-essential";
   // TODO: (Pre-)Load and Add distro options (e.g. load by DataLoader ?). How to default a distro (first ?)?
   // Distro: <select id="osname"></select>
@@ -131,7 +132,7 @@ function pkgstat(jev, act) {
     
   }).catch(function (error) { console.log(error); })
   .finally(() => { toastr.clear(); });
-  }
+  } // lookup
   lookup();
   $("#pkgcheck").click((jev) => {
     toastr.info("Looking up package info");
@@ -155,7 +156,9 @@ function outfmts(ev, act) {
   })
   .catch(function (error) { console.log(error); });
 }
-
+/** Show Info on catalogued Docker images.
+ * 
+ */
 function dockercat_show(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   axios.get("/dockerenv").then(function (resp) {
@@ -167,19 +170,26 @@ function dockercat_show(ev, act) {
     // act.elsel
     $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
-    // Docker sync ops
+    // TODO: Style w. padding, etc.
+    // var dgopts = {}; // style for table ?
+    //$("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
+    // UI Setup: Docker sync ops
     $(".docksync").click(function (jev) {
       var img = this.getAttribute("data-image"); // .dataset.image;
       //console.log(img);
-      var hgrp; try {
-        hgrp = datasets.cfg.docker.hostgrp; if (!hgrp) {  throw "No value !"; }
-      } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("No Docker Host Group"); }
-      var p = {hostgroups: [hgrp], "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun
-      console.log(p);
+      // TODO: Use syncgrps (arr), not hostgrp
+      var syncgrps;
+      try {
+        syncgrps = datasets.cfg.docker.syncgrps;
+        if (!syncgrps || !syncgrps.length) {  throw "No sync groups !"; } // if (!syncgrp || !syncgrp.length) {}
+      } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("Docker Sync Error: "+ex); }
+      var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
+      console.log("Docker run para:", p);
       // Run ansible w. params /ansrun
       axios.post("/ansrun", p).then(function (resp) {
         var r = resp.data;
-        toastr.info(r.msg);
+        if (r.status == 'err') { toastr.error(r.msg); }
+        else { toastr.info(r.msg); }
       });
     });
   }).catch(function (err) { alert(err); });
@@ -203,7 +213,7 @@ function showdocindex (ev, act) {
     cfg.initdocs(d);
   })
   .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
-  // axios.get(url).then((resp) => { cfg.initdocs(resp.data); })
+  // axios.get(url).then((resp) => { cfg.initdocs(resp.data); }).catch((ex) => { toastr.error("Error loading docs");});
 }
 /** Show Boot Options and allow set boot target (Boot / OS Install) on host(s).
  * 
