@@ -124,6 +124,8 @@ Runner.prototype.playbooks_resolve = function (acfg) {
  * If object does not have "hostgroups", we return immediately (w/o any resolving).
  * If this.hostgroups is said to be a "virtual group" `["all"]`, all hosts are gathered from groups.
  * TODO: Should go by Linetboot known hosts, as groups may not be defined. Where to get these ?
+ * @param grps {array} - Array of group names
+ * @return ...
  */
 Runner.prototype.hostgrps_resolve = function (grps) {
   var grpidx = {};
@@ -132,6 +134,7 @@ Runner.prototype.hostgrps_resolve = function (grps) {
   if (!Array.isArray(gnames)) { throw "Ansible HostGroups not in an array !"; }
   if (!Array.isArray(grps)) { throw "Passed groupnames not in an array !"; }
   var hnames = [];
+  var gmap = hlr.groupmemmap();
   function isarrayofstrings(grps) {
     var strcnt = grps.filter(function (gi) { return typeof gi == 'string'; }).length;
     if (grps.length == strcnt) { return 1; }
@@ -143,14 +146,20 @@ Runner.prototype.hostgrps_resolve = function (grps) {
     
     grps.forEach(function (g) {
       // var ghosts = g.hosts.map((h) => { return h.hname; });
-      hnames = hnames.concat(g.hostnames);
+      //hnames = hnames.concat(g.hostnames); // Legacy pattern ...
+      //hnames.push(g);  // Group to hostnames
+      hnames =  hnames.concat(gmap[g]);
     });
+    this.hostnames = hnames; // Need this (like below)
     return hnames;
   }
-  
+  console.log("Normal case ...");
   grps.forEach(function (g) {
-    //g.id;
-    if (gnames.includes(g.id)) { hnames = hnames.concat(g.hostnames); }
+    // Legacy pattern based groups
+    //if (gnames.includes(g.id)) { hnames = hnames.concat(g.hostnames); }
+    console.log("Check: "+ g);
+    //if (gnames.includes(g)) { console.log(" - Add:"+g); hnames.push(g); } // Group to hostnames
+    if (gnames.includes(g)) { console.log(" - Add:"+g); hnames =  hnames.concat(gmap[g]); }
   });
   // For now set exlusively
   if (this.hostnames && this.hostnames.length) { console.log("Warning: Overwriting existing hosts from groups !!!");}
