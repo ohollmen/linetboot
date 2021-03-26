@@ -1252,7 +1252,10 @@ function ansible_run_serv(req, res) {
     if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
     // Groups
     step = "grp_resolve";
-    p.hostgrps_resolve(global.groups);
+    var gnames = hlr.groupnames();
+    console.log("Inventory groups: ", gnames);
+    p.hostgrps_resolve(gnames); // OLD: global.groups
+    if (!p.hostnames || !p.hostnames.length) { throw "No hostnames"; }
     step = "run";
     console.log("Instance state before run(): ", p);
     p.ansible_run(); // OLD: ans.ansible_run(p);
