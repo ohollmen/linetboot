@@ -260,13 +260,17 @@
    function docker_sync(val, item) {
      return "<a class=\"docksync\" href=\"#\" data-image=\""+item.dockerimg+"\">Sync</a>";
    }
-   
+   function docker_mnts(val, item) {
+     if (!Array.isArray(val)) { return ""; }
+     // class=\"dockermnt\"
+     return val.map((v) => {return "<span style=\"padding-right: 5px;\">"+v+"</span>"; }).join(" ");
+   }
    // 
    var fldinfo_dockercat = [
      {name: "dockerlbl",     title: "Label",  type: "text", width: 80, }, // itemTemplate: docktags
      {name: "dockerimg",     title: "Image",  type: "text", width: 200, }, // itemTemplate: dockver
-     {name: "vols",     title: "Required mounts",  type: "text", width: 100, },
-     {name: "title",     title: "Description",  type: "text", width: 200, },
+     {name: "vols",     title: "Required mounts",  type: "text", width: 100, itemTemplate: docker_mnts},
+     {name: "title",     title: "Description",  type: "text", width: 180, },
      {name: "sync",     title: "Actions",  type: "text", width: 30, itemTemplate: docker_sync, visible: true},
    ];
    function reset_defboot(val, item) {
