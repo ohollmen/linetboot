@@ -38,13 +38,15 @@ label local
 menu label  Boot From Local First Part. (First Disk, sda1)
 #kernel http://{{ httpserver }}/vmlinuz
 kernel http://{{ httpserver }}/gparted/live/vmlinuz
-append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda1
+initrd http://{{ httpserver }}/gparted/live/initrd.img
+append root=/dev/sda1
 
 # Same as first menu iten, but second partition
 label local2
 menu label  Boot From Local Second Part. (First Disk, sda2)
 kernel http://{{ httpserver }}/gparted/live/vmlinuz
-append initrd=http://{{ httpserver }}/gparted/live/initrd.img root=/dev/sda2
+initrd http://{{ httpserver }}/gparted/live/initrd.img
+append root=/dev/sda2
 
 
 # There are 3 memtest binaries in /boot/: memtest86+.bin  memtest86+.elf and memtest86+_multiboot.bin
@@ -182,13 +184,14 @@ append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ h
 # https://bugs.launchpad.net/ubuntu/+source/cloud-initramfs-tools/+bug/1761573 Boot problems
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html - Initrd mechanics
 # https://www.cyberciti.biz/tips/10-boot-time-parameters-you-should-know-about-the-linux-kernel.html
-label ubuntu18dt
+label ubuntu18dt32
 menu label Ubuntu MATE 18 Desktop (32bit, Live)
-kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
-# fetch=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs toram 
-# url=http://{{ httpserver }}/ubuntu18dt/preseed/ubuntu-mate.seed
+kernel http://{{ httpserver }}/ubuntu18dt32/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu18dt32/casper/initrd
+# fetch=http://{{ httpserver }}/ubuntu18dt32/casper/filesystem.squashfs toram 
+# url=http://{{ httpserver }}/ubuntu18dt32/preseed/ubuntu-mate.seed
 # 1) Working config for NFS dependent setup (Mounts NFS server:/ubu/inst/root under /cdrom)
-append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt32/ ip=dhcp toram
 # 2) HTTP Only (Use preseed: /preseed.desktop.cfg which contains a "redirect url"
 # (d-i live-installer/net-image installer directive) for FS image casper/filesystem.squashfs)
 # - ip: Recommended: ip=dhcp (Also: ip=append, ip=frommedia)
@@ -200,21 +203,28 @@ append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper netbo
 # - Addl (1125792 above): ramdisk_size=16432 root=/dev/rd/0 (Note: some of these failed w. Q author)
 # - Eliminate indirection by:
 #   - Remove preseed URL: url=...   url=http://{{ httpserver }}/preseed.desktop.cfg
-#   - Add: live-installer/net-image=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs
+#   - Add: live-installer/net-image=http://{{ httpserver }}/ubuntu18dt32/casper/filesystem.squashfs
 #   - May need to be added: ramdisk_size=16432 root=/dev/rd/0 rw
 # 
-# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-installer/net-image=http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs ip=dhcp toram ipv6.disable=1
+# append initrd=http://{{ httpserver }}/ubuntu18dt32/casper/initrd boot=casper live-installer/net-image=http://{{ httpserver }}/ubuntu18dt32/casper/filesystem.squashfs ip=dhcp toram ipv6.disable=1
 # 3) Live media path OR toram=...
-# /casper or /casper/filesystem.squashfs (or permutations with http://{{ httpserver }}/ubuntu18dt/casper/filesystem.squashfs
+# /casper or /casper/filesystem.squashfs (or permutations with http://{{ httpserver }}/ubuntu18dt32/casper/filesystem.squashfs
 # Causes: run-init: current directory on the same filesystem as the root: error 0
 # Try possibly similar to: root=squash:http://192.168.9.10:5248/images/ubuntu/amd64/ga-18.04/bionic/daily/squashfs
-# append initrd=http://{{ httpserver }}/ubuntu18dt/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
+# append initrd=http://{{ httpserver }}/ubuntu18dt32/casper/initrd boot=casper live-media-path=http://{{ httpserver }}/ubuntu18dt32/casper/ debug ip=dhcp toram=filesystem.squashfs ipv6.disable=1 vga=normal fb=false root=/dev/rd/0
+
+label ubuntu18dt
+menu label Ubuntu MATE 18 Desktop (64bit, Live)
+kernel http://{{ httpserver }}/ubuntu18dt/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu18dt/casper/initrd
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
 
 # MATE 20.04 Conservative config, mimick 18.X Working NFS install
 label ubuntu20dt
 menu label Ubuntu MATE 20 Desktop (64bit, Live)
 kernel http://{{ httpserver }}/ubuntu20dt/casper/vmlinuz
-append initrd=http://{{ httpserver }}/ubuntu20dt/casper/initrd boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
+initrd http://{{ httpserver }}/ubuntu20dt/casper/initrd
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
 
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
