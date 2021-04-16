@@ -9,7 +9,7 @@ function osview_guisetup() {
   $(".nfsinfo").click(on_docker_info);
 }
 
-/** Create Simple grid from pre-loaded (cached) data.
+/** Create Simple grid from pre-loaded (cached) data (syncronously).
  * 
  */
 function simplegrid_cd(ev, an) {
@@ -21,6 +21,29 @@ function simplegrid_cd(ev, an) {
   var d = datasets["hostlist"];
   showgrid(an.gridid,  datasets["hostlist"], fldinfo[m[1]]);
   if (an.uisetup) { an.uisetup(); } // TODO: Params ? (see rapp)
+}
+/** Simple grid from URL.
+ */
+function simplegrid_url(ev, an) {
+  console.log("simplegrid_url URL:", an.url);
+  //$('#vtitle').html(act.name);
+  var url = an.genurl ? an.genurl(act) : an.url;
+  var ttgt = ev.viewtgtid || an.selsel;
+  axios.get(url).then( function (response) {
+    var arr = (response.data && response.data.data) ? response.data.data : response.data; // AoO
+    if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data (as array)"); }
+    //var an2 = rapp.dclone(an);
+    contbytemplate(an.tmpl, an, ttgt); //document.getElementById('content').innerHTML =
+    showgrid(an.gridid, arr, fldinfo[an.fsetid]); // 
+    return;
+    /////////////////////////////////////////////////////////
+    var cfg = rapp.dclone(rapp.gridcfg);
+    //var fi = window.fi; // Alt fields "cache" ? || rapp.fi || 
+    cfg.data = arr; cfg.fields = fi[act.gridid];
+    $("#" + act.gridid).jsGrid(cfg);
+    //console.log(JSON.stringify(arr, null, 2));
+  })
+  .catch(function (error) { console.log(error); });
 }
 
 /** Display Hosts in Groups (in mutiple grids)

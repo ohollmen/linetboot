@@ -263,6 +263,8 @@ function app_init() { // global
   app.get("/eflowrsctoggle",  eflowrsctoggle);
   // ESXI
   app.get("/esxi/:host", listguests);
+  // listdc
+  app.get("/listdc", listdc);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2369,4 +2371,22 @@ function listguests(req, res) {
     res.json(data); // {status: "ok", data: data}
   });
   
+}
+/** List Docker compose config.
+ */
+function listdc(req, res) {
+  var jr = {"status": "err", "msg": "Docker Compose list failure. "};
+  var fn = "./reportportal-docker-compose.yml";
+  var y;
+  if (!fs.existsSync(fn)) { jr.msg += "File does not exist"; return res.json(jr); }
+  var cont = fs.readFileSync(fn, 'utf8');
+  try { y = yaml.safeLoad(cont); } catch (ex) { jr.msg += "Parse error:"+ex; return res.json(jr); } // console.log("Failed autoinstall yaml load: "+ex);
+  var ssidx = y.services;
+  var servs = [];
+  Object.keys(ssidx).forEach((k) => {
+    var sn = ssidx[k];
+    sn.servid = k;
+    servs.push(sn);
+  });
+  res.json(servs);
 }

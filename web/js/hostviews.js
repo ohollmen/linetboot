@@ -426,6 +426,7 @@ var tabloadacts = [
   // esxi
   {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
   
+  {"name": "D-C",  "elselXX": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", uisetup: null, path:"dcomposer"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

@@ -446,11 +446,30 @@ function ibip_cell(val, item) {
      // 
      {name: "guestState", title: "State", type: "text", width: 50, itemTemplate: gstate_cell},
    ];
+   function depson_cell(val, item) {
+     if (!val) { return "";}
+     if (Array.isArray(val)) { return val.join("<br/>"); }
+     return Object.keys(val).join("<br>\n");
+   }
+   var fldinfo_dcomposer = [
+     {name: "servid",      title: "Service-Label", type: "text", width: 30, itemTemplate: null},
+     {name: "image",       title: "Image", type: "text", width: 85, itemTemplate: null},
+     {name: "depends_on",  title: "Depends ...", type: "text", width: 30, visible: false, itemTemplate: depson_cell},
+     {name: "labels", title: "Labels", type: "text", width: 90, itemTemplate: (val,it) => { return Array.isArray(val) ? val.join("<br>\n") : ""; }},
+     {name: "environment", title: "Env", type: "text", width: 90, itemTemplate: depson_cell},
+     {name: "restart", title: "Restart on...", type: "text", width: 18, itemTemplate: null},
+     
+     {name: "volumes", title: "Volumes", type: "text", width: 70, itemTemplate: depson_cell},
+     // labels - Array
+     
+     // command: array or string
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
-      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi
+      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
+      "dcomposer":fldinfo_dcomposer,
    };
    
