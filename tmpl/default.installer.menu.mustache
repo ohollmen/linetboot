@@ -584,7 +584,14 @@ menu label Windows Server 2019
 linux /memdisk
 # Example of Original 4.9GB Media
 #append iso initrd=http://{{ httpserver }}/Win2019_uefi_autoinstall.iso
-append iso initrd=http://{{ httpserver }}/winpe.iso
+initrd http://{{ httpserver }}/winpe.iso
+append iso
 # Not likely the below
 #append raw
+
+# iPXE test ipxe.lkrn works
+label ipxe
+menu label iPXE Chain
+linux http://{{ httpserver }}/ipxe.lkrn
+# initrd http://{{ httpserver }}/...
 

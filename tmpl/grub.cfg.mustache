@@ -35,27 +35,122 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 set default 0
 set timeout=10
+# This *can* be global instead of repeated in each menu item
+set root=(http,{{ httpserver }})
 
-menuentry 'Gparted Live' {
-  ##label gparted
-  ## menu label GpartEd Live (Ramdisk Netboot)
-  linux http://{{ httpserver }}/gparted/live/vmlinuz boot=live  components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs keyb=us gl_kbd=us gl_lang=en_US gl_numlk=off gl_batch nolocales
-  initrd http://{{ httpserver }}/gparted/live/initrd.img
+menuentry "Memory Test (memtest86, Live)" {
+  #set root=(http,{{ httpserver }})
+  linux /gparted/live/memtest 
+}
+
+menuentry 'Gparted Live (Ramdisk Netboot)' {
+  #set root=(http,{{ httpserver }})
+  linux  /gparted/live/vmlinuz boot=live  components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs keyb=us gl_kbd=us gl_lang=en_US gl_numlk=off gl_batch nolocales
+  initrd /gparted/live/initrd.img
   #append 
 }
 
+menuentry "Clonezilla Live (Ramdisk Netboot)" {
+  linux  /clzilla/live/vmlinuz boot=live username=user union=overlay config components noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+  initrd /clzilla/live/initrd.img
+}
+
+menuentry "Debian 10 Buster (Full Automated / WIP)" {
+  linux  /debian10net/debian-installer/amd64/linux priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=debian10
+  initrd /debian10net/debian-installer/amd64/initrd.gz
+}
+
+menuentry "Ubuntu MATE 18 Desktop (32bit, Live)" {
+  linux  /ubuntu18dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu18dt/ ip=dhcp toram
+  initrd /ubuntu18dt/casper/initrd
+}
+
+menuentry "Ubuntu MATE 20 Desktop (64bit, Live)" {
+  linux  /ubuntu20dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
+  initrd /ubuntu20dt/casper/initrd
+}
+##################################################
+
+
+
 menuentry "Ubuntu 18 Server Non-auto" {
   set gfxpayload=keep
-  linux http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/linux gfxpayload=800x600x16,800x600 --- quiet
-  initrd http://{{ httpserver }}/ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz
+  #set root=(http,{{ httpserver }})
+  linux  /ubuntu18/install/netboot/ubuntu-installer/amd64/linux gfxpayload=800x600x16,800x600 --- quiet
+  initrd /ubuntu18/install/netboot/ubuntu-installer/amd64/initrd.gz
 }
 
 menuentry 'Centos 7 Auto Install' {
   echo "Loading Centos kernel"
+  #set root=(http,{{ httpserver }})
   # linuxefi efi/vmlinuz inst.repo=http://10.0.0.11/OSimage/OL7 inst.ks.sendmac inst.ks=http://10.0.0.11/ksfiles/ol7_cfg.ks
-  linuxefi http://{{ httpserver }}/centos7/images/pxeboot/vmlinuz auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
+  linuxefi /centos7/images/pxeboot/vmlinuz auto=true devfs=nomount method=http://mirror.centos.org/centos/7/os/x86_64/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
   echo "Loading Centos initrd"
-  initrdefi http://{{ httpserver }}/centos7/images/pxeboot/initrd.img
+  initrdefi /centos7/images/pxeboot/initrd.img
   echo "Booting installation kernel"
 }
 
+# https://www.cyber-tec.org/2014/07/19/setup-pxe-boot-environment/
+menuentry "FreeDOS 1.0 (Live)" {
+  #insmod memdisk
+  # invalid magic number
+  # harddisk c=19 h=16 s=63
+  linux16 /memdisk
+  # Grub has no append
+  # DOS/MBR boot sector
+  #append /freedos1/fdboot.img
+  initrd16 /freedos1/fdboot.img
+}
+
+# http://www.ultimatedeployment.org/win7pxelinux1.html
+# https://programmersought.com/article/82504110454/
+# https://www.linuxbabe.com/desktop-linux/boot-from-iso-files-using-grub2-boot-loader
+# Google: iPXE boot Windows ISO
+# https://forums.fogproject.org/topic/11622/ipxe-boot-windows-10-iso-via-uefi
+# https://forums.fogproject.org/topic/10944/using-fog-to-pxe-boot-into-your-favorite-installer-images/6
+# Modified from fogproject (post 11622) URL (Matches fully the mkwinpeimg created image file locations)
+
+# wget http://git.ipxe.org/releases/wimboot/wimboot-latest.zip
+# https://forum.ipxe.org/showthread.php?tid=7057 - Plan to chain Grub and iPXE, Difficulties in chaining pxelinux and iPXE (No solution though)
+# https://github.com/quattor/aii/issues/216 - Good examples on DHCP config by client types,
+#    also other lengthy expert discussion
+#  - 00, 09, 07 06
+menuentry "Windows Server 2019" {
+  # GRUB does not support parsing El Torito boot catalog
+  # https://help-grub.gnu.narkive.com/nLb4Hafg/grub-2-how-boot-iso-with-memdisk
+  # linux v.s. linux16 - http://lastweek.io/lego/kernel/boot/
+  # Linux Boot Protocol - https://www.kernel.org/doc/html/latest/x86/boot.html
+  # memdisk.mod /usr/lib/grub/x86_64-efi/memdisk.mod
+  echo "Insert memdisk,iso9660"
+  insmod memdisk
+  insmod iso9660
+  insmod fat
+  #insmod chain
+  # insmod ntldr
+  echo "Boot memdisk"
+  # Timeout 
+  linuxefi memdisk iso raw
+  echo "Load winpe.iso"
+  initrdefi /winpe.iso
+}
+# cp /usr/lib/ipxe/ipxe.efi /usr/lib/ipxe/ipxe.lkrn /isomnt
+# Problems: .lkrn is not efi and .efi does not have kernel magic signature
+menuentry "iPXE Chainload Test" {
+  #linux /ipxe.lkrn
+  #linux /ipxe.efi
+  # "chainloader /ipxe.efi" alone works but loads grub again (after long net or to-memory loading)!
+  # However no menu (!?)
+  # Initially: Adding "linux /wimboot" causes "error: invalid magic number."
+  # /isomnt/wimboot: Zip archive data, at least v1.0 to extract
+  # Unzipped "wimboot" (by rename to .zip) and found real wimboot-2.6.0-signed/wimboot
+  # wimboot: Linux kernel x86 boot executable bzImage, version v2.6.0, RW-rootFS,
+  # "linux /wimboot" (No ..efi) makes grub ignore / disable the line
+  # "linuxefi /wimboot" Causes error (in UEFI mode) "error: kernel too old." - seems winboot does not tolerate UEFI (?!)
+  # 
+  #echo "Coming to wimboot"
+  #linux /wimboot
+  #echo "Passed wimboot"
+  #chainloader /ipxe.efi
+  # "chainloader /wimboot" (only) causes "error: unknown error.", retry "error: couldn't send a network packet.
+  chainloader /wimboot
+}

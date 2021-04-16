@@ -75,9 +75,9 @@ function pxelinuxcfg_list(path, extra) {
   return list2;
 }
 
-/** Collect boot labels from boot menu file.
+/** Collect (parse) boot labels from boot menu file.
  * Create a (Array-of-Objects) list of os label ("id"), os description ("name") entries.
- * @param fn {sting} - Pxelinux boot menu filename with resolvable (e.g. relative) path.
+ * @param fn {string} - Pxelinux boot menu filename with resolvable (e.g. relative) path.
  * @return list of OS descriptions.
  */
 function bootlabels(fn) {
@@ -117,7 +117,7 @@ function menu_deflbl(fn) {
   return "";
 }
 
-/** Convertboot label to bootitem (w. id and name)
+/** Convert boot label to bootitem (w. id and name)
 * Can be used to would validate boot label against a real manu or provide info for bootitem.
 * @param bootlbl {string} - Boot label
 * @param tcfg {object} - TFTP Config (for the tcfg.menutmpl)
@@ -135,9 +135,54 @@ function bootlbl2bootitem(bootlbl, tcfg) {
   if (!bootitem) { throw "No Boot Item found from menu by " + bootlbl; }
   return bootitem;
 }
+/** Parse (PXELinux) menu file in stateful manner.
+ * Aim to produce Grub menu based on this info.
+ * @param fn {string} - filename for menu file.
+ * @return Array of boot items
+ */
+function menufile_parse(fn) {
+  if (!fs.existsSync(fn)) { return null; }
+  var cont = fs.readFileSync(fn, 'utf8');
+  var lines = cont.split("\n");
+  var arr = [];
+  var known = {label: 1, 'menu label':1, kernel: 1, linux: 1, initrd: 1, append:1, sysappend: 1};
+  var re = /(menu|menu label|kernel|linux|initrd|append|sysappend)/; // menu title
+  var curr = null;
+  lines.forEach((l) => {
+    if (l.match(/^\s*#/)) { return; }
+    if (l.match(/^\s*$/)) { return; }
+    //console.log("LINE: "+l);
+    var le = parseline(l);
+    if (le) {
+      if (le.tag == 'label') {
+        if (curr) { arr.push(curr); curr = null; }
+        curr = curr || {};
+      }
+      curr[le.tag] = le.val;
+    }
+  });
+  if (curr) { arr.push(curr); }
+  // Parse, analyze and process single line.
+  function parseline(l) {
+    var debug = 0;
+    var r = l.split(/\s+/); // Not ,2
+    debug && console.log("   COMPS: '", r, "'");
+    var tag = r.shift();
+    if (tag == 'menu' && r[0] == 'label') { tag = "menu label"; r.shift(); }
+    debug && console.log("   COMPS2: '", r, "'");
+    r = r.join(" ");
+    debug && console.log("   TAG: '"+ tag+ "'");
+    debug && console.log("   TRAIL: '"+ r+ "'");
+    if ( ! known[tag]) { console.log("UNKNOWN: "+ tag ); return null; }
+    return {tag: tag, val: r};
+  }
+  return arr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 /** Generate and store boot menu file
-* - Generate menu based on global info (cloned) and override default boot label
+* - Generate menu by templating based on global info (cloned) and override default boot label
 * - Store into file by pxelinux preferred MAC address based filename
 * @param tcfg {object} - TFTP Config (section of main config) w. "menutmpl" and "root"
 * @param global {object} - Global config used as params for templating (used members tftp.menutout tftp.menudef httpserver nfsserver)
@@ -238,6 +283,8 @@ module.exports = {
   bootlabels, bootlabels,
   menu_deflbl: menu_deflbl,
   bootlbl2bootitem: bootlbl2bootitem,
+  menufile_parse: menufile_parse,
+  //
   bootmenu_save: bootmenu_save,
   bootmenu_link_default: bootmenu_link_default,
   // Boot Media
