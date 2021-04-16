@@ -1,5 +1,5 @@
 /** @file
- * # Various Lineboot over-the network probing and monitoring operations.
+ * # Various Linetboot over-the network probing and monitoring operations.
  * 
  */
 var dns  = require("dns");
@@ -276,7 +276,7 @@ function stats_proc(hnode, cb) {
       console.log(prec.ssherr);
       // HERE ?
       conn.end(); // or does close/end event still take place ?
-      return cb(null, additem(prec)); // long time loc
+      return cb(null, additem(prec)); // long time loc. "Callback was already called." (BUGS.md)
     });
     conn.on('end', function () {
       console.log("conn-end:   "+hn+'('+cfg.id+')');
