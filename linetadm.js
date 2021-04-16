@@ -98,7 +98,7 @@ var acts = [
   },
   {
     "id": "newhostgen",
-    "title": "Generate fake / stub information for new hosts without any earlier facts or ipmi info (Pass --newhosts)",
+    "title": "Generate fake / stub information for new hosts without any earlier facts or ipmi info (Pass csv by --newhosts, --save to save, --facts for facts only --bmi for bmi only)",
     "cb": newhostgen,
     "opts": [],
   },
@@ -589,16 +589,22 @@ function bootbins(opts) {
     //["/usr/lib/syslinux/modules/bios/", ""],
     
     // iPXE (package ipxe)
+    // Contains (6x): ipxe.efi, ipxe.iso, ipxe.lkrn, ipxe.pxe, undionly.kkpxe, undionly.kpxe
     ["/usr/lib/ipxe/undionly.kpxe", "undionly.kpxe"],
     ["/usr/lib/ipxe/ipxe.efi", "ipxe.efi"],
     // http://lukeluo.blogspot.com/2013/06/grub-how-to6-pxe-boot.html
     // Grub (orig plan for tftp dir "boot/grub/"
     // Bootloaders: i386-pc/core.0, x86_32-efi/core.efi, x86_64-efi/core.efi
-    // Each dir has a bunch of grub *.mod module files.
+    // Each dir (e.g /usr/lib/grub/x86_64-efi/) has a bunch of grub *.mod module files
+    // (Important: http.mod - to support http URL:s).
     // Grub has: grub-mknetdir
-    // What is /usr/lib/shim/mmx64.efi
+    // What is /usr/lib/shim/mmx64.efi ?
     ["/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed", "grub/grubnetx64.efi.signed"], // Also grubx64.efi.signed
     ["/usr/lib/shim/shimx64.efi.signed", "grub/shimx64.efi.signed"], // Also shimx64.efi
+    ["/usr/lib/grub/x86_64-efi/memdisk.mod","grub/memdisk.mod"],
+    ["/usr/lib/grub/x86_64-efi/iso9660.mod","grub/iso9660.mod"],
+    ["/usr/lib/grub/x86_64-efi/chain.mod", "grub/chain.mod"],
+    ["/usr/lib/grub/x86_64-efi/fat.mod", "grub/fat.mod"],
     // NOTHERE: ["", "grub/"] // grub.cfg (menu file)
     // BSD PXE Bootloader from FreeBSD 12 ISO
     // NOTE: Shoud chmod u+w 
@@ -891,11 +897,11 @@ function newhostgen(opts) {
   if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
   var ipath = mcfg.ipmi.path;
   //REDUNDANT:if (!ipath) { apperror("No ipmi_path given to store generated BMC info."); }
-  opts.all = 1;
+  opts.all = 1; // Facts and bmi info
   if (opts.facts) { opts.all = 0; }
   if (opts.bmi)   { opts.all = 0; }
   var newhosts = hlr.customhost_load(csvfn, mcfg);
-  if (!Array.isArray(newhosts)) { apperror("Could not properly load host info from: '" + csvfn + "'"); }
+  if (!Array.isArray(newhosts)) { apperror("Could not properly load new hosts info from (CSV): '" + csvfn + "'"); }
   var save = opts.save;
   // Note: If username is to be parametrized (by e.g. template), the username MUST be padded to maintain tricky fixed offsets !
   var userblock = `
