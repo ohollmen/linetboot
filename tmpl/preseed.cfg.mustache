@@ -145,7 +145,7 @@ d-i mirror/protocol string http
 # (See +bug/775670) /country ... "New Zealand"
 #d-i mirror/country string US
 d-i mirror/country string manual
-# Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com, Debian: ftp.us.debian.org)
+# Mirror HTTP Server hostname (Default in installer: us.archive.ubuntu.com, Debian: ftp.us.debian.org or http.us.debian.org)
 d-i mirror/http/hostname string {{{ mirror.hostname }}}
 # Check /ubuntu/dists/bionic (e.g. "/ubuntu-11.04-server-i386", "/ubuntu14.04", "/ubuntu". In Debian "/debian")
 # For official Mirrors this seems to be: Ubuntu: /ubuntu , Debian: /debian
@@ -161,6 +161,10 @@ d-i mirror/http/proxy string
 # This seems to be necessary for local mirror (Also redundantly set mirror/http/hostname)
 d-i mirror/http/mirror select {{{ mirror.hostname }}}
 
+# d-i mirror/udeb/suite string testing # ???
+# Components to use for loading installer components (optional).
+#d-i mirror/udeb/components multiselect main, restricted
+     
 # TODO: Possibly support local0
 #d-i apt-setup/local0/repository string http://apt.example.net/ubuntu &releasename; main
 #d-i apt-setup/local0/comment string local server
@@ -214,6 +218,7 @@ d-i pkgsel/install-language-support seen true
 # E.g. "server" alone works.
 # 2020-10 Try: "server" => "none" and just install openssh-server
 # Reduces packages from 503 => 360
+# Seems ubuntu allows here also "ubuntu-server"
 tasksel tasksel/first multiselect server
 # Install only security updates automatically: "unattended-upgrades"
 d-i pkgsel/update-policy select none
