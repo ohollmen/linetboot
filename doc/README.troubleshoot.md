@@ -189,6 +189,7 @@ grep NISDOMAIN /etc/sysconfig/network
 ```
  
 #### Ubuntu 18: On screen "Configuring apt" (25% - Retrieveing file 1 of 3)
+
   - Last file requested (404): /ubuntu18/dists/bionic/InRelease, Misc downloads from (ISO dir): dists/bionic/main/
   - Last packages retreieved (from last to earlier): usbutils, libc-bin, libusb-1.0.0, pciutils, libpci3
   - Before freeze logged: Menu item 'apt-setup-udeb' selected
@@ -311,6 +312,46 @@ Solution: Add "-yq" (aut-yes, quiet) and env. setting DEBIAN_FRONTEND=noninterac
 DEBIAN_FRONTEND=noninteractive apt-get -yq install ...
 ```
 
+### Debian (10 / Buster) "netboot" (PXE) Installation
+
+Debian 10 Does not have a PXE/Net-bootable kernel on ISO image. You have to
+get a separate **distribution and kernel version matched** netboot.tar.gz file (Unfortunately this file as-distributed is not named by version) from one of
+Debian Internet mirror repos.
+
+The netboot.tar.gz has file version.info in the "root" of the package to check
+distro version match (not kernel though). You **only** need kernel and ramdisk from this *.tar.gz containing a wealth of (unnecessary) files.
+
+Suggested separation between Installation ISO (to be loopmounted) and netboot kernel and ramdisk.
+- Loopmount ISO to `/isomnt/debian10`
+- Create dir `/isomnt/debian10net`, copy netboot.tar.gz there and unpack it there.
+  - Use Boot menu kernel/initrd from `/isomnt/debian10net` directory
+  - linux: /debian10net/debian-installer/amd64/linux
+  - initrd /debian10net/debian-installer/amd64/initrd.gz
+
+Lots more boot menu stored ("append") parameters are needed for actual install,
+see linetboot pxelinux and grub menus for examples.
+
+#### Debian errors
+
+Problem with remote repos/mirrors (In Console #4):
+```
+... wget --no-verbose http://192.168.1.100:3000/debian10/dists/buster/Release -O - | grep -E '^(Suite|Codename|Architectures):'
+mirror does not support the specified release (buster).
+```
+Check that ISO is properly loop mounted and ISO is correct match for kernel/initrd.
+
+Problem with missing root file system.
+```
+        No root file system
+No root file system is defined.
+Please correct this from the partitioning menu.
+              [Continue]
+```
+
+
+References:
+- https://community.theforeman.org/t/no-root-file-system-is-defined-error-using-preseed-atomic-partitioning-scheme/5969/3
+
 ## Testing DHCP Client
 
 - Real (ISC) DHCP Client: /sbin/dhclient (-v = verbose, -x Stop the running DHCP client without releasing the current lease.)
@@ -430,6 +471,23 @@ failed load in either TFTP or HTTP logs.
 
 Error `MEMDISK: No ramdisk image specified` may mean that you need user pxelinux `append` line without initrd=http://... or forgot
 the "dedicated" `inird` line (with *no* options). Either one needs to be there.
+
+# Grub
+
+## GRUB UEFI
+
+```
+error: invalid magic number.
+error: you need to load the kernel first.
+
+Press any key to continue...
+```
+This seesm to refer to memdisk, but on running os file reports (so it should be same magic as linux,
+test with one of linux kernel images):
+```
+jsmith@havana23:/var/lib/tftpboot/grub$ file /var/lib/tftpboot/memdisk 
+/var/lib/tftpboot/memdisk: Linux kernel x86 boot executable bzImage, version MEMDISK 6.03 20171017, RW-rootFS,
+```
 
 # Linux boot (early stage)
 

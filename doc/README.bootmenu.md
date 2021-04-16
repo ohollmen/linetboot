@@ -122,27 +122,31 @@ WinPE PXELinux menuitem config may look as follows (From Arch Linux documentatio
 ```
 label winpe
 menu label Boot WinPE (ISO)
-kernel memdisk
-initrd winpe.iso
-# For lpxelinux.0 with http capability:
-# initrd http://linetboot:3000/winpe.iso
-append iso raw
+kernel /memdisk
+initrd http://linetboot:3000/winpe.iso
+# "raw" option does not seem to be needed
+append iso
 ```
 This config has been used and proven with `pxelinux.0` over TFTP and with `lpxelinux.0` over HTTP.
 
 ### Authoring WinPE ISO Images (winpe.iso)
 
-wimlib toolkit (Deb/Ubu package `libwim15`) has utility `mkwinpeimg` to author WinPE ISO mimages based on Windows install CD/DVD
-ISO images.
+wimlib toolkit (Deb/Ubu package `libwim15`) has utility `mkwinpeimg` to author barebones WinPE
+ISO images based on Full Windows install CD/DVD ISO images. This way the ISO network download and
+the amount of RAM needed on PXE client to hold ISO image data get significantly reduced.
 
-Example commands for creating an image:
+Example commands for creating an image (With "win2019" as install media directory):
 
     # Loop mount full MS Windows Install ISO
-    sudo mount -o loop /some/place/fullWin10Install.iso /isomnt/win10
+    sudo mount -o loop /some/place/fullWin2019Install.iso /isomnt/win2019
+    # Download the Linetboot generated start.cmd script (See --start-script below)
+    wget http://linetboot:3000/scripts/start.cmd -O /tmp/start.cmd
     # Use mkwinpeimg utility to extract bare essentials from mounted full ISO to a ~300+MB ISO image
     # Utility places start-script into the root of WIM. 
-    mkwinpeimg --iso --windows-dir=/isomnt/win10 --tmp-dir=/tmp/winiso \
-        --start-script=/tmp/win-pxe/start.cmd /tmp/winpe.iso
+    mkwinpeimg --iso --windows-dir=/isomnt/win2019 --tmp-dir=/tmp/winiso \
+        --start-script=/tmp/start.cmd /tmp/winpe.iso
+    # Test-mount, review ... then copy
+    sudo cp -p /tmp/winpe.iso /isomnt/winpe.iso
 
 Use alternatively --waik-dir (not --windows-dir) if files are from WAIK/WADK.
 

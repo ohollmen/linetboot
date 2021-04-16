@@ -8,10 +8,10 @@ They are (in the order they are loaded when linetboot starts):
 - global.conf.json - Linetboot global config to configure linetboot direct subsystems or connected subsystems for the use of Linetboot.
   This includes named (JSON) config sections like "inst", "core", "dhcp", "tftp", "net"
 
-## Lineboot "hosts" Inventory (Ansible-style)
+## Linetboot "hosts" Inventory (Ansible-style)
 
-Lineboot Configuration is best started by creating the initial "hosts" (inventory) file
-( `~/.lineboot/hosts` ). The format for this file follows the ansible inventory file format.
+Linetboot Configuration is best started by creating the initial "hosts" (inventory) file
+( `~/.linetboot/hosts` ). The format for this file follows the ansible inventory file format.
 Lines should start with hostname and may be optionally followed by arbitrary `key=value` pairs
 that may have meaning to either linetboot, ansible (internally) or ansible playbooks.
 Linetboot supports a subset of ansible supported features with following notable points:
@@ -32,7 +32,7 @@ Example of a small inventory:
 # Group tags allowed, but not (currently) supported.
 # As you can see, '#'-comments are supported too.
 [workstations]
-# Host parameters / variables are allowed. Lineboot wants spaces to be escaped by '+',
+# Host parameters / variables are allowed. Linetboot wants spaces to be escaped by '+',
 # but you rarely have spaces.
 ws-001.comp.com loc=Floor+1 dock=1 nis=west
 ws-002.comp.com loc=Floor+3 ansible_user=mrsmith nis=west
@@ -41,11 +41,11 @@ filer-001 nfs=1
 ```
 
 While key names for key-value pairs are arbitrary (and may be used by ansible playbooks), some names have a special meaning
-(just as for Ansible) meaning for Lineboot. The list on notable host parameters is:
+(just as for Ansible) meaning for Linetboot. The list on notable host parameters is:
 
 - loc (str) - Free form host location Indicator (e.g. "West+DC", "Main+Office", etc.)
 - use (str) - Brief Usage description (e.g. "MySQL+Prod", "DHCP-Server")
-- dock (bool) - Host is running docker (lineboot has ability to show image info for these hosts, e.g. "dock=1")
+- dock (bool) - Host is running docker (linetboot has ability to show image info for these hosts, e.g. "dock=1")
 - nfs (bool) - Host is an NFS server (linetboot can show NFS shares for these hosts)
 - bmccreds (str) - Override global BMC (IPMI /RedFish) credentials for this host (in format `user:pass`)
 - bmcipaddr (str) - BMC IP Address (when no recorded IPMI info is available)
@@ -84,8 +84,8 @@ At linetboot startup (in console) there are warning messages displayed on hosts 
 
 ## Main Configuration
 
-The lineboot main configuration file is by default expected to be found under the home directory of the user who is
-running lineboot server, in the file `~/.linetboot/global.conf.json`. The lineboot codebase has a good default configuration
+The linetboot main configuration file is by default expected to be found under the home directory of the user who is
+running linetboot server, in the file `~/.linetboot/global.conf.json`. The linetboot codebase has a good default configuration
 by same name in the top directory of codebase. The following document sections got through the configuration sections within
 linetboot JSON config file, where each section is a "sub-object" within JSON and describes a logical sub-area or sub-system of linetboot.  
 
@@ -131,11 +131,11 @@ Linetboot top-level config properties are fairly global in nature and widely use
 
 ### Section "tftp" - TFTP Settings
 
-Lineboot Admin tool (hostsetup.js) can assist in populating TFTP directories with (boot menu, config subdirs, symlinks etc.)
+Linetboot Admin tool (hostsetup.js) can assist in populating TFTP directories with (boot menu, config subdirs, symlinks etc.)
 config files and bootloader binaries. The settings for "tftp" are:
 
 - host (str) - Remote host where TFTP server operates. Used in high level contexts where (host)name resolution is available (e.g.
-  some lineboot templates for high level purposes) and as DHCP option 66 ("TFTP Server name"). This name should resolve to tftp.ipaddr below.
+  some linetboot templates for high level purposes) and as DHCP option 66 ("TFTP Server name"). This name should resolve to tftp.ipaddr below.
 - ipaddr (str) - IP address of **local or remote** host where TFTP server operates. Used for the generation of DHCP config file (and its next-server variable),
  TFTP Option 150 ("TFTP server address")
   
@@ -234,7 +234,7 @@ Recipes section expects an array of recipe objects with following properties:
 - tmpl - Template file Basename or relative path. This file is resolved from the template path (See inst.tmpl_path or env. LINETBOOT_TMPL_PATH)
 
 Adding recipes is an expert option for special OS installations, but may be necessary for:
-- OS installations not supported out-of-the-box by Lineboot
+- OS installations not supported out-of-the-box by Linetboot
 - OS Installs that need extreme customization for their recipes
 
 ## Linetboot Environment Variables
@@ -243,7 +243,7 @@ Environment Variables that can override settings in main config:
 
 - FACT\_PATH - Ansible facts path (main.fact\_path). Must contain JSON facts files named by hostname (without *.json suffix).
 - PKGLIST\_PATH - Path with host package list files.
-- LINETBOOT\_GLOBAL\_CONF - Full path to lineboot config file (No corresponding main conf var for obvious reasons).
+- LINETBOOT\_GLOBAL\_CONF - Full path to linetboot config file (No corresponding main conf var for obvious reasons).
 - LINETBOOT\_USER\_CONF - OS Install Default User config JSON (See example initialuser.json)
 - LINETBOOT\_IPTRANS\_MAP - File to simple JSON key-value value to map dynamic addresses to real IP addresses.
 - LINETBOOT\_SSHKEY\_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
@@ -253,7 +253,7 @@ coerce / convert values to correct types.
 
 ## Internal processing of Environment Variables
 
-As part of configuration processing Lineboot internally:
+As part of configuration processing Linetboot internally:
 - Loads main (JSON) configuration into memory 
 - Overrides config values of config from the environment variables
 - During app runtime solely utilizes the main config
@@ -269,9 +269,9 @@ When script is referred by basename from URL path "/scripts/", the scripts and t
 
 Example scenarios for templates search from `inst.tmpl_path`: 
 
-- "./tmpl:~/.linetboot/tmpl/" - Search first in lineboot codebase "tmpl" directory and only then form .linetboot/tmpl under
+- "./tmpl:~/.linetboot/tmpl/" - Search first in linetboot codebase "tmpl" directory and only then form .linetboot/tmpl under
 linetboot config directory (where templates and script are copied at install time). This is  a good choice for starter user
-who relies on default recipes and does not modify or extreme lineboot developer, who actively changes recipes diretly in codebase
+who relies on default recipes and does not modify or extreme linetboot developer, who actively changes recipes diretly in codebase
 and upstreams them frequently.
 - "~/.linetboot/tmpl/:./tmpl" - Opposite: First search under config dir ... . A good choice for user, who changes templates, but
 does not have plans to upstream them or only upstreams them much less frequently than doing git-pull updates.

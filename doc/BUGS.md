@@ -210,3 +210,41 @@ IPv4 Addresses:  [ { address: '10.75.158.204', ttl: 60, type: 'A' },
 When trying to do: systemd-analyze verify ./linetboot.service
 Bug in systemd 237 and 238 (Ubuntu 18 has 237), see: https://unix.stackexchange.com/questions/443708/why-does-systemd-report-attempted-to-remove-disk-file-system-when-verify-is
 
+
+
+
+# loadprobe "Callback was already called."
+
+```
+conn-end:   ccxlc-lvn-025.lvn.broadcom.net(upt)
+conn-end:   ccxlc-lvn-027.lvn.broadcom.net(upt)
+stream-close: ccxlc-lvn-027.lvn.broadcom.net (code=undefined, tout=10000)
+conn-error: lc-rtp-025.ash.broadcom.net: Error: Timed out while waiting for handshake
+conn-error: lc-rtp-025.ash.broadcom.net: Error: Timed out while waiting for handshake
+/Users/oh890557/src/linetboot/node_modules/async/dist/async.js:966
+        if (fn === null) throw new Error("Callback was already called.");
+                         ^
+
+Error: Callback was already called.
+    at /Users/oh890557/src/linetboot/node_modules/async/dist/async.js:966:32
+    at /Users/oh890557/src/linetboot/node_modules/async/dist/async.js:1137:13
+    at Client.on_conn_error (/Users/oh890557/src/linetboot/netprobe.js:279:14)
+    at Client.emit (events.js:189:13)
+    at Timeout._onTimeout (/Users/oh890557/src/linetboot/node_modules/ssh2/lib/client.js:697:14)
+    at listOnTimeout (timers.js:324:15)
+    at processTimers (timers.js:268:5)
+
+```
+
+Line 279: return cb(null, additem(prec));
+
+# Setting event handlers on 2nd and further pages of grid !
+
+- problem: e.g. after setting up callbacks on links work on first page,
+  but not on 2nd and further pages. Neiter 1st page works when you navigate
+  back to it from 2nd and later pages (callbacks do not get autosetup)
+- Must detect grid page change (paging) event and re-hook handlers
+  by the same selector (e.g. ".detailinfo)
+- Likely reason: JSGrid generates content on div and does not only control
+  the visibility of each page by CSS. One time setup of first page is not enough.
+- Possibility: Use event emitter (too heavy duty ?)

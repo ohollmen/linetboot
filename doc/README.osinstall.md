@@ -91,10 +91,10 @@ provisioning commands. Here are some suggestions.
 
 The following environment variables are setup for Post Install shell command (postinst.js):
 
-- POSTOP_IP: IP Address of Client host 
-- POSTOP_USER: The username of Initial user 
-- LINETBOOT_URL: The lineboot server http user (with port, without trailing slash)
-- LINETBOOT_HOSTS_FILE: Linetboot hosts filename (as absolute path)
+- POSTOP\_IP: IP Address of Client host 
+- POSTOP\_USER: The username of Initial user 
+- LINETBOOT\_URL: The lineboot server http user (with port, without trailing slash)
+- LINETBOOT\_HOSTS\_FILE: Linetboot hosts filename (as absolute path)
 
 <!--
 ### Examples of JS callbacks and shell commands
@@ -144,8 +144,9 @@ yast clone_system
 ```
 
 ### References
-- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
-- https://docs.centos.org/en-US/centos/install-guide/Kickstart2/
+
+- Kickstart syntax - https://access.redhat.com/documentation/en-us/red\_hat\_enterprise\_linux/7/html/installation\_guide/sect-kickstart-syntax
+- Kickstart 2 Guide - https://docs.centos.org/en-US/centos/install-guide/Kickstart2/
 
 ## Parametrizing Templated Recipes
 
@@ -198,6 +199,14 @@ Network settings formulation under key "net" (This is where most customization t
 - hostname (str) - short hostname (w/o domain suffix)
 - ifnum (int) - Interface number (1-based value for the network interface order number, e.g. 1 could mean eno1, enp0s1)
 - namesearch (array-of-str) - domain suffixes to try for DNS search by non-fqdn hostname searches
+
+**Mirror Settings** (Debian/Ubuntu) set by osinstall module during recipe generation ("mirror" parameter branch) based on **inst.inetmirror**:
+- mirror.hostname (str) - Set to valid mirror host (linetboot or internet)
+- mirror.directory (str) - Set to valid dir (linetboot or internet)
+
+With all said, the Linetboot Web GUI allows seeing the outcome of template expansion by navigating to: **Boot/Install** => **Tab: Recipes Preview** => Choose the **host** (line) and **recipe type** (column).
+
+**OS Intial User** will be available (in branch "user") for recipe just as it is described in **initialuser.conf.json** file (See README.linetbootconf.md for the documentation on user properties).
 
 ## Solution Hints for Recipe based Automation
 

@@ -1,11 +1,11 @@
 # Installation Prerequisites
 
-List of prerequisites for a functional lineboot system:
+List of prerequisites for a functional linetboot system:
 
 - pxelinux - Provides network bootloaders (pxelinux0, lpxelinux.0, with latter supporting http)
-- syslinux-efi - Network bootloader for UEFI (Not widely proven in lineboot)
+- syslinux-efi - Network bootloader for UEFI (Not widely proven in linetboot)
 - TFTP server - to store PXELinux binaries and menus on (Debian/Ubuntu: tftpd, tftpd-hpa, dnsmasq or atftpd, Redhat/CentOS: tftp-server)
-- nodejs and npm - The lineboot system is written in Node.js and thus needs this 
+- nodejs and npm - The linetboot system is written in Node.js and thus needs this 
 - ansible - to extract and record host facts form inventoried machines (Ansible also depends on Python)
 
 Additionally you need download OS/Distor Intallation CD/DVD ISO Images, e.g:
@@ -133,7 +133,7 @@ Info on UEFI syslinux.efi boot: https://wiki.syslinux.org/wiki/index.php?title=C
 
 ## Installing Node.js and NPM
 
-Node.js runs the lineboot server. Linetboot depends on a bunch of NPM (Node package manager)
+Node.js runs the linetboot server. Linetboot depends on a bunch of NPM (Node package manager)
 packages from NPM internet repos, so you will need a npm (or npm compatible) package manager
 to handle installation of these.
 
@@ -253,6 +253,22 @@ showmount -e
 
 ### iPXE Bootloader
 
+This section exists for iPXE bootloader awareness and potential. The iPXE has not been used
+in the official development of Linetboot. Notes on iPXE specialties:
+
+- iPXE is based on *.ipxe scripts with hasbang line looking (first-line) signature `#!ipxe`,
+that iPXE bootloader loads and uses to configure boot
+- Scripts can be loaded by bootloader or embedded (appended?) into bootloader binary (at compile time)
+- Scripts syntax has variable notation, if conditionals, goto jumps, commands etc. to implement more
+complex things
+- Example commands: dhcp, chain, include, echo, set, isset, shell, boot
+- iPXE does not have a default (or fallback)
+- iPXE typically asks DHCP server for the script name (!), and DHCP server could have conditionals to
+detect DHCP client by options passed and send script when client is iPXE (quite a complex interaction)
+- Because of the above, the iPXE (w/o custom DHCP config) by design cretaes an infinie DHCP loop
+  (Explained at: https://ipxe.org/howto/chainloading => "Breaking the infinite loop")
+- iPXE bootloader binaries are available directly from iPXE website (e.g. http://boot.ipxe.org/ipxe.efi)
+
 Install iPXE bootloaders using OS install packages:
 ```
 sudo apt-get install ipxe
@@ -261,8 +277,10 @@ sudo yum install ipxe-bootimgs
 Copy the appropriate bootloader files under TFTP root
 ```
 # EFI Bootloader: ipxe.efi
-# Bootloader (BIOS) unloading UNDI and PXE: ipxe.pxe (chainload, potentially flaky)
-# Bootloader (BIOS) keep UNDI, unload PXE: undionly.kpxe (preferred, optimak uses UNDI)
+# Bootloaders for BIOS mode:
+# - ipxe.pxe - unloads UNDI and PXE:  (for chainloading, potentially flaky)
+# - undionly.kpxe - keeps UNDI, unloads PXE:  (preferred, optimally uses UNDI)
+# 
 # Ubuntu
 cp /usr/lib/ipxe/{undionly.kpxe,ipxe.efi} /var/lib/tftpboot
 # Centos/RH
@@ -307,14 +325,31 @@ include 2nd_stage.ipxe
 
 iPXE has a set of internal variables (e.g. `${net0/mac}`, `${TFTP_IP}`, `${next-server}`, etc...) that can be used within a "script" to customize boot.
 
+#### Building iPXE bootloader with embedded script
+
+```
+# Clone iPXE git
+git clone http://git.ipxe.org/ipxe.git
+cd ipxe/src
+#  Download (wimboot) script (Note: This is customized to your environment)
+wget http://localhost:3000/scripts/wimboot.ipxe -O wimboot.ipxe
+# Build (See e.g. https://ipxe.org/embed => "Embedding within the iPXE binary", example
+# builds undionly.kpxe)
+make bin/ipxe.efi EMBED=wimboot.ipxe
+file ./bin/undionly.kpxe
+./bin/undionly.kpxe: pxelinux loader (version 3.70 or newer)
+
+```
+
 #### References
 
 iPXE:
-- Settings (i.e. variables) https://ipxe.org/cfg
-- Commands https://ipxe.org/cmd
-
+- iPXE key-concept Documentation pages
+  - Settings (i.e. variables) https://ipxe.org/cfg
+  - Commands https://ipxe.org/cmd
+  - Configuring Boot with iPXE https://ipxe.org/howto/chainloading
+  - Embedding .ipxe script https://ipxe.org/embed
 - More on iPXE bootloader variant choices: https://forum.ipxe.org/showthread.php?tid=6989
-- Configuring Boot with iPXE https://ipxe.org/howto/chainloading
 - IPXE documentation (compiling iPXE, Configuring DHCP) https://wiki.fogproject.org/wiki/index.php/IPXE
 - Dicussion on EFI PXE Boot https://forums.fogproject.org/topic/4628/undionly-kpxe-and-ipxe-efi/
 - https://wiki.syslinux.org/wiki/index.php?title=PXELINUX
@@ -322,7 +357,7 @@ iPXE:
 - https://coreos.com/matchbox/docs/latest/network-booting.html iPXE Bootsequence
 - https://lists.ipxe.org/pipermail/ipxe-devel/2011-March/000549.html - discussion about boot sequence
 - https://projects.theforeman.org/projects/foreman/wiki/Fetch_boot_files_via_http_instead_of_TFTP
-- iPXE Menu example https://gist.github.com/robinsmidsrod/2234639
+- iPXE Menu example - https://gist.github.com/robinsmidsrod/2234639
 
 ### Grub and Shim (for PXE UEFI setup)
 
@@ -362,9 +397,27 @@ set timeout=5
 set hidden_timeout_quiet=false
 
 menuentry "master"  {
-configfile /tftpboot/$net_default_mac.conf
+  configfile /tftpboot/$net_default_mac.conf
 }
 ```
+Use the file (with tftp path ...) `grub/shimx64.efi.signed` as initial boot file for UEFI PXE Client
+in your DHCP configuration:
+```
+# DNSMasq (/etc/dnsmasq.conf)
+...
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-boot=tag:efi-x86_64,grub/shimx64.efi.signed
+...
+# ISC DHCP (/etc/dhcp/dhcpd.conf)
+class "pxeclients" {
+  match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
+  option tftp-server-name "192.168.1.100";
+  option bootfile-name   "/grub/shimx64.efi.signed";
+}
+```
+Note: Some articles suggest that file `shimx64.efi.signed` should be renamed to `bootx64.efi` and `grubnetx64.efi.signed` to `grubx64.efi` respectively. However with the PXE clients and DHCP servers I've tested with the original filenames seem to work fine.
+
+For kernel and ramdisk http loading you must use http module (...)
 
 #### References
 
@@ -379,8 +432,11 @@ configfile /tftpboot/$net_default_mac.conf
 - https://www.ietf.org/assignments/dhcpv6-parameters/dhcpv6-parameters.txt
 - Ubuntu/Dev vs. Fedora grubnetx64.efi (config search): https://kscherer.github.io/linux/2017/03/20/pxe-install-on-uefi-using-foreman-and-grub2
 - https://misperious.wordpress.com/2018/02/03/uefi-and-pxe-boot-setup-on-ubuntu-17-10/
+- https://olbat.net/files/misc/netboot.pdf
 
 ### Configuring Samba Server on Linux
+
+Install samba packages as described earlier in this document ("Install Samba/CIFS Server").
 
 Edit Samba main config `/etc/samba/smb.conf` (In both RH and Debian based distros).
 In case of linetboot it will likely be good to expose the /isomnt dirs (your Windows related path location may differ).
@@ -388,7 +444,7 @@ In case of linetboot it will likely be good to expose the /isomnt dirs (your Win
 ```
 [global]
 # workgroup = WORKGROUP
-server string = Lineboot SMB
+server string = Linetboot SMB
 netbios name = linetboot-smb
 # security = user
 # MUST HAVE
@@ -403,6 +459,7 @@ writable  = no
 read only = yes
 guest ok  = yes
 ```
+
 Restart samba related services:
 ```
 systemctl enable smb.service
@@ -411,6 +468,29 @@ systemctl restart smb.service
 systemctl restart nmb.service
 # Ubuntu
 sudo service smbd restart
+```
+
+### Enable Windows Boot
+
+To enable the Linetboot "WIndows 2019 Server" example boot item perform the following setup steps.
+
+Setup and configure Samba server and /isomnt share (e.g.) on Linetboot server (Or server configured in
+main config "smbserver").
+
+Use the mkwinpeimg image authoring process (See README.bootmenu.md) and place the `winpe.iso`
+ISO image to /isomnt/ directory:
+```
+# Copy (compacted) ISO
+cp -p /tmp/winpe.iso /isomnt/
+```
+Download *Windows* version of wget executable (to samba shared /isomnt):
+```
+cd /isomnt/
+sudo wget https://eternallybored.org/misc/wget/1.21.1/64/wget.exe
+```
+Place Linetboot generated Autounattend.xml file (to samba shared /isomnt):
+```
+sudo wget http://linetboot:3000/Autounattend.xml -O /isomnt/Autounattend.xml
 ```
 
 ### wimtools and wimlib - WinPE Authoring tool
@@ -424,4 +504,17 @@ wimtools contains the important utility `mkwinpeimg` for re-authoring simple Win
 full Windows install ISO:s. It will read the *essential* windows files from and re-author a new "mini-ISO" that will be
 < 1/10 of original size.
 
+### DRBL - Diskless Remote Boot in Linux
+
+Info Resources:
+- SourceForge http://drbl.sourceforge.net
+- Clonezilla SE/Server Edition https://clonezilla.org/clonezilla-SE/
+- DRBL/Diskless Remote Boot in Linux https://drbl.org/installation/
+- Clonezilla Live Usage https://clonezilla.org/clonezilla-usage/general-live-use.php
+- Clonezilla params info (e.g. `ocs_live_extra_param`, `ocs_live_run`): https://clonezilla.org/show-live-doc-content.php?topic=clonezilla-live/doc/99_Misc
+
+By default Clonezilla client wants "image root" mounted onto `/home/partimag/`, under which each subdirectory
+presents an image.
+
+On Image Server Size (Essentially NFS,CIFS or sshfs server) create the image root directory and
 
