@@ -2,7 +2,7 @@
   "title" : "Linetboot Docs",
   "groups": {
     "gen":"General",
-    "ins":"Lineboot Installation",
+    "ins":"Linetboot Installation",
     "osi":"OS Installlation",
     "maint": "Admin & Maintenance"
   },
