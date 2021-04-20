@@ -1,0 +1,10 @@
+#!ipxe
+# iPXE script to boot by wimboot (https://ipxe.org/wimboot).
+# TEMPLATE_WITH: global
+# Download (latest) wimboot by:
+# sudo wget http://git.ipxe.org/releases/wimboot/wimboot-latest.zip -O /isomnt/wimboot
+kernel http://{{ httpserver }}/wimboot
+initrd http://{{ httpserver }}/win2019/boot/bcd BCD
+initrd http://{{ httpserver }}/win2019/boot/boot.sdi boot.sdi
+initrd -n boot.wim http://{{ httpserver }}/win2019/sources/boot.wim boot.wim
+boot
