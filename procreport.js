@@ -37,27 +37,31 @@ async.map(urls, function (url, cb) {
     return cb(ex, null);
     });
 },
+// Completion callback
 function (err, results) {
     if (err) { console.log("async.map completion error: "+ err) ; return; }
-    console.log("Got results of type: "+ (typeof results)); // Says Object
-    //console.log("Got results: "+ JSON.stringify(results, null, 2));
+    console.log("Got ("+results.length+") results of type: "+ (typeof results)); // Says Object
+    // console.log("Got results: "+ JSON.stringify(results, null, 2));
     //return;
     // TODO: Have analysis function as configurable callback
-    var now = (Date.now() / 1000);
+    var now = (Date.now() / 1000); // Seconds after 1970 
     var ctx = {now: now, age: 86400*5, user: 'root', debug: 0};
     results.forEach((procs) => {
       if (!Array.isArray(procs)) { console.log("One async result not an array!"); return; }
+      console.log(procs.length + " Processes");
       // Pass full cmp context
       var bads = procs_analyze(procs, ctx);
       console.log(bads.length + " procs gotten from analysis:\n", bads);
     });
+    // Kill bad ...
+    
   }
 ); // async.map()
 /** Analyze processes from one host for stale state and return suspects
 */
 function procs_analyze(procs, ctx) {
   if (!Array.isArray(procs)) { console.log("No procs to analyze !"); return; }
-  var bads = [];
+  var bads = []; // Bad processes (something to kill)
   procs.forEach((p) => {
     ctx.debug && console.log(p.pid);
     var age = ctx.now - p.starttime;
@@ -65,6 +69,7 @@ function procs_analyze(procs, ctx) {
     var usermatch = (ctx.user == p.owner);
     if (isold && usermatch) { // && 
       ctx.debug && console.log(p.pid+" owned by "+p.owner+" is old ("+p.cmd+"): "+age);
+      //p.host = ""; // ???
       bads.push(p);
     }
   });
