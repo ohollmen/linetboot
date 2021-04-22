@@ -37,7 +37,7 @@ var fs   = require("fs");
 var path = require("path");
 var Mustache = require("mustache");
 var axios = require("axios");
-
+var async    = require("async"); // Move up later
 
 // xjs.parseString();
 // TODO: keep parametrized for obj type="ContainerView" value (e.g. session[52e748f1-...")
@@ -237,7 +237,8 @@ function login() {
 
 /** Extract guests from XML content (Async).
 * @param cont {string} - XML Content string (to be parsed)
-* @param opts {object} - Object 
+* @param opts {object} - Options Object (with "debug")
+* @param cb {function} - Callback to call after completing parsing (receives host array)
 */
 function getGuests(cont, opts, cb) {
   if (!cont) { return cb("No (XML) content to parse\n", null); }
@@ -424,7 +425,8 @@ function ObjInspect(obj) {
 
 function savecache(host, data) {
   // TODO: var fname = mcfg.esxi.cachepath
-  var fname = "/tmp/"+host+".xml";
+  var cachepath = mcfg.esxi.cachepath || "/tmp";
+  var fname = cachepath+"/"+host+".xml";
   try {
     fs.writeFileSync(fname, data, {encoding: "utf8"} );
   } catch (ex) { console.error("esxi cache file write error: "+ ex); return; }
@@ -432,15 +434,17 @@ function savecache(host, data) {
 }
 
 module.exports = {
+  init: init,
   getGuests: getGuests,
   getRealData: getRealData,
+  hostworker: hostworker
 };
 // console.log(process.argv);
 
 // test main
 // node esxi.js ./esxi_guest_info_sample.xml
 if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
-  var async    = require("async"); // Move up later
+  
   var mainconf = require("./mainconf.js");
   //console.error("Run sample main");
   var ops = {"parse":"1", "cache":"1", "cacheall":"1", "list": 1};
@@ -491,63 +495,80 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
     });
   }
   // Cache (all). Starts like "list"+"login"+...
+  // hostworker() - Take care of one host
+  //   
   else if (op == 'cacheall') {
+    // Shared by all or should be per host ?
     p = {username: mcfg.esxi.username, password: mcfg.esxi.password };
     var hostnames = mcfg.esxi.vmhosts;
     var opts = {};
-    
-    async.eachSeries(hostnames, worker, function (err) {
+    console.error("Start eachSeries for: "+hostnames.join(", "));
+    async.eachSeries(hostnames, hostworker, function (err) {
       if (err) { return console.log("cacheall error: "+err); }
-      console.log("cacheall success (see output above) ");
+      console.log("cacheall series completion success (ls -al "+mcfg.esxi.cachepath+"/*.xml) ");
     });
     
-    function worker(hname, cb) {
-      
-    var ccb = function (err, hinfo) {
-      if (err) { return console.log("fetchguestinfo Error: " + err); }
-      if (hinfo && (hinfo.length > 10000)) { savecache(hname, hinfo); }
-      else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
-    };
-      
-      // This runs away
-      fetchguestinfo(hname, p, opts, ccb);
-      console.log("worker for "+hname+" finished");
-      cb(null, 1); // Always forward success
-    }
-  }
+    
+    
+
+  } // 'cacheall'
 }
-/** Fetch a guest info from ESXi and optionally store.
+
+// TODO: Refactor to be module function, but needs to get mcfg.esxi config somehow (Use global mcfg ?).
+function hostworker(hname, cb) {
+  // Save guestinfo for a single host
+  var savecb = function (err, hresinfo) {
+    if (err) { return console.log("fetchguestinfo Error: " + err); cb("hostworker error !", null); }
+    var hinfo = hresinfo.cont;
+    var hasfault = hinfo && hinfo.length && hinfo.match(/fault/i) ? 1 : 0;
+    if (hinfo && (hinfo.length > 10000)) { savecache(hresinfo.hname, hinfo); }
+    
+    else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+", fault:"+hasfault+")"); }
+    cb(null, {greet: "Hello"});
+  };
+
+  var pph = {username: mcfg.esxi.username, password: mcfg.esxi.password}; // TODO: Per host (copy) here
+  // OLD: This runs away
+  fetchguestinfo(hname, pph, opts, savecb); // OLD: p, opts, savecb (above)
+  //cb(null, 1); // Always forward success
+} // hostworker
+
+/** Fetch a guest info from ESXi and forward results.
  * @param host {string} - ESXi Host VM hostname
- * @param p {object} - Per host-fetch param object (w. e.g. username,password, but do not use mcfg.esxi directly).
+ * @param p {object} - Per host-fetch param object (w. e.g. username,password, cookie but do not use mcfg.esxi directly).
  * @param opts {object} - Options like ...
- * @param cb {function} - 
+ * @param cb {function} - Callback to be called with Object: {hname: ..., cont: ...}
  * @return No value, but call cb at completion
  */
 function fetchguestinfo(host, p, opts, cb) {
-  function soapit(cm, cb) {
+  // Perform single soap call step of series belonging to one guest.
+  function soapstep(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
-        if (err) { console.error("soapit error: "+ err); return cb(err, null); } // return;
+        if (err) { console.error("soapstep error: "+ err); return cb(err, null); } // return;
         if (!data || !data.length) { console.log("No error, but no data either !!!"); return cb("No Error, no Data !", null); }
         console.log("SOAP Call '"+cm.id+"' result:"+data.length+" B");
         console.log("Params-gathered-sofar:"+ JSON.stringify(p, null, 2));
         resarr.push(data);
         // res[cm.id] = data; // Object ?
-        return cb(null, data); // Try Forward XML
+        return cb(null, data); // Forward XML data
       });
     }
     // See linetboot
     // eachSeries ... Data
-    var resarr = []; // Let soapit()
-    var hcallarr = [callmods[0], callmods[1], callmods[2]]; // HTTP Call array
-    if (p.cookie) { hcallarr.shift(); } // Has cookie from login
-    async.eachSeries(hcallarr, soapit, function (err) { // results
+    var resarr = []; // Let soapstep() fill in
+    var hcallarr = [callmods[0], callmods[1], callmods[2]]; // HTTP Call array (login, contview, glist)
+    // if (p.cookie) { console.log("Have cookie: "+p.cookie+" - skip login"); hcallarr.shift(); } // Has cookie from login
+    async.eachSeries(hcallarr, soapstep, function (err) { // NO results (!) See manual
       if (err) { var xerr = "eachSeries Error: "+ err; console.log(xerr); return cb(xerr, null); }
       //if (!results) { return console.log("Results not avail at completion ("+results+"), err="+err); }
-      //console.log("Results len: "+ results.length);
+      console.log("RESULTS len: "+ resarr.length + ", Lengths: " + resarr.map((it) => { return it.length; }).join(", "));
       // Forward (e.g. for saving) last
-      var hinfo = resarr[resarr.length -1 ];
-      
-      if (cb) { console.log("fetchguestinfo/eachSeries completion: Should call ballback ..."); return cb(null, hinfo); }
+      var cont = resarr[resarr.length -1 ]; // Too simple when w/o hostname
+      var hresinfo = {hname: host, cont: cont};
+      //if (cb) {
+        console.log("fetchguestinfo("+host+")/eachSeries completion: Should call fetchguestinfo("+host+") callback ...");
+        return cb(null, hresinfo); // OLD: cont
+      //}
     });
 }
 
