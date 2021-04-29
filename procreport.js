@@ -1,6 +1,6 @@
 #!/usr/bin/node
 /** Report Processes on all procster-enabled machines.
- * For now allow
+ * For now allow env variables to control filtering (TODO: CLI params).
 */
 var async = require("async");
 var axios = require("axios");
@@ -8,10 +8,12 @@ var hlr   = require("./hostloader.js");
 var Getopt = require("node-getopt");
 var tnow = 1; // 
 var seen = {};
+// Hostloader config
 var cfg = { hostsfile: process.env["HOME"]+"/.linetboot/hosts", };
 hlr.init({ fact_path: process.env["HOME"]+"/hostinfo" });
 var hostarr = hlr.hosts_load(cfg);
 console.log("Host names:", hostarr); // DEBUG
+
 // var urls = ["http://nuc5:8181/proclist?id=1","http://nuc5:8181/proclist?id=2"];
 // E.g. export PROC_NAMERE=^nuc or ^(bld-|[a-d][a-d]xlc)
 var proccfg = {nre: null, user: (process.env["PROC_USER"] || "root"), agedays: 5};
@@ -62,11 +64,11 @@ async.map(urls, function (url, cb) {
   })
   // 
   .catch((ex) => {
-    console.log("async axios error: "+ex);
+    console.log("async axios error (on "+url+"): "+ex);
     // Sometimes UnhandledPromiseRejectionWarning: Error: Callback was already called.
     // .. when there is a problem (implicit ex. thrown) in completion callback
     // e.g. async axios error: ReferenceError: usermatchX is not defined
-    // where usermatchX is from func called by 
+    // where usermatchX is from func called by procs_analyze() (called only later by completion cb !?)
     return cb(ex, null);
   });
 },
@@ -102,7 +104,7 @@ function procs_analyze(procs, ctx) {
   var bads = []; // Bad processes (something to kill)
   procs.forEach((p) => {
     ctx.debug && console.log(p.pid);
-    var age = ctx.now - p.starttime;
+    var age   = ctx.now - p.starttime;
     var isold = (age > ctx.age);
     var usermatch = (ctx.user == p.owner);
     if (isold && usermatch) { // && 
