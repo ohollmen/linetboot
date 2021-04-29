@@ -1,21 +1,54 @@
 #!/usr/bin/node
 /** Report Processes on all procster-enabled machines.
+ * For now allow
 */
 var async = require("async");
 var axios = require("axios");
-var hlr = require("./hostloader.js");
-
+var hlr   = require("./hostloader.js");
+var Getopt = require("node-getopt");
 var tnow = 1; // 
+var seen = {};
+var cfg = { hostsfile: process.env["HOME"]+"/.linetboot/hosts", };
+hlr.init({ fact_path: process.env["HOME"]+"/hostinfo" });
+var hostarr = hlr.hosts_load(cfg);
+console.log("Host names:", hostarr); // DEBUG
+// var urls = ["http://nuc5:8181/proclist?id=1","http://nuc5:8181/proclist?id=2"];
+// E.g. export PROC_NAMERE=^nuc or ^(bld-|[a-d][a-d]xlc)
+var proccfg = {nre: null, user: (process.env["PROC_USER"] || "root"), agedays: 5};
+var proc_nre = process.env.PROC_NAMERE;
+proccfg.nrestr = proc_nre;
+var namere = proc_nre ? new RegExp(proc_nre) : null;
+proccfg.nre = namere;
+if (process.env["PROC_AGEDAYS"]) { proccfg.agedays = parseInt(process.env["PROC_AGEDAYS"]); }
+var filtercb = (hname) => {
+  var p = hlr.hostparams(hname);
+  if (p.pana) { return 1; }
+  if (namere && hname.match(namere)) { return 1; }
+  return 0;
+};
+// var filtercb = (hpara) => { if (hpara.pana) { return 1; } return 0; };
+var hnames = hostarr.filter(filtercb);
+console.log(hnames.length + " hosts remain after filtering:", hnames);
+staleprocs_report(hnames, proccfg); // ["nuc5","nuc5"]
 
-var urls = ["http://nuc5:8181/proclist?id=1","http://nuc5:8181/proclist?id=2"];
+function hosturl_formulate(host) {
+  var url = "http://"+host+":8181/proclist"; // 
+  seen[host] = seen[host] ? seen[host] + 1 : 1;
+  if (seen[host]) { url += "?id="+seen[host]; } // Append custom ?
+  
+  return url;
+}
+
+function staleprocs_report(hostnames, proccfg) {
 // axios GET calls in parallel
 //var urls = ["/u1", "/u2"];
+var urls = hostnames.map((hname) => { return hosturl_formulate(hname); });
 var reqpara = {
   // 'Content-Type': Connection: 'keep-alive', 'Access-Control-Allow-Origin': '*', withCredentials: true,
   // credentials: 'include', cookie: ...
   headers: {}, // API Key ?
 };
-var pdata = ""; // String Or JSON
+// var pdata = ""; // String Or JSON
 async.map(urls, function (url, cb) {
   //console.log("Call "+url);
   axios.get(url, reqpara).then( (resp) => {
@@ -35,17 +68,19 @@ async.map(urls, function (url, cb) {
     // e.g. async axios error: ReferenceError: usermatchX is not defined
     // where usermatchX is from func called by 
     return cb(ex, null);
-    });
+  });
 },
-// Completion callback
+// Completion callback.
+// Note: For compatibility w. eachSeries, the results should come from outer ctx
+// param rather than completion callback param.
 function (err, results) {
     if (err) { console.log("async.map completion error: "+ err) ; return; }
-    console.log("Got ("+results.length+") results of type: "+ (typeof results)); // Says Object
+    console.log("Got ("+results.length+") process resultsets"); // of type: "+ (typeof results) ... Says "object" ... sigh
     // console.log("Got results: "+ JSON.stringify(results, null, 2));
     //return;
     // TODO: Have analysis function as configurable callback
     var now = (Date.now() / 1000); // Seconds after 1970 
-    var ctx = {now: now, age: 86400*5, user: 'root', debug: 0};
+    var ctx = {now: now, age: 86400*proccfg.agedays, user: proccfg.user, debug: 0}; // 5, root
     results.forEach((procs) => {
       if (!Array.isArray(procs)) { console.log("One async result not an array!"); return; }
       console.log(procs.length + " Processes");
@@ -57,6 +92,9 @@ function (err, results) {
     
   }
 ); // async.map()
+
+}
+
 /** Analyze processes from one host for stale state and return suspects
 */
 function procs_analyze(procs, ctx) {
