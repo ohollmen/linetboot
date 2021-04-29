@@ -86,8 +86,8 @@ async.map(hostnames, function (hname, cb) {
     // .. when there is a problem (implicit ex. thrown) in completion callback
     // e.g. async axios error: ReferenceError: usermatchX is not defined
     // where usermatchX is from func called by procs_analyze() (called only later by completion cb !?)
-    //if (proccfg.allok) { return cb(null, out); } // 
-    //return cb(ex, null);
+    if (proccfg.allok) { return cb(null, out); } // 
+    return cb(ex, null);
   });
 },
 // Completion callback.
