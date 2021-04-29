@@ -261,8 +261,10 @@ function app_init() { // global
   
   app.get("/eflowrscs",  eflowrscs);
   app.get("/eflowrsctoggle",  eflowrsctoggle);
-  // ESXI
+  // ESXI cacheguestinfo
+  app.get("/esxi/cache", cacheguestinfo); // Must be before listguests
   app.get("/esxi/:host", listguests);
+  
   // listdc
   app.get("/listdc", listdc);
  } // sethandlers
@@ -2344,33 +2346,68 @@ function listguests(req, res) {
   var esxi = require("./esxi.js");
   var ecfg = global.esxi || null;
   if (!ecfg) { return res.json(jr); }
+  esxi.init(global);
   var host = req.params.host;
   console.log("Got VM host name: '"+host+"'");
   console.log("Known names: ", ecfg.vmhosts);
   if (!ecfg.vmhosts.includes(host)) { jr.msg += host + " is not one of registered hosts"; return res.json(jr);  }
   ////////// 
   var cont;
+  var hresinfo = {hname: host, cont: null};
   if ((ecfg.usecache == undefined) || ecfg.usecache) {
     var fname = ecfg.cachepath+"/"+host+".xml";
-    console.log("Try esxi file: "+fname);
+    console.log("Try esxi (cached) file: "+fname);
     if (!fs.existsSync(fname)) { jr.msg += "No file for "+host; return res.json(jr);  }
     cont = fs.readFileSync(fname, 'utf8');
+    // hresinfo.cont = cont;
   }
-  else { jr.msg += "Direct fetch not implemented"; return res.json(jr); }
-  // XML ? JSON ?
-  esxi.getGuests(cont, {debug: 0}, function (err, data) {
+  // Note: Async !
+  else {
+    //jr.msg += "Direct fetch not implemented"; return res.json(jr);
+    console.log("Try esxi direct-fetch from: "+host);
+    esxi.hostworker(host, function (err, data) {
+      if (err) { jr.msg += "hostworker error:"+err; return res.json(jr); }
+      console.log("hostworker Got: ", data);
+      esxi.getGuests(data.cont, {debug: 1}, webresp);
+    });
+    console.log("listguests - returning");
+    return;
+    
+  }
+  // XML ? JSON ? TODO: pass {hname: host, cont: cont}
+  esxi.getGuests(cont, {debug: 0}, webresp );
+  // Deliver web response JSON received from ESXi XML parsing.
+  function webresp (err, harr) {
     if (err) { jr.msg += host + " problems extracting guests info"; return res.json(jr); }
     // Sort and number
-    data.sort((a,b) => {
+    if (ecfg.sortbyhname) {
+    harr.sort((a,b) => {
       if (!a.hostName ) { return 0; }
       // if (!a.hostName || !a.hostName) { return 0; }
       return a.hostName.localeCompare(b.hostName);
     });
+    } // sortby ...
     var i = 1;
-    data.forEach((h) => { h.num = i; i++; });
-    res.json(data); // {status: "ok", data: data}
+    harr.forEach((h) => { h.num = i; i++; });
+    res.json(harr); // {status: "ok", data: harr}
+  }
+}
+/** Fetch and store guest info for all configured (mcfg.esxi.vmhosts) VM hosts.
+ */
+function cacheguestinfo(req, res) {
+  var jr = {"status":"err", "msg":"Error getting info for esxi guests. "};
+  var esxi = require("./esxi.js");
+  var ecfg = global.esxi || null;
+  if (!ecfg) { return res.json(jr); }
+  var hostnames = Array.isArray(ecfg.vmhosts) ? ecfg.vmhosts : null;
+  if (!hostnames) { jr.msg += "No vmhosts in config"; return res.json(jr); }
+  esxi.init(global); // TODO: Enable for saving
+  // function hostworker () {} // TODO: Use: esxi.hostworker
+  async.eachSeries(hostnames, esxi.hostworker, function (err) {
+    if (err) { jr.msg += "cacheall error: "+err; return res.json(jr); }
+    //console.log("cacheall series completion success (ls -al /tmp/*.xml) ");
+    res.json({status: "ok", msg: "Saved Guestinfo for "+hostnames.length+" hosts."});
   });
-  
 }
 /** List Docker compose config.
  */

@@ -436,13 +436,15 @@ function ibip_cell(val, item) {
    }
    var fldinfo_esxi = [
      // 
-     {name: "num",       title: "#", type: "number", width: 15, itemTemplate: null},
-     {name: "guestId",       title: "Guest ID", type: "text", width: 90, itemTemplate: null},
-     {name: "guestFullName", title: "OS Type", type: "text", width: 120, itemTemplate: null},
-     {name: "numCPU", title: "#CPU", type: "number", width: 25, itemTemplate: null},
-     
+     {name: "num",       title: "#", type: "number", width: 12, itemTemplate: null},
+     {name: "name",       title: "Name", type: "text", width: 80, itemTemplate: null},
+     {name: "guestId",       title: "Guest ID", type: "text", width: 60, itemTemplate: null},
+     {name: "guestFullName", title: "OS Type", type: "text", width: 90, itemTemplate: null},
+     {name: "annotation", title: "Notes", type: "text", width: 90, itemTemplate: null},
+     {name: "numCPU", title: "#CPU", type: "number", width: 15, itemTemplate: null},
+     {name: "memoryMB",       title: "Mem (MB)", type: "number", width: 20, itemTemplate: null},
      {name: "hostName", title: "Hostname", type: "text", width: 80, itemTemplate: null},
-     {name: "ipAddress", title: "IP Addr", type: "text", width: 60, itemTemplate: null},
+     {name: "ipAddress", title: "IP Addr", type: "text", width: 40, itemTemplate: null},
      // 
      {name: "guestState", title: "State", type: "text", width: 50, itemTemplate: gstate_cell},
    ];

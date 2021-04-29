@@ -256,18 +256,19 @@ function getGuests(cont, opts, cb) {
     var hosts = [];
     var i = 0;
     data.forEach((esh) => {
-      var h = gethost(esh);
+      var h = gethost(esh, opts.debug);
       if (!h) { console.log("Got null guest-host idx="+ i); }
       else { hosts.push(h); }
       i++;
     });
+    // Simplified hosts
     if (opts.debug) { console.log(JSON.stringify(hosts, null, 2)); }
     cb(null, hosts);
   });
 }
 
-/** Convert xml2js parsed (from XML) host to simple form.
-@param esh {object} - propSet section "guest" Guest object (as is from xml2js)
+/** Convert xml2js parsed (from XML) guest to simple form.
+@param esh {object} - propSet section "guest" Guest object (as-is from xml2js)
 @return Guest in simple format
 
 TODO: VirtualMachinePowerState, npivTemporaryDisabled, createDate, changeVersion (also date)
@@ -277,13 +278,15 @@ function gethost(esh) {
   var h = {};
   h.guestFullName = getPropSetprop(esh, "config.guestFullName", "val");
   h.numCPU	  = getPropSetprop(esh, "config.hardware.numCPU", "val");
-  var g = getPropSetprop(esh, "guest");
-  if (!g) { console.error("Did not find GUEST node !\n"); return null; }
-  if (!g.val) { console.error("Did not find GUEST VALUE node !\n"); return null; }
-  if (!g.val[0]) { console.error("Did not find GUEST VALUE 0 node !\n"); return null; }
+  h.numCPU = parseInt(h.numCPU);
+  h.memoryMB	= getPropSetprop(esh, "config.hardware.memoryMB", "val"); // Enabled later
+  h.memoryMB = parseInt(h.memoryMB);
+  var g       = getPropSetprop(esh, "guest"); // <name>guest</name>
+  if ( ! validate_node_ok(g, "guest") ) { return null; }
+  
   //console.error(g);
   //if (1) { console.log("guest-branch:"+JSON.stringify(g, null, 2)); } // return;
-  if (1) { console.log("esh-top:"+JSON.stringify(esh, null, 2)); } // return;
+  //if (1) { console.log("esh-top:"+JSON.stringify(esh, null, 2)); } // return;
   var gv = g.val[0]; // Guest value 0
      
   h.hostName = gv.hostName ? gv.hostName[0] : null; // Also ipStack[0].dnsConfig.hostName[0];
@@ -299,7 +302,41 @@ function gethost(esh) {
   // Disk ? g.val[0].disk;
   h.guestState = gv.guestState ? gv.guestState[0] : null;
   h.guestId    = gv.guestId ? gv.guestId[0] : null; // Is this image ?
+  // NEW
+  // ALREADY IN: h.guestFullName = gv.guestFullName ? gv.guestFullName[0] : null;
+  var n       = getPropSetprop(esh, "name");
+  if ( ! validate_node_ok(n, "name") ) { return null; }
+  var nv = n.val[0];
+  //console.log("NAME: ", nv);
+  h.name = nv ? nv._ : null;
+  // summary.runtime is under (upper) runtime
+  var rtv;
+  var rt = getPropSetprop(esh, "runtime", ); // "val"
+  if ( ! (rtv = validate_node_ok(g, "guest")) ) { return null; }
+  //console.log("RT: ", rtv); // WIP ...: screen, guestKernelCrashed, appState, 
+  var qs = getPropSetprop(esh, "summary.quickStats", "valself"); // .. uptimeSeconds
+  //console.log("Qsumm: ", qs);
+  h.uptimeSeconds = qs.uptimeSeconds ? parseInt(qs.uptimeSeconds[0]) : null;
+  // hostMemoryUsage
+  h.guestMemoryUsage = qs.guestMemoryUsage ? parseInt(qs.guestMemoryUsage[0]) : null;
+  var srt = getPropSetprop(esh, "summary.runtime", "valself"); // 
+  //console.log("Summ.RT: ", srt); // powerState, bootTime, maxMemoryUsage
+  h.bootTime = srt.bootTime ? srt.bootTime[0] : null;
+  h.bootTime = h.bootTime ? h.bootTime.substr(0, 16) : null;
+  // committed => Not-Shared,Used, uncommitted => Provisioned/Uncommitted, unshared (~committed)
+  var sst = getPropSetprop(esh, "summary.storage", "valself");
+  h.committed   = sst.committed ? sst.committed[0] : null; h.committed = parseInt(h.committed);
+  h.uncommitted = sst.uncommitted ? sst.uncommitted[0] : null; h.uncommitted = parseInt(h.uncommitted);
+  console.log("StorageSumm: ", sst);
+  h.annotation = getPropSetprop(esh, "config.annotation", "val_");
   return h;
+}
+
+function validate_node_ok(g, name) {
+  if (!g) { console.error("Did not find "+name+" node !\n"); return 0; }
+  if (!g.val) { console.error("Did not find "+name+" VALUE node !\n"); return 0; }
+  if (!g.val[0]) { console.error("Did not find "+name+" VALUE 0 node !\n"); return 0; }
+  return g.val[0];
 }
 // NOTE: rettype == "val" ONLY applicable for sects where val[0] has
 // prop "_". Should have "directval" or "val_")
@@ -313,6 +350,8 @@ function getPropSetprop(obj, name, rettype) {
   if (!pnode.val) { console.error("property node ",pnode,"does not have 'value'"); return null;}
   // Overload and return different things ?
   if (rettype == "val") { return pnode.val[0]._; } // Direct val "val[0]._" object
+  if (rettype == "val_") { return pnode.val[0]._; } // Alias
+  if (rettype == "valself") { return pnode.val[0]; }
   // Refine to easy access object
   if (rettype == "object") {
     var o = {};
@@ -323,7 +362,7 @@ function getPropSetprop(obj, name, rettype) {
     });
     return o;
   }
-  return pnode; // Node itself
+  return pnode; // Node itself (includes name, val)
 }
 
 /** ESXi XML & xml2js specific accessor for section properties.
@@ -484,8 +523,8 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
       if (hinfo && (hinfo.length > 10000)) { savecache(host, hinfo); }
       else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+")"); }
     };
-    var opts = {};
-    fetchguestinfo(host, p, opts, ccb);
+    // var opts = {}; // Rem. from sign below
+    fetchguestinfo(host, p, ccb);
   }
   else if (op == 'list') {
     // List machines and check their cached files
@@ -514,7 +553,11 @@ if (path.basename(process.argv[1]).match(/esxi\.js$/)) {
   } // 'cacheall'
 }
 
-// TODO: Refactor to be module function, but needs to get mcfg.esxi config somehow (Use global mcfg ?).
+/** Fetch and store guestinfo for a single VM host.
+* gets (currently) mcfg.esxi config from global mcfg.
+* @param hname {string} - VM Host name
+* @param cb - Callback to call after fetching and storing. gets called with err and an object (with hname, cont).
+*/
 function hostworker(hname, cb) {
   // Save guestinfo for a single host
   var savecb = function (err, hresinfo) {
@@ -524,23 +567,24 @@ function hostworker(hname, cb) {
     if (hinfo && (hinfo.length > 10000)) { savecache(hresinfo.hname, hinfo); }
     
     else { console.log("Guest Info looks too small: "+hinfo.length+" B ("+hinfo.substr(0, 5)+", fault:"+hasfault+")"); }
-    cb(null, {greet: "Hello"});
+    cb(null, hresinfo);
   };
 
   var pph = {username: mcfg.esxi.username, password: mcfg.esxi.password}; // TODO: Per host (copy) here
-  // OLD: This runs away
-  fetchguestinfo(hname, pph, opts, savecb); // OLD: p, opts, savecb (above)
+  //var opts = null; // Unused
+  // OLD: This runs away. Removed opts (betw. pph, savecb)
+  fetchguestinfo(hname, pph,  savecb); // OLD: p, opts, savecb (above)
   //cb(null, 1); // Always forward success
-} // hostworker
+}
 
 /** Fetch a guest info from ESXi and forward results.
  * @param host {string} - ESXi Host VM hostname
  * @param p {object} - Per host-fetch param object (w. e.g. username,password, cookie but do not use mcfg.esxi directly).
- * @param opts {object} - Options like ...
+ * NOT: @param opts {object} - Options like ...
  * @param cb {function} - Callback to be called with Object: {hname: ..., cont: ...}
  * @return No value, but call cb at completion
  */
-function fetchguestinfo(host, p, opts, cb) {
+function fetchguestinfo(host, p, cb) { // opts,
   // Perform single soap call step of series belonging to one guest.
   function soapstep(cm, cb) {
       soapCall(host, p, dclone(cm), function (err, data) {
@@ -563,8 +607,8 @@ function fetchguestinfo(host, p, opts, cb) {
       //if (!results) { return console.log("Results not avail at completion ("+results+"), err="+err); }
       console.log("RESULTS len: "+ resarr.length + ", Lengths: " + resarr.map((it) => { return it.length; }).join(", "));
       // Forward (e.g. for saving) last
-      var cont = resarr[resarr.length -1 ]; // Too simple when w/o hostname
-      var hresinfo = {hname: host, cont: cont};
+      // var cont = resarr[resarr.length -1 ]; // Too simple when w/o hostname
+      var hresinfo = {hname: host, cont: resarr[resarr.length -1 ]}; // cont
       //if (cb) {
         console.log("fetchguestinfo("+host+")/eachSeries completion: Should call fetchguestinfo("+host+") callback ...");
         return cb(null, hresinfo); // OLD: cont
