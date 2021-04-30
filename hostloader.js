@@ -20,6 +20,7 @@ function init(global, gcolls) {
   fact_path = global.fact_path;
   if (!fact_path) { console.log("hlr.init: No fact path given - can't continue without it..");process.exit(1);}
   colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [], groups: {} };
+  if (!module.exports.colls) { module.exports.colls = colls; } // Lazy-assign
   debug = global.debug || 0;
 }
 /** Create filtered (non-empty) set of lines from hosts file.
@@ -557,8 +558,8 @@ function customhost_load(fname, global, iptrans) {
 
 /** Lookup inventory parameters for a host by facts (object) or  hostname (string).
  * Using this allows changing hostloader implementation w/o breaking callers.
- * @param f {object} - Ansible facts for host (OR exact hostname to lookup params by)
- * @return Host parameters object 
+ * @param f {object} - Ansible facts for hostname (OR exact hostname to lookup params by)
+ * @return Host parameters object (for the host referrd by f parameter)
  */
 function hostparams(f) { // obj
   if (!f) { console.log("No facts (and hostname) for looking up hostparams"); return null; }
@@ -597,5 +598,7 @@ module.exports = {
   csv_parse_data: csv_parse_data,
   hostparams: hostparams,
   groupnames: groupnames,
-  groupmemmap: groupmemmap
+  groupmemmap: groupmemmap,
+  // Hosts collections (!)
+  colls: colls
 };
