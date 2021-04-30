@@ -325,8 +325,11 @@ function gethost(esh) {
   h.bootTime = h.bootTime ? h.bootTime.substr(0, 16) : null;
   // committed => Not-Shared,Used, uncommitted => Provisioned/Uncommitted, unshared (~committed)
   var sst = getPropSetprop(esh, "summary.storage", "valself");
-  h.committed   = sst.committed ? sst.committed[0] : null; h.committed = parseInt(h.committed);
-  h.uncommitted = sst.uncommitted ? sst.uncommitted[0] : null; h.uncommitted = parseInt(h.uncommitted);
+  // Seems sst can be null (TypeError: Cannot read property 'committed' of null)
+  if (sst) {
+    h.committed   = sst.committed ? sst.committed[0] : null; h.committed = parseInt(h.committed);
+    h.uncommitted = sst.uncommitted ? sst.uncommitted[0] : null; h.uncommitted = parseInt(h.uncommitted);
+  }
   console.log("StorageSumm: ", sst);
   h.annotation = getPropSetprop(esh, "config.annotation", "val_");
   return h;
