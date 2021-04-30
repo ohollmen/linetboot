@@ -159,6 +159,10 @@
   },
   "procster": {
     "port": 8181,
+    "user": "ohollmen",
+    "nrestr": "^nuc",
+    "agedays": 8,
+    "allok": 1,
     "urlpath": ""
   },
   "esxi": {
