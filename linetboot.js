@@ -52,6 +52,7 @@ var mc       = require("./mainconf.js");
 var osdisk   = require("./osdisk.js");
 var iblox    = require("./iblox.js");
 var postinst = require("./postinst.js");
+var procrpt  = require("./procreport.js");
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
 var global = {};
@@ -105,6 +106,7 @@ function app_init() { // global
   // NOTE: express.static(usr, path, conf) can take 3rd conf parameter w.
   // "setHeaders": function (res,path,stat) {}
   osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
+  procrpt.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send file in path: " + path + " ("+stat.size+" B)"); // size:
@@ -267,6 +269,8 @@ function app_init() { // global
   
   // listdc
   app.get("/listdc", listdc);
+  // Bad Process report
+  app.get("/staleproc", procrpt.procreport_web);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
