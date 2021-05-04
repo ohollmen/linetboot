@@ -46,23 +46,38 @@ function simplegrid_url(ev, an) {
   .catch(function (error) { console.log(error); });
 }
 
-/** Display Hosts in Groups (in mutiple grids)
+/** Display Hosts in Groups (in multiple grids)
+ * TODO: See how to handle dialog ui setup. uisetup could be done either
+ * - In loop for each grid dataset
+ * - After whole loop for all grids collectively.
+ * To support esp. latter the hname would need to be in each process record (!)
+ * See: procinfo_uisetup(pinfoarr) for 
  */
 function hostgroups(ev, act) {
   var elsel = ev.routepath ? "routerdiv" : act.elsel;
   //console.log("Generate into: " + elsel);
   $('#' + elsel).html(''); // Clear
+  var nattr = act.nattr || "name";
+  var ida = act.ida || "id";
+  var colla = act.colla || "hosts";
+  var fsid = act.fsid || "hw";
+  toastr.info("Loading "+act.name);
   axios.get(act.url).then(function (resp) { // '/groups'
     grps = resp.data; // AoOoAoO...
-    if (!grps || !grps.length) { $('#' + elsel).html("No groups in this system"); return; }
+    if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
+    if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // For staleproc use-case
     // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
     grps.forEach(function (g) {
-      var harr = g.hosts;
-      $('#' + elsel).append("<h2>"+g.name+" ("+ harr.length +")</h2>\n");
-      $('#' + elsel).append("<div id=\"grp_"+ g.id +"\"></div>\n");
-      showgrid("grp_"+g.id, harr, fldinfo["hw"]);
+      var arr = g[colla]; // g.hosts
+      var id = (typeof ida == "function") ? ida(g) : g[ida];
+      if (typeof act.dataprep == 'function') { act.dataprep(g); } // Data-prep
+      $('#' + elsel).append("<h2>"+g[nattr]+" ("+ arr.length +")</h2>\n"); // g.name
+      $('#' + elsel).append("<div id=\"grp_"+ id +"\"></div>\n");
+      showgrid("grp_"+id, arr, fldinfo[fsid]); // "hw"
+      if (typeof act.uisetup == 'function') { act.uisetup(arr); } // act
     });
+    //if (typeof act.uisetup == 'function') { act.uisetup(); } // act
   }).catch(function (error) { console.log(error); });
 }
 /** Create Remote management info (grid).
