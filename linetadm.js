@@ -79,7 +79,7 @@ var acts = [
   //},
   //{
   //  "id": "bootmenu",
-  //  "title": "Generate Bootmenu based on Lineboot main Config into TFTP dirs (Use --dryrun to preview)",
+  //  "title": "Generate Bootmenu based on Linetboot main Config into TFTP dirs (Use --dryrun to preview)",
   //  "cb": null,
   //  "opts": [],
   //},
@@ -315,7 +315,7 @@ function hostsetup (opts) {
       var badcnt = badfact_cleanup(mcfg);
       console.log("Removed " + badcnt + " bad facts files.");
       console.log("If path above is not your configured fact location copy them by (e.g.)\ncp -r "+mcfg.fact_path+" ~/hostinfo/");
-      console.log("... and restart lineboot server to pick up the new facts.");
+      console.log("... and restart Linetboot server to pick up the new facts.");
       process.exit(0);
       //return cb(null, stat);
     });
