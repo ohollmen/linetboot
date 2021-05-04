@@ -14,10 +14,10 @@ The sequence of booting installer and installing an OS with netinstall:
 
 # What is Linetboot ?
 
-Lineboot is ...
+Linetboot is ...
 
 - PXE Boot and OS Installation Orchestration central
-- DHCP and TFTP Server management system (Lineboot can provide configurations and setup for these)
+- DHCP and TFTP Server management system (Linetboot can provide configurations and setup for these)
 - Hi-Performance HTTP Based OS Install media server
 - Host Asset Inventory system - View hosts Network,Hardware and OS/version info and keep track of packages installed on OS
 - Host Asset statistics reporting system
@@ -30,7 +30,7 @@ Lineboot is ...
 Any of these features can be disabled to use only subset of features.
 There is a special synergy between Ansible and Linetboot on multiple fronts (explained better in the documentation, see below).
 
-Lineboot can be made to perform/organize/manage:
+Linetboot can be made to perform/organize/manage:
 
 - Home/Office: Office Workstations, Diskless Workstations, Home network computers
 - DB Servers, Web servers
@@ -45,7 +45,7 @@ Lineboot can be made to perform/organize/manage:
 Linetboot is written in Javascript and Node.js, which is one of the best languages / runtimes to create high-performing network based
 concurrently tasking aplications.
 
-## What platforms does Lineboot (Server) Run on ?
+## What platforms does Linetboot (Server) Run on ?
 
 - Ubuntu / Debian (Tested on x86 and ARM)
 - RedHat/Centos (tested on RH 6 and VMWare hosted Centos 7)
@@ -55,7 +55,7 @@ concurrently tasking aplications.
 Install and config instructions aim to advise on the minute config differences needed on various platforms
 (Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
 
-## What OS:s can be PXE installed with Lineboot ?
+## What OS:s can be PXE installed with Linetboot ?
 
 - Ubuntu Server (LTS): 14.04, 16.04, 18.04, 20.04
 - Debian 10 ("Buster", possibly older Debians)
@@ -72,7 +72,7 @@ Install and config instructions aim to advise on the minute config differences n
 - TFTP Server - Hosts 1st stage bootloaders and bootloader config file(s) (e.g. menu with boot targets, also possible bootloader add-on modules)
 - LDAP Directory (Optional) - Used for optional authentication
 
-If you use Lineboot only as Asset Inventory, the DHCP and TFTP would note be needed.
+If you use Linetboot only as Asset Inventory, the DHCP and TFTP would note be needed.
 
 <!--
 
@@ -151,10 +151,10 @@ If you have problems getting ansible running on linetboot machine, the hostinfo 
 Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info). Hosts outside this list will not be counted in from the hostinfo directory.
 -->
 
-For further info see Lineboot documentation for:
+For further info see Linetboot documentation for:
 
 - [Installation Pre-requisites](doc/README.prereq.md "Installation Pre-requisites for all related SW")
-- [Lineboot Installation](doc/README.install.md "Linetboot Installation (Divided to Stage 1,2,3)")
+- [Linetboot Installation](doc/README.install.md "Linetboot Installation (Divided to Stage 1,2,3)")
 - [Configuring Linetboot and related systems](doc/README.configure.md "Configuring Linetboot and all related SW")
 - [Administering Boot media (ISO images)](doc/README.bootmedia.md "ISO Bootmedia")
 - [Authoring and configuring Bootmenu](doc/README.bootmenu.md "Configuring Boot menu")
