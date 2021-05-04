@@ -173,7 +173,7 @@ Review main configuration (global.conf.json) and make sure most essential settin
   maindocroot must exist or the server exits with an error.
 - Change `hostsfile` to name your host inventory file (e.g. /home/joesmith/.linetboot/hosts). The default value ~/.linetboot/hosts
   will likely work if you followed the default installation.
-- Change 'core.appname' to name your Lineboot server instance
+- Change 'core.appname' to name your Linetboot server instance
 - Change 'core.authusers' to include your username (with LDAP authentication disable any username/password will work)
 
 The config sections to review at this point would be: "core"
@@ -189,7 +189,7 @@ Linetboot runs as non-root user:
     # Linetboot goes to shell background and gets process watchdog features from PM2 (https://pm2.keymetrics.io)
     $ node_modules/pm2/bin/pm2 start linetboot.js
     # Option 3) Generate Linux systemd unit file by linetboot, install it and run it.
-    # Note: You must first start lineboot by Option 1 or Option 2
+    # Note: You must first start Linetboot by Option 1 or Option 2
     wget http://localhost:3000/scripts/linetboot.service -O ~/.linetboot/linetboot.service
     sudo systemctl enable ~/.linetboot/linetboot.service
     
@@ -229,7 +229,7 @@ sudo mount -o loop /usr/local/iso/CentOS-7-x86_64-Minimal-1810.iso  /isomnt/cent
 ```
 Important note on media directories and their connection to boot menu (pxelinux.cfg/default)
 - The main config core.maindocroot points to boot media "root" directory (default: /isomnt) and this is where kernel:s and initrd:s
-get delivered from (by http) by lineboot
+get delivered from (by http) by Linetboot
 - As an example the mountpoint directory /isomnt/ubuntu18/ (with loop-mounted ISO) would appear in http URL: http://linetboothost:3000/ubuntu18/
 - The kernel:s and initrd:s are configured in boot menu file in "kernel" and "initrd" (or append initrd=...) directives respectively.
   The mountpoint directory name must exactly match the name in URL for kernel and initrd loading to work. 
@@ -237,12 +237,12 @@ get delivered from (by http) by lineboot
 ### Notes about TFTP and DHCP changes
 
 Sharing the traditionally root owned dirs to a "normal" group is potential security risk and you have to evaluate
-the security constraints of your environment. Both changes are same in nature: Allow lineboot user (via group sharing)
-to write (config and other) files to system areas. Both TFTP and DHCPD setup steps are partially assisted by lineboot
+the security constraints of your environment. Both changes are same in nature: Allow linetboot user (via group sharing)
+to write (config and other) files to system areas. Both TFTP and DHCPD setup steps are partially assisted by Linetboot
 install script `linetadm.js`.
 
 Writability to both TFTP and DHCP dirs will be enabled by shared group ownership (See $LINETBOOT_USER_GROUP below), where
-group to use must be chosen form the groups where lineboot user belongs to. Groups can be queried by commands `groups` or
+group to use must be chosen form the groups where Linetboot (runtime) user belongs to. Groups can be queried by commands `groups` or
 `id -Gn`. The primary group of user will be the first in the list. For best security, choose the group that has least users
 in it (Usually primary group will be user specific and contain single user, so it would be a good choice).
 To set primary group into $LINETBOOT_USER_GROUP (for the setup command flows below), run:
@@ -317,7 +317,7 @@ host is. If host is going to be re-imaged with different OS:s every few hours or
 is not very useful. If OS composition is going to stay for weeks or e.g. 2 years (with packages possibly being added and removed), keeping
 track of packages maybe very useful.
 
-All these steps are very fit to be run with Ansible playbooks that are contained with lineboot (playbooks/):
+All these steps are very fit to be run with Ansible playbooks that are contained with Linetboot (playbooks/):
 ```
 # Gather Remote management (IPMI) Info from BMC
 ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_sudo_pass=... host=all destpath=$HOME/hostrmgmt"
@@ -333,15 +333,15 @@ A small intro or refresher (depending on your familiarity w. Ansible) on ansible
 
 ## Sharing Linetboot Installations between multiple application instances
 
-Deploy Lineboot (Using install instructions) to single shared location. This location (git clone/checkout dir) could be for example be
-`/usr/local/lineboot` or `/opt/linetboot`. It could be also individual users homedir with open read access to the lineboot dir.
+Deploy Linetboot (Using install instructions) to single shared location. This location (git clone/checkout dir) could be for example be
+`/usr/local/linetboot` or `/opt/linetboot`. It could be also individual users homedir with open read access to the linetboot dir.
 Each installation, based on individual user accounts can then have its own ~/.linetboot config dir, it's own facts dir and other
 needed directories. The combination of main config and environment variables can be used to customize each instance while still
 sharing the codebase (separate accounts still recommended to differentiate config dirs and env. variables).
 
 ## Updating Linetboot
 
-To update Linetboot with latest changes from Git(Hub), run following in the lineboot Git project dir.
+To update Linetboot with latest changes from Git(Hub), run following in the linetboot Git project dir.
 ```
 # Update
 git pull
