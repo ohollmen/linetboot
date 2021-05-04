@@ -66,6 +66,7 @@ function hostgroups(ev, act) {
     grps = resp.data; // AoOoAoO...
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
     if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // For staleproc use-case
+    if (!Array.isArray(grps)) { return toastr.error("Results not in array !"); }
     // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
     grps.forEach(function (g) {
