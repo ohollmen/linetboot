@@ -13,8 +13,8 @@ loadkeys us
 # and chmod +x ~ 8x scripts that implement the alis system.
 # Alt (short-url): curl -sL https://bit.ly/2F3CATp | bash
 # curl https://raw.githubusercontent.com/picodotdev/alis/master/download.sh | bash
-# Lineboot: in the intrest of minimizing indirection inline the essential
-# downloads in here = simlify (e.g. fresh ramdisk => no rm needed, no asciinema,
+# Linetboot: in the interest of minimizing indirection inline the essential
+# downloads in here = simplify (e.g. fresh ramdisk => no rm needed, no asciinema,
 # no recovery as this is presumed to be a new install).
 export ALIS_COMPS="alis.sh alis-reboot.sh"
 export ALIS_GITHUB_BASEURL="https://raw.githubusercontent.com/picodotdev/alis/master"
