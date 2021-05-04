@@ -105,6 +105,10 @@ function on_rmgmt_click(ev) {
   
 //}
 
+/** Hook Process listing items to detail view.
+ * Must have el by id "pkill" with data-hname 
+ * @param pino - Process dataset.
+ */
 function procinfo_uisetup(pinfo) {
       
       $('.psact').click(function (ev) {
@@ -123,7 +127,7 @@ function procinfo_uisetup(pinfo) {
         // Hook Buttons pkill, pgkill. Must have host,pid
         $('#pkill').click((jev) => {
           // Check role
-          var bel = document.getElementById("pkill");
+          var bel = document.getElementById("pkill"); // Has data-hname, data-pid
           // Note: this.dataset does behave differently (hname not avail !?)
           if (!bel.dataset) { return alert("No dataset"); }
           var pi = {hname: bel.dataset.hname, pid: bel.dataset.pid};
@@ -396,7 +400,7 @@ var tabloadacts = [
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
   //NONEED: {"name": "Reports", "path":"XXXXXXXX", tabs: ["tabs-X","tabs-Y","tabs-Z"], hdlr: tabsetview},
   {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
-  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null, path: "groups"},
+  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null, path: "groups", "fsid": "hw"},
   {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt"},
   {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
@@ -427,6 +431,12 @@ var tabloadacts = [
   {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
   
   {"name": "D-C",  "elselXX": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", uisetup: null, path:"dcomposer"},
+  // See: Groups
+  {"name": "BadProcs",      "elselXX": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
+      nattr: "hname", "colla":"procs", "fsid": "proclist", ida: (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
+      uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
+      dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
+  },
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -908,7 +918,7 @@ function rfinfo(hname, dialogsel, cb) {
   .catch(function (error) { console.log(error); alert("No RF info, "+ error); }) // toastr.error
   .finally(() => { toastr.clear(); });
 }
-/** Process Info.
+/** Produce Process Info Listing for a host.
  * See also: dockerinfo and http://$HOST:4243/v1.24/images/json
  */
 function procinfo(hname, dialogsel, cb) {
