@@ -433,7 +433,8 @@ var tabloadacts = [
   {"name": "D-C",  "elselXX": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", uisetup: null, path:"dcomposer"},
   // See: Groups
   {"name": "BadProcs",      "elselXX": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
-      nattr: "hname", "colla":"procs", "fsid": "proclist", ida: (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
+      nattr: "hname", "colla":"procs", "fsid": "proclist",
+      ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
       uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
       dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
   },
