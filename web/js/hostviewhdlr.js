@@ -66,9 +66,11 @@ function hostgroups(ev, act) {
     grps = resp.data; // AoOoAoO...
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
     if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // For staleproc use-case
-    if (!Array.isArray(grps)) { return toastr.error("Results not in array !"); }
+    if (!Array.isArray(grps)) { toastr.clear(); return toastr.error("Results not in array !"); }
     // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
+    // var cont = ""; // TODO: generate string initially ? Problem: How to do showgrid()
+    //$('#' + elsel).append("<h1>"+act.name+" ("+ grps.length +")</h1>\n");
     grps.forEach(function (g) {
       var arr = g[colla]; // g.hosts
       var id = (typeof ida == "function") ? ida(g) : g[ida];
@@ -79,6 +81,7 @@ function hostgroups(ev, act) {
       if (typeof act.uisetup == 'function') { act.uisetup(arr); } // act
     });
     //if (typeof act.uisetup == 'function') { act.uisetup(); } // act
+    toastr.clear();
   }).catch(function (error) { console.log(error); });
 }
 /** Create Remote management info (grid).
@@ -617,9 +620,19 @@ function esxilist(ev, act) {
 function esxihostmenu(act, vmhosts) {
   var cont = "";
   vmhosts.forEach((h) => { cont += "<span class=\"vmglink\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
+  cont += " (<span id=\"esxicache\">Re-cache ESXi Info</span>)";
   $(".xui").html(cont);
   $(".xui").show();
-  $(".vmglink").click(function (ev) { esxilist(ev, act); });
+  $(".vmglink").click(function (jev) { esxilist(jev, act); });
+  
+  $("#esxicache").click(function (jev) {
+    toastr.info("Caching ... Please Wait");
+    axios.get("/esxi/cache").then((resp) => {
+      var d = resp.data;
+      if (d.status == "ok") { return toastr.info("Cached OK"); }
+      return toastr.error("Caching Failed: "+d.msg);
+    }).catch((ex) => { return toastr.error("Caching failed (exception) "+ex); })
+  });
   //return cont;
 }
 //////////// Dialog handlers ////////////////////
