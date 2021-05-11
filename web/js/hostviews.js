@@ -137,6 +137,11 @@ function procinfo_uisetup(pinfo) {
           var port = datasets.cfg.procster.port || 8181;
           axios.get("http://"+pi.hname+":"+port+"/kill/"+pid).then((resp) => {
             console.log(resp.data);
+            var d = resp.data;
+            if (!d) { return toastr.error("No proper response !"); }
+            if (d.status == 'err') {
+              var msg = d.msg ? d.msg : "Details unknown"; // TODO: Use
+              return toastr.error("Error Killing process "+pi.pid); } // TODO: + "("+msg+")"
             toastr.info("Killed  "+pi.hname+" Proc: "+pi.pid+ "!");
             // Close
             $("#procdialog").dialog("close");
@@ -726,10 +731,10 @@ var cmap = {
 * @param cmap {object} - Option color mapping object (to signify distro by "distname")
 * Accesses outer scope Color map (cmap)
 */
-function chartdata(darr, cdata, vprop, cmap) {
+function chartdata(darr, cdata, vprop, cmap, lblprop) {
   // OLD: var prop = "pkgcnt";
   // TODO:
-  var lblprop = 'hname';
+  //var lblprop = 'hname'; // old, fixed
   // var vprop = ... // 
   cdata.labels = darr.map(function (it) { return it[lblprop]; });
   // Add dataset
@@ -756,6 +761,7 @@ function pkg_stats(ev, act) {
   // Param: prop (for stat), label/name, scaling, canvas sel.
   //var gscale = 1000;
   // Routing event ?
+  // TODO(data): {charts: [{},{}, ...]}
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
@@ -781,25 +787,38 @@ function pkg_stats(ev, act) {
     var chdef = { title: "Memory Stats", lblprop: "hname", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10};
     createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
   }).catch(function (ex) { console.log(ex); });
+  
+  axios.get('/distrostats').then(function (resp) {
+    var d = resp.data;
+    if (d.status == "err") { alert("Distro stats error: " + d.msg); return; }
+    var data = d.data;
+    var chdef = { title: "OS Distro Stats", lblprop: "distname", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1};
+    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+  }).catch(function (ex) { console.log(ex); });
+  // TODO: /cpuarchstats
+  
   // Uses global: cmap, global scales, outer: gscale (for ... suggestedMax)
   function createchart(data, chdef) { // label, vprop, canvasid
-    var vprop = chdef.chcols[0].attr;
-    var label = chdef.chcols[0].name;
+    var vprop    = chdef.chcols[0].attr;
+    // Note for not-by-host charts the label for (e.g. bar) is not necessarily constant - now fixed by passing lblprop to chartdata()!
+    var label    = chdef.chcols[0].name;
     var canvasid = chdef.canvasid;
-    var gscale = chdef.gscale;
+    var gscale   = chdef.gscale;
+    var lblprop  = chdef.lblprop;
     // label: null displays as :"null" (). See legend: { display: false} below.
     var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
     // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
     var ctx = document.getElementById(canvasid).getContext('2d'); // 'canvas_pkg'
-    chartdata(data, cdata, vprop, cmap); // AoO to chart
+    chartdata(data, cdata, vprop, cmap, lblprop); // AoO to chart
     // console.log(JSON.stringify(cdata, null, 2));
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
     // display: false - Important !!
     var scales2 = rapp.dclone(scales);
     // TODO: setup ...
-    if (gscale) { scales2.yAxes[0].ticks.suggestedMax = gscale; }
+    if (chdef.gscale) { scales2.yAxes[0].ticks.suggestedMax = chdef.gscale; }
     var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
+    if (chdef.noclick) { delete(copts.onClick);  }
     //window.myBar =
     new Chart(ctx, { type: 'bar', data: cdata, options: copts });
   } // createchart
@@ -886,7 +905,8 @@ function rfinfo(hname, dialogsel, cb) {
     var d = rd.data;
     if (!d) { return alert("No Data"); }
     console.log("RF-DATA:"+ JSON.stringify(d, null, 2));
-    // Setup Extra
+    ///////// Setup Extra (to be usable) /////////////
+    //function 
     d.hname = hname; // hname - here or server ?
     // Reset Types
     var resettypes; try { resettypes = d.Actions["#ComputerSystem.Reset"]["ResetType@Redfish.AllowableValues"]; } catch (ex) {}
@@ -901,6 +921,7 @@ function rfinfo(hname, dialogsel, cb) {
     if (rd.mcinfo && rd.mcinfo.ipaddr) { d.ipaddr = rd.mcinfo.ipaddr; }
     else { d.ipaddr = ""; }
     d.hname = hname;
+    
     // TODO: Could call cb() here (to delegate templating ...)
     //console.error("Returning to FW.");
     return cb(d, dialogsel);
@@ -910,7 +931,7 @@ function rfinfo(hname, dialogsel, cb) {
     rapp.templated("redfish", d, dialogsel); // TODO (also elim. tc from above)
     $("#"+ dialogsel ).dialog(dopts_grid); // ????
     // Note: Original impl. never calls the cb, not using grid part of framework
-    // OLD Spot for rfinfo_uisetup
+    // OLD Spot / imperative call for rfinfo_uisetup
     
     rfinfo_uisetup(d);
     // No grid based dialog here
