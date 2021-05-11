@@ -27,7 +27,10 @@ var osinst = require("./osinstall.js"); // for recipes. TODO: Pass recipes (arr)
 function error(msg) {
   console.error(msg); process.exit(1);
 }
-
+/** Load main configuration.
+ * @param globalconf {string} - Filename for main configuration.
+ * @return 
+ */
 function mainconf_load(globalconf) {
   if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
   var global   = require(globalconf);
@@ -37,6 +40,7 @@ function mainconf_load(globalconf) {
 }
 /** Load Initial User (for OS Installation).
  * Note: this should take place after tilde expansion (in mainconf_process()) has taken place.
+ * @param global {object} - Main Config
 */
 function user_load(global) {
   // process.env["LINETBOOT_USER_CONF"] ||
@@ -53,6 +57,7 @@ function user_load(global) {
 }
 
 /** Validate config and expand shell-familiar "~" -notation on path / file vars.
+ * @param global {object} - Main configuration.
 */
 function mainconf_process(global) {
   // Validate config section presence (for mandatory sections)
@@ -79,7 +84,7 @@ function mainconf_process(global) {
   tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path"]);
   if (global.docker) {
     var dkr = global.docker;
-    tilde_expand(dkr, ["config","catalog"]);
+    tilde_expand(dkr, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
   }
   tilde_expand(global.ansible, ["pbpath"]);
   /////////// Post Install Scripts ///////
@@ -148,6 +153,13 @@ function disabled_detect(global) {
   if (!fs.existsSync(global.ipmi.path) || hasnofiles(global.ipmi.path)) { dis.push('ipmi'); }
   // Docker see if both files exist
   if (!fs.existsSync(global.docker.config) || !fs.existsSync(global.docker.catalog)) { dis.push("dockerenv"); }
+  if (global.docker.compfiles && Array.isArray(global.docker.compfiles)) {
+    var bad = 0;
+    global.docker.compfiles.forEach((fn) => {
+      if (!fs.existsSync(fn)) { bad++; }
+    });
+    if (bad) { dis.push("dockercomp"); }
+  }
   // Groups
   if (!global.groups || !global.groups.length) { dis.push("groups"); } // dyngroups
   // Output formats ??
@@ -165,7 +177,7 @@ function disabled_detect(global) {
   if (global.web && !global.web.reports) { dis.push("reports"); }
   // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
   // in g.hostnames.lenght > 0.
-  // NOTE: We don't know if groups have been loaded and it will be hard to test here.
+  // NOTE: We don't know if groups have been loaded (properly) and it will be hard to test here.
   if (global.groups && 1) {
     //dis.push("groups");
   }
@@ -205,6 +217,12 @@ function env_merge(global) {
   if (process.env["LINETBOOT_ESXI_PASS"]) { stub("esxi"); global.esxi.password = process.env["LINETBOOT_ESXI_PASS"]; }
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
+/** Replace tilde character (~) with process owners full home directory path ($HOME).
+ * Replaces one or more values in object noted by keys passed.
+ * @param obj {object} - Object to replace values on.
+ * @param keyarr {array} - keys (of object) on which to do the replacement.
+ * @return None
+ */
 function tilde_expand(obj, keyarr) {
   if (typeof obj != 'object') { throw "Not an object"; }
   if (!Array.isArray(keyarr)) { throw "Not an array (of keys)"; }
