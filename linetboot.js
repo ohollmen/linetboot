@@ -202,6 +202,8 @@ function app_init() { // global
   app.get('/hostpkgcounts', pkg_counts);
   app.get('/hostcpucounts', hostp_prop_stat);
   app.get('/hostmemstats',  hostp_prop_stat);
+  app.get('/distrostats',   hostp_prop_aggr);
+  app.get('/cpuarchstats',  hostp_prop_aggr);
   // Comparison
   app.get('/hostpkgstats', host_pkg_stats);
   // Group lists
@@ -1346,13 +1348,58 @@ function showmounts(req, res) {
 function hostp_prop_stat(req, res) {
   var jr = {"status": "err", "msg":"Could not extract data to display. "};
   var sprop = "ansible_processor_vcpus"; var dprop;
-  if (req.url == '/hostcpucounts') { sprop = "ansible_processor_vcpus"; dprop = 'numcpus'; }
+  var umap = [
+    {url: "/hostcpucounts", sprop: "ansible_processor_vcpus", dprop: "numcpus"},
+    {url: "/hostmemstats",  sprop: "ansible_memtotal_mb", dprop: "memcapa"},
+  ];
+  if (req.url == '/hostcpucounts') { sprop = "ansible_processor_vcpus"; dprop = 'numcpus'; } // Num CPU:s
   else if (req.url == '/hostmemstats') { sprop = 'ansible_memtotal_mb'; dprop = 'memcapa'; } // MB
+  //var un = umap.find((un) => { return un.url == req.url; });
+  //if (!un) { jr.msg += "URL config not found for "+req.url; return res.json(jr); }
+  //var sprop = un.sprop;
+  //var dprop = un.dprop;
   var arr = [];
+  // Extract sorce property sprop to destination prop dprop
   hostarr.forEach(function (f) {
     //arr.push({hname: f.ansible_fqdn, numcpus: f[sprop]});
     var e = {hname: f.ansible_fqdn};
     e[dprop] = f[sprop];
+    arr.push(e);
+  });
+  res.json({status:"ok", data: arr});
+}
+/** Aggregate count of particular value in a property.
+ * This is suitable for "type stats" (e.g. ansible_architecture, ansible_machine, ansible_domain, ansible_kernel, ansible_os_family, ansible_pkg_mgr ansible_processor_cores...).
+ */
+function hostp_prop_aggr(req, res) {
+  var jr = {"status": "err", "msg":"Could not extract data to display. "};
+  var umap = [
+    // OS distro (ansible_os_family, ansible_distribution_file_variety)
+    {url: "/distrostats", sprop: "ansible_distribution", dprop: "distname"},
+    {url: "/cpuarchstats", sprop: "ansible_architecture", drpop: "arch"}
+  ];
+  // Lookup URL
+  var un = umap.find((un) => { return un.url == req.url; });
+  if (!un) { jr.msg += "URL config not found for "+req.url; return res.json(jr); }
+  var arr = [];
+  var idx = {};
+  var sprop = un.sprop;
+  var dprop = un.dprop;
+  // First pass, gather stats (to idx)
+  hostarr.forEach(function (f) {
+    //var e = {}; // hname: f.ansible_fqdn
+    //e[dprop] = f[sprop];
+    //arr.push(e);
+    if (!f || !f[sprop]) { return; }
+    if (!idx[f[sprop]]) { idx[f[sprop]] = 0; }
+    idx[f[sprop]] += 2; // idx[f[sprop]] ? idx[f[sprop]] + 1 : 1;
+  });
+  console.log(idx);
+  // How to sort ? alphabetically ?
+  Object.keys(idx).forEach((k) => {
+    var e = {};
+    e[dprop] = k;
+    e.val = idx[k]; // TODO: cnt
     arr.push(e);
   });
   res.json({status:"ok", data: arr});
@@ -2414,12 +2461,17 @@ function cacheguestinfo(req, res) {
   });
 }
 /** List Docker compose config.
+ * Official supported d.c. config file names: docker-compose.yml, docker-compose.yaml, compose.yml, compose.yaml
  */
 function listdc(req, res) {
   var jr = {"status": "err", "msg": "Docker Compose list failure. "};
   var fn = "./reportportal-docker-compose.yml";
+  var cfnames = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"];
+  // var paths = (global.docker && global.docker.comppath) ? mcfg.docker.comppath : [];
+  // TODO: look from ...
   var y;
   if (!fs.existsSync(fn)) { jr.msg += "File does not exist"; return res.json(jr); }
+  // function load_dc_services(fn) {
   var cont = fs.readFileSync(fn, 'utf8');
   try { y = yaml.safeLoad(cont); } catch (ex) { jr.msg += "Parse error:"+ex; return res.json(jr); } // console.log("Failed autoinstall yaml load: "+ex);
   var ssidx = y.services;
@@ -2429,5 +2481,6 @@ function listdc(req, res) {
     sn.servid = k;
     servs.push(sn);
   });
+  // return servs; } // load_dc_services
   res.json(servs);
 }
