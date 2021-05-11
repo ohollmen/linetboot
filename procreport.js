@@ -19,7 +19,7 @@ var inited = 0;
 var reptmpl = `
 {{#hosts}}
 <h3>Old Procs on {{{ hname }}}</h3>
-<div id="jsGrid_badprocs" data-fsetid="" data-prochname="{{ hname }}"></div>
+<div id="jsGrid_badprocs" data-fsetid="proclist" data-prochname="{{ hname }}"></div>
 {{/hosts}}
 `;
 // Process reporter (default / base) config
