@@ -100,7 +100,9 @@
     "catalog": "~/dockercat.conf.json",
     "hostgrp": "nuc",
     "insecreg": "",
-    "syncgrps": ["nucs"]
+    "syncgrps": ["nucs"],
+    "comppath": ["~/docker-compose1", "~/docker-compose2"],
+    "compfiles": ["~/docker-compose/docker-compose_app1.yml", "~/docker-compose/docker-compose_app2.yml"]
   },
   "net": {
     "desc": "Installation Related Network Configuration",
