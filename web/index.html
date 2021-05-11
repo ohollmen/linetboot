@@ -430,6 +430,16 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <canvas id="canvas_cpu"></canvas>
   <h3>Main (RAM) Memory</h3>
   <canvas id="canvas_mem"></canvas>
+  <h3>OS Distributions</h3>
+  <canvas id="canvas_osdist"></canvas>
+</script>
+
+<script id="reports2" type="text/template">
+{{#charts}}
+<h3>{{{ title }}}</h3>
+<canvas id="{{{ canvasid }}}"></canvas>
+
+{{/charts}}
 </script>
 
 <script id="netprobe" type="text/template" data-todo="Call anyprobe or dynprobe and use for Load">
