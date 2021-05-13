@@ -80,14 +80,7 @@
      
      return value ? "<a href=\"https://" + value + "/\">" + value + "</a>" : "N/A" ;
    }
-   function probeokcell(value, item) {
-     // console.log("Got value:'" + value + "'");
-     var ok = value ? 1 : 0;
-     var markers = [
-       {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
-       {sty:"color: #1A7A0C;", txt:"OK"}];
-     return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>";
-   }
+   
    var fldinfo_hw = [
      hostfld,
      // Disk
@@ -121,9 +114,30 @@
      {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
      {name: "rfop",  title: "RF Info", type: "text", width: 50, itemTemplate: redfish_cell},
    ];
+   function probeokcell(value, item) {
+    // console.log("Got value:'" + value + "'");
+    var ok = value ? 1 : 0;
+    if (value == 2) { ok = 2; }
+    var markers = [
+      {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
+      {sty:"color: #1A7A0C;", txt:"OK"},
+      {sty:"color: white; background-color: #dfb319;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;", txt:"Skipped"}
+    ];
+    return "<span style=\""+markers[ok].sty+"\">"+markers[ok].txt+"</span>";
+  }
+  function sshokcell(value, item) {
+    // console.log("Got value:'" + value + "'");
+    var ok = value ? 1 : 0;
+    var markers = [
+      {sty:"color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;",txt:"Fail"},
+      {sty:"color: #1A7A0C;", txt:"OK"}];
+    var txt = markers[ok].txt;
+    if (item.nossh) { txt = "Skipped"; } // Cancelled
+    return "<span style=\""+markers[ok].sty+"\">"+txt+"</span>";
+  }
+
    var fldinfo_netprobe = [
      hostfld, // Need hn ?
-     // itemTemplate: probeokcell
      {name: "ip",     title: "IP Addr", type: "text", width: 70},
      {name: "addrs",  title: "DNS Addresses", type: "text", width: 170, itemTemplate: dnsentcell},
      {name: "ipok",   title: "IP Ok",   type: "number", width: 40, itemTemplate: probeokcell},
@@ -208,7 +222,6 @@
    }
    var fldinfo_sshkeys = [
      hostfld, // Need hn ?
-     // itemTemplate: probeokcell
      {name: "rsa_pub",     title: "RSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
      {name: "rsa_priv",    title: "RSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
      {name: "dsa_pub",     title: "DSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
