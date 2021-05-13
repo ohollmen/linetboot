@@ -15,6 +15,7 @@ var ssh2  = require('ssh2'); // .Client;
 var fs    = require('fs');
 var async = require("async");
 var ipmi  = require("./ipmi.js"); // IPMI !!!!
+var hlr      = require("./hostloader.js"); // NEW (for hostparams)
 var servers;
 var resolver;
 //const resolver = new Resolver();
@@ -48,7 +49,7 @@ function init(popts) {
   if (popts.tout) { tout = opts.tout = popts.tout; }
   if (popts.debug) { opts.debug = popts.debug; }
 }
-/** Probe Network connectivity and setup on single host (DNS, Ping SSH).
+/** Probe Network connectivity and setup on single host (DNS, Ping, SSH).
 * @todo Convert to async.series, call netresolve or netprobe
 */
 function resolve(hnode, cb) {
@@ -90,6 +91,10 @@ function resolve(hnode, cb) {
         ping.sys.probe(ipaddr, function (isok) {
           prec.ping = isok;
           if (! isok) { console.log("Ping fail: "+ipaddr); return cb(null, prec); } // No use connecting, but not error. Error: Callback was already called.
+          // Host still registered in inventory, but SSH does not work (or may block)
+          var p = hlr.hostparams(hn);
+          // sshconn = 2 => Skipped
+          if (p && p.nossh) { prec.nossh = 1; prec.sshconn = 2; console.log("Skipping SSH ("+hn+") !!!"); return cb(null, prec); }
           // console.log(sshcfg);
           ssh.connect(sshcfg).then(function () {
             prec.sshconn = 1;
