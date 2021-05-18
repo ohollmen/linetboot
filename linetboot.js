@@ -1376,7 +1376,7 @@ function hostp_prop_aggr(req, res) {
   var umap = [
     // OS distro (ansible_os_family, ansible_distribution_file_variety)
     {url: "/distrostats", sprop: "ansible_distribution", dprop: "distname"},
-    {url: "/cpuarchstats", sprop: "ansible_architecture", drpop: "arch"}
+    {url: "/cpuarchstats", sprop: "ansible_architecture", dprop: "arch"}
   ];
   // Lookup URL
   var un = umap.find((un) => { return un.url == req.url; });
@@ -1392,7 +1392,7 @@ function hostp_prop_aggr(req, res) {
     //arr.push(e);
     if (!f || !f[sprop]) { return; }
     if (!idx[f[sprop]]) { idx[f[sprop]] = 0; }
-    idx[f[sprop]] += 2; // idx[f[sprop]] ? idx[f[sprop]] + 1 : 1;
+    idx[f[sprop]]++; // idx[f[sprop]] ? idx[f[sprop]] + 1 : 1;
   });
   console.log(idx);
   // How to sort ? alphabetically ?
