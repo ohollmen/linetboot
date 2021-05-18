@@ -619,8 +619,8 @@ function esxilist(ev, act) {
 /* */
 function esxihostmenu(act, vmhosts) {
   var cont = "";
-  vmhosts.forEach((h) => { cont += "<span class=\"vmglink\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
-  cont += " (<span id=\"esxicache\">Re-cache ESXi Info</span>)";
+  vmhosts.forEach((h) => { cont += "<span class=\"vmglink mpointer\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
+  cont += " (<span id=\"esxicache\" class=\"mpointer\">Re-cache ESXi Info</span>)";
   $(".xui").html(cont);
   $(".xui").show();
   $(".vmglink").click(function (jev) { esxilist(jev, act); });
