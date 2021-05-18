@@ -215,6 +215,9 @@ function env_merge(global) {
   if (process.env['PLAYBOOK_PATH']) { stub("ansible"); global.ansible.pbpath = process.env["PLAYBOOK_PATH"]; }
   if (process.env["LINETBOOT_ANSIBLE_DEBUG"]) { stub("ansible"); global.ansible.debug = parseInt(process.env["LINETBOOT_ANSIBLE_DEBUG"]); }
   if (process.env["LINETBOOT_ESXI_PASS"]) { stub("esxi"); global.esxi.password = process.env["LINETBOOT_ESXI_PASS"]; }
+  // Override TFTP ROOT (tftp.root), esp. useful for Mac
+  if (process.env["LINETBOOT_TFTP_ROOT"]) {  global.tftp.root = process.env["LINETBOOT_TFTP_ROOT"]; }
+  // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
 /** Replace tilde character (~) with process owners full home directory path ($HOME).
