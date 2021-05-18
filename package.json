@@ -23,7 +23,8 @@
     "jshint": "2.9.7",
     "pm2": "3.2.8",
     "yarn": "1.22.1",
-    "jsdoc": "3.5.5"
+    "jsdoc": "3.5.5",
+    "docker-image": "ohollmen/docker-imager"
   },
   "optionalDependencies": {
     "morgan": "1.9.1",

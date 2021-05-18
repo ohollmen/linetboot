@@ -1,0 +1,29 @@
+{
+  "author":"Olli Hollmen",
+  "desc":  "Lineboot App Server",
+  "plfname": "pkgs/linetboot_pkgs.txt",
+  "baseimageXX": "ubuntu:18.04",
+  "baseimageTODO": "alpine:3.7",
+  "baseimage": "node:12-buster",
+  "baseimageTODO": "node:12-alpine",
+  "image": "linetboot",
+  "remote": "foo.com",
+  "vertag": "0.0.1",
+  "comm": "Linetboot, see : https://hub.docker.com/_/node",
+  "comm_symlink": "ln -s node_modules/docker-imager/Dockerfile.mustache ./Dockerfile.mustache",
+  "pkgtype":"deb",
+  "extpkgs": [
+    {"disa": 1, "url": "file://./", "path": "/linetboot", "direct": 1}
+  ],
+  "mkdir": [
+    "/linetboot"
+  ],
+  "links": [
+  ],
+  "cmdrunXXX": ["pip3 install --target /usr/local/lib/python3.6/dist-packages meson"],
+  "env": {
+    "LC_ALL": "en_US.UTF-8",
+    "LANGUAGE": "en_US"
+  },
+  "tmplfname": "./Dockerfile.mustache"
+}
