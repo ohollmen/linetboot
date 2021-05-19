@@ -7,6 +7,7 @@
     "maint": "Admin & Maintenance"
   },
   "defdoc" : "doc/about.html",
+  "mdopts": {"tables": true},
   "docs" : [
   	{
       "title" : "About LinetBoot",
