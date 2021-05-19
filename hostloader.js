@@ -315,7 +315,7 @@ function facts_load(hn, opts) { // ipaddr
       opts.debug && console.error("No 'ansible_facts' branch for host '" + hn + "'");
       // Sample a known property to "recover" a file
       var ipv4 = facts.ansible_all_ipv4_addresses;
-      if (!ipv4) { return null; }
+      if (!ipv4) { console.error("ERROR: No facts in file "+absname+" by member-test"); return null; }
       facts0 =  facts; // Facts *DIRECTLY*
     }
     facts = facts0;
@@ -323,7 +323,7 @@ function facts_load(hn, opts) { // ipaddr
     //var keys = Object.keys(facts); // ansible_facts,changed
     //console.log("Found keys:" + keys.join(","));
   }
-  catch (e) { console.error("Error loading Host JSON ("+absname+"): " +e.message); }
+  catch (e) { console.error("ERROR: loading Host JSON ("+absname+"): " +e.message); }
   // Detect discrepancies in hostname in local linetboot config and what's found in facts
   var hnerr = ""; // hn/fqdn/both
   if (hn != facts.ansible_fqdn) { hnerr = "fqdn"; }

@@ -124,7 +124,12 @@ var acts = [
     "needfacts": 1,
     "opts": [],
   },
-  
+  {
+    "id": "factsvalidate",
+    "title": "Validate facts in configured facts directory",
+    "cb": factsvalidate,
+    "opts": [],
+  },
   /*
   {
     "id": "",
@@ -1059,4 +1064,38 @@ function dnsmasq(opts) {
 
 function ghcp_conf_gen(dhcp) {
   dhcp.range_csv = dhcp.range.join(",");
+}
+/** Validate Facts JSON Structure for all cached facts.
+ * Warn about all invalid facts.
+ * TODO: Should drive this lising by inventory, not purely by directory listing.
+ * NOT: Fake facts may be under recommended size ! Do not judge by size too hard
+ */
+function factsvalidate(opts) {
+  var path = mcfg.fact_path;
+  if (!fs.existsSync(path)) { apperror("Configured Facts path ("+path+") does not exist"); }
+  var opts = {};
+  var files = fs.readdirSync(path); // ,opts
+  var fst = {cnt: 0, valid: 0, badcnt: 0, badfn: []};
+  var warnsize = 4000; // Size boundary for usable facts
+  var debug = 1;
+  files.forEach((fn) => {
+    if (fn.match(/~$/)) { return; }
+    var absfn = path+"/"+fn;
+    var stats = fs.lstatSync(absfn);
+    //console.log(stats); // DUMP
+    var ftype = stats.isDirectory() ? "DIR" : "FILE";
+    if (ftype != 'FILE') { return; }
+    debug && console.log(ftype+":"+fn+" ("+stats.size+")");
+    fst.cnt++;
+    var finfo = {absfn: absfn, size: stats.size};
+    var f = hlr.facts_load(fn);
+    if (!f) { console.log("  ... Errors with "+fn); fst.badfn.push(finfo); fst.badcnt++; return; }
+    fst.valid++;
+  });
+  console.log("Facts stats: ", fst);
+  // List bad
+  if (!fst.badfn.length) { console.log("No bad facts !"); return; }
+  fst.badfn.forEach((fn) => {
+    
+  });
 }
