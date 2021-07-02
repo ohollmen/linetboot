@@ -29,7 +29,7 @@ paths:
         - application/json
       responses:
         200:
-          description: list of Playbooks in Array of Object
+          description: List of Playbooks in Array of Object
   /rf/info/$hname:
     get:
       summary: Redfish Info
@@ -42,7 +42,7 @@ paths:
   /rf/boot/$hname:
     get:
       summary: Execute Booting a Host
-      description: 
+      description: Execute immediate boot of host using BMC and possibly boot using method (e.g. PXE) set earlier.
       produces:
         - application/json
       responses:
@@ -65,7 +65,7 @@ paths:
         - application/json
       responses:
         200:
-          description: Standard Response. Return MAC file listing on sucecss (e.g. for Client to refresh/redraw listing).
+          description: Standard Response. Return MAC file listing on success (e.g. for Client to refresh/redraw listing).
   /installevent/$evtype:
     get:
       summary: Signal a "milestone" event during OS install
