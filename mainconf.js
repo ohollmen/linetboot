@@ -237,6 +237,15 @@ function tilde_expand(obj, keyarr) {
       // In case we have many (e.g. PATH-string)
       obj[pk] = obj[pk].replace(/~/g, home);
     }
+    // Make happen also on array (of strings)
+    else if (obj[pk] && Array.isArray(obj[pk])) {
+      //obj.[pk].forEach();
+      var arr = obj[pk]; // TODO: Validate elems: 
+      for (var i = 0;i<arr.length;i++) {
+        if (typeof arr[i] != 'string') { break; }
+        arr[i] = arr[i].replace(/~/g, home);
+      }
+    }
   });
 }
 
