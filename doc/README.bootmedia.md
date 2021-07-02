@@ -2,7 +2,7 @@
 
 ## Using ISO Images as boot media
 
-The lineboot basic boot examples have been all successful using
+The linetboot basic boot examples have been all successful using
 plain (non-modified) ISO image content as content to boot for most distributions.
 This means distribtion ISO authors have generally done good job preparing
 their ISO:s to be boot media agnostic and PXE bootable. 
@@ -96,7 +96,7 @@ Example ISO image download (for Ubuntu 18.04 server):
 Most of the Linux ISO distro images used by linetboot can be mounted with linux loop-mount method, after
 which image content appears as directory tree under the mountpoint. All you need for booting by PXE will be there.
 
-The lineboot default (conventional) top mount directory is /isomnt/. Under this directory reside the mountpoint
+The linetboot default (conventional) top mount directory is /isomnt/. Under this directory reside the mountpoint
 subdirectories.
 
 Choose descriptive names for the mountpoints. For systematic approach match the name labels used as /isomnt subdir names:
@@ -114,6 +114,7 @@ individual distro directories will be one of the rare root user operations neede
     sudo mkdir /isomnt/ubuntu18/ /isomnt/centos7/  /isomnt/gparted
 
 ## Mounting ISO Images
+### Loopmounting in Linux
 
 Mount images with super user privileges:
 ```
@@ -151,16 +152,56 @@ in PXE boot un-friendly way (with bugs and malfunctions) you might need to copy 
 a path location and alter them. Linetboot is completely fine with this, even if out-of-box boot
 examples/options use loopmount method.
 
+### Loopmounting in Mac OSX / BSD
+
 The loop mount on BSD UNIX is said to use combination of `mdconfig` and `mount` commands. In MacOS
-`hdiutil attach ...` facilitates eqivalent of Linuxloop mounts.
+`hdiutil attach ...` facilitates eqivalent of Linuxloop mounts (e.g.):
+```
+# Displays terse info on disk image "attachment"
+$ hdiutil attach -nomount /usr/local/iso/TrueOS-Stable-x64-18.12.iso
+/dev/disk3          	GUID_partition_scheme          	
+/dev/disk3s1        	EFI                            	
+/dev/disk3s2        	83BD6B9D-7F41-11DC-BE0B-001560B
+# Check mounting info (See section labeled: "/dev/disk3 (disk image):")
+$ diskutil list
+...
+# Note: Attchment is not a mount and does not show with df
+# Now mount with "mount_cd9660" (Assume /isomnt/trueos/ already exists)
+mount_cd9660 /dev/disk3 /isomnt/trueos/
+# Verify ...
+ls -al /isomnt/trueos/
+```
+This attachment and mounting flow will make ISO show in Linetboot "Boot/Install" => "ISO Boot Media".
+
+### Verifying Bootmedia availability via http
 
 After loop-back mounting you should make sure all the bootable distros will be available to linetboot
-via HTTP for the http server configured as "httpserver" in lineboot main config.
+via HTTP for the http server configured as "httpserver" in linetboot main config.
+This is what the pxelinux bootloader and OS installer will be doing during boot and installation (respectively).
+Example of testing http accessibility of kernel: 
+```
+# Go to temp/scratch location
+cd /tmp
+# Check server
+$ grep httpserver ~/.linetboot/global.conf.json 
+  "httpserver": "192.168.1.180:3000",
+# Check relative boot URL (e.g.)
+$ grep centos8 ~/linetboot/tmpl/default.installer.menu.mustache
+label centos8
+kernel http://{{ httpserver }}/centos8/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/centos8/images/pxeboot/initrd.img
+...
+# Test http accessibility
+$ wget http://192.168.1.180:3000/centos8/images/pxeboot/vmlinuz
+# Check http download
+$ ls -al vmlinuz
+-rw-rw-r-- 1 jsmith users 8913656 May  8  2019 vmlinuz
+```
 
 ## Media Files HTTP Delivery
 
 Note that with linetboot all boot (kernel,ramdisk) and OS Install package files (from mounted ISO images) are fetched
-via HTTP, **not** TFTP. Lineboot itself is a HTTP server that delivers all that content.
+via HTTP, **not** TFTP. Linetboot itself is a HTTP server that delivers all that content.
 Setup your linetboot server "core.maindocroot" to refer to the ISO mount path (e.g. "/isomnt/")
 
 ## Hints on boot name labels
@@ -177,7 +218,7 @@ of your (example) ubuntu variants, your naming convention needs to grow in lengt
     ubuntu-18-i386-dt    # 32 bit Desktop
     ubuntu-18-amd64-dt   # 64 bit Desktop
 
-If you can foresee yourself going to wide selection, go with granular long names from the start.
+If you can foresee yourself going to wide selection of OS variants, go with granular long names from the start.
 
 ## Updating servers from Dell DTK ISO:s
 
@@ -194,7 +235,7 @@ Dell whitepaper (https://www.dell.com/downloads/global/power/ps1q06-20050170-guj
 the problem is OS boots up, but network interface is missing !).
 
 However you can use the images to update firmware by mounting them to remote servers.
-Run NFS server and add/export NFS share on your lineboot host by /etc/exports (e.g.):
+Run NFS server and add/export NFS share on your linetboot host by /etc/exports (e.g.):
 
     /isomnt/dell_m640 *(ro)
     /isomnt/dell_r640 *(ro)
@@ -203,7 +244,7 @@ This should enable you to mount the DTK update media on your servers and access 
 directory to make an update (e.g. BMI/iDRAC update here in example):
 
     # Mount !
-    sudo mount lineboot.mycomp.com:/isomnt/dell_r640 /mnt
+    sudo mount linetboot.mycomp.com:/isomnt/dell_r640 /mnt
     # Get to firmware update dir
     cd /mnt/repository/
     # Run Posix shell archive updater (See opts -q, -n)
