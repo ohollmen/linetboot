@@ -2508,17 +2508,20 @@ function listdc(req, res) {
   }).filter((abs) => { return abs; })[0];
   */
   // fpath = global.docker.compfiles[0];
-  if (!fpath) { jr.msg += "Requested file does not exist"; return res.json(jr); }
+  if (!fpath) { jr.msg += "No file/filename resolved"; return res.json(jr); }
+  if (!fs.existsSync(fpath)) { jr.msg += "Requested file does not exist"; return res.json(jr); }
   console.log("Send structure of: "+fpath);
   var servs = load_dc_services(fpath);
   if (typeof servs == 'string') { jr.msg += servs; return res.json(jr); }
   res.json({status:"ok", data: servs});
   /////////////////// 
-  /** Load docker-compose services re-organized into and array. */
+  /** Load docker-compose services re-organized into an array. */
 function load_dc_services(fpath) {
   var y;
-  var ssidx; // Serices index
+  var ssidx; // Services index
+  if (!fs.existsSync(fpath)) { return "No file: "+fpath; }
   var cont = fs.readFileSync(fpath, 'utf8');
+  if (!cont) { return "No Content for: "+fpath; }
   // res.json(jr);
   try { y = yaml.safeLoad(cont); } catch (ex) { return "Parse error:"+ex; } // console.log("Failed autoinstall yaml load: "+ex);
   if (typeof y != 'object') { return "Top level of docker-compose is not an object"; }
