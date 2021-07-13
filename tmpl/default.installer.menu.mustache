@@ -596,3 +596,43 @@ menu label iPXE Chain
 linux http://{{ httpserver }}/ipxe.lkrn
 # initrd http://{{ httpserver }}/...
 
+# ESXi Installer
+# https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-2F0D4696-3681-4C13-9552-5280C6406376.html
+# Initial recommended TFTP subdir name format: ESXi-7.x.x-XXXXXX/
+# boot.cfg would need to contain
+# - TFTP server root relative subdir name for installer binaries (e.g.): prefix=ESXi-7.x.x-xxxxxx often empty
+#  (if all from ISO is copied to root of TFTP)
+#  - Seems ESXi 7.0 update 2 supports http prefixes (e.g.): prefix=http://192.168.30.6/esxi70u1c
+# - Kernel options
+#   - Kickstart location: kernelopt=ks=http://{{{ httpserver }}}/esxi-ks.cfg
+#   - Other Installer kernel options: kernelopt=cdromBoot runweasel
+#   - Note: if ks=http:// given, seems you should eliminate runweasel (and others ?)
+# - Also: bootstate=0, title=Loading ESXi Installer, timeout=5, prefix=
+# - kernel=tboot.b00 | b.b00, modules=... build=7.0.2-0.0.17630552
+# - Modules: '---' delimited string of *.boo, *.v00, *.v01, *.gz
+# Note: ISO should have example boot.cfg and mboot.efi (also has mboot.c32 ?)
+# If module files (modules=...) are not in root of TFTP, remove all '/' in boot.cfg
+# ( sed -i 's/\///g' /var/lib/tftpboot/esxi65u1/boot.cfg )
+# Common convention on TFTP dirs (on copying ISO contents to) (e.g.): images/ESXiv6.5/
+# https://williamlam.com/2015/10/support-for-uefi-pxe-boot-introduced-in-esxi-6-0.html
+# - mboot.efi is on ISO in dir: efi/boot/bootx64.efi (copy to mboot.efi)
+# ESXi KS example https://williamlam.com/2015/10/how-to-prompt-for-user-input-during-an-interactive-or-scripted-install-of-esxi.html
+# http://patorjk.com/software/taag/#p=display&f=Standard&t=LinetBoot
+# https://rudimartinsen.com/2018/03/27/building-a-pxe-boot-environment-for-esxi/
+# mboot.c32 => /usr/lib/syslinux/modules/bios/mboot.c32 (ok for use ?)
+# https://rudimartinsen.com/2019/02/12/pxe-boot-and-install-esxi-6-7-u1-remember-to-use-correct-boot-cfg-file/
+# Good source info for ESXi PXE install: https://rudimartinsen.com/2019/08/07/revisiting-esxi-provisioning/
+# Note: VMWare mboot.c32 is 10x bigger and is "COM executable (32-bit COMBOOT, relocatable)"
+# (Not: "ELF 32-bit LSB shared object, Intel 80386, version 1 (SYSV), dynamically linked, stripped")
+# http://www.vstellar.com/2017/07/25/automating-esxi-deployment-using-pxe-boot-and-kickstart/
+# https://williamlam.com/2021/03/simplified-nested-esxi-installation-in-esxi-7-0-update-2-using-http-boot-over-virtualefi.html
+#  - perform an HTTP Boot given the ESXi bootloader URL
+# https://www.vmware.com/pdf/vsp_4_pxe_boot_esxi.pdf
+# ks=... parameter can also be given on pxelinux menu append line: ... ks=... (instead of boot.cfg kernelopt=...)
+# http://www.routereflector.com/2014/01/unattended-vmware-esxi-installation-via-pxe-boot-and-kickstart/
+# Note: pxelinux.0 must come from the same syslinux version used on ESXi ISO.
+label esxi
+menu label ESXi 7.X Installer
+kernel ESXi-7/mboot.c32
+append -c ESXi-7/boot.cfg
+ipappend 2
