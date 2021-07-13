@@ -1200,21 +1200,22 @@ function proctest(req, res) {
 }
 
 /** Run set of ansible playbooks on set of hosts (POST /ansrun).
-* Main paremeters are playbooks and hosts:
+ * 
+* Main Request parameters (in POST body JSON) are:
 * 
-* - **playbooks** - Set of ansible playbook should be given by a profile
-* (Or passing playbook names for maximum flexibility).
-* - **hostnames**: Hosts could be given as individual hosts
-* - **hostgroups** as defined by lineboot host groups).
+* - **playbooks** (array-of-str) - Set of ansible playbooks (file names) to run.
+* - **hostnames** (array-of-str) - Individual hosts to run ansible playbooks on
+* - **hostgroups** (array-of-str) - Host groups to run playbooks on (as defined by lineboot inventory host groups, mutually exclusive with hostnames).
+* - **playprofile** - (str) - Playbook profile label for one of the playbook profiles in "pbprofs" (mutually exclusive with playbooks)
 * 
 * Depends on lineboot config members:
 * - ansible.pbpath - Playbook path
 * - ansible.pbprofs - playbook profiles in Array-of-Objects (w. "lbl", "name", "playbooks")
-
-* ## profile format in config
+*
+* ## Playbook profile section strucure
 * 
-* profiles look like (Under "ansible" section):
-* 
+* Profiles look like (Under "ansible" section):
+* ```
 *     "pbprofs": [
 *       {
 *         "lbl": "ossetup",
@@ -1230,19 +1231,20 @@ function proctest(req, res) {
 *       ...
 *       }
 *     ]
+* ```
 */
 function ansible_run_serv(req, res) {
   var jr = {status: "err", msg: "Not running Ansible. "};
-  if (!global.ansible) { jr.msg += "No ansible section in config !"; return res.json(jr); }
+  if (!global.ansible) { jr.msg += "No ansible section in main config !"; return res.json(jr); }
   var acfg = global.ansible;
   if (typeof acfg != 'object') {  jr.msg += "Ansible config is not an object !"; return res.json(jr); }
   if (req.method != "POST") { jr.msg += "Not sent via POST. Send request as POST"; return res.json(jr); } // POST !!!
   var pbpath = acfg.pbpath; // process.env['PLAYBOOK_PATH'] ||
-  if (!pbpath) { jr.msg += "Playbook path not given (in env or config) !"; return res.json(jr); }
+  if (!pbpath) { jr.msg += "Playbook path not given (in env or main config) !"; return res.json(jr); }
   acfg.pbpath = pbpath; // Override (at init ?)
   acfg.invfn  = acfg.invfn || global.hostsfile;
   // Define the policy of mandating hosts to be listed in hostsfile / known to linetboot
-  if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in config !"; return res.json(jr); }
+  if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in main config !"; return res.json(jr); }
   var p = req.body; // POST Params
   
   // Test ONLY (Comment out for real run)
@@ -1251,8 +1253,8 @@ function ansible_run_serv(req, res) {
   //}
   acfg.pbprofs = acfg.pbprofs || [];
   console.log("ansible_run_serv: Ansible run parameters:", p);
-  if (typeof p != 'object') { jr.msg += "Send POST body as Object"; return res.json(jr); }
-  var step = "const";
+  if (typeof p != 'object') { jr.msg += "Please send POST body as Object"; return res.json(jr); }
+  var step = "const"; // run-step
   try {
     p = new ans.Runner(p, acfg);
     // if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
@@ -1270,14 +1272,21 @@ function ansible_run_serv(req, res) {
     console.log("Instance state before run(): ", p);
     p.ansible_run(); // OLD: ans.ansible_run(p);
   } catch(ex) {
-    jr.msg += "Runner Construction failed (EX)"+ex;
-    console.log("Exception Step:"+step+", msg:"+ jr.msg);
+    jr.msg += "Runner construction or execution failed (step="+step+"): "+ex;
+    console.log("Error: msg:"+ jr.msg); // "Exception Step:"+step+
     return res.json(jr);
   }
-  res.json({status: "ok", event: "ansstart", time: Math.floor(new Date() / 1000), msg: "Running Async in background"});
+  var runinfo = {status: "ok", event: "ansstart", time: Math.floor(new Date() / 1000),
+    msg: "Running Async in background", "data": {runid: p.runid}};
+  res.json(runinfo);
 }
 
 /** List ansible profiles or playbooks (GET: /anslist/play /anslist/prof).
+ * Examples of testing out listings via API:
+ * ```
+ * curl http://localhost:3000/anslist/play
+ * curl http://localhost:3000/anslist/prof
+ * ```
 */
 function ansible_plays_list(req, res) {
   var jr = {"status": "err", "msg": "Failed to list Ansible artifacts"};
@@ -1286,7 +1295,7 @@ function ansible_plays_list(req, res) {
   var aotype = urls[url];
   if (!aotype) { jr.msg += "Not a playbook or profile URL !";res.json(jr); return; }
   var acfg = global.ansible;
-  var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath;
+  var pbpath = process.env['PLAYBOOK_PATH'] || acfg.pbpath; // TODO: Only look into acfg.pbpath !!!
   console.log("List "+url+" playbook paths: " + pbpath);
   var list = [];
   if (aotype == 'play') {
