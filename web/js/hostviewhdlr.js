@@ -222,7 +222,7 @@ function dockercat_show(ev, act) {
       // TODO: Use syncgrps (arr), not hostgrp
       var syncgrps;
       try {
-        syncgrps = datasets.cfg.docker.syncgrps;
+        syncgrps = datasets.cfg.docker.syncgrps; // See main cfg, mainconf.js
         if (!syncgrps || !syncgrps.length) {  throw "No sync groups !"; } // if (!syncgrp || !syncgrp.length) {}
       } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("Docker Sync Error: "+ex); }
       var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
