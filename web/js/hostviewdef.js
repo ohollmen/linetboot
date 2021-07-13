@@ -266,6 +266,20 @@
      {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
      {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return value /1000000; }},
    ];
+   /* TODO: var fldinfo_dockercont = [
+      {name: "author",  title: "Author", type: "text", width: 50},
+      {name: "desc",    title: "Description", type: "text", width: 50},
+      {name: "plist",   title: "Package list", type: "text", width: 50}, // Icon to pop
+      {name: "plfname", title: "Package list filename", type: "text", width: 50},
+      {name: "image",   title: "Image Label", type: "text", width: 50},
+      {name: "baseimage",title: "Base Image", type: "text", width: 50},
+      {name: "vertag",  title: "Version", type: "text", width: 25},
+      {name: "pkgtype", title: "PkgMgmt Type", type: "text", width: 25},
+      {name: "extpkgs", title: "AdHoc Pkgs", type: "text", width: 25}, // Initially count ? Popup icon ?
+      {name: "env",     title: "Environment", type: "text", width: 80},
+      {name: "mkdir",   title: "Dirs to Create", type: "text", width: 80},
+      {name: "links",   title: "SymLinks to Create", type: "text", width: 80},
+    ]; */
    var fldinfo_nfs = [
      {name: "path",     title: "Exported Path",  type: "text", width: 200, }, // itemTemplate: docktags
      {name: "iface",     title: "For Clients (by IP,mask, name, etc.)",  type: "text", width: 150, }, // itemTemplate: dockver
