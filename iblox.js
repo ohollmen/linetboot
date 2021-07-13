@@ -71,7 +71,7 @@ var tset = [
 ];
 
 /** Web handler for the Iblox info view.
- * Fetch info from iblox REST API, transform and forward to Lineboot view.
+ * Fetch info from iblox REST API, transform and forward to Linetboot view.
  */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
