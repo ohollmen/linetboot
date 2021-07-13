@@ -8,11 +8,11 @@ List of prerequisites for a functional linetboot system:
 - nodejs and npm - The linetboot system is written in Node.js and thus needs this 
 - ansible - to extract and record host facts form inventoried machines (Ansible also depends on Python)
 
-Additionally you need download OS/Distor Intallation CD/DVD ISO Images, e.g:
-- Ubuntu: [archive.ubuntu.com](http://archive.ubuntu.com/ubuntu/dists/ ).
+Additionally you need download OS/Distro Intallation CD/DVD ISO Images, e.g:
+- Ubuntu Install ISO:s (from  https://cdimage.ubuntu.com )
 - Gparted Live ISO/CD Image (from https://gparted.org/download.php )
 - Centos Install ISO:s (from https://wiki.centos.org/Download )
-
+<!-- Package archive: http://archive.ubuntu.com/ubuntu/dists/ -->
 <!-- Optional (Development): - devscripts - Tools to explore remote Ubuntu/Debian mirrors (e.g. rmadison linux-generic) -->
 
 ## PXELinux Bootloader

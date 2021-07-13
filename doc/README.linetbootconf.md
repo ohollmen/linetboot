@@ -2,11 +2,11 @@
 
 This section deals with the 2 manually created / maintained files that constitute the Linetboot configuration.
 They are (in the order they are loaded when linetboot starts):
-- **hosts** - The hosts list file (with assisteing "host parameters"), which determines which hosts should be covered by
+- **Hosts Inventory** - The Ansible-style `hosts` list file (with assisteing "host parameters"), which determines which hosts should be covered by
   by Linetboot application. Term *covered* here means "be bootable", "be displayed in hosts inventory" and be generally registered
   with application with lot of information known about them.
-- global.conf.json - Linetboot global config to configure linetboot direct subsystems or connected subsystems for the use of Linetboot.
-  This includes named (JSON) config sections like "inst", "core", "dhcp", "tftp", "net"
+- ** Main Config ** (global.conf.json) - Linetboot main config (in JSON format) to configure linetboot direct subsystems or connected subsystems for
+  the use of Linetboot. This includes named (JSON) config sections like "inst", "core", "dhcp", "tftp", "net", etc.
 
 ## Linetboot "hosts" Inventory (Ansible-style)
 
@@ -14,10 +14,11 @@ Linetboot Configuration is best started by creating the initial "hosts" (invento
 ( `~/.linetboot/hosts` ). The format for this file follows the ansible inventory file format.
 Lines should start with hostname and may be optionally followed by arbitrary `key=value` pairs
 that may have meaning to either linetboot, ansible (internally) or ansible playbooks.
+
 Linetboot supports a subset of ansible supported features with following notable points:
 
 - host-lines should be fully suppported
-- Concept of "groups" is not currently supported.
+- Concept of "group sections" (e.g. `[web_servers]`) is supported (with current limitation that names must be "symbol-like", no "-" allowed).
 - host-lines should not be duplicated with same host(name) appearing multiple times in same inventory file
 
 Even with these limitations there is a good chance you can share the inventory file with Ansible, which is a handy thing if you are
@@ -38,6 +39,7 @@ ws-001.comp.com loc=Floor+1 dock=1 nis=west
 ws-002.comp.com loc=Floor+3 ansible_user=mrsmith nis=west
 [fileservers]
 filer-001 nfs=1
+dead-005 nossh=1
 ```
 
 While key names for key-value pairs are arbitrary (and may be used by ansible playbooks), some names have a special meaning
@@ -249,14 +251,15 @@ Environment Variables that can override settings in main config:
 - LINETBOOT\_SSHKEY\_PATH - Path with SSH keys in hostname named subdirectories (with keys in them)
 
 While environment variables always have string values (even when describing e.g. integer number), Linetboot will internally
-coerce / convert values to correct types. 
+coerce / convert values to correct types. Some variables also allow comma- or semicol. separated values which will be internally processed
+into arrays accordingly.
 
 ## Internal processing of Environment Variables
 
 As part of configuration processing Linetboot internally:
 - Loads main (JSON) configuration into memory 
-- Overrides config values of config from the environment variables
-- During app runtime solely utilizes the main config
+- Overrides main config values of config from the environment variables storing them in main config
+- During app runtime solely utilizes the values found in main config
  
 
 ## OS Recipe and Script template PATH:s
