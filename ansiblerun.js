@@ -19,6 +19,7 @@ var async = require("async");
 var yaml  = require('js-yaml');
 var path  = require('path');
 // Ansible command template. (Mustache)
+// Serialize xpara (key-val pairs) in first pass, feed here.
 // ansible_sudo_pass={{{ pass }}} host={{{ host }}}
 // \"{{{ xpara }}}\"
 var anscmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' --extra-vars '{{{ xpara }}}'";
@@ -26,12 +27,14 @@ var anscmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' --extra-vars 
 // var .. = {}; /// Config holder
 
 var pbprofs_def = {}; // {} (legacy) or  (new)
-
+//var acfg;
 /**
 * Set ansible path ...
+* @todo: Store config as module global
 */
 function init(acfg) {
   if (!acfg.pbprofs) { acfg.pbprofs = pbprofs_def; }
+  //acfg = acfg_pass; // Module-Global acfg ?
 }
 
 /** Run effective "which ansible" to see if we have ansible installed.
@@ -40,11 +43,12 @@ function init(acfg) {
 function ansible_detect(cb) {
   cproc.exec("which ansible", function (err, stdout, stderr) {
     if (err) { return cb("Failure finding ansible", null); }
+    // Trim ?
     cb(null, stdout);
   });
 }
 /** Create temporary hostsfile created from hostnames passed and return its name.
- * File exists solely for the purpose
+ * File exists solely for the purpose of running the a playbook session.
  * @param hnarr {array} - Hostname array
  * @param grpname {string} - Optional Groupname to assign hosts into.
 */
@@ -212,7 +216,7 @@ Runner.prototype.ansible_run = function (xpara) { //
   
   
   console.log("xpara (before overrides)", p.xpara);
-  // Extra parameters for the -e / --extra-vars. Also consider @filename.json
+  // Extra parameters for the -e / --extra-vars. Also consider -e @filename.json
   // Add extra params from prun to p.xpara object and Serialize params into string member of prun at end (by mkxpara())
   function xpara_add(xpara) { // Instance method (OLD: prun)
     // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
@@ -243,6 +247,11 @@ Runner.prototype.ansible_run = function (xpara) { //
     console.log("Start runexec by calling cproc.exec");
     cproc.exec(cmd, function (err, stdout, stderr) {
       if (err) { return cb(err, null); }
+      var anslogfile_o = "/tmp/ans_log_"+new Date().toISOString()+".stdout.txt";
+      var anslogfile_e = "/tmp/ans_log_"+new Date().toISOString()+".stderr.txt";
+      // TODO: Catch
+      fs.writeFileSync( anslogfile_o, stdout, {encoding: "utf8"} );
+      fs.writeFileSync( anslogfile_e, stderr, {encoding: "utf8"} );
       console.log("Ansible cproc.exec success !");
       cb(null, 69); // {stdout: stdout, stderr: stderr}
     });
@@ -258,7 +267,7 @@ Runner.prototype.ansible_run = function (xpara) { //
     
     // Remove temp hosts file (fs.statSync(fn))
     if (fn && !p.debug) { fs.unlinkSync(fn); }
-    // TODO: Notify ?
+    // TODO: Notify Client ? Mark runner.runid done
     //if (p.ee) { p.ee.emit("ansplaycompl", runinfo); }
   }
   //var fullcmds2 = ["ls playbooks", "ls doc", ];
@@ -267,7 +276,7 @@ Runner.prototype.ansible_run = function (xpara) { //
   console.log("Starting to run ("+p.playbooks.length+") playbooks in mode: " + execstyle);
   // TODO: See if we can capture output
   var processor = cproc.exec;
-  //var processor = runexec;
+  //var processor = runexec; // TODO (More granular)
   if (execstyle == 'parallel') {
     console.log("Parallel: ...");
     async.map(fullcmds, processor, oncomplete);
@@ -278,7 +287,7 @@ Runner.prototype.ansible_run = function (xpara) { //
   }
   return;
 };
-/** Consruct Ansible runner
+/** Construct Ansible runner
 * 
 * @param cfg {object} - Context specific config
 * @param acfg {object} - Application (global/context independent) ansible config
@@ -289,35 +298,47 @@ function Runner(cfg, acfg) {
   this.hostnames = cfg.hostnames;
   this.hostgroups = cfg.hostgroups;
   this.playbooks = cfg.playbooks;
-  
   this.playprofile = cfg.playprofile;
   this.runstyle = cfg.runstyle;
-  
+  //arres.forEach((k) => { this[k] = cfg[k]; });
   this.xpara = cfg.xpara || {};
   ////// OLD: || process.env["ANSIBLE_PASS"]
+  // Store creds to xpara 
   this.xpara.ansible_user = acfg.user;
+  // New?): ansible_become_password, Legacy(?): ansible_sudo_pass
   this.xpara.ansible_become_password = acfg.pass;
   // OLD: || process.env["LINETBOOT_ANSIBLE_DEBUG"]
   this.debug = cfg.debug || acfg.debug || 0;
   this.debug = parseInt(this.debug);
-  this.invfn = cfg.invfn || acfg.invfn || "";
+  this.invfn = cfg.invfn || acfg.invfn || ""; // TODO: decide outside ?!
   // Keep acfg in instance ?
   // this.acfg = acfg;
+  // NEW: Make unique id for run-session. Communicate this to front-end
+  this.runid = new Date().getTime(); // ms
 }
 //Runner.prototype.ansible_run = ansible_run;
 //Runner.prototype.playbooks_resolve = playbooks_resolve;
 //Runner.prototype.hostgrps_resolve = hostgrps_resolve;
-/** List Ansible playbooks in pbpath.
-*
+/** List Ansible playbooks in pbpath (sync).
+* The items will have: basename, relname, playname.
+* Playbooks will be parsed as YAML on-the-fly to validate their YAML syntax (a minimun
+* requirement to be able to run them as playbooks).
+* @param acfg {object} - Ansible Config Object
+* @param pbpath {string} - Playbook Path (of ':' - delimited path items)
 */
 function ansible_play_list(acfg, pbpath) { // dirname
   // List dir(s)
   var arr = [];
   if (!pbpath) { console.error("NO pbpath");return;}
-  var dirnames = pbpath.split(":"); // global.pbpath
-  console.log("Look for playbooks from: ", dirnames);
+  var dirnames;
+  if (! Array.isArray(pbpath)) { dirnames = pbpath.split(":"); } // typeof pbpath == 'string'
+  else { dirnames = pbpath; } // Array
+  console.log("Look for playbooks from pbpath: ", dirnames);
   var fnodes = [];
   dirnames.forEach(function (dirname) {
+    // Check presence (and isDir())
+    if (!fs.existsSync(dirname)) { return; }
+    // 
     var arr = fs.readdirSync(dirname);
     // https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
     // Check suffix "yml" or ""yaml"
@@ -334,19 +355,21 @@ function ansible_play_list(acfg, pbpath) { // dirname
       // TODO: Catch exception an bypass faulty yaml
       var yf;
       try { yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8')); } catch (ex) {}
-      if (!yf) { console.log("Failed to load: "+relname); return; }
+      if (!yf) { console.log("Failed to load(relfn): "+relname); return; }
       //console.log(JSON.stringify(yf, null, 2));
       // TODO: Checks here !
       // Lookup Playbook name ?
       node.playname = yf[0].name; // title ?
-      if (!node.playname) { node.playname = "Unnamed (" + fname + ")"; }
+      if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
       // Store tasks ?
       fnodes.push(node);
     });
   }); // dirnames.forEach
   return fnodes;
 }
-/** List profiles in AoO format */
+/** List profiles in simple AoO format (for the Web gui select).
+ * 
+ */
 function ansible_prof_list(acfg, foo) {
   if (!acfg.pbprofs) { console.error("Warning: No ansible profiles"); return []; }
   var dtype = Array.isArray(acfg.pbprofs) ? 'arr' : 'obj';
