@@ -2479,7 +2479,8 @@ function cacheguestinfo(req, res) {
   });
 }
 /** List Docker compose config.
- * Official supported d.c. config file names: docker-compose.yml, docker-compose.yaml, compose.yml, compose.yaml
+ * Official supported d.c. config file names: docker-compose.yml, docker-compose.yaml, compose.yml, compose.yaml.
+ * This handler honors explicit (full path) file list given in mcfg.docker.compfiles.
  */
 function listdc(req, res) {
   var jr = {"status": "err", "msg": "Docker Compose listing failure. "};
