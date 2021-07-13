@@ -893,10 +893,10 @@ function ubu20_meta_data(req, res) {
   res.end("instance-id: "+hn+"\n"); // focal-autoinstall
 }
 
-/** generate API doc out of swagger API doc.
+/** generate API doc out of swagger API doc YAM file.
  * Swagger apidoc structure has several weaknesses for logic-less templating (e.g Mustache, google ctemplate)
- * and has to be transformed to less quirky formats in many parts of structure.
- * 
+ * and has to be transformed to less quirky formats in many parts of the (original YAML) structure.
+ * Respond with 
  */
 function apidoc(req, res) {
   //var jr = {"status":"err", "msg":"Failed to generate hostcommand output."};
@@ -908,22 +908,27 @@ function apidoc(req, res) {
   catch (ex) { return res.end("No YAML parsed "+ ex.toString());}
   paths_fix(doc);
   if (q.doc) {
-    paths_fix(doc);
+    // paths_fix(doc);
     var tmplfn = "./tmpl/apidoc.mustache";
     var tmpl = fs.readFileSync(tmplfn, 'utf8');
     var cont = Mustache.render(tmpl, doc);
     return res.end(cont);
   }
+  // JSON
   else { return res.json(doc); }
-  // Convert to templateable
+  // Convert to templateable structure, e.g. make paths into an Array.
   function paths_fix(doc) {
     if (Array.isArray(doc.paths)) { return; }
     var ks = Object.keys(doc.paths);
     var arr = [];
-    ks.forEach(function (k) {
+    ks.forEach(function (k) { // k: url path
       var n = doc.paths[k];
       n.path = k; // Move key into node
       n.mime = n.get.produces[0]; // move mime type
+      // Make responses["200"].description accessible
+      //try {
+      n.respdesc = n.get.responses["200"].description;
+      //} catch (ex) {}
       arr.push(n);
     });
     doc.paths = arr;
@@ -1691,6 +1696,10 @@ function config_send(req, res) {
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
   if (dock && dock.syncgrps){ cfg.docker.syncgrps = dock.syncgrps; }
+  if (dock && dock.compfiles && Array.isArray(dock.compfiles)) {
+    var path = require("path");
+    cfg.docker.files = dock.compfiles.map((full) => { return path.basename(full); });
+  }
   // Procster
   if (proc && proc.port)    { cfg.procster.port = proc.port; }
   // Core
@@ -2473,23 +2482,59 @@ function cacheguestinfo(req, res) {
  * Official supported d.c. config file names: docker-compose.yml, docker-compose.yaml, compose.yml, compose.yaml
  */
 function listdc(req, res) {
-  var jr = {"status": "err", "msg": "Docker Compose list failure. "};
-  var fn = "./reportportal-docker-compose.yml";
-  var cfnames = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"];
-  // var paths = (global.docker && global.docker.comppath) ? mcfg.docker.comppath : [];
+  var jr = {"status": "err", "msg": "Docker Compose listing failure. "};
+  // var fn = "./reportportal-docker-compose.yml";
+  // var cfnames = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"];
+  var paths = (global.docker && global.docker.comppath) ? global.docker.comppath : [];
+  var files = (global.docker && global.docker.compfiles) ? global.docker.compfiles : [];
+  var fbn = req.query.fn;
+  var fpath;
+  //if (!fbn) { jr.msg += "No valid docker-compose file !"; return res.json(jr); }
+  if (!fbn) { fpath = files[0]; console.log("No basename, default to: "+fpath); } // Set first
+  // Filter from files array
+  else {
+    var re = new RegExp("/"+fbn+"$");
+    fpath = files.find((full) => { return full.match(re); });
+    console.log("Absfile Matched by basename: "+fpath);
+  }
   // TODO: look from ...
+  /*
+  if (!paths || !paths.length || !paths[0]) { jr.msg += "No valid docker-compose paths"; return res.json(jr); }
+  // TODO: Use higher level file resolve
+  fpath = paths.map((path) => {
+    var abs = path+"/"+fbn;
+    if (fs.existsSync(abs)) { return abs; }
+    return 0;
+  }).filter((abs) => { return abs; })[0];
+  */
+  // fpath = global.docker.compfiles[0];
+  if (!fpath) { jr.msg += "Requested file does not exist"; return res.json(jr); }
+  console.log("Send structure of: "+fpath);
+  var servs = load_dc_services(fpath);
+  if (typeof servs == 'string') { jr.msg += servs; return res.json(jr); }
+  res.json({status:"ok", data: servs});
+  /////////////////// 
+  /** Load docker-compose services re-organized into and array. */
+function load_dc_services(fpath) {
   var y;
-  if (!fs.existsSync(fn)) { jr.msg += "File does not exist"; return res.json(jr); }
-  // function load_dc_services(fn) {
-  var cont = fs.readFileSync(fn, 'utf8');
-  try { y = yaml.safeLoad(cont); } catch (ex) { jr.msg += "Parse error:"+ex; return res.json(jr); } // console.log("Failed autoinstall yaml load: "+ex);
-  var ssidx = y.services;
+  var ssidx; // Serices index
+  var cont = fs.readFileSync(fpath, 'utf8');
+  // res.json(jr);
+  try { y = yaml.safeLoad(cont); } catch (ex) { return "Parse error:"+ex; } // console.log("Failed autoinstall yaml load: "+ex);
+  if (typeof y != 'object') { return "Top level of docker-compose is not an object"; }
+  // Detect single-service docker compose file
+  var topkeys = Object.keys(y);
+  if (topkeys.length == 1 && !topkeys.includes(["services"])) { ssidx = y; } // Single
+  else { ssidx = y.services; } // Multi-service file
   var servs = [];
+  if (typeof ssidx != 'object') { return "services not available as object"; }
+  
   Object.keys(ssidx).forEach((k) => {
     var sn = ssidx[k];
     sn.servid = k;
     servs.push(sn);
   });
-  // return servs; } // load_dc_services
-  res.json(servs);
+  return servs;
+} // load_dc_services
+  
 }
