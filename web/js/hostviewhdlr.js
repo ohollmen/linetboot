@@ -10,16 +10,23 @@ function osview_guisetup() {
 }
 
 /** Create Simple grid from pre-loaded (cached) data (syncronously).
- * 
+ * Uses action node ..:
+ * - dsid - Cached Dataset id - data set **must** be found from cache by this id.
  */
 function simplegrid_cd(ev, an) {
   //document.getElementById(an.elsel).innerHTML =
   contbytemplate(an.tmpl, an, an.elsel);
-  // Extract fldinfo label from 
+  // rapp.templated(an.tmpl, an, an.elsel);
+  // Extract fldinfo label from gridid (... or alternative way ?)
   var m = an.gridid.match(/^jsGrid_(\w+)/);
   if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
-  var d = datasets["hostlist"];
-  showgrid(an.gridid,  datasets["hostlist"], fldinfo[m[1]]);
+  var dsid = "hostlist";
+  // var fsid = m[1];
+  if (an.dsid) { dsid = an.dsid; }
+  var d = datasets[dsid];
+  if (!d) { return alert("No dataset found"); }
+  if (!Array.isArray(d)) { return alert("dataset no in array"); }
+  showgrid(an.gridid,  d, fldinfo[m[1]]);
   if (an.uisetup) { an.uisetup(); } // TODO: Params ? (see rapp)
 }
 /** Simple grid from URL.
@@ -29,11 +36,24 @@ function simplegrid_url(ev, an) {
   //$('#vtitle').html(act.name);
   var url = an.genurl ? an.genurl(act) : an.url;
   var ttgt = ev.viewtgtid || an.selsel;
-  axios.get(url).then( function (response) {
-    var arr = (response.data && response.data.data) ? response.data.data : response.data; // AoO
+  var para = "";
+  if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
+  axios.get(url).then( function (resp) {
+    var data = resp.data;
+    var arr = (data && data.data) ? data.data : data; // AoO
+    // TODO: Refine logic
+    if (data.status == 'err') { return toastr.error(data.msg); }
     if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data (as array)"); }
     //var an2 = rapp.dclone(an);
     contbytemplate(an.tmpl, an, ttgt); //document.getElementById('content').innerHTML =
+
+// NEW: Look for extended ui generator (was: an.xuigen)
+// Must be late, after templating !!
+if (an.uisetup && (typeof an.uisetup == 'function')) {
+  console.log("Calling UI-Setup for "+an.name);
+  an.uisetup(an);
+}
+
     showgrid(an.gridid, arr, fldinfo[an.fsetid]); // 
     return;
     /////////////////////////////////////////////////////////
@@ -208,7 +228,7 @@ function dockercat_show(ev, act) {
     if (!d || !d.data) { return $('#denvinfo').html("No Docker Env. Info"); }
     //console.log(d.data);
     // Late-Templating (after we have data)
-    var cont = rapp.templated("dockercat", d.data);
+    var cont = rapp.templated("dockercat", d.data); // '#'+tgtid
     // act.elsel
     $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
@@ -216,6 +236,7 @@ function dockercat_show(ev, act) {
     // var dgopts = {}; // style for table ?
     //$("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
     // UI Setup: Docker sync ops
+    // function uisetup(act) {
     $(".docksync").click(function (jev) {
       var img = this.getAttribute("data-image"); // .dataset.image;
       //console.log(img);
@@ -234,7 +255,12 @@ function dockercat_show(ev, act) {
         else { toastr.info(r.msg); }
       });
     });
+    // } // uisetup
   }).catch(function (err) { alert(err); });
+}
+/** Display docker-imager config files */
+function dockerimg_show(ev, act) {
+  
 }
 
 function showdocindex (ev, act) {
@@ -254,7 +280,7 @@ function showdocindex (ev, act) {
     //console.log(d);
     cfg.initdocs(d);
   })
-  .fail(function (jqXHR, textStatus, errorThrown) { throw "Failed to load item: "+textStatus; });
+  .fail(function (jqXHR, textStatus, errorThrown) { toastr.error("Failed to load item: "+textStatus); });
   // axios.get(url).then((resp) => { cfg.initdocs(resp.data); }).catch((ex) => { toastr.error("Error loading docs");});
 }
 /** Show Boot Options and allow set boot target (Boot / OS Install) on host(s).
@@ -594,9 +620,13 @@ function esxilist(ev, act) {
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
-  var ds = ev.target.dataset;
-  if (ds && ds.ghost) { host = ds.ghost; }
-  if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
+  function urlpara() {
+    var ds = ev.target.dataset;
+    if (ds && ds.ghost) { host = ds.ghost; }
+    if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
+    return host;
+  }
+  host = urlpara();
   if (!host) { return toastr.error("No Default host available."); }
   $("#routerdiv h3").html(act.name + " on VM Host " +host);
   console.log("Search by: "+ host);
@@ -616,10 +646,11 @@ function esxilist(ev, act) {
   //  
   //}
 }
-/* */
+/* Present (ESXi host) Items in a listing to choose item from. */
 function esxihostmenu(act, vmhosts) {
   var cont = "";
-  vmhosts.forEach((h) => { cont += "<span class=\"vmglink mpointer\" data-ghost=\""+h+"\">"+h+"</span>\n"; });
+  vmhosts.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-ghost=\""+name+"\">"+name+"</span>\n"; });
+  // Extra action
   cont += " (<span id=\"esxicache\" class=\"mpointer\">Re-cache ESXi Info</span>)";
   $(".xui").html(cont);
   $(".xui").show();
@@ -634,5 +665,21 @@ function esxihostmenu(act, vmhosts) {
     }).catch((ex) => { return toastr.error("Caching failed (exception) "+ex); })
   });
   //return cont;
+}
+
+/** Display API docs.
+ * TODO: Get structure and group to sections here.
+ */
+function apidoc(ev, act) {
+
+  toastr.info("Load API Docs");
+  // act.url ... JSON struct
+  act.url = "/apidoc?doc=1"; // FORCE (HTML)
+  axios.get(act.url).then(function (resp) {
+    var info = resp.data;
+    // console.log(info);
+    //rapp.templated("apidoc", info, ev.viewtgtid); // Client tmpl ?
+    $("#"+ev.viewtgtid).html(info);
+  }).catch (function (ex) { console.log(ex); });
 }
 //////////// Dialog handlers ////////////////////
