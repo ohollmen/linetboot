@@ -429,6 +429,17 @@ function ibip_cell(val, item) {
      return intlDate.format(new Date(val*1000));
      //return val;
    }
+   function s2X(sec, div) {
+     div = div || 1;
+     return (sec / div).toFixed(2);
+   }
+   function pscputimecell(val, item) {
+    // > 3days
+    if (val > 259200) { return "<span title=\""+s2X(val, 86400)+" days.\">"+val+"</span>"; }
+    // Hours
+    if (val > 3600) { return "<span title=\""+s2X(val, 3600)+" hrs.\">"+val+"</span>"; }
+    return val;
+   }
    function psact_cell(val, item) {
      // 
      return "<span data-pid=\""+item.pid+"\" class=\"psact\">View</span>";
@@ -448,8 +459,8 @@ function ibip_cell(val, item) {
       {name: "rss",   title: "RSS(kB)", type: "number", width: 30},
       {name: "size",  title: "SIZE(kB)", type: "number", width: 30}, // , visible: false
       {name: "starttime", title: "Start Time", type: "number", width: 60, itemTemplate: pstime_cell},
-      {name: "utime", title: "User T", type: "number", width: 30},
-      {name: "stime", title: "Sys T", type: "number", width: 30},
+      {name: "utime", title: "User T", type: "number", width: 30, itemTemplate: pscputimecell},
+      {name: "stime", title: "Sys T", type: "number", width: 30, itemTemplate: pscputimecell},
       
       {name: "cpuid", title: "Core #", type: "number", width: 30},
       // Replaced w. pidlink
@@ -493,12 +504,20 @@ function ibip_cell(val, item) {
      
      // command: array or string
    ];
+   var fldinfo_appact = [
+     {name: "name", title: "Action Name", type: "text", width: 50},
+     {name: "path", title: "Route Lbl/Path", type: "text", width: 40},
+     {name: "url", title: "Server URL", type: "text", width: 70},
+     // Sub-tabs
+     {name: "tabs", title: "Sub-Tabs", type: "text", width: 70},
+     {name: "tmpl", title: "Template", type: "text", width: 70},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
-      "dcomposer":fldinfo_dcomposer,
+      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact
    };
    
