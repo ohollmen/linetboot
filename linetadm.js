@@ -130,6 +130,16 @@ var acts = [
     "cb": factsvalidate,
     "opts": [],
   },
+  // ESXI patch (IP, MAC). Detect by f.ansible_os_family == "VMkernel" or f.ansible_distribution == "VMkernel" or f.ansible_system == "VMkernel"
+  // f.ansible_pkg_mgr == "unknown"
+  /*
+  {
+    "id": "esxinetpatch",
+    "title": "Patch ESXi host network info (with IP, MAC address info)",
+    "cb": null, // esxinetpatch
+    "opts": [],
+  },
+  */
   /*
   {
     "id": "",
