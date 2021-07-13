@@ -411,11 +411,12 @@ var tabloadacts = [
   {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe"},
   {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", 
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
-  {"name": "Output Fmts", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
+  {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", path: "hostkeys"}, // DUAL
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats", "help": "x.md"}, //DUAL
   //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
+  {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
   {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
@@ -427,7 +428,7 @@ var tabloadacts = [
   // logout (todo: literal template)
   {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
   // Directory  (TODO: composite templating)
-  {"name": "People Lookup", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
+  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
   // Iblox
   {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", path: "ibloxlist"},
@@ -435,14 +436,36 @@ var tabloadacts = [
   // esxi
   {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
   
-  {"name": "D-C",  "elselXX": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", uisetup: null, path:"dcomposer"},
+  {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer",
+    fsetid: "dcomposer", uisetup: (an) => {
+      var fs = datasets.cfg.docker.files;
+      var cont = "";
+      // toastr.info(fs);
+      fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
+      $(".xui").html(cont);
+      $(".xui").show();
+      // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
+      $(".vmglink").click(function (jev) {
+        // toastr.info("Click on "+Object.keys(jev));
+        simplegrid_url(jev, an);
+      });
+    },
+    urlpara:  (ev, an) => {
+      var dcfn;var ds = ev.target.dataset;
+      if (ds && ds.dcfn) { dcfn = ds.dcfn; }
+      if (!dcfn && datasets.cfg.docker.files) { dcfn = datasets.cfg.docker.files[0]; }
+      return "fn="+dcfn;
+    },
+    path:"dcomposer"},
   // See: Groups
-  {"name": "BadProcs",      "elselXX": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
+  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
       nattr: "hname", "colla":"procs", "fsid": "proclist",
       ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
       uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
       dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
   },
+  {"name": "ApiDocs", "elsel": "tabs-api", "url": "/apidoc", "tmpl": "", hdlr: apidoc, path: "apidoc"},
+  // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appacts"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -507,24 +530,32 @@ var dopts = {modal: true, width: 600, // See min,max versions
 var dopts_grid = {modal: true, width: 1000, height: 500};
 //////////////////// Tabs and Grids ////////////////////////
 /** Tab Activation handler.
-* Treat new tab activation almost like routing event. Mediate tab activate to handlers.
+* Treat new tab activation almost like routing event. Uses action nodes similar to router
+* (w. handler). Mediate tab activate to action handler and mock up an event to make it look
+* to handler like this is a normal routing event.
 * @param event {object} - JQuery UI event
-* @param ui {object} - JQuery UI object (has: newTab, newPanel, oldTab, oldPanel
+* @param ui {object} - JQuery UI (Tabs) object (has: newTab, newPanel, oldTab, oldPanel)
+* Note: Could one bind the configuring this to the function before call (does not look like it
+* because of $( "#tabsnest" ).tabs({ activate: ontabactivate }); . What about closure ?
+* Fallback(s) would be class variable (single action set possible). Or having data-.. attr in
+* tabs elem that addresses the action set (within (named)sets of sets).
 */
 function ontabactivate( event, ui ) {
   //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
   var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
-  console.log("Tab ("+tgt+") active ...NP:", tgt); // , " NP:",ui.newPanel[0].id
-  // Do event forwarding ?
-  var an = tabloadacts_idx[tgt]; // "#"+
+  console.log("Tab ("+tgt+") active ...NewP:", tgt); // , " NP:",ui.newPanel[0].id
+  // Do event forwarding ? Lookup action. TODO: Store acts in a deterministic place.
+  // acts.find((n) => { return n.elsel == tgt; }); // ??
+  var an = tabloadacts_idx[tgt]; // "#"+ // Index by .elsel
   // TODO: var an = rapp.findtabact(acts, tgt);
   if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
   // Load template ? 
   //if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
+  // Pre-handler ("like-routing-handler") templating. Handler may need to re-template.
   if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
-  console.log(an);
+  console.log("Action node:", an);
   //console.log(event);
-  event.viewtgtid = an.elsel; // Target View ID
+  event.viewtgtid = an.elsel; // Target View ID (Uses more specific/nested containing element than the top-level / main containing element)
   // TODO: Dispatch like a route handler
   if (an.hdlr) { an.hdlr(event, an); }
 }
@@ -597,6 +628,8 @@ function acts_uidisable(actitems) {
     {id: "aplays", url: "/anslist/play"},
     {id: "aprofs", url: "/anslist/prof"},
     {id: "cfg", url: "/config"},
+    // NEW: APIDoc tmpl. No client access to /tmpl
+    // {id: "apidoc", url: "/tmpl/apidoc.mustache"},
   ];
 
 window.onload = function () {
