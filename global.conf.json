@@ -224,10 +224,12 @@
     }
   ],
   "ansible" : {
-    "pbpath":"./playbooks",
+    "pbpath":"./playbooks:~/ansible-test",
     "user": "",
     "pass": "overrdide_w_env_ANSIBLE_PASS",
     "COMMENT" : "The inner objects need to have more info (runstyle, name)",
+    "invfn": "",
+    "debug": 0,
     "pbprofs" : [
       {
         "name": "Dymmy Play test",
