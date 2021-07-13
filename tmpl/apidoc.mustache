@@ -15,6 +15,10 @@ nested underneath it). The structure of data depends on API.
 <h2>API Entrypoints</h2>
 
 {{#paths}}
-<h3><a href="{{{ path }}}">{{{ path }}}</a> - {{{ get.summary }}} ({{{ mime }}})</h3>
-<p>{{{ get.description }}} </p>
+<h3> GET <a href="{{{ path }}}">{{{ path }}}</a> - {{{ get.summary }}} </h3>
+<ul>
+<li><b>Response Content Type: </b>{{{ mime }}}</li>
+<li><b>More Detailed Description:</b> {{{ get.description }}} </li>
+<li><b>Success Response:</b> {{{ respdesc }}}</li>
+</ul>
 {{/paths}}
