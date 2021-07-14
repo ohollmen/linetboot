@@ -241,10 +241,42 @@ function ipam_sync(req, res) {
   //if (err) { jr.msg += "Permission denied"; return res.json(jr); }
   
 }
-
+/** Retrieve info for one or more networks given in iblox config.
+ * Transform iblox results for many calls to simple AoO.
+ */
+function networks(req, res) {
+  var jr = {status: "err", msg: "Error fetching iblox net info. "};
+  var nws = ibconf.networks;
+  console.log("Look for networks: "+ nws);
+  if (!nws) { jr.msg += "No iblox networks configured"; return res.json(jr); }
+  if (!Array.isArray(nws)) { jr.msg += "Iblox networks not configured as array"; return res.json(jr); }
+  //var ibnattr = ["options","bootfile","bootserver","nextserver","comment","network","network_view"];
+  async.map(nws, fetchnwinfo, function (err, results) {
+    if (err) { jr.msg += err; return res.json(jr); }
+    res.json({status: "ok", data: results});
+  });
+  function fetchnwinfo(nip, cb) {
+    // Add: comment,network,network_view
+    var urlsuff = "/network?network="+nip+"&_return_fields=options,bootfile,bootserver,nextserver,comment,network,network_view";
+    console.log("CALLING: "+ urlsuff);
+    axios.get(ibconf.url + urlsuff, getpara).then((resp) => {
+      var d = resp.data;
+      //console.log("NETDATA: "+ d);
+      // TODO: Transform / strip down
+      // Always an array,even with 1 obj.
+      if (!Array.isArray(d)) { cb(null, "Iblox response not in array"); }
+      d = d.find((n) => { return n.network_view == 'default'; });
+      if (!d) { cb(null, "Iblox default net object not found"); }
+      // Collect DHCP Options (name => value) to main object ? Or let be as options-children ?
+      if (d.options) { d.options.forEach((opt) => { d[opt.name] = opt.value; }); d.options = null; }
+      cb(null, d);
+    }).catch((ex) => { cb(ex, null); }); // 
+  }
+}
 module.exports = {
   init: init,
   ib_set_addr: ib_set_addr,
   ib_show_hosts : ib_show_hosts,
-  ipam_sync: ipam_sync
+  ipam_sync: ipam_sync,
+  networks: networks
 };

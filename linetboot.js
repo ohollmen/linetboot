@@ -258,6 +258,7 @@ function app_init() { // global
   app.get("/ibshowhost",  iblox.ib_show_hosts);
   
   app.get("/ipamsync",  iblox.ipam_sync);
+  app.get("/ipamnets",  iblox.networks);
   // cloud-init/subiquity/curtin
   app.get("/meta-data",  ubu20_meta_data);
   

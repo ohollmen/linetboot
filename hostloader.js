@@ -348,7 +348,7 @@ function host_add(facts) {
   var ifinfo = facts.ansible_default_ipv4;
   // Note: VMWare ESXi Host does not have facts.ansible_default_ipv4 (esxcli network ip  interface list, esxcli network ip interface ipv4 get)
   // https://vdc-repo.vmware.com/vmwb-repository/dcr-public/26334f54-ee84-47c2-b2f3-901f51cbc98a/d3f55719-4d3f-47c4-a3c5-fe9c7e5a67f6/doc/esxcli_network.html
-  // As minimum need to add "address" (IP - e.g. by DNS lookup), "macaddress" (MAC, e.g. by SSH command above)
+  // As minimum need to add "address" (IP - e.g. by DNS lookup), "macaddress" (MAC, e.g. by SSH command above), fix hostname in facts.ansible_fqdn
   if (!ifinfo) { console.error("No Net Interface info in facts for "+facts.ansible_fqdn+"."); return; }
   var ip = ifinfo.address;
   var maca = ifinfo.macaddress;
