@@ -266,7 +266,11 @@
      {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
      {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return value /1000000; }},
    ];
-   /* TODO: var fldinfo_dockercont = [
+   /*
+    * // Docker Containers
+    * TODO: var fldinfo_dockercont = [];
+    // Docker imager
+    var fldinfo_dockerimager = [
       {name: "author",  title: "Author", type: "text", width: 50},
       {name: "desc",    title: "Description", type: "text", width: 50},
       {name: "plist",   title: "Package list", type: "text", width: 50}, // Icon to pop
