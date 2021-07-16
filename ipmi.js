@@ -1,9 +1,11 @@
 /** @file
-* # Module to expose some of the ipmi info.
+* ## Module to expose some of the ipmi info.
 *
 * Allows parsing:
-* - LAN Info
-* - User Accounts.
+* - Parsing/Loading LAN Info
+* - Parsing/Loading User Accounts.
+* - Issuing IPMI Commands directlry to BMC via IPMI protocol
+* 
 * ## TODO:
 * Start allowing changing settings.
 */
@@ -224,6 +226,7 @@ function rmgmt_load(f, rmgmtpath) { // cb
   }
   var ent = {hname: hn, ipaddr: lan['IP Address'], macaddr: lan['MAC Address'],
     ipaddrtype: lan['IP Address Source'], gateway: lan['Default Gateway IP'],
+    netmask: lan['Subnet Mask'],
     users: users,
     ulist: ulist
   };
@@ -233,7 +236,8 @@ function rmgmt_load(f, rmgmtpath) { // cb
   //return cb(ent);
   return ent;
 }
-/** Formulate IPMI remote command with host
+/** Formulate IPMI remote command with host.
+ * Sends command directly to BMC given by cfg.bmcaddr
  * @param hname {string} - Hostname
  * @param ipmicmd {string} - IPMI command without "remote" params (e.g. "chassis bootdev pxe" or "")
  */
@@ -251,7 +255,7 @@ function ipmi_cmd(f, ipmicmd, global, opts) {
   var ent = rmgmt_load(f);
   console.log(ent);
   if (!ent || !ent.ipaddr) { console.log("No ipmi info or ipdaar. Can't formulate command"); return ""; }
-  var rmgmt = global.ipmi || {};
+  var rmgmt = global.ipmi || {}; // TODO: Consult host parameters: hlr.hostparams(f), see f in params
   // Use ipmitool -h to see values for -I option (open,imb,lan,lanplus)
   // -L user -L administrator
   var cmdtmpl = "ipmitool —I lanplus -H {{ bmcaddr }} -U {{{ user }}} -P {{{ pass }}}  "; // power {{ powopt }}
