@@ -619,7 +619,7 @@ linux http://{{ httpserver }}/ipxe.lkrn
 # ESXi KS example https://williamlam.com/2015/10/how-to-prompt-for-user-input-during-an-interactive-or-scripted-install-of-esxi.html
 # http://patorjk.com/software/taag/#p=display&f=Standard&t=LinetBoot
 # https://rudimartinsen.com/2018/03/27/building-a-pxe-boot-environment-for-esxi/
-# mboot.c32 => /usr/lib/syslinux/modules/bios/mboot.c32 (ok for use ?)
+# mboot.c32 => /usr/lib/syslinux/modules/bios/mboot.c32 (ok for use ? NOT as VMWare mboot.c32 is totally custom installer)
 # https://rudimartinsen.com/2019/02/12/pxe-boot-and-install-esxi-6-7-u1-remember-to-use-correct-boot-cfg-file/
 # Good source info for ESXi PXE install: https://rudimartinsen.com/2019/08/07/revisiting-esxi-provisioning/
 # Note: VMWare mboot.c32 is 10x bigger and is "COM executable (32-bit COMBOOT, relocatable)"
@@ -631,8 +631,11 @@ linux http://{{ httpserver }}/ipxe.lkrn
 # ks=... parameter can also be given on pxelinux menu append line: ... ks=... (instead of boot.cfg kernelopt=...)
 # http://www.routereflector.com/2014/01/unattended-vmware-esxi-installation-via-pxe-boot-and-kickstart/
 # Note: pxelinux.0 must come from the same syslinux version used on ESXi ISO.
+# RH syslinux override suggested for pxelinux.0 menu.c32
+# https://xenappblog.com/2018/automatically-install-vmware-esxi-6-7/
 label esxi
 menu label ESXi 7.X Installer
+# This should be compatible with *pxelinux.0 (7.0 => syslinux 3.86)
 kernel ESXi-7/mboot.c32
 append -c ESXi-7/boot.cfg
 ipappend 2
