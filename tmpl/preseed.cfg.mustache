@@ -256,7 +256,7 @@ d-i pkgsel/updatedb boolean false
 d-i base-installer/install-recommends boolean {{ install_recommends }}
 # build-essential openssh-server ubuntu-server
 # When task (tasksel/first) "server" is selected "ubuntu-server" is unnecessary
-d-i pkgsel/include string openssh-server python curl
+d-i pkgsel/include string openssh-server python3 curl
 
 ############## Disk and Partitioning (partman/*, partman-auto/*) ####################
 # Some level of "partman-auto/*" needs to remain as the most explicit partitioning by partman-auto/expert_recipe
