@@ -348,6 +348,17 @@ Please correct this from the partitioning menu.
               [Continue]
 ```
 
+Early install problem (Installer already runs) in step "Detect network hardware"
+```
+Some of your harware needs non-free firmware files to operate. The
+firmware can be loaded from removable media, such as a USB stick or
+floppy.
+The missing firmware files are:
+bnx2x/bnx2x-e2-7.13.1.0.fw
+... (repeated 4 times) ...
+If you have such media available now, insert it, and continue.
+Load missing firmware from removable media?
+```
 
 References:
 - https://community.theforeman.org/t/no-root-file-system-is-defined-error-using-preseed-atomic-partitioning-scheme/5969/3
