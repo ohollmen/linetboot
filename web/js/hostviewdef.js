@@ -108,7 +108,7 @@
      {name: "ipaddr",  title: "Rmgmt IP Addr", type: "text", width: 90, itemTemplate: rmgmtcell},
      {name: "rmhname",  title: "Rmgmt Host (DNS Res.)", type: "text", width: 120, itemTemplate: rmgmtcell}, // 
      fldinfo_net[5],
-     
+     fldinfo_net[4],
      // {name: "ipaddrtype",  title: "IP Addr Type", type: "text", width: 120}, // Redundant
      fldinfo_net[3],
      {name: "ulist",  title: "RMgmt Users", type: "text", width: 150},
