@@ -50,10 +50,10 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.saf
  * host_for_request  UNUSED
  * preseed_gen - DONE
  * patch_params - TODO: Add chained Plugin !
- * host_params_dummy - DONE
+ * recipe_params_dummy - DONE
  * global_params_cloned (Unused ?)
  * params_compat DONE
- * host_params DONE
+ * recipe_params DONE
  * }
  * disk_params DONE
  * disk_calc_size ( ~ l. 702) DONE
@@ -123,9 +123,6 @@ function pp_subiquity(out, d) {
   return out2;
 }
 var recipes_idx = {};
-// TODO: Move to proper entries (and respective prop skip) in future templating AoO. Create index at init.
-// var _skip_host_params = {"/preseed.desktop.cfg": 1, "/preseed_mini.cfg": 1};
-  
 
 //var tmplmap_idx = {}; // By URL !
 // tmpls.forEach((it) => { tmplmap_idx[it.url] = it; });
@@ -135,11 +132,7 @@ function url_config_type(url) {
   //return tmplmap[url]; // OLD
   return recipes_idx[url].ctype;
 }
-// DEPRECATED
-// url ~ req.route.path
-//function skip_host_params(url) {
-//  return _skip_host_params[url];
-//}
+
 // Wrapper for getting template content
 function template_content(url, forcefn) {
   var recipe = recipes_idx[url]; // url
@@ -316,8 +309,7 @@ function preseed_gen(req, res) {
   res.type('text/plain');
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
-  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+", odid: "+osid+")"); // osid=
-  // OLD location for tmplmap = {}, skip_host_params = {}
+  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+", osid: "+osid+")"); // osid=
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
   var recipe = recipes_idx[url]; // Lookup recipe
   if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return; }
@@ -334,21 +326,22 @@ function preseed_gen(req, res) {
   // just create full params even if template does not use them.
   // Consider hostparams based solutions
   // OLD: Generate params, but only if not asked to be skipped
-  //BAD:if (p.instrecipe) {} // As-is No templating. Send immmediately - BAD Because we can anyways use hard template
+  // Do not support As-is No templating by sending immmediately - BAD Because we can anyways use hard template
+  // (and testing would case a lot of if-elsing and exceptional return point).
   //MAYBE:else  if (p.insttmpl) {} // Load overriden template - BAD Because cannot hard-wire for arbitrary OS
-  //var skip = skip_host_params(url); // skip_host_params[req.route.path];
   var d; // Final template params
   // Test implied osid
   if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
   if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
   if (url.match(/\buser-data\b/i)) { osid = 'ubuntu20'; } // As this *cannot* be fitted into URL
+  console.log("osid after possible overrides (by url:"+url+"): "+osid);
   var hps = {}; // Host params
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
     // var p = global.hostparams[f.ansible_fqdn]; // f vs. h
     hps = hlr.hostparams(f) || {}; // NEW: lookup !
-    d = host_params(f, global, ip,  osid); // ctype,
+    d = recipe_params(f, global, ip,  osid, ctype); // Add back: ctype,
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
     console.log("Call patch (stage 2 param formulation) ...");
     // Tweaks to params, appending additional lines
@@ -359,7 +352,8 @@ function preseed_gen(req, res) {
   // OLD (inside else): d = {httpserver: global.httpserver };
   else {
     // NOT ip ? Why ???!!! Could be of some use even if facts were not gotten by it.
-    d = host_params_dummy(global, osid); // NEW
+    d = recipe_params_dummy(global, osid); // NEW
+    console.log("Not known host with facts");
   }
   // Postpone this check to see if facts (f) are needed at all !
   if (!d ) { // && !skip
@@ -381,7 +375,7 @@ function preseed_gen(req, res) {
   if (osid == 'ubuntu20' && hps.subiud) { forcefn = hps.userdata; } // subiquity troubleshoot
   var tmplcont = template_content(url, forcefn); // forcefn => Overriden fn
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
-  console.log("Starting template expansion for ctype = '"+ctype+"', forced template: "+forcefn); // tmplfname = '"+tmplfname+"'
+  console.log("Starting template expansion for ctype = '"+ctype+"', forced template: '"+forcefn+"'"); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
   // pp = Post Process (cb)
   if (recipe.pp) { output = recipe.pp(output, d); }
@@ -407,7 +401,7 @@ function preseed_gen(req, res) {
 * environment (Also possibly contributed as "useful examples", also possibly
 * making their way into this app as toggelable plugins.
 * Add here member d.appendcont to produce completely new Preseed / KS. directives.
-* @param d {object} - Templating params produced originally in host_params()
+* @param d {object} - Templating params produced originally in recipe_params()
 * @param osid {string} - linetboot OS id (e.g. ubuntu18, centos6 ...)
 * @return None (Only tweak parms object d passed here)
 */
@@ -435,12 +429,12 @@ function patch_params(d, osid) {
 /** Create dummy params (minimal subset) that ONLY depend on global config.
  * This approach is needed for hosts that are being installed and make a http call
  * for dynamic kickstart or preseed (or other recipe), but are NOT known to linetboot by their facts.
- * See host_params() for creating params from facts (for a comparison).
+ * See recipe_params() for creating params from facts (for a comparison).
  * @param global {object} - main config
  * @param osid {string} - OS ID label, coming usually from recipe URL on kernel command line (E.g. ...?osid=ubuntu18)
  * @return Made-up host params
  */
-function host_params_dummy(global, osid) {
+function recipe_params_dummy(global, osid) {
   var net = dclone(global.net);
   var d = dclone(global); // { user: dclone(user), net: net};
   d.net = net;
@@ -491,7 +485,7 @@ function params_compat(d) {
   delete(d.hostparams);
   delete(d.mirrors);
 }
-/** Generate host parameters for OS installation.
+/** Generate recipe parameters for OS installation.
 * Parameters are based on global linetboot settings and host
 * specific (facts) settings.
 * The final params returned will be directly used to fill the template.
@@ -500,12 +494,14 @@ function params_compat(d) {
 * @param ip - Requesting host's IP Address
 * 
 * @param osid - OS id (, e.g. "ubuntu18", affects mirror choice)
+* @param ctype - Config type (e.g. "preseed", "ks", ... See recipes structure in this module)
 * @return Parameters (structure, somewhat nested, w. sub-sections net, user) for generating the OS Install recipe or
 * null to signal immediate termination of recipe generation.
 * TODO: Passing osid may imply ctype (and vice versa)
 */
 // OLD: @param (after ip) ctype - Configuration type (e.g. ks or preseed, see elswhere for complete list)
-function host_params(f, global, ip,  osid) { // ctype,
+function recipe_params(f, global, ip,  osid, ctype) { // ctype,
+  if (!ctype) { ctype = ""; }
   var net = dclone(global.net);
   var anet = f.ansible_default_ipv4; // Ansible net info
   // Many parts of recipe creation might need hostparams (hps)
@@ -534,6 +530,7 @@ function host_params(f, global, ip,  osid) { // ctype,
   
   // Assemble. TODO: Make "inst" top level
   var d = dclone(global); // { user: dclone(user), net: net};
+  ////////////////////// DISK ////////////////////////////////
   // TODO: Make into object, overlay later
   // var di = {parts: null, partials: null, instpartid: 0}
   var parts; var partials; var instpartid;
@@ -561,10 +558,11 @@ function host_params(f, global, ip,  osid) { // ctype,
     console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
     
     out = osdisk.partman_esc_multiline(out);
-    console.log("PARTMAN-DISK:'"+out+"'");
+    console.log("PARTMAN-DISK-ESCAPED:'"+out+"'");
     d.diskinfo = out; // Disk Info in whatever format directly embeddable in template
   }
-  if (osid.match(/ubuntu20/)) {
+  // Note: MUST also test for preseed URL as Ubu 20 can also run in legacy preseed mode !!!
+  if (osid.match(/ubuntu20/) && !ctype.match(/preseed/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_subiquity(parts);
     console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
