@@ -587,7 +587,7 @@ function recipe_params(f, global, ip,  osid, ctype) { // ctype,
   //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
   //////////////// Choose mirror (Use find() ?) //////////////////
   console.error("Calling mirror_info(global, osid) (by:" + global + ")");
-  var mirror = mirror_info(global, osid) || {};
+  var mirror = mirror_info(global, osid, ctype) || {};
   d.mirror = mirror;
   return d;
 }
@@ -597,9 +597,10 @@ function recipe_params(f, global, ip,  osid, ctype) { // ctype,
  * Set "hostname" and "directory" (path on mirror server) into the returned object.
  * @param global - Main config structure
  * @param osid - OS id label (from boot menu recipe URL) passed to server as query parameter
+ * @param ctype - Config type
  * @return Mirror config with "hostname" and "directory".
  */
-function mirror_info(global, osid) {
+function mirror_info(global, osid, ctype) {
   osid = osid || "";
   var choose_mirror = function (mir) {
     return mir.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
@@ -627,6 +628,9 @@ function mirror_info(global, osid) {
      }
      // Local mirror: Change mirror dir to match osid (assumed to be the local mount dir)
      else { mirrcfg.directory = "/" + osid; }
+     // Exception for Ubu 20 preseed / ubuntu-20.04.1-legacy-server-amd64.iso
+     // TODO: Consider osid ubuntu20legacy (would work for general rule above)
+     if (osid.match(/ubuntu20/) && ctype.match(/preseed/)) { mirrcfg.directory = "/ubuntu20legacy"; }
      console.log("Got-mn:", mn);
      console.log("Generated-mirrcfg:", mirrcfg);
      return mirrcfg;
