@@ -31,7 +31,7 @@ echo "Grep ret: ubu: $ubu_rc , cen: $cen_rc , arch: $arch_rc , suse: $suse_rc"
 # ubuntu
 if [ $ubu_rc -eq 0 ]; then
   # Replace Lineboot host, port and osid pattern with globally good value
-  perl -pi -e 's/http:\/\/{{{ httpserver }}}\/ubuntu18\/?/http:\/\/us.archive.ubuntu.com\/ubuntu\//;' /etc/apt/sources.list
+  perl -pi -e 's/http:\/\/{{{ httpserver }}}\/ubuntu\d+\w*\/?/http:\/\/us.archive.ubuntu.com\/ubuntu\//;' /etc/apt/sources.list
   # Or brute -force download overriding file
   #wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list
   export DEBIAN_FRONTEND=noninteractive
