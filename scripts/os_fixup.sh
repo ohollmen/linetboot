@@ -37,7 +37,7 @@ if [ $ubu_rc -eq 0 ]; then
   export DEBIAN_FRONTEND=noninteractive
   dpkg --get-selections > ~{{{ username }}}/dpkg_selections.`date -Iminutes`.initial.txt
   # On package install use -yq
-  apt-get update
+  apt-get update && apt-get -y dist-upgrade
 fi
 # RH/Centos (SUSE may also need /etc/sudoers tweak)
 if [ $cen_rc -eq 0 ]; then
