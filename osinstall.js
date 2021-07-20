@@ -51,7 +51,7 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.saf
  * preseed_gen - DONE
  * patch_params - TODO: Add chained Plugin !
  * recipe_params_dummy - DONE
- * global_params_cloned (Unused ?)
+ * recipe_params_cloned (Unused ?)
  * params_compat DONE
  * recipe_params DONE
  * }
@@ -78,7 +78,8 @@ var hostcache = {};
 var iptrans = {};
 var global = {};
 var user = {};
-var patch_params_custom; // CB
+var iprofs = {};
+var patch_params_custom; // CB (from user custom .js module)
 var setupmod = {}; // custom CB Module
 
 //var tmpls = {};
@@ -186,6 +187,7 @@ function init(conf, _patch_params) { // TODO: 2nd: _mod
   if (!iptrans)   { throw "No iptrans config"; }
   user = conf.user;
   if (!user)      { throw "No initial user config"; }
+  if (conf.iprofs) { iprofs = conf.iprofs; console.log("Got install profiles: ", iprofs); } // Optional iprofs
   // TODO: patch_params
   if (_patch_params) { console.log("Got patch_params customization CB"); patch_params_custom = _patch_params; }
   // NEW: if (_mod) { mod = _mod; }
@@ -341,7 +343,15 @@ function preseed_gen(req, res) {
     // If we have facts (registered host), Lookup inventory hostparameters
     // var p = global.hostparams[f.ansible_fqdn]; // f vs. h
     hps = hlr.hostparams(f) || {}; // NEW: lookup !
-    d = recipe_params(f, global, ip,  osid, ctype); // Add back: ctype,
+    d = recipe_params_init(f, global, user);
+    // See if install profile should be used
+    //var iprofs = null; // Direct module-global
+    if (hps.iprof && iprofs && iprofs[hps.iprof]) {
+      console.log("Apply install profile for "+ip);
+      recipe_params_iprof(d, iprofs[hps.iprof]);
+    }
+    //d =
+    recipe_params(d, f, global, ip,  osid, ctype); // Add back: ctype,
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
     console.log("Call patch (stage 2 param formulation) ...");
     // Tweaks to params, appending additional lines
@@ -367,6 +377,7 @@ function preseed_gen(req, res) {
   // Copy "inst" section params to top level for (transition period ?) compatibility !
   params_compat(d);
   d.hps = hps; // Host params !
+  params_verify(d);
   if (req.query.json) { return res.json(d); }
   //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
   //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
@@ -394,7 +405,18 @@ function preseed_gen(req, res) {
 //console.log(req); // _parsedUrl.pathname OR req.route.path
 // if (req.url.indexOf('?')) { }
 //NOT: var ctype = tmplmap[req.url]; // Do not use req.url - contains query parameters
-  
+
+/** Verify and validate presence of must-have sections in final recipe params.
+ * Throw exceptions on any errors.
+ */
+function params_verify(d) {
+  if (!d.user) { throw "No initial user"; } // Initial user
+  if (!d.mirror) { throw "No package mirror info"; }
+  if (!d.diskinfo) { throw "No disk recipe content"; } // Disk recipe content
+  if (d.disk) { throw "Legacy ansible 'disk' info is remaining"; }
+  if (!d.hps) { throw "No host iventory (k-v) params"; }
+}
+
 /** Do situational and custom patching on params.
 * TODO: Separate these as osid specific plugins, where each plugin can do
 * patching for os. Some plugins could be user written to facilitate particular
@@ -457,6 +479,34 @@ function recipe_params_dummy(global, osid) {
   
   return d;
 }
+/** Allow Installation profile to override values in recipe parameters.
+ * The rules for override are set here and keys of iprof affect multiple sections in config.
+ * Note: The true values in iprof that will override values in "net" section are expected to be of correct
+ * type and have a valid meaningful value. No validation is performed here.
+ * @param d {object} - installation recipe parameters to possibly modify
+ * @param iprof {object} - Installation profile discovered by caller
+ * Note: The timing of this op is important. Try to set early so that
+ * - string and CSV versions of multi-val keys are created after
+ * - Any complex deriving, manipulation, override is done after
+ */
+function recipe_params_iprof(d, iprof) {
+  if (!d) { console.log("No recipe param object for iprof override"); return; }
+  if (!d.net) { console.log("No recipe param 'net' section for iprof override"); return; }
+  if (!d.inst) { console.log("No recipe param 'inst' section for iprof override"); return; }
+  if (!iprof) { console.log("No iprof param object for iprof override"); return; }
+
+  // "net" section keys. Any of these in iprof override net keys.
+  var netkeys = ["domain","netmask","gateway","nameservers","namesearch", "nisdomain","nisservers"]; // "ntpserver"
+  netkeys.forEach((k) => {
+    if (iprof[k]) { d.net[k] = iprof[k]; console.log("iprof["+k+"] overriden in net-section (val:"+iprof[k]+")"); }
+  });
+  // "inst" section keys
+  var instkeys = ["locale","keymap","time_zone", "install_recommends", "post_scripts"];
+  instkeys.forEach((k) => {
+    if (iprof[k]) { d.inst[k] = iprof[k]; console.log("iprof["+k+"] overriden in inst-section (val:"+iprof[k]+")"); }
+  });
+}
+
 /** Clone global params and do basic universally applicable setup on them.
 * Setup done here should be applicable to all/both use cased "old machine - have facts" and "new machine - don't have facts".
 * 
@@ -464,11 +514,21 @@ function recipe_params_dummy(global, osid) {
 * @param user {object} - initial user object
 * @return Install templating params that can be further customized.
 */
-function global_params_cloned(global, user) {
-  var net = dclone(global.net);
+function recipe_params_cloned(global, user) {
+  //var net = dclone(global.net);
   var d = dclone(global);
-  d.net = net;
+  //d.net = net;
   d.user = user;
+}
+/** Create Per-OS-Install recipe params instance by cloning main config.
+ */
+ function recipe_params_init(f, global, user) {
+  var d = dclone(global);
+  var hps = hlr.hostparams(f) || {}; // Add early to d !!!
+  d.hps = hps;
+  d.user = user;
+  // Remove select unnecessary sections
+  return d;
 }
 // Compatibility-copy install params from "inst" to top level
 function params_compat(d) {
@@ -482,16 +542,29 @@ function params_compat(d) {
   delete(d.tftp);
   delete(d.hostnames);
   delete(d.ansible);
-  delete(d.hostparams);
-  delete(d.mirrors);
+  delete(d.hostparams); // global for all hosts
+  delete(d.mirrors); // legacy
+  // Later added sections
+  delete(d.web);
+  delete(d.dhcp); // early
+  delete(d.docker);
+  delete(d.iblox);
+  delete(d.eflow);
+  delete(d.esxi);
+  delete(d.procster);
+  delete(d.cov);
+  delete(d.core); // Consider/revert (has e.g. appname)
+  delete(d.ipmi); // Consider (IPMI ops) !
 }
+
+
 /** Generate recipe parameters for OS installation.
 * Parameters are based on global linetboot settings and host
 * specific (facts) settings.
 * The final params returned will be directly used to fill the template.
 * @param f - Host Facts parameters (from Ansible)
 * @param global - Global config parameters (e.g. network info)
-* @param ip - Requesting host's IP Address
+* @param ip - Requesting host's detected (or param ip=... overriden) IP Address
 * 
 * @param osid - OS id (, e.g. "ubuntu18", affects mirror choice)
 * @param ctype - Config type (e.g. "preseed", "ks", ... See recipes structure in this module)
@@ -500,13 +573,17 @@ function params_compat(d) {
 * TODO: Passing osid may imply ctype (and vice versa)
 */
 // OLD: @param (after ip) ctype - Configuration type (e.g. ks or preseed, see elswhere for complete list)
-function recipe_params(f, global, ip,  osid, ctype) { // ctype,
+function recipe_params(d, f, global, ip,  osid, ctype) { // ctype,
   if (!ctype) { ctype = ""; }
-  var net = dclone(global.net);
+  // var d = dclone(global); // { user: dclone(user), net: net};
+
+  //OLD: var net = dclone(global.net);
+  var net = d.net;
   var anet = f.ansible_default_ipv4; // Ansible net info
   // Many parts of recipe creation might need hostparams (hps)
-  var hps = hlr.hostparams(f) || {};
+  var hps = hlr.hostparams(f) || {}; // Add early to d !!! .. and use d.hps
   console.log("HPS:",hps);
+  // Validate IP early (or only as part of net stuff)
   if (anet.address != ip) {
     var msg = "# Hostinfo IP and detected ip not in agreement\n";
     res.end(msg); // NOTE NO res !!!!!!
@@ -522,14 +599,17 @@ function recipe_params(f, global, ip,  osid, ctype) { // ctype,
   ///////////////////////// DISK /////////////////////////////////
   // Ansible based legacy calc (imitation of original disk).
   // TODO: Disable, as this is not currently used (make configurable / optional).
-  console.error("Calling (Ansible-based) disk_params(f) (by:" + f + ")");
-  var disk = osdisk.disk_params(f);
+  //console.error("Calling (Ansible-based) disk_params(f) (by:" + f + ")");
+  //var disk = osdisk.disk_params(f);
   
+  // function recipe_params_disk(d, osid, ctype) {
+  //    var hps = d.hps;
+
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
   
   // Assemble. TODO: Make "inst" top level
-  var d = dclone(global); // { user: dclone(user), net: net};
+  
   ////////////////////// DISK ////////////////////////////////
   // TODO: Make into object, overlay later
   // var di = {parts: null, partials: null, instpartid: 0}
@@ -574,13 +654,17 @@ function recipe_params(f, global, ip,  osid, ctype) { // ctype,
     console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
-  d.net = net;
-  d.user = user; // global (as-is). TODO: Create password_hashed
-  d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
+  // d.net = net; // redundant w. new clone scheme
+  // ALREADY: d.user = user; // global (as-is). TODO: Create password_hashed
+  // d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
   // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
   d.partials = partials; // Suse or Win
   d.instpartid = instpartid; // Win
+
+  //  return 0; // Disk info ?
+  //}
+
   // Comment function
   d.comm = function (v)   { return v ? "" : "# "; };
   d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
@@ -728,7 +812,16 @@ function netconfig(net, f) {
   }
   
 }
-
+/** Create string versions of multi-valued network variables for templating.
+ * Call this as late as possible, so that no changes are made to network info
+ * (esp. for members from which string versions are generated here).
+ * These are given suffixes base on the delimiter used:
+ * - "_str" - for space delimited string
+ * - "_csv" - for comma separated values
+ * - "_ssv" - space separated values (same as _str, somewhat redundant)
+ * @param net {object} - Network config object
+ * @return none
+ */
 function net_strversions(net) {
   if (typeof net != 'object') { return; } // TODO: "Real" Object (not null, bool)
   //var aprops = ["nameservers", "namesearch", "nisservers"];
