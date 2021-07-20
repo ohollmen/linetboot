@@ -516,15 +516,20 @@ function ibip_cell(val, item) {
      {name: "tabs", title: "Sub-Tabs", type: "text", width: 70},
      {name: "tmpl", title: "Template", type: "text", width: 70},
    ];
+   function iprof_mulval(val, item) {
+     if (!Array.isArray(val)) { return "???"; }
+     return val.join("<br>");
+     
+   }
    var fldinfo_iprofs = [
      {name: "id", title: "ID", type: "text", width: 15},
-     {name: "domain", title: "DNS Domain", type: "text", width: 50},
-     {name: "netmask", title: "Netmask", type: "text", width: 50},
-     {name: "gateway", title: "Gateway", type: "text", width: 50},
-     {name: "nameservers", title: "DNS Name Servers", type: "text", width: 50},
-     {name: "namesearch", title: "DNS Search Domains", type: "text", width: 50},
-     {name: "nisdomain", title: "NIS Domain", type: "text", width: 10},
-     {name: "nisservers", title: "NIS Servers", type: "text", width: 50},
+     {name: "domain", title: "DNS Domain", type: "text", width: 40},
+     {name: "netmask", title: "Netmask", type: "text", width: 40},
+     {name: "gateway", title: "Gateway", type: "text", width: 40},
+     {name: "nameservers", title: "DNS Name Servers", type: "text", width: 50, itemTemplate: iprof_mulval},
+     {name: "namesearch", title: "DNS Search Domains", type: "text", width: 50, itemTemplate: iprof_mulval},
+     {name: "nisdomain", title: "NIS Domain", type: "text", width: 20},
+     {name: "nisservers", title: "NIS Servers", type: "text", width: 50, itemTemplate: iprof_mulval},
      
    ];
    // TODO: Send sets as AoO, index by id
