@@ -516,12 +516,15 @@ function ibip_cell(val, item) {
      {name: "tabs", title: "Sub-Tabs", type: "text", width: 70},
      {name: "tmpl", title: "Template", type: "text", width: 70},
    ];
+   var fldinfo_iprofs = [
+     
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
-      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact
+      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs
    };
    

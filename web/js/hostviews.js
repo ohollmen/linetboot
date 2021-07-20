@@ -418,12 +418,13 @@ var tabloadacts = [
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
-  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
+  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
   {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq",    hdlr: bootgui, url: "", path: ""},
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
   {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist",  gridid: "jsGrid_bootmedia", path: ""},
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes, url: "/recipes",  gridid: "jsGrid_recipes", path: ""},
+  {"name": "Install profiles",   "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fdefs: "iprofs", path: ""},
   {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
   // logout (todo: literal template)
   {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},

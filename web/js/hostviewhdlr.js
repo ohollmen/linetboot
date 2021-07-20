@@ -436,6 +436,22 @@ function recipes() {
     }
   }).catch(function (err) { console.log(err); });
 }
+/** View install profiles.
+ * Almost generic routine for handling simple grid view.
+ */
+function instprofiles(ev, act) {
+  // alert("Inst profiles");
+  axios.get(act.url).then(function (resp) {
+    var d = resp.data;
+    if (d.status == "err" || (d.data && !d.data.length)) {
+       $('#'+act.gridid).html("No Install profiles (configuration, JSON filename given in .inst.iprofsconfig) in use in this system.");
+      return toastr.info("No Install profiles in use in this system.");
+    }
+    d = d.data; // Grab *actual* data
+    console.log(d);
+    showgrid(act.gridid, d, fldinfo[act.fdefs]);
+  }).catch((ex) => { toastr.error(ex); });
+}
 
 function loginform(ev, act) {
   if (!ev.viewtgtid) { console.log("Routing Failed to set target view"); return; }
