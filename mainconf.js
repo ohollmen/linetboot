@@ -55,6 +55,16 @@ function user_load(global) {
   user.groups_csv  = user.groups.join(",");
   return user;
 }
+/** Load OS installation profiles.
+ */
+function iprofs_load(global) {
+  var iconf = global.inst.iprofsconfig || "";
+  if (!fs.existsSync(iconf)) { console.error("Install profile conf ("+iconf+") does not exist !"); return null; }
+  var ips = require(iconf) || null;
+  // Validate (Object, string keys valued to objects)
+
+  return ips;
+}
 
 /** Validate config and expand shell-familiar "~" -notation on path / file vars.
  * @param global {object} - Main configuration.
@@ -81,7 +91,7 @@ function mainconf_process(global) {
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
   tilde_expand(global.esxi, ["cachepath"]);
-  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path"]);
+  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path", "iprofsconfig"]);
   if (global.docker) {
     var dkr = global.docker;
     tilde_expand(dkr, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
@@ -252,6 +262,7 @@ function tilde_expand(obj, keyarr) {
 module.exports = {
   mainconf_load: mainconf_load,
   user_load: user_load,
+  iprofs_load: iprofs_load,
   mainconf_process: mainconf_process,
   env_merge: env_merge,
   tilde_expand: tilde_expand,
