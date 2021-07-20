@@ -1007,7 +1007,7 @@ function instprofiles_view(req, res) {
     iprofs[k].id = k;
     iprofs_arr.push(iprofs[k]);
   });
-  return({status: "ok", data: iprofs_arr});
+  return res.json({status: "ok", data: iprofs_arr});
 }
 
 module.exports = {
