@@ -175,8 +175,9 @@ in logicless templating). However limitations of "logicless" have been largely o
 During the OS Install Linetboot creates a comprehensive set of parameters based on:
 - Global Main Configuration
 - Individual host facts
-- Inverntory host parameters (aka "host variables")
+- Inventory host parameters (aka "host variables")
 - Intial user info (from JSON file given by inst.userconfig)
+- Installation profiles 
 
 The layout rules for parameter "tree" are:
 - The global main config acts as as "base" for the parameter tree (The names/keys are by default as-is)
@@ -186,23 +187,35 @@ The layout rules for parameter "tree" are:
 - Disk information gets created as "full disk recipe" on-the fly by linetboot so the names/keys are not appplicable here
 
 
-Network settings formulation under key "net" (This is where most customization takes place):
+**Network settings** formulation under key "net" (This is where most customization takes place):
 - Names are close to ansible naming
-- nameserver (array-of-str) - Arry of name server IP Addresses - Often hard to use on templates, thus string versions are provided
+- Values gotten from main cfg "net" section or installation profile (or last resort: facts, selectively):
+  - domain (str) - DNS Domain suffix (Empty string if there is no domain suffix for network)
+  - netmask (str) - Netmask as dotted-quad
+  - gateway (str) - Gateway / Router IP Address
+  - nameservers (array-of-str) - Array of name server IP Addresses - Often hard to use on templates, thus string versions are provided
   - nameservers\_csv - Name servers as comma separated values (e.g. usable on RH kickstart)
   - nameservers\_ssv - Name servers ans space-separated values (e.g. usable on Preseed, ISC DHCP server)
   - nameservers\_str - Alias for nameservers
-  - nameserver_first - First Nameserver for templates and apps where format only allows single name server
-- gateway (str) - Gateway / Router IP Address
-- netmask (str) - Netmask as dotted-quad
-- domain (str) - Domain suffix (Empty string if there is no domain suffix)
-- hostname (str) - short hostname (w/o domain suffix)
-- ifnum (int) - Interface number (1-based value for the network interface order number, e.g. 1 could mean eno1, enp0s1)
-- namesearch (array-of-str) - domain suffixes to try for DNS search by non-fqdn hostname searches
+  - nameserver\_first - First Nameserver for templates and apps where format only allows single name server
+<!--  - namesearch (array-of-str) - Array of domain names/suffixes to add to bare hostnames when hosts are looked up by bare name -->
+  - namesearch (array-of-str) - domain suffixes to try for DNS search by non-fqdn hostname searches
+  - network (str) - Network address (Ususally gateway address with last octet turned to 0)
+  - broadcast (str) - Broadcast address
+  - cidr (int) - CIDR
+  - nisdomain (str) - NIS domain name
+  - nisamm (str) - NIS auto mount master map name (e.g. Sun Solaris legacy "auto_master" as opposed to modern default "auto.master")
+  - nisservers (array-of-str) - NIS Servers
+- Values gotten/extracted from Facts:
+  - ipaddress - IP address (first validated to agree with detected/overriden IP Address)
+  - macaddress - MAC Address (empty for missing MAC)
+  - hostname (str) - short hostname (w/o domain suffix)
+  - ifnum (int) - Interface number (1-based value for the network interface order number, e.g. 1 could mean eno1, enp0s1)
 
 **Mirror Settings** (Debian/Ubuntu) set by osinstall module during recipe generation ("mirror" parameter branch) based on **inst.inetmirror**:
 - mirror.hostname (str) - Set to valid mirror host (linetboot or internet)
 - mirror.directory (str) - Set to valid dir (linetboot or internet)
+- mirror.osid (str) - OS id passed in recipe URL to linetboot to help formulate parameters for recipe
 
 With all said, the Linetboot Web GUI allows seeing the outcome of template expansion by navigating to: **Boot/Install** => **Tab: Recipes Preview** => Choose the **host** (line) and **recipe type** (column).
 
