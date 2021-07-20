@@ -517,6 +517,14 @@ function ibip_cell(val, item) {
      {name: "tmpl", title: "Template", type: "text", width: 70},
    ];
    var fldinfo_iprofs = [
+     {name: "id", title: "ID", type: "text", width: 15},
+     {name: "domain", title: "DNS Domain", type: "text", width: 50},
+     {name: "netmask", title: "Netmask", type: "text", width: 50},
+     {name: "gateway", title: "Gateway", type: "text", width: 50},
+     {name: "nameservers", title: "DNS Name Servers", type: "text", width: 50},
+     {name: "namesearch", title: "DNS Search Domains", type: "text", width: 50},
+     {name: "nisdomain", title: "NIS Domain", type: "text", width: 10},
+     {name: "nisservers", title: "NIS Servers", type: "text", width: 50},
      
    ];
    // TODO: Send sets as AoO, index by id
