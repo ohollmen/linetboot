@@ -90,7 +90,9 @@ function app_init() { // global
   global = mc.mainconf_load(globalconf);
   mc.env_merge(global);
   mc.mainconf_process(global);
-  var user = mc.user_load(global); // TODO: After env_merge, mainconf_process ?
+  var user   = mc.user_load(global); // TODO: After env_merge, mainconf_process ?
+  var iprofs = mc.iprofs_load(global);
+  if (!iprofs) { console.log("No iprofsconfig"); }
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
   netprobe.init(global.probe);
@@ -352,7 +354,7 @@ function app_init() { // global
     mod.run(global, app, hostarr);
   }
   // Init osinst AFTER loading hosts, iptrans, custom module
-  var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user};
+  var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user, iprofs: iprofs};
   osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null)); // TODO: Pass mod
   // Session
   // resave: true, saveUninitialized: true, store: MemoryStore (default) cookie.maxAge, genid: (req) => {}
