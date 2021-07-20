@@ -997,6 +997,19 @@ function recipe_view(req, res) {
   res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes, scriptnames: scriptnames});
 }
 
+function instprofiles_view(req, res) {
+  var jr = {status: "err", msg: "Problem loading install profiles. "};
+  if (!iprofs) { jr.msg += "No install profiles (null)"; return res.json(jr); }
+  var keys = Object.keys(iprofs);
+  if (!keys.length) { jr.msg += "No install profiles (null)"; return res.json(jr); }
+  var iprofs_arr = [];
+  keys.forEach((k) => {
+    iprofs[k].id = k;
+    iprofs_arr.push(iprofs[k]);
+  });
+  return({status: "ok", data: iprofs_arr});
+}
+
 module.exports = {
   init: init,
   url_hdlr_set: url_hdlr_set,
@@ -1009,6 +1022,7 @@ module.exports = {
   net_strversions: net_strversions,
   // Web Handlers
   recipe_view: recipe_view,
+  instprofiles_view: instprofiles_view,
   // Disk
   // OLD: disk_params: disk_params,
   //OLD: diskinfo: diskinfo

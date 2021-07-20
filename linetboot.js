@@ -276,6 +276,7 @@ function app_init() { // global
   app.get("/listdc", listdc);
   // Bad Process report
   app.get("/staleproc", procrpt.procreport_web);
+  app.get("/instprofiles",  osinst.instprofiles_view);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
