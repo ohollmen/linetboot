@@ -7,4 +7,5 @@ kernel http://{{ httpserver }}/wimboot
 initrd http://{{ httpserver }}/win2019/boot/bcd BCD
 initrd http://{{ httpserver }}/win2019/boot/boot.sdi boot.sdi
 initrd -n boot.wim http://{{ httpserver }}/win2019/sources/boot.wim boot.wim
+# imgstat
 boot
