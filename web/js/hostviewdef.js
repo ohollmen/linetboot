@@ -398,9 +398,9 @@ function ibip_cell(val, item) {
      {name: "macaddr", title: "Mac Addr", type: "text", width: 110, css: "macaddr"},
      {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 100, itemTemplate: ibip_cell},
      {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 110, css: "macaddr", itemTemplate: ibmac_cell},
-     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20},
-     {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, Xvisible: false},
-     {name: "nbp", title: "Boot File", type: "text", width: 80, Xvisible: false},
+     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20, itemTemplate: ibdhcp_cell}, // 
+     {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, visible: false},
+     {name: "nbp", title: "Boot File", type: "text", width: 80, visible: false},
      // Need rethink. Most of time host is not known in IB
      {name: "sync", title: "Sync", type: "text", width: 30, visible: false, itemTemplate: ibsync_cell},
 
@@ -526,11 +526,14 @@ function ibip_cell(val, item) {
      {name: "domain", title: "DNS Domain", type: "text", width: 40},
      {name: "netmask", title: "Netmask", type: "text", width: 40},
      {name: "gateway", title: "Gateway", type: "text", width: 40},
-     {name: "nameservers", title: "DNS Name Servers", type: "text", width: 50, itemTemplate: iprof_mulval},
+     {name: "nameservers", title: "DNS Name Servers", type: "text", width: 40, itemTemplate: iprof_mulval},
      {name: "namesearch", title: "DNS Search Domains", type: "text", width: 50, itemTemplate: iprof_mulval},
      {name: "nisdomain", title: "NIS Domain", type: "text", width: 20},
      {name: "nisservers", title: "NIS Servers", type: "text", width: 50, itemTemplate: iprof_mulval},
-     
+     {name: "timezone", title: "Timezone", type: "text", width: 30},
+     {name: "locale", title: "Locale", type: "text", width: 30},
+     {name: "keymap", title: "Keymap", type: "text", width: 10},
+     // TODO: osid ? piuser ?
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

@@ -424,7 +424,7 @@ var tabloadacts = [
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
   {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist",  gridid: "jsGrid_bootmedia", path: ""},
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes, url: "/recipes",  gridid: "jsGrid_recipes", path: ""},
-  {"name": "Install profiles",   "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fdefs: "iprofs", path: ""},
+  {"name": "Install Profiles",  "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fdefs: "iprofs", path: ""},
   {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
   // logout (todo: literal template)
   {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
@@ -877,7 +877,8 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   if (!hname) { toastr.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling docker ...");
-  axios.get('http://'+hname+':'+port+'/v1.24/images/json').then(function (resp) {
+  var url = 'http://'+hname+':'+port+'/v1.24/images/json';
+  axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
     if (!pinfo ) { toastr.error("No data from " + hname); return; }
