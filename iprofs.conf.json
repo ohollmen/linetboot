@@ -1,0 +1,31 @@
+{
+  "west": {
+    "domain":"west.mycomp.com",
+    "netmask":"255.255.254.0",
+    "gateway": "192.168.1.1",
+    "nameservers": ["192.168.1.10", "192.168.1.20"],
+    "namesearch": ["west.mycomp.com", "east.mycomp.com"],
+    "nisdomain": "west",
+    "nisservers": ["nis1.west.mycomp.com","nis2.west.mycomp.com"],
+
+    "pkgprof": "pgkprof.us.txt",
+    "time_zone": "America/Los_Angeles",
+    "locale": "en_US.UTF-8",
+    "keymap":"us",
+    "TODO":"locale, keymap, userconfig, postscripts"
+  },
+  "east": {
+    "domain":"east.mycomp.com",
+    "netmask":"255.255.255.0",
+    "gateway": "192.168.2.1",
+    "nameservers": ["192.168.2.10", "192.168.2.20"],
+    "namesearch": [ "east.mycomp.com", "west.mycomp.com"],
+    "nisdomain": "east",
+    "nisservers": ["nis1.east.mycomp.com","nis2.east.mycomp.com"],
+    "pkgprof": "pgkprof.us.txt",
+    "time_zone": "America/New_York",
+    "locale": "en_US.UTF-8",
+    "keymap":"us",
+    "TODO":""
+  }
+}
