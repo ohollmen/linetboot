@@ -191,6 +191,7 @@ grep NISDOMAIN /etc/sysconfig/network
 #### Ubuntu 18: On screen "Configuring apt" (25% - Retrieveing file 1 of 3)
 
   - Last file requested (404): /ubuntu18/dists/bionic/InRelease, Misc downloads from (ISO dir): dists/bionic/main/
+    - In 20.04 (same problem): /isomnt/ubuntu20legacy/dists/focal/InRelease
   - Last packages retreieved (from last to earlier): usbutils, libc-bin, libusb-1.0.0, pciutils, libpci3
   - Before freeze logged: Menu item 'apt-setup-udeb' selected
   - Running process (hangs?): udpkg --configure --force-configure apt-setup-udeb ... (~10 lines of params)
