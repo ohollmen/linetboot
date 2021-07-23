@@ -797,14 +797,14 @@ function dhcpconf(opts) {
   if (!fs.existsSync(tmplfn)) { console.error("DHCP Config Template "+tmplfn + " does not exist"); return; }
   var tmpl = fs.readFileSync(tmplfn, 'utf8');
   // Setup params. Possibly embed to a library (osinstall ?)
-  //NOT: osinst.netconfig(mcfg.net, f); // Needs facts - not suitable
+  //NOT: osinst.netconfig_by_f(mcfg.net, f); // Needs facts - not suitable
   var net = mcfg.net;
   var dhcp = mcfg.dhcp;
   if (!net) { usage("No network config"); }
   if (!dhcp) { apperror("Error: No 'dhcp' section in main config (need it for 'range')");  }
   //net.nameservers = net.nameservers.join(","); // OLD, see below
-  osinst.netconfig(net, {}); // f = {}
-  //osinst.net_strversions(net); // Called by osinst.netconfig
+  osinst.netconfig_by_f(net, {}); // f = {}
+  osinst.net_strversions(net); // Must call
   // Validate, turn into space separated
   if (!Array.isArray(dhcp.range) || dhcp.range.length != 2) { apperror("Error:dhcp.range not an array or does not have len==2."); }
   dhcp.range_str = dhcp.range_ssv = dhcp.range.join(" "); // ISC
@@ -1066,7 +1066,7 @@ function dnsmasq(opts) {
   return dhcpconf(opts);
   ghcp_conf_gen(mcfg.dhcp);
   // TODO: dclone() !
-  //var net = osinst.netconfig(mcfg.net);
+  //var net = osinst.netconfig_by_f(mcfg.net);
   // Must have dhcp,net (net prepared w. variants)
   mcfg.net = net; // Replace
   apperror("subcommand dnsmasq is work in progress.");
