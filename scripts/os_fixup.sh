@@ -39,7 +39,7 @@ if [ $ubu_rc -eq 0 ]; then
   # On package install use -yq
   apt-get update && apt-get -y dist-upgrade
   # 20.04 Prepeare "python" to be usable command (python 2)
-  if [ -f "/usr/bin/python2.7" ]; then
+  if [ -e "/usr/bin/python2.7" && ! -e "/usr/bin/python" ]; then
     # echo "Adding python symlink"
     ln -s /usr/bin/python2.7 /usr/bin/python
   fi
