@@ -312,7 +312,8 @@ function preseed_gen(req, res) {
   res.type('text/plain');
   // parser._headers // Array
   console.log("preseed_gen: req.headers: ", req.headers);
-  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip:"+ip+", osid: "+osid+")"); // osid=
+  console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip="+ip+", osid="+osid+")"); // osid=
+  console.log("Host "+ip+" "+(f ? "HAS" : "does NOT have ")+" facts");
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
   var recipe = recipes_idx[url]; // Lookup recipe
   if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return; }
@@ -569,14 +570,21 @@ function recipe_params_cloned(global, user) {
   d.user = user;
 }
 /** Create Per-OS-Install recipe params instance by cloning main config.
+ * Use detected / URL-overriden ip address as driving key (record it as-is).
+ * Add crucial core members early here (from facts): macaddress, hostname.
+ * @param f {object} - Host Facts object
+ * @param global {object} - Main config
+ * @param user {object} - User object
+ * @param ip {string} - IP Address of (OS) install client
  */
  function recipe_params_init(f, global, user, ip) {
   var d = dclone(global);
   if (f) {
     d.hps = hlr.hostparams(f) || {}; // Add early to d !!!
-    // Record MAC already early (if possible)
+    // Record MAC and hostname already early (if possible)
     var anet = f.ansible_default_ipv4;
     d.net.macaddress = anet ? anet.macaddress : "";
+    d.net.hostname = f.ansible_hostname ? f.ansible_hostname : "";
   }
   d.user = user;
   if (!d.net) { console.log("recipe_params_init: Error: No net section !"); return null; }
@@ -592,6 +600,7 @@ function params_compat(d) {
   // Just before Recipe or JSON params dump delete cluttering parts that will never be used in OS install context.
   // This is also a good note-list of what should likely not be there (in main config) at all.
   // Note: Theoretically customizations might do someting w. groups
+  // function param_sections_rm(d) {
   delete(d.groups);
   delete(d.tftp);
   delete(d.hostnames);
@@ -609,6 +618,7 @@ function params_compat(d) {
   delete(d.cov);
   delete(d.core); // Consider/revert (has e.g. appname)
   delete(d.ipmi); // Consider (IPMI ops) !
+  // } 
 }
 
 
@@ -825,7 +835,7 @@ function netconfig_by_f(net, f) {
     net.namesearch = dns_a.namesearch;
   }
   // On smaller networks there is none.
-  // if (dns_a.search && Array.isArray(dns_a.search)) { net.namesearch = dns_a.search; }
+  // if (!net.namesearch && dns_a.search && Array.isArray(dns_a.search)) { net.namesearch = dns_a.search; }
   
   // Domain !
   if (f.ansible_domain) { net.domain = f.ansible_domain; }
