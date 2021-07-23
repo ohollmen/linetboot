@@ -66,6 +66,7 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.saf
 var fs = require("fs");
 var Mustache = require("mustache");
 var yaml   = require('js-yaml'); // subiquity
+var dns  = require("dns");
 
 var hlr    = require("./hostloader.js"); // file_path_resolve
 var osdisk = require("./osdisk.js");
@@ -337,42 +338,60 @@ function preseed_gen(req, res) {
   if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
   if (url.match(/\buser-data\b/i)) { osid = 'ubuntu20'; } // As this *cannot* be fitted into URL
   console.log("osid after possible overrides (by url:"+url+"): "+osid);
-  var hps = {}; // Host params
+  var hps = hlr.hostparams(f) || {}; // Host params
+  // No facts (f=null) is okay here
+  d = recipe_params_init(f, global, user, ip);
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
     // var p = global.hostparams[f.ansible_fqdn]; // f vs. h
-    hps = hlr.hostparams(f) || {}; // NEW: lookup !
-    d = recipe_params_init(f, global, user);
+    // hps = hlr.hostparams(f) || {}; // NEW: lookup ! Above
+    //d = recipe_params_init(f, global, user);
     // See if install profile should be used
     //var iprofs = null; // Direct module-global
+    // TODO (difficult): Make install prof possible for non-fact hosts by maybe deriving profile from IP (/netmask)
     if (hps.iprof && iprofs && iprofs[hps.iprof]) {
       console.log("Apply install profile for "+ip);
       recipe_params_iprof(d, iprofs[hps.iprof]);
     }
     //d =
-    recipe_params(d, f, global, ip,  osid, ctype); // Add back: ctype,
+    //recipe_params_net_f(d, f, ip); // , global, ip,  osid, ctype . Serves no purpose anymore !
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
-    console.log("Call patch (stage 2 param formulation) ...");
-    // Tweaks to params, appending additional lines
-    patch_params(d, osid);
+    // Depends on facts, but still conditional on ... ??? "netbyfacts"
+    if (d.net.byfacts) { console.error("Calling factbased net override: netconfig_by_f(net, f) (by: f:" + f + ")"); netconfig_by_f(net, f); } // tolerant of f=null
+    netconfig_ifnum(d.net, f); // LEGACY (not-used?): Gen if num.
   }
   // Dummy params without f - At minimum have a valid object (w. global params)
   // Having 
   // OLD (inside else): d = {httpserver: global.httpserver };
+  // TODO: Allow ip to also overtake here (do net init)
   else {
+    //d = recipe_params_init(null, global, user); // null = No facts
+    //hps = hlr.hostparams(f) || {}; // call scores proper null for !f. Above
+    console.log("no-facts: Got Dummy HPS: ", hps);
     // NOT ip ? Why ???!!! Could be of some use even if facts were not gotten by it.
-    d = recipe_params_dummy(global, osid); // NEW
-    console.log("Not known host with facts");
+    var xd = recipe_params_dummy(d, osid, ip); // Does curr. not need osid (2nd)
+    console.log("Not a known host with facts "); // TEST (for async/await): +xd (funcs marked async return promise)
   }
   // Postpone this check to see if facts (f) are needed at all !
-  if (!d ) { // && !skip
+  if (!d ) { // && !skip // TODO: Update error message below
     var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+url+",  f="+f+")\n"; // skip="+skip+",
     res.end(msg2); // ${ip}
     console.log(msg2); // ${ip}
     // "Run: nslookup ${ip} for further info on host."
     return; // We already sent res.end()
   }
+  // Moved latter univ. applicable stages (from recipe_params_init) here
+  // Tweaks to params, e.g. appending additional lines, Centos/RH net.dev =  net.mac
+  console.log("Call patch (stage 2 param formulation) ...");
+  patch_params(d, osid); // Tolerant of no-facts
+  netconfig_late(d.net);
+  net_strversions(d.net); // Late !
+  recipe_params_disk(d, osid, ctype); // DISK
+  console.error("Calling mirror_info(global, osid) (by:" + global + ")");
+  d.mirror = mirror_info(global, osid, ctype) || {};
+  // d.mirror = mirror; // No intermed var
+
   if (patch_params_custom) { patch_params_custom(d, osid); }
   // Copy "inst" section params to top level for (transition period ?) compatibility !
   params_compat(d);
@@ -441,11 +460,12 @@ function patch_params(d, osid) {
   if (osid.match(/(centos|redhat)/)) {
     // d.user.groups = ""; // String or array at this point ?
     var net = d.net;
-    if (!net) { console.log("No d.net for patching centos (" + osid + ")"); return; }
+    if (!net) { console.log("No d.net for patching centos/rh (" + osid + ")"); return; }
     // RH and Centos 7 still seems to prefer "em" (Check later ...)
     // values: macaddr, "link" (first link connected to switch), bootif (from pxelinux if IPAPPEND 2 in pxelinux.cfg and BOOTIF set)
     // net.dev = "em" + net.ifnum;
-    net.dev = net.macaddress; // net.macaddress set earlier from facts
+    if (net.macaddress) { net.dev = net.macaddress; } // net.macaddress set earlier from facts
+    else { console.log("Warning: Centos/RH ('"+osid+"') needs net.macaddress as net.dev, but Not available !"); }
   }
 }
 /** Create dummy params (minimal subset) that ONLY depend on global config.
@@ -456,28 +476,56 @@ function patch_params(d, osid) {
  * @param osid {string} - OS ID label, coming usually from recipe URL on kernel command line (E.g. ...?osid=ubuntu18)
  * @return Made-up host params
  */
-function recipe_params_dummy(global, osid) {
-  var net = dclone(global.net);
-  var d = dclone(global); // { user: dclone(user), net: net};
-  d.net = net;
-  d.user = user; // global
+//async
+function recipe_params_dummy(d, osid, ip) { // TODO: rm ip (Use d.net.ip)
+  var net = d.net;
   // Make up hostname ???
   // We could also lookup the hostname by ip (if passed), by async. Use await here ?
-  net.hostname = "MYHOST-001";
-  var gw = net.gateway;
-  var iparr = gw.split(/\./);
-  iparr[3] = 111;
-  net.ipaddress = iparr.join('.'); // Get/Derive from net.gateway ?
+  net.hostname = "MYHOST-001"; // Dummy or by DNS lookup ? Generate unique by ip ?
+  var iparr = net.ipaddress.split(/\./);
+  net.hostname = "UNKNOWN-"+iparr.join("-");
+  // net.ipaddress = ip; // At init
+  // https://stackoverflow.com/questions/54887025/get-ip-address-by-domain-with-dns-lookup-node-js (Wrapping)
+  // await dnsPromises.reverse(ip); // Added in 10.6 (Ubu: v8.10.0)
+  
+  dns.reverse(ip, function (err, domains) {
+    if (err) { console.log("Error in reverse lookup !"); return; }
+    if (!Array.isArray(domains)) { console.log("DNS names not in array !"); return; }
+    // Array of DNS names, pick [0]
+    console.log("DNS-reverse(hostname): ", domains[0]);
+  });
+  
+  async function lookupPromise(ip) {
+    // await here is opt
+    return  new Promise((resolve, reject) => {
+        dns.reverse(ip, (err, domains) => {
+            if ( err ) { return reject(err); }
+            // Validate, reject
+            console.log("DNS-promise-reverse(hostname): ", domains[0]);
+            return resolve(domains[0]);
+        });
+     });
+  };
+  // await
+  //net.hostname = await lookupPromise(ip);
+
+  // var gw = net.gateway;
+  //var iparr = gw.split(/\./);
+  // iparr[3] = 111; // !!!
+  // net.ipaddress = ip; // iparr.join('.'); // Get/Derive from net.gateway ?
+  console.log("Gave value to hostname: ", net.hostname);
   //net.domain 
-  net.nameservers = net.nameservers.join(" ");
+  //net.nameservers = net.nameservers.join(" ");
   
   // NOTE: user.groups Array somehow turns (correctly) to space separated string. Feature of Mustache ?
   //NOT:d.disk = disk;
-  /////////////////////////// Mirror - Copy-paste or simplify 
-  d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
-  d.postscript = global.inst.postscript; // TODO: Can we batch copy bunch of props collectively (We already do, but see timing order)
-  
-  return d;
+  /////////////////////////// Mirror - Copy-paste or simplify
+  // BAD. Use shared mirror logic as osid will be in recipe URL.
+  //d.mirror = { "hostname": global.mirrorhost, "directory": "/" + osid }; // osid ? "/ubuntu18"
+  // TODO: Share w. main logic. NOTE: postscript (singular) is an OLD var.
+  // d.postscript = global.inst.postscript; // TODO: Can we batch copy bunch of props collectively (We already do, but see timing order)
+  //console.log("Ret 66");
+  return 66; // d
 }
 /** Allow Installation profile to override values in recipe parameters.
  * The rules for override are set here and keys of iprof affect multiple sections in config.
@@ -501,7 +549,7 @@ function recipe_params_iprof(d, iprof) {
     if (iprof[k]) { d.net[k] = iprof[k]; console.log("iprof["+k+"] overriden in net-section (val:"+iprof[k]+")"); }
   });
   // "inst" section keys
-  var instkeys = ["locale","keymap","time_zone", "install_recommends", "post_scripts"];
+  var instkeys = ["locale","keymap","time_zone", "install_recommends", "postscripts"];
   instkeys.forEach((k) => {
     if (iprof[k]) { d.inst[k] = iprof[k]; console.log("iprof["+k+"] overriden in inst-section (val:"+iprof[k]+")"); }
   });
@@ -522,17 +570,23 @@ function recipe_params_cloned(global, user) {
 }
 /** Create Per-OS-Install recipe params instance by cloning main config.
  */
- function recipe_params_init(f, global, user) {
+ function recipe_params_init(f, global, user, ip) {
   var d = dclone(global);
-  var hps = hlr.hostparams(f) || {}; // Add early to d !!!
-  d.hps = hps;
+  if (f) {
+    d.hps = hlr.hostparams(f) || {}; // Add early to d !!!
+    // Record MAC already early (if possible)
+    var anet = f.ansible_default_ipv4;
+    d.net.macaddress = anet ? anet.macaddress : "";
+  }
   d.user = user;
+  if (!d.net) { console.log("recipe_params_init: Error: No net section !"); return null; }
+  d.net.ipaddress = ip;
   // Remove select unnecessary sections
   return d;
 }
 // Compatibility-copy install params from "inst" to top level
 function params_compat(d) {
-  // For now all keys (Explicit: "locale","keymap","time_zone","install_recommends", "postscript")
+  // For now all keys (Explicit: "locale","keymap","time_zone","install_recommends", "postscripts")
   if (!d.inst) { return 0; }
   Object.keys(d.inst).forEach((k) => { d[k] = d.inst[k]; });
   // Just before Recipe or JSON params dump delete cluttering parts that will never be used in OS install context.
@@ -573,38 +627,53 @@ function params_compat(d) {
 * TODO: Passing osid may imply ctype (and vice versa)
 */
 // OLD: @param (after ip) ctype - Configuration type (e.g. ks or preseed, see elswhere for complete list)
-function recipe_params(d, f, global, ip,  osid, ctype) { // ctype,
-  if (!ctype) { ctype = ""; }
-  // var d = dclone(global); // { user: dclone(user), net: net};
-
-  //OLD: var net = dclone(global.net);
-  var net = d.net;
+function recipe_params_net_f(d, f, ip) { // , global, ip,  osid, ctype
+  //if (!ctype) { ctype = ""; }
+  var net = d.net; // shortcut
   var anet = f.ansible_default_ipv4; // Ansible net info
   // Many parts of recipe creation might need hostparams (hps)
-  var hps = hlr.hostparams(f) || {}; // Add early to d !!! .. and use d.hps
-  console.log("HPS:",hps);
+  //var hps = hlr.hostparams(f) || {}; // Add early to d !!! .. and use d.hps
+  //console.log("HPS:",hps);
   // Validate IP early (or only as part of net stuff)
+  /*
   if (anet.address != ip) {
-    var msg = "# Hostinfo IP and detected ip not in agreement\n";
+    var msg = "# Host-facts IP and detected (or overriden) ip not in agreement\n";
     res.end(msg); // NOTE NO res !!!!!!
     console.log(msg);
     return null;
   }
+  * */
   // TODO: Move to net processing (if (ip) {}
-  net.ipaddress = ip; 
-  net.macaddress = anet ? anet.macaddress : "";
+  // net.ipaddress = ip; // Let override (ip=..) prevail ? // Neutral / Now at init
+  //net.macaddress = anet ? anet.macaddress : ""; // Useful for RH/Centos. Already at init !
   ////////////////////////// NETWORK /////////////////////////////////////
-  console.error("Calling netconfig(net, f) (by: f:" + f + ")");
-  netconfig(net, f);
+  
+  
+  
   ///////////////////////// DISK /////////////////////////////////
   // Ansible based legacy calc (imitation of original disk).
   // TODO: Disable, as this is not currently used (make configurable / optional).
   //console.error("Calling (Ansible-based) disk_params(f) (by:" + f + ")");
   //var disk = osdisk.disk_params(f);
   
-  // function recipe_params_disk(d, osid, ctype) {
-  //    var hps = d.hps;
+  // OLD: Disk
 
+  // Comment function
+  d.comm = function (v)   { return v ? "" : "# "; };
+  d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
+  //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
+  //////////////// OLD: Choose mirror (Use find() ?) //////////////////
+  
+  return d;
+}
+
+/** Create disk recipe based on osid, ctype.
+ * Adds diskinfo stucture in members(s): parr, parts.
+ * Adds recipe disk "formula" content to diskinfo.
+ */
+function recipe_params_disk(d, osid, ctype) {
+  var hps = d.hps || {};
+  if (!osid || !ctype) { return; }
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
   
@@ -622,7 +691,7 @@ function recipe_params(d, f, global, ip,  osid, ctype) { // ctype,
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
-    instpartid = parts.length; // Because of 1-based numbering length will be correct
+    d.instpartid = instpartid = parts.length; // Because of 1-based numbering length will be correct
   }
   if (osid.match(/^suse/)) {
     //MOVED: var ptt = hps["ptt"] || 'mbr';
@@ -660,20 +729,9 @@ function recipe_params(d, f, global, ip,  osid, ctype) { // ctype,
   // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
   d.partials = partials; // Suse or Win
-  d.instpartid = instpartid; // Win
+  //d.instpartid = instpartid; // Win ONLY (MOVED UP)
 
-  //  return 0; // Disk info ?
-  //}
-
-  // Comment function
-  d.comm = function (v)   { return v ? "" : "# "; };
-  d.join = function (arr) { return arr.join(" "); }; // Default (Debian) Join
-  //if (osid.indexof()) {  d.join = function (arr) { return arr.join(","); } }
-  //////////////// Choose mirror (Use find() ?) //////////////////
-  console.error("Calling mirror_info(global, osid) (by:" + global + ")");
-  var mirror = mirror_info(global, osid, ctype) || {};
-  d.mirror = mirror;
-  return d;
+  return 0; // Disk info ?
 }
 
 /** Choose final package repo mirror servers for currently installed OS.
@@ -742,7 +800,7 @@ function mirror_info(global, osid, ctype) {
   return mirror;
 }
 
-/** Configure network params for host.
+/** Configure network params for host by ansible facts (letting them override env settings).
  * Create netconfig as a blend of information from global network config and hostinfo facts.
  * TODO:
  * - NOT: Take from host facts (f) f.ansible_dns if available !!! Actually f.ansible_dns.nameservers in Ubuntu18
@@ -751,9 +809,9 @@ function mirror_info(global, osid, ctype) {
  * - Need to pass also other info (e.g. osid, os hint to make proper decision on interface naming)
  * See also: linetboot.js - netplan_yaml()
 */
-function netconfig(net, f) {
-  if (!f) { console.log("netconfig: No Facts !"); return net; } // No facts, cannot do overrides
-  var anet = f.ansible_default_ipv4 || {}; // Ansible Net
+function netconfig_by_f(net, f) {
+  if (!f) { console.log("netconfig_by_f: No Facts !"); return net; } // No facts, cannot do overrides
+  var anet  = f.ansible_default_ipv4 || {}; // Ansible Net
   var dns_a = f.ansible_dns || {}; // Has search,nameservers
   
   // Override nameservers, gateway and netmask from Ansible facts (if avail)
@@ -769,22 +827,39 @@ function netconfig(net, f) {
   // On smaller networks there is none.
   // if (dns_a.search && Array.isArray(dns_a.search)) { net.namesearch = dns_a.search; }
   
+  // Domain !
+  if (f.ansible_domain) { net.domain = f.ansible_domain; }
+  net.hostname = f.ansible_hostname; // What about (async) DNS lookup ?
   
-  net_strversions(net);
   // TODO: net.nameservers_ssv // Space separated values (?)
   if (anet.gateway) { net.gateway = anet.gateway; }
   if (anet.netmask) { net.netmask = anet.netmask; }
-  // With netmask locked in, calc cidr
-  net.cidr = netmask2CIDR(net.netmask);
-  // Derive network from gateway (for e.g. routing tables)
-  net.network = gateway2network(net.gateway);
-  // Domain !
-  if (f.ansible_domain) { net.domain = f.ansible_domain; }
-  net.hostname = f.ansible_hostname; // What about DNS lookup ?
-  //net.dev = anet.interface; // See Also anet.alias
-  net.dev = "auto"; // Default ?
+  return net;
+}
   
-  // Extract interface (also alias) number !
+function netconfig_late(net) {
+  
+  /////////////// NEUTRAL (Late) //////////
+  // With netmask locked in, calc cidr
+  net.cidr = netmask2CIDR(net.netmask); // Neutral, Late
+  // Derive network (*.0) from gateway (for e.g. routing tables)
+  net.network = gateway2network(net.gateway); // Neutral, Late (non-f)
+  /////// Current network Baroadcast (Similar to gateway2network) //////
+  //var gwarr = net.gateway.split(".");
+  //gwarr[3] = "255";
+  //net.broadcast = gwarr.join(".");
+  net.broadcast = gateway2network(net.gateway, 255); // NEW
+  //net.dev = anet.interface; // See Also anet.alias. Too specific !
+  net.dev = "auto"; // Neutral, Default on Deb/Ubu ?
+  
+  return net;
+}
+  
+  /** Extract interface number from facts */
+function netconfig_ifnum(net, f) {
+  if (!f) { return net; }
+  var anet  = f.ansible_default_ipv4 || {}; // Ansible Net
+  // Extract interface (also alias) number (ifnum) !
   // Rules for extraction:
   // - We try to convert to modern 1 based (post eth0 era, interfaces start at 1) numbering 
   var ifnum; var marr;
@@ -792,14 +867,11 @@ function netconfig(net, f) {
   else if ( anet.interface && (marr = anet.interface.match(/^(em|eno)(\d+)/)) ) { ifnum = parseInt(marr[2]); } // New 1-based
   else { console.log("None of the net-if patterns matched: " + anet.interface); ifnum = 1; } // Guess / Default
   net.ifnum = ifnum;
-  /////// Current network Baroadcast //////
-  var gwarr = net.gateway.split(".");
-  gwarr[3] = "255";
-  net.broadcast = gwarr.join(".");
-  
-  console.log("netconfig: ", net);
+  //console.log("network config: ", net);
   return net; // ???
-  
+}
+
+// Net Helpers (TODO: See what's needed)
   function countCharOccurences(string , char) { return string.split(char).length - 1; }
   function decimalToBinary(dec) { return (dec >>> 0).toString(2); }
   function getNetMaskParts(nmask) { return nmask.split('.').map(Number); }
@@ -810,8 +882,7 @@ function netconfig(net, f) {
         // .map(part => decimalToBinary(part)).join(''),'1');
         .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
   }
-  
-}
+
 /** Create string versions of multi-valued network variables for templating.
  * Call this as late as possible, so that no changes are made to network info
  * (esp. for members from which string versions are generated here).
@@ -853,13 +924,13 @@ function net_strversions(net) {
 // OLD: Disks
 
 // TODO: Design graceful recovery (from bad input)
-function gateway2network(gw) {
+function gateway2network(gw, forceoctet) {
   if (!gw || typeof gw != 'string') { console.log("GW not in string"); return ""; }
   var octarr = gw.split(".");
   if (octarr.length != 4) { console.log("Warning: Got "+octarr.length+ " octets, expected 4"); }
   var last = octarr.pop();
   if (last != '1') { console.log("Warning: Got "+last+ " as last octet of GW, expected 1"); }
-  octarr.push("0");
+  octarr.push(forceoctet ? forceoctet : "0");
   return octarr.join(".");
 }
 ////// Scripts and templating //////////////
@@ -976,7 +1047,7 @@ function needs_template(cont) {
   if (tcs.length > 1) { console.error("Ambiguous TEMPLATE_WITH tagging ...."); return null; }
   return tcs[0];
 }
-/** Produce a listing of Recipes too allow reviewing recipe content.
+/** Produce a web listing of Recipes too allow reviewing recipe content.
  * Let recipes (module variable) drive the generation of grid.
  */
 function recipe_view(req, res) {
@@ -996,7 +1067,8 @@ function recipe_view(req, res) {
   });
   res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes, scriptnames: scriptnames});
 }
-
+/** Web handler for viewing installation profiles (HTTP GET).
+ */
 function instprofiles_view(req, res) {
   var jr = {status: "err", msg: "Problem loading install profiles. "};
   if (!iprofs) { jr.msg += "No install profiles (null)"; return res.json(jr); }
@@ -1018,7 +1090,7 @@ module.exports = {
   preseed_gen: preseed_gen, // Calls a lot of locals
   
   script_send: script_send,
-  netconfig: netconfig,
+  netconfig_by_f: netconfig_by_f,
   net_strversions: net_strversions,
   // Web Handlers
   recipe_view: recipe_view,
