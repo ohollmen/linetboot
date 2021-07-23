@@ -38,6 +38,11 @@ if [ $ubu_rc -eq 0 ]; then
   dpkg --get-selections > ~{{{ username }}}/dpkg_selections.`date -Iminutes`.initial.txt
   # On package install use -yq
   apt-get update && apt-get -y dist-upgrade
+  # 20.04 Prepeare "python" to be usable command (python 2)
+  if [ -f "/usr/bin/python2.7" ]; then
+    # echo "Adding python symlink"
+    ln -s /usr/bin/python2.7 /usr/bin/python
+  fi
 fi
 # RH/Centos (SUSE may also need /etc/sudoers tweak)
 if [ $cen_rc -eq 0 ]; then
