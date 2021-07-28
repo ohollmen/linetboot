@@ -31,7 +31,7 @@
         backup: yes
     - name: Add auto master map ("amm")
       copy:
-        content: "{{ amm }}\n"
+        content: "+{{ amm }}\n"
         dest: '/etc/auto.master'
         backup: yes
     # Restart associated services by systemd systemctl
