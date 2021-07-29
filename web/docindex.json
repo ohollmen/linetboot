@@ -88,6 +88,11 @@
       "title" : "Instance Data Migration",
       "urlpath" : "doc/README.migrate.md",
       "grp":"maint"
+    },
+    {
+      "title" : "Generated Scripts",
+      "urlpath" : "doc/README.scripts.md",
+      "grp":"maint"
     }
   ]
 }
