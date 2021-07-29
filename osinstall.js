@@ -82,7 +82,7 @@ var user = {};
 var iprofs = {};
 var patch_params_custom; // CB (from user custom .js module)
 var setupmod = {}; // custom CB Module
-
+var logdb = {};
 //var tmpls = {};
 var recipes = [
   {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache"},
@@ -432,7 +432,8 @@ function preseed_gen(req, res) {
 function params_verify(d) {
   if (!d.user) { throw "No initial user"; } // Initial user
   if (!d.mirror) { throw "No package mirror info"; }
-  if (!d.diskinfo) { throw "No disk recipe content"; } // Disk recipe content
+  // NOTE: Some disks only have "partials" (No diskinfo)
+  if (!d.diskinfo && !d.partials) { throw "No disk recipe content (both diskinfo and partials missing)"; } // Disk recipe content
   if (d.disk) { throw "Legacy ansible 'disk' info is remaining"; }
   if (!d.hps) { throw "No host iventory (k-v) params"; }
 }
@@ -506,7 +507,7 @@ function recipe_params_dummy(d, osid, ip) { // TODO: rm ip (Use d.net.ip)
             return resolve(domains[0]);
         });
      });
-  };
+  }
   // await
   //net.hostname = await lookupPromise(ip);
 
@@ -678,8 +679,11 @@ function recipe_params_net_f(d, f, ip) { // , global, ip,  osid, ctype
 }
 
 /** Create disk recipe based on osid, ctype.
- * Adds diskinfo stucture in members(s): parr, parts.
- * Adds recipe disk "formula" content to diskinfo.
+ * Adds (to templating params d):
+ * - diskinfo stucture in members(s): parr, parts.
+ * - Possible/optional partials for more complex (XML) based recipes
+ * - recipe disk "formula" content to diskinfo whenever recipe can be fully expmnded here
+ *   (for many/most install types).
  */
 function recipe_params_disk(d, osid, ctype) {
   var hps = d.hps || {};
@@ -735,10 +739,10 @@ function recipe_params_disk(d, osid, ctype) {
   }
   // d.net = net; // redundant w. new clone scheme
   // ALREADY: d.user = user; // global (as-is). TODO: Create password_hashed
-  // d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
+  // DEPRECATED: d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
   // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
-  d.partials = partials; // Suse or Win
+  d.partials = partials; // Suse or Win (XML)
   //d.instpartid = instpartid; // Win ONLY (MOVED UP)
 
   return 0; // Disk info ?
@@ -1091,6 +1095,30 @@ function instprofiles_view(req, res) {
   });
   return res.json({status: "ok", data: iprofs_arr});
 }
+/** Log install step for client.
+ */
+function ilog(ip, type, msg) {
+  if (!ip) { console.log("ilog: Must Have IP !"); return; }
+  if (!Array.isArray(logdb[ip])) { logdb[ip] = []; } // First logent, init
+  if (!type || !msg) { console.log("ilog: Must Have type and msg !"); return; }
+  var ent = { type: type, msg: msg };
+  ent.time = new Date().toISOString();
+  logdb[ip].push(ent); // In-mem
+}
+/** View install log for one or many hosts ?
+ * TODO: Allow all logs (AoA or AoOoA).
+ * Fields: time,type, msg
+ */
+function ilog_view(req, res) {
+  var jr = {status: "err", msg: "Problem showing Install log(s). "};
+  var ip = req.query.ip;
+  if (!ip) { jr.msg += " No IP address given"; return res.json(jr); }
+  var ilog = [];
+  ilog = logdb[ip];
+  if (!Array.isArray(ilog)) { jr.msg += " No log found for IP: "+ip; return res.json(jr); }
+  
+  return res.json({status: "ok", data: ilog});
+}
 
 module.exports = {
   init: init,
@@ -1110,4 +1138,12 @@ module.exports = {
   //OLD: diskinfo: diskinfo
   //scriptnames: scriptnames
   recipes: recipes, // Recipes config data
+  // New shared data/functionality
+  iprofs: iprofs, // TODO: lay over (in init), not replace
+  recipe_params_init: recipe_params_init,
+  recipe_params_iprof: recipe_params_iprof,
+  netconfig_late: netconfig_late,
+  // To log from other modules
+  ilog: ilog,
+  ilog_view: ilog_view,
 };
