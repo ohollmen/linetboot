@@ -186,6 +186,7 @@ function app_init() { // global
   app.get('/installevent/:evtype', oninstallevent); // /api/installevent
   // Netplan (custom YAML based handler)
   app.get('/netplan.yaml', netplan_yaml);
+  app.get('/netplan2.yaml', netplan_yaml2);
   // Scipts & misc install data (e.g sources.list)
   //app.get('/preseed_dhcp_hack.sh', script_send);
   //app.get('/sources.list', script_send);
@@ -277,6 +278,7 @@ function app_init() { // global
   // Bad Process report
   app.get("/staleproc", procrpt.procreport_web);
   app.get("/instprofiles",  osinst.instprofiles_view);
+  app.get("/ilogview",  osinst.ilog_view);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -583,6 +585,11 @@ function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 *      # let lineboot know the start of install
 *      http://localhost:3000/installevent/start
 * 
+* ## Event Types
+* Modeled along typical Linux installers, the allowed even types are:
+* - start - Start of installation
+* - end - End of installation (Also has legacy alias "done")
+* - post - 
 * ## Testing Events submission
 * 
 * Especially the "end" event with its triggered actions may be worth getting familiar with and
@@ -606,7 +613,7 @@ function oninstallevent(req,res) {
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
   // lookup facts
   var f = hostcache[ip];
-  if (!f) { jr.msg += "Could not lookup facts for " + ip; return res.json(jr); }
+  if (!f) { jr.msg += "Could not lookup facts for " + ip; osinst.ilog(); return res.json(jr); }
   var now = new Date();
   console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+q.path+", time:" + now.toISOString());
   //var sq = "INSERT INTO hostinstall () VALUES (?)";
@@ -631,7 +638,7 @@ function oninstallevent(req,res) {
       hostup_poll(picfg, actcb);
     }
     else {
-      var pass = (cb) => { cb(null, picfg); };
+      var pass = (cb) => { cb(null, picfg); }; // Essentially: Forward (to allow similar picfg-signatures)
       // Maybe completion function here should be directly hostup_act() (<= NOT because of sign)
       // asyc.series would get results of individual funcs. waterfall is perfect match
       async.waterfall([ pass, postinst.hostup_init_wait, postinst.hostup_poll, ], function (err, picfg) {
@@ -884,6 +891,41 @@ function netplan_yaml(req, res) {
         // .map(part => decimalToBinary(part)).join(''),'1');
         .map(function (part) { return decimalToBinary(part);} ).join(''),'1' );
   }
+}
+/** TODO: Populate Netplan structure and output it in Yaml.
+ * TODO: Rely on osinstall to populate the structure
+ */
+function netplan_yaml2(req, res) {
+  //var jr = {status: "err", msg: "No Netplan created"};
+  var ip = osinst.ipaddr_v4(req);
+  var xip = req.query["ip"]; // eXplicit IP
+  if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
+  var f = hostcache[req.query["mac"] || ip];
+  if (!f) { console.log("# No Facts found for IP Address '"+ip+"' (or maybe mac ?).\n");  } // ${ip} return;
+  res.type('text/plain');
+  
+  var np = {"version": 2, "renderer": "networkd", "ethernets": {}};
+  var hps = hlr.hostparams(f) || {}; // Host params
+  var d = osinst.recipe_params_init(f, global, user, ip);
+  var iprofs = null; // TODO: osinst module var !
+  if (hps.iprof && iprofs && iprofs[hps.iprof]) {
+      console.log("Apply install profile for "+ip);
+      osinst.recipe_params_iprof(d, iprofs[hps.iprof]);
+    }
+    // osinst.netconfig_ifnum(d.net, f);
+    osinst.netconfig_late(d.net);
+  var net = d.net; // TODO: Generate params, Assign (net)
+  var iface = { // Netplan interface (this gets assigned to if-name) // Assume single IP
+    "addresses": [ net.ipaddress + "/" + net.cidr ], // NOTE: CIDR !!!
+    "gateway4": net.gateway,
+    "nameservers": {search: net.namesearch, addresses: net.nameservers,  }// {search: null, addresses: null}
+  };
+  // Netplan requires *exact* interface name. In facts: f.ansible_default_ipv4.alias
+  var ifname = net.ifdefault || (f.ansible_default_ipv4 ? f.ansible_default_ipv4.alias : "") || "eno0";
+  np.ethernets[ifname] = iface; // ifnum, ifdefault
+  var ycfg = {};
+  var ycont = yaml.safeDump(JSON.parse(JSON.stringify({network: np})), ycfg);
+  res.send(ycont);
 }
 /** Generate Ubuntu 20 subiquity single line meta-data file with hostname (!).
  * Lookup facts for IP and extract (non-FQDN) hostname.
