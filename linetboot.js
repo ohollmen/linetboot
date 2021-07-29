@@ -613,14 +613,14 @@ function oninstallevent(req,res) {
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
   // lookup facts
   var f = hostcache[ip];
-  if (!f) { jr.msg += "Could not lookup facts for " + ip; osinst.ilog(); return res.json(jr); }
+  if (!f) { jr.msg += "Could not lookup facts for " + ip; osinst.ilog(ip, "installevent", p.evtype); return res.json(jr); }
   var now = new Date();
   console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+q.path+", time:" + now.toISOString());
   //var sq = "INSERT INTO hostinstall () VALUES (?)";
   // sq = "UPDATE hostinstall SET ... WHERE ipadd = ?"
   // conn.exec(sq, params, function (err, result) {});
   var endtypes = {"done": "deprecated", "end":"preferred"};
-  // If end event signal trigger approximate timer and start checking when host is up ?
+  // If end-of-install-event: signal trigger approximate timer and start checking when host is up ?
   // series,eachSeries,waterfall
   // Use async.eachSeries() to poll by hdl = setTimeout(cb, toutms) / hdl=setInterval(cb, toutms) (combo of 2)
   // Note args can be passed after toutms
@@ -635,7 +635,7 @@ function oninstallevent(req,res) {
     ///////////////
     // Cannot use hostup_init_wait here ?
     if (!fancy) {
-      hostup_poll(picfg, actcb);
+      postinst.hostup_poll(picfg, actcb); // E.g. no initial wait-delay, but ad-hoc actcb above is passed
     }
     else {
       var pass = (cb) => { cb(null, picfg); }; // Essentially: Forward (to allow similar picfg-signatures)
@@ -643,6 +643,7 @@ function oninstallevent(req,res) {
       // asyc.series would get results of individual funcs. waterfall is perfect match
       async.waterfall([ pass, postinst.hostup_init_wait, postinst.hostup_poll, ], function (err, picfg) {
         if (err) { console.log("Error in host-up waiting:"+err); return; }
+        if (!picfg) { console.log("No picfg was passed to completion cb ! (?)"); return; }
         console.log("Success waiting for host-up. Look for action ...");
         //actcb(null, picfg);
         postinst.hostup_act(picfg);

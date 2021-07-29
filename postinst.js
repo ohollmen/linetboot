@@ -7,7 +7,7 @@ Allow executing a JS callback or shell command when the OS-installed host comes 
 var node_ssh = require('node-ssh');
 var cproc   = require('child_process');
 
-//var ssh2  = require('ssh2');
+//var ssh2  = require('ssh2'); // picfg contains this.
 //var sshcfg;
 //var ssh;
 
@@ -58,6 +58,7 @@ function hostup_init_wait(picfg, cb) {
   setTimeout(() => { cb(null, picfg); }, picfg.initwait*1000);
 }
 /** Poll for the host to come up.
+ * On wait completion call cb with original picfg (to take further action).
  * TODO: ret null vs ...
  */
 function hostup_poll(picfg, cb) { // hostup_poll(some, cb)
