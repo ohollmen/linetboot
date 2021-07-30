@@ -190,6 +190,24 @@ Installation Environment universal parameters (with fairly obvious meanings, not
 
 See also "net" section above for install-time network settings (Object with global network base settings).
 
+### Section "postinst" - Post Installation Actions
+
+After OS Installer has completed the installation it is possible to have Lineboot to take further refining (extra) actions on the install client.
+Linetboot does this by waiting for host to come up (referred below as "host-up" event/status) and the execute the actions via SSH on host.
+Prerequisite for being able to reach host (non-interactively) is to have SSH keys exchanged between install host and linetboot
+(by one of the "postscripts" in inst section, see above).
+
+- user (string) - SSH Username for post install activity (hostname / host identity is automatically derived from installation context ip address).
+- initwait (int) - Number of seconds to wait before even starting to poll for "host-up"
+- pollint" (int) - Poll interval (seconds, default 10s.) for trying to reach 
+- trycnt (int) - Number of tries to detect the "host-up" (default: 30 times)
+- execact (string) - The shell command to execute on lineboot host shell after "host-up" is detected (Example: "ssh ${POSTOP_USER}@${POSTOP_IP} ls -al /")
+
+Note: The postinst module sets up a set of (very) useful environment variables for shell command given in "execact" to base it's activity on
+(See OS Installation documenattion for these environment variables).
+
+Note that in a hi-grade software testing environment, which requires fresh OS install as basis for testing, the "execact" could be the
+(direct or indirect - e.g. doing a few DB lookups for right test suite) test command to run on the host.
 ### Section "ipmi" - Remote Management Info
 
 This section is for BMC based host management and interactivety by IPMI and RedFish (protocols).
