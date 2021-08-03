@@ -2,7 +2,7 @@
 ## TEMPLATE_WITH: user
 # NETPLAN
 
-POST_LOG={{{ homedir }}}/post-log.txt
+POST_LOG={{{ user.homedir }}}/post-log.txt
 
 NETIF=`ip addr show | grep -P -o '^\d+:\s\K(e[\w]+)'`
 # NETIF=`ip addr show | sed -n -e 's/^[0-9]+: \([[:alnum:]]\+\):/\1/p'

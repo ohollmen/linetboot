@@ -6,12 +6,12 @@
 # - nisservers - (array of) NIS server fqdn names or IP addresses
 # TODO: Allow skipping if NIS is already setup by main recipe (e.g. Yast)
 # TEMPLATE_WITH: user
-NIS_DOM="{{{ nisdomain }}}"
-NIS_AUTO_MASTER_MAP="{{{ nisamm }}}"
-NIS_SERVERS="{{{ nisservers_str }}}"
-POST_LOG={{{ homedir }}}/nis-log.txt
+NIS_DOM="{{{ net.nisdomain }}}"
+NIS_AUTO_MASTER_MAP="{{{ net.nisamm }}}"
+NIS_SERVERS="{{{ net.nisservers_str }}}"
+POST_LOG={{{ user.homedir }}}/nis-log.txt
 
-touch $POST_LOG; chown {{{ username }}}:{{{ username }}} $POST_LOG
+touch $POST_LOG; chown {{{ user.username }}}:{{{ user.username }}} $POST_LOG
 if [ -z "$NIS_AUTO_MASTER_MAP" ]; then
   NIS_AUTO_MASTER_MAP=auto.master
   echo "Falling back to auto master map name auto.master" >> $POST_LOG
@@ -60,7 +60,7 @@ if [ $arch_rc -eq 0 ]; then
   # ypbind / ypbind-mt
   ###### AUR (yay, aurman) installations #########
   # Avoid Interactivity ?
-  # su -l '{{ username }}' -p -c 'yes | yay -S ypbind-mt' > {{{ homedir }}}/yay_install.txt 
+  # su -l '{{ user.username }}' -p -c 'yes | yay -S ypbind-mt' > {{{ user.homedir }}}/yay_install.txt 
   # We seem to have now: ypbind, rpcbind, nscd (automount as pacman pkg)
   # Delay start after config writing ?
   # sudo systemctl start ypbind
@@ -84,7 +84,7 @@ if [  $suse_rc -eq 0 ]; then
   # rpcbind
   # Note: there are logs of script runs in: /var/adm/autoinstall/logs/*.sh
   # ZYPP_LOCKFILE_ROOT="/var/run/autoyast"
-  ps -ef >> {{{ homedir }}}/processes.txt
+  ps -ef >> {{{ user.homedir }}}/processes.txt
   zypper removelock >> $POST_LOG
   zyp_rc=$?
   echo "Zypper rm-locks: rc=$zyp_rc" >> $POST_LOG
@@ -112,8 +112,8 @@ if [  $suse_rc -eq 0 ]; then
   # Suse-ONLY Mods in /etc/sysconfig/network/config (NETCONFIG_NIS_*)
   # Note: What is delimiter in NETCONFIG_NIS_STATIC_SERVERS value ?
   # Answer: space (https://github.com/openSUSE/sysconfig/blob/master/doc/README.netconfig)
-  perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS="{{{ nisservers_str }}}"/;' /etc/sysconfig/network/config
-  perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ nisdomain }}}"/;'     /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_SERVERS=.+/NETCONFIG_NIS_STATIC_SERVERS="{{{ net.nisservers_str }}}"/;' /etc/sysconfig/network/config
+  perl -pi -e 's/^NETCONFIG_NIS_STATIC_DOMAIN=.+/NETCONFIG_NIS_STATIC_DOMAIN="{{{ net.nisdomain }}}"/;'     /etc/sysconfig/network/config
 fi
 ##############################
 # Set domain (todo: make backups of old)
@@ -131,7 +131,7 @@ if [ $cen_rc -eq 0 ]; then
   # Match ...
   if [ $rc -eq 0 ]; then
     # TODO: sed ?
-    perl -pi -e 's/^NISDOMAIN=.+/NISDOMAIN={{{ nisdomain }}}/;' /etc/sysconfig/network
+    perl -pi -e 's/^NISDOMAIN=.+/NISDOMAIN={{{ net.nisdomain }}}/;' /etc/sysconfig/network
   else
     echo "NISDOMAIN=$NIS_DOM" >> /etc/sysconfig/network
   fi
@@ -149,7 +149,7 @@ else
   #echo -n "" > /etc/yp.conf
   rm /etc/yp.conf; touch /etc/yp.conf
   echo "Add NIS servers: $NIS_SERVERS to /etc/yp.conf ." >> $POST_LOG
-  echo "NIS servers var: $NIS_SERVERS ... literal: {{{ nisservers_str }}}." >> $POST_LOG
+  echo "NIS servers var: $NIS_SERVERS ... literal: {{{ net.nisservers_str }}}." >> $POST_LOG
   # Is this line /bin/sh incompatible ?
   for NSERV in $NIS_SERVERS; do echo "ypserver $NSERV" >> /etc/yp.conf; done
   ls -al /etc/yp.conf >> $POST_LOG

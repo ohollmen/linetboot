@@ -350,11 +350,13 @@ function preseed_gen(req, res) {
     //d = recipe_params_init(f, global, user);
     // See if install profile should be used
     //var iprofs = null; // Direct module-global
-    // TODO (difficult): Make install prof possible for non-fact hosts by maybe deriving profile from IP (/netmask)
+    // TODO (difficult): Make install prof possible for non-fact hosts by maybe deriving profile from IP (/netmask) ?
+    /*
     if (hps.iprof && iprofs && iprofs[hps.iprof]) {
       console.log("Apply install profile for "+ip);
       recipe_params_iprof(d, iprofs[hps.iprof]);
     }
+    */
     //d =
     //recipe_params_net_f(d, f, ip); // , global, ip,  osid, ctype . Serves no purpose anymore !
     if (!d) { var msg = "# Parameters could not be fully derived / decided on\n"; console.log(msg); res.end(msg); return; }
@@ -370,7 +372,7 @@ function preseed_gen(req, res) {
     //d = recipe_params_init(null, global, user); // null = No facts
     //hps = hlr.hostparams(f) || {}; // call scores proper null for !f. Above
     console.log("no-facts: Got Dummy HPS: ", hps);
-    // NOT ip ? Why ???!!! Could be of some use even if facts were not gotten by it.
+    // IP Could be of some use even if facts were not gotten by it.
     var xd = recipe_params_dummy(d, osid, ip); // Does curr. not need osid (2nd)
     console.log("Not a known host with facts "); // TEST (for async/await): +xd (funcs marked async return promise)
   }
@@ -586,6 +588,11 @@ function recipe_params_cloned(global, user) {
     var anet = f.ansible_default_ipv4;
     d.net.macaddress = anet ? anet.macaddress : "";
     d.net.hostname = f.ansible_hostname ? f.ansible_hostname : "";
+    // Has Install profile ? Apply override already here.
+    if (d.hps.iprof && iprofs && iprofs[d.hps.iprof]) {
+      console.log("Apply install profile '"+d.hps.iprof+"' for ip:"+ip);
+      recipe_params_iprof(d, iprofs[d.hps.iprof]);
+    }
   }
   d.user = user;
   if (!d.net) { console.log("recipe_params_init: Error: No net section !"); return null; }
@@ -864,7 +871,8 @@ function netconfig_late(net) {
   //net.broadcast = gwarr.join(".");
   net.broadcast = gateway2network(net.gateway, 255); // NEW
   //net.dev = anet.interface; // See Also anet.alias. Too specific !
-  net.dev = "auto"; // Neutral, Default on Deb/Ubu ?
+  // Note: Centos/RH may have set this to MAC already (very useful), thus if ...
+  if (!net.dev) { net.dev = "auto"; } // Neutral, Default on Deb/Ubu ?
   
   return net;
 }
@@ -993,44 +1001,75 @@ function script_send(req, res) {
   
   if (tpc) {
     console.error("need templating w." + tpc);
+    ////// New: Setup parameter here in a universal fashion (Identical to recipe gen.).
+    // This should satisfy almost any "tcp" case See: if (tcp) {...} above (*except* for "sysinfo")
+    // Case(s) "user" (and "net") will get affected most (esp. in templates, e.g. {{username}} => {{user.username}}).
+    var osid = ""; // Note dummy osid. TODO: ... ?
+    var ctype = "";
+    var d = recipe_params_init(f, global, user, ip);
+    if (!f) { var xd = recipe_params_dummy(d, osid, ip); } // osid no more used in func
+    patch_params(d, osid); // Tolerant of no-facts and osid empty (not null)
+    netconfig_late(d.net);
+    net_strversions(d.net); // Late !
+    recipe_params_disk(d, osid, ctype); // Returns on no osid, no ctype
+    //console.error("Calling mirror_info(global, osid) (by:" + global + ")");
+    // d.mirror = mirror_info(global, osid, ctype) || {}; // Eliminate for now
+    //if (patch_params_custom) { patch_params_custom(d, osid); }
+    params_compat(d); // Puts stuff to top-level, deletes
     var p = {};
     var np = require("./netprobe.js"); // .init(...) Rely on earlier init(), but has init-guard
-    if (tpc == 'user') { p = dclone(user); p.httpserver = global.httpserver;
+    // TODO: Try merge templates to use notation (e.g.) user.username (not plainly "username")
+    // in favor of using single / unified parameter context
+    console.log("Templating param context: "+tpc);
+    if (tpc == 'user') {
+      p = d.user; // dclone(user);
+      //p.httpserver = global.httpserver; // Already at bottom
       // SSH Keys (also host) ?
-      p.linet_sshkey = np.pubkey();
-      p.linet_sshkey = p.linet_sshkey.replace(/\s+$/, "");
-      var hk = fs.readFileSync("/etc/ssh/ssh_host_rsa_key.pub", 'utf8');
-      if (hk) { hk = hk.replace(/\s+$/, ""); p.linet_hostkey = hk; }
+      // linet_sshkey and linet_hostkey are not fully used by ssh_keys_setup.sh (Uses ssh-keyscan)
+      //p.linet_sshkey = np.pubkey();
+      //p.linet_sshkey = p.linet_sshkey.replace(/\s+$/, "");
+      //var hk = fs.readFileSync("/etc/ssh/ssh_host_rsa_key.pub", 'utf8');
+      //if (hk) { hk = hk.replace(/\s+$/, ""); p.linet_hostkey = hk; }
       // Add host params
       
-      p.hps = hps;
+      p.hps = hps; // Also d.hps if f was avail.
       // See NIS info -  "nisservers", "nisdomain" from global.net
-      p.nisservers = global.net.nisservers || [];
+      /*
+      p.nisservers = d.net.nisservers || []; // OLD: global.net.nisservers || [];
       console.log("NIS Servers: ", p.nisservers);
-      p.nisdomain  = hps.nis || global.net.nisdomain || "";
-      p.nisamm     = hps.nisamm || global.net.nisamm || "auto.master"; // Fall to empty, let script defaut ?
+      // Simplify these with new param formulation ?
+      p.nisdomain  = hps.nis || d.net.nisdomain || "";
+      p.nisamm     = hps.nisamm || d.net.nisamm || "auto.master"; // Fall to empty, let script defaut ?
+      */
+      p.net = d.net;
+      // NEW: Nest Duplicate in user for interim compatibility
+      p.user = p;
+      console.log("TPC-user: ", p);
     }
     if (tpc == 'net') {
-      p = dclone(global.net);
-      //p.httpserver = global.httpserver; // Complement w. universally needed var
+      p = d.net; // OLD: dclone(global.net). d is copy already
+      p.httpserver = d.httpserver; // Complement w. universally needed var
       if (f) {
         var anet = f.ansible_default_ipv4 || {};
         // p.httpserver = 
-        p.ipaddress = anet.address; p.hostname = f.ansible_hostname; p.macaddr = anet.macaddress;
-        console.log("Net-context: "+p);
+        // Should be in already (comment out). Deprecate (abbrev) "macaddr"
+        p.ipaddress = anet.address;
+        p.hostname = f.ansible_hostname;
+        p.macaddress = p.macaddr = anet.macaddress;
+        console.log("Net-context: ", p);
       }
       // Already have NIS servers if needed ...
     } // TODO: adjust
-    if (tpc == 'global') { p = global; p.postscripts = p.inst.postscripts; }
+    if (tpc == 'global') { p = d; p.postscripts = p.inst.postscripts; } // OLD: p = global
     // Custom ... how to formulate this into more static config ? clone global and add ?
     if (tpc == 'sysinfo') {
       // process.getgid(); // Need to translate
       p = {linetapproot: process.cwd(), linetuser: process.env["USER"], linetgroup: process.getgid(), linetnode: process.execPath};
     }
     // Universal setup
-    if (p.nisservers) { p.nisservers_str = p.nisservers.join(' '); }
+    //if (p.nisservers) { p.nisservers_str = p.nisservers.join(' '); } // Already: params_compat()
     if (f && f.ansible_distribution) { p.distro = f.ansible_distribution; } // Others: ansible_os_family
-    p.httpserver = global.httpserver;
+    p.httpserver = d.httpserver;
     // console.error("Params: ", p);
     cont = Mustache.render(cont, p); // partials for complex scripts ? In that case should cache partials
   }

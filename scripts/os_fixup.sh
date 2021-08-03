@@ -6,7 +6,7 @@
 # TEMPLATE_WITH: user
 
 OS_DISTRO_PREV="{{{ distro }}}"
-POST_LOG={{{ homedir }}}/fixup-log.txt
+POST_LOG={{{ user.homedir }}}/fixup-log.txt
 # /dev/null seems to be needed at least by apt-key and ssh-keygen (!), rights broken in Ubuntu
 chmod a+rw /dev/null
 # Detect OS (See also: $OSTYPE, `uname` (Linux), uname -a (Ubuntu))
@@ -22,7 +22,7 @@ arch_rc=$?
 grep 'openSUSE' /etc/os-release
 suse_rc=$?
 # Intial (unconditional) loggings
-cp /etc/os-release "{{{ homedir }}}/os-release"
+cp /etc/os-release "{{{ user.homedir }}}/os-release"
 echo "Paths of essentials (curl,wget)" >> $POST_LOG
 echo "uname result: "`uname -a` >> $POST_LOG
 which curl >> $POST_LOG
@@ -35,7 +35,7 @@ if [ $ubu_rc -eq 0 ]; then
   # Or brute -force download overriding file
   #wget "http://{{ httpserver }}/scripts/sources.list" -O /etc/apt/sources.list
   export DEBIAN_FRONTEND=noninteractive
-  dpkg --get-selections > ~{{{ username }}}/dpkg_selections.`date -Iminutes`.initial.txt
+  dpkg --get-selections > ~{{{ user.username }}}/dpkg_selections.`date -Iminutes`.initial.txt
   # On package install use -yq
   apt-get update && apt-get -y dist-upgrade
   # 20.04 Prepeare "python" to be usable command (python 2)
@@ -48,7 +48,7 @@ fi
 if [ $cen_rc -eq 0 ]; then
    #systemctl stop firewalld; systemctl disable firewalld
    systemctl disable --now firewalld
-   yum list installed -q | grep -v '^Installed Packages' > ~{{{ username }}}/yum_pkgs.`date -Iminutes`.initial.txt
+   yum list installed -q | grep -v '^Installed Packages' > ~{{{ user.username }}}/yum_pkgs.`date -Iminutes`.initial.txt
    # Fix sudoers to allow wheel group to sudo. Assume pristine default RH config.
    # Seems RH 7 already has this line uncommented
    perl -pi -e 's/^#\s*%wheel\s+ALL=(ALL)\s+ALL\b/%wheel\tALL=(ALL)\tALL/;' /etc/sudoers
@@ -67,8 +67,8 @@ if [ $arch_rc -eq 0 ]; then
   # Enable and Start ssh (installed earlier)
   systemctl enable --now sshd
   # Create minimal yay config for initial user
-  yay_conf=~{{{ username }}}/.config/yay/config.json
-  echo '{"sudoloop": true}' > $yay_conf; chown {{{ username }}}:{{{ username }}} $yay_conf
+  yay_conf=~{{{ user.username }}}/.config/yay/config.json
+  echo '{"sudoloop": true}' > $yay_conf; chown {{{ user.username }}}:{{{ user.username }}} $yay_conf
 fi
 if [ $suse_rc -eq 0 ]; then
   echo "Suse Fixups starting" >> $POST_LOG
@@ -84,10 +84,10 @@ if [ $suse_rc -eq 0 ]; then
   # echo "Subsystem sftp internal-sftp" >> /etc/ssh/sshd_config
   ls -al /etc/ssh/sshd_config >> $POST_LOG
   # zypper refresh
-  # {{{ homedir }}}/post-log.txt
-  /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ homedir }}}/autoinst.xml"
+  # {{{ user.homedir }}}/post-log.txt
+  /usr/bin/curl "http://{{{ httpserver }}}/autoinst.xml" -o "{{{ user.homedir }}}/autoinst.xml"
   # Seems SUSE preconfigured users and groups are lacking (e.g. official sudo/wheel group)
-  echo "{{ username }} ALL=(ALL) ALL" >> /etc/sudoers
+  echo "{{ user.username }} ALL=(ALL) ALL" >> /etc/sudoers
   # Add Internet repo for packages missing from ISO (!). -p for priority
   echo "Start adding repo ..." >> $POST_LOG
   zypper addrepo https://download.opensuse.org/distribution/leap/15.2/repo/oss/ os152
@@ -99,7 +99,7 @@ if [ $suse_rc -eq 0 ]; then
   # If locks left, e.g. rc=7 later (also: cleanlocks)
   #zypper removelock -r os152 ...
   # Log packages
-  zypper search -i > ~{{{ username }}}/zypper_pkgs.`date -Iminutes`.initial.txt
+  zypper search -i > ~{{{ user.username }}}/zypper_pkgs.`date -Iminutes`.initial.txt
   zyp_rc=$?
   echo "search(all-inst): rc=$zyp_rc" >> $POST_LOG
 fi
