@@ -520,7 +520,10 @@ function linet_mw(req, res, next) {
   if (0) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
   //req.session.num++;
   
-  if (req.session && !req.session.qs) { console.log("NO qs, resetting."); req.session.qs = []; }
+  if (req.session && !req.session.qs) {
+      // console.log("NO qs, resetting.");
+    req.session.qs = [];
+  }
   if (0) {
   console.log("sess: ", req.session);
   //console.log("hdrs: ", req.headers); // rawHeaders:
@@ -530,8 +533,9 @@ function linet_mw(req, res, next) {
   }
   var s; // Stats
   var ts = new Date().toISOString();
-  console.log("app.use: "+req.method+" ("+ts+"):" + req.url);
-  // 
+  console.log("app.use(dyn.URL): "+req.method+" ("+ts+"):" + req.url);
+  // NOTE: There's a separate way to debug static delivery
+  /*
   if (req.url.match("^(/ubuntu1|/centos|/gparted|/boot)")) {
     // Stat the file
     var msg;
@@ -540,6 +544,7 @@ function linet_mw(req, res, next) {
     if (!msg && s) { msg = s.size; }
     //console.log("URL/StaticFile: " + req.url + " " + msg);
   }
+  */
   // If one of the boot/install actions ... do ARP
   //var bootact = {"/preseed.cfg":1, "/ks.cfg":1, }; // "":1, "":1, "":1,
   // var ip = osinst.ipaddr_v4(req);
