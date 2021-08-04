@@ -10,8 +10,10 @@ POST_LOG={{{ user.homedir }}}/post-log.txt
 # Test Netplan use
 grep -P '(\b18\.04\b|\b20\.04\b)' /etc/os-release
 usenp_rc=$?
-echo "Netplan usage: usenp_rc=$usenp_rc"
-if [ -d "/etc/netplan/" ] && [ $usenp_rc -eq 0 ]; then
+echo "Netplan usage: usenp_rc=$usenp_rc" >> $POST_LOG
+# Note /etc/netplan might be /target/etc/netplan at this point
+# [ -d "/etc/netplan/" ] && ...
+if [ $usenp_rc -eq 0 ]; then
   echo "netplan_fix.sh: This OS ("`uname -a`") does not use netplan" >> $POST_LOG
   exit 0
 fi
