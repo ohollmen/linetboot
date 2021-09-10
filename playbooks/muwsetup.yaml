@@ -1,0 +1,30 @@
+# # Increase fs.inotify.max_user_watches for hi concurrency
+# 
+# Set max_user_watches to a high value for activity where single user spawns a lots of
+# file watches. Default on a fresh Ubuntu 18 seems to be 8192.
+# Affects procfs file: /proc/sys/fs/inotify/max_user_watches
+# See man inofify to see what "file watching" is.
+- name: Set fs.inotify.max_user_watches
+  hosts: "{{ host }}"
+  become: yes
+  vars:
+    muw_val: 524288
+  tasks:
+    # 
+    # Effective: echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf ; sysctl -p ; cat /proc/sys/fs/inotify/max_user_watches
+    - name: Add Sufficient value for fs.inotify.max_user_watches
+      lineinfile:        
+        path: /etc/sysctl.conf
+        state: present
+        create: yes
+        regexp: 'fs.inotify.max_user_watches\b'
+        line: 'fs.inotify.max_user_watches={{ muw_val }}'
+    - name: Load and apply sysctl.conf settings
+      shell: "sysctl -p"
+    # Prefer: /proc/sys/fs/inotify/max_user_watches ?
+    - name: Check fs.inotify.max_user_watches actual value
+      #shell: grep max_user_watches /etc/sysctl.conf
+      shell: cat /proc/sys/fs/inotify/max_user_watches
+      register: muw
+    - debug: msg='MUW - {{ muw.stdout }}'
+

@@ -1,0 +1,15 @@
+- name: Clone, Compile and Install googletest
+  hosts: "{{ host }}"
+  #become: yes
+  vars:
+    pkglbl: 'googletest'
+  tasks:
+    # Installs to: include/gmock/ lib/libgmock* lib/cmake/GTest/ /usr/local/include/gtest/ lib/libgtest lib/pkgconfig/gtest*
+    - name: Clone
+      shell: cd /tmp; rm -rf /tmp/googletest; git clone https://github.com/google/googletest.git
+    - name: Compile
+      shell: cd /tmp/googletest/ ; cmake . ; make
+    - name: Install
+      shell: cd /tmp/googletest/ ; sudo make install
+      become: true
+      become_user: root

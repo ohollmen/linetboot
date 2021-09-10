@@ -1,0 +1,35 @@
+# Install and setup IPMI Tools on Linux (Ubuntu or Centos)
+# Run (e.g): ansible-playbook -i ~/.linetboot/hosts ipmitoolsetup.yaml
+# Test on host by: lsmod | grep ipmi ; cat /etc/modprobe
+- name: Install and setup IPMI
+  hosts: "{{ host }}"
+  become: yes
+  vars:
+  tasks:
+    - name: Install IPMI Tools (APT)
+      apt: name={{ item }} state=present  force_apt_get=yes install_recommends=no
+      with_items:
+        - ipmitool
+      when: ansible_pkg_mgr == 'apt'
+    - name: Install IPMI Tools (YUM)
+      yum: name={{ item }} state=present update_cache=yes
+      with_items:
+        - ipmitool
+      when: ansible_pkg_mgr == 'yum'
+    - name: Add Module ipmi_si
+      lineinfile:
+        path: /etc/modprobe
+        state: present
+        create: yes
+        regexp: '^ipmi_si$'
+        line: "ipmi_si"
+    - name: Add module ipmi_devintf
+      lineinfile:
+        path: /etc/modprobe
+        state: present
+        create: yes
+        regexp: '^ipmi_devintf$'
+        line: "ipmi_devintf"
+    - name: Load IPMI Modules (Device driver, Interface)
+      shell: sudo modprobe ipmi_si ; sudo modprobe ipmi_devintf
+

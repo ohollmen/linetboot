@@ -1,0 +1,42 @@
+# Configure Zabbix (excluding SW Install)
+# Pass serverhost by: -e "... host=... serverhost=192.168.1.10"
+# https://www.zabbix.com/documentation/2.4/manual/appendix/config/zabbix_agentd
+# TODO: User, AllowRoot=0
+- name: Zabbix Config
+  hosts:  "{{ host }}"
+  become: yes
+  vars:
+    serverhost: 192.168.1.10
+    configfn: '/etc/zabbix/zabbix_agentd.conf'
+  tasks:
+    - name: Change "Server"
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        state: present
+        regexp: "^Server="
+        line: "Server=127.0.0.1"
+        # Local IP of host !!!
+        #line: "Server={{ ansible_default_ipv4.address }}"
+    # Comma (or space delimitede in case of many)
+    - name: Change "ServerActive"
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        state: present
+        regexp: "^ServerActive="
+        line: "ServerActive={{ serverhost }}"
+    - name: Change "Hostname"
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        state: present
+        regexp: "^Hostname="
+        # ansible_hostname - non-FQDN
+        line: "Hostname={{ ansible_fqdn }}"
+    - name: Change HostMetadataItem
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        state: present
+        regexp: "^HostMetadataItem="
+        line: "HostMetadataItem=system.uname"
+    - name: Restart Agent
+      # shell: sudo service zabbix-agent restart
+      shell: sudo systemctl restart zabbix-agent
