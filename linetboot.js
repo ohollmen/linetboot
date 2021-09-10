@@ -279,6 +279,7 @@ function app_init() { // global
   app.get("/staleproc", procrpt.procreport_web);
   app.get("/instprofiles",  osinst.instprofiles_view);
   app.get("/ilogview",  osinst.ilog_view);
+  app.get("/iloglisthosts",  osinst.ilog_view_hosts);
  } // sethandlers
   //////////////// Load Templates ////////////////
   

@@ -1144,21 +1144,37 @@ function ilog(ip, type, msg) {
   ent.time = new Date().toISOString();
   logdb[ip].push(ent); // In-mem
 }
-/** View install log for one or many hosts ?
+/** View install log for one (for now) or many hosts ?
  * TODO: Allow all logs (AoA or AoOoA).
  * Fields: time,type, msg
  */
 function ilog_view(req, res) {
   var jr = {status: "err", msg: "Problem showing Install log(s). "};
   var ip = req.query.ip;
+  // TODO: w/o IP )or with special command or URL) - list IP:s (+hostnames ?)
   if (!ip) { jr.msg += " No IP address given"; return res.json(jr); }
   var ilog = [];
-  ilog = logdb[ip];
+  ilog = logdb[ip]; // Ents by one IP
   if (!Array.isArray(ilog)) { jr.msg += " No log found for IP: "+ip; return res.json(jr); }
   
   return res.json({status: "ok", data: ilog});
 }
-
+/** View list of hosts that presently have (in-memory) install log.
+ */
+function ilog_view_hosts(req, res) {
+  var jr = {status: "err", msg: "Problem showing Install hosts(s). "}; // Needed ?
+  var keys = Object.keys(logdb);
+  if (!keys) { return res.json({status: "ok", data: []}); } // None, but not error
+  var hosts = [];
+  keys.forEach((k) => {
+    var hent = {hname: "", ipaddr: k};
+    // Lookup facts, hostname
+    var f = hostcache[k]; // By IP
+    if (!f) { console.log("Unknown host by ip: "+k); return; }
+    hosts.push(hent);
+  });
+  return res.json({status: "ok", data: hosts});
+}
 module.exports = {
   init: init,
   url_hdlr_set: url_hdlr_set,
@@ -1185,4 +1201,5 @@ module.exports = {
   // To log from other modules
   ilog: ilog,
   ilog_view: ilog_view,
+  ilog_view_hosts: ilog_view_hosts
 };
