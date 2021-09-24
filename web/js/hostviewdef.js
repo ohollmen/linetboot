@@ -52,7 +52,8 @@
    ];
    function hasdockcell(value, item) {
      var n = item.hname;
-     return value ? "<span class=\"drinfo\" data-tgt=\"dockerimg\" data-hname=\""+n+"\">Docker Info</span>" : "";
+     return value ? "<span class=\"drinfo\" data-tgt=\"dockerimg\" data-hname=\""+n+"\">Imgs</span>" +
+     " / <span class=\"drinfo\" data-tgt=\"dockercont\" data-hname=\""+n+"\">Conts</span>" : "";
    }
    function hasnfscell(value, item) {
      var n = item.hname;
@@ -266,6 +267,29 @@
      {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
      {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return value /1000000; }},
    ];
+   // Container
+   function contimg_cell(val, item) {
+     if (val && val.match(/^sha256:/)) { return val.substr(7, 12);  }
+     return val;
+   }
+   function contcomm_cell(val, item) {
+     if (val.length > 40) { return "<span title=\""+val+"\">"+val.substr(0, 40) + " ...<span>"; }
+     return val;
+   }
+   var fldinfo_dockercont = [
+    //{name: "RepoTags",     title: "Tag(s)",  type: "text", width: 100, itemTemplate: docktags},
+    //{name: "Labels",     title: "Labels",  type: "text", width: 50, itemTemplate: null}, // Object (.maintainer)
+    {name: "Image",   title: "Image (Name)",  type: "text", width: 40, itemTemplate: contimg_cell}, // OK (Has ver.)
+    {name: "ImageID", title: "Image ID",  type: "text", width: 40, itemTemplate: dockidcell}, // OK
+    {name: "Command", title: "Command",  type: "text", width: 100, itemTemplate: contcomm_cell}, // OK (truncate ?)
+    // To ISO
+    {name: "Created", title: "Created",  type: "text", width: 70, itemTemplate: tscell}, // OK
+    {name: "Id",     title: "Cont. Id", type: "text", width: 40, itemTemplate: dockidcell}, // OK (cont id)
+    {name: "State", title: "State", type: "text", width: 25, itemTemplate: null}, // OK
+    //{name: "Status", title: "Status", type: "text", width: 30, itemTemplate: null}, // OK (Up N Months)
+    {name: "Mounts", title: "Mnt", type: "text", width: 12, itemTemplate: function(val) { return val.length; }},
+    {name: "Names",     title: "Name(s)",  type: "text", width: 50, itemTemplate: null}, // function (value, item) { return value /1000000; }
+  ];
    /*
     * // Docker Containers
     * TODO: var fldinfo_dockercont = [];
@@ -538,7 +562,7 @@ function ibip_cell(val, item) {
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
-      "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "nfsinfo" : fldinfo_nfs,
+      "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs

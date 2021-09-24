@@ -166,10 +166,12 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // - Come back tmplid => tmpl to sync with router (or other way around).
     // Add name (could create dialog elem completely autom.) ?
     // Foold other use cases here (e.g. host, people, bootmedia, recipe prev.)
-    {tgtid: "dockerimg", dcb: dockerinfo, gridid: "jsGrid_dockerimg_d"},
+    {tgtid: "dockerimg", dcb: dockerinfo, gridid: "jsGrid_dockerimg_d"}, // Note gridid unused except as flag
     {tgtid: "nfsinfo",   dcb: nfsinfo, gridid: "jsGrid_nfs"},
-    {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: rfinfo_uisetup}, // templated (not grig) and never gets to dialogcb. TODO: rfinfo_uisetup
+    {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: rfinfo_uisetup}, // templated (not grid) and never gets to dialogcb.
     {tgtid: "proclist",  dcb: procinfo, gridid: "jsGrid_procs", uisetup: procinfo_uisetup},
+
+    {tgtid: "dockercont", dcb: dockerinfo, gridid: "jsGrid_dockercont_d"}, // NEW: Containers (see first)
   ];
   // Final dialog handler. The 2nd param of if-else dispatched calls at bottom come as 2nd (dialogsel) here.
   // Works both as grid (cache index-object) and dialog (DOM-id) selector id
@@ -181,11 +183,13 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
     // class fwgrid is on grid-wrapping div-element
     var del = $("#"+ dialogsel ).get(0); // Dialog element
+    if (!del) { console.log("No dialog element for dialog (id) selector: "+ dialogsel); }
     // New: We give gridid directly in model, no need to probe it.
     //var gel = $("#"+ dialogsel + " .fwgrid");
     //var id = gel.attr("id");
     
     var tmplid = am.tmplid || "simplegrid";
+    console.log("Got template id: "+tmplid);
     var titletmpl = del.getAttribute("nametmpl"); // TODO: Change proper
     // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
     if (titletmpl) { tpara.name = Mustache.render(titletmpl, tpara); } // toastr.info("Formulated title/name: "+tpara.name);
@@ -305,19 +309,21 @@ function on_host_click(ev, barinfo) {
     return obj;
   }
 /** Show Ansible UI */
-function ansishow(ev) {
+function ansishow(ev, an) {
   // var sets = ["aplays","aprofs"];
   // OLD: groups: grps
   var p = { hosts: db.hosts, groups: datasets["grps"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
-  //var tmpl = $("#ansrun").html();
-  //if (!tmpl) { return alert("No tmpl !"); }
-  //console.log("Got to ansishow w. para: ", p);
-  //var output = Mustache.render(tmpl, p);
-  var output = rapp.templated('ansrun', p);
-  $( "#dialog_ans" ).html(output);
-  var dopts = {modal: true, width: 650, height: 600}; // See also min,max versions
-  $( "#dialog_ans" ).dialog(dopts);
-  
+  var output = rapp.templated('ansrun', p); // , "dialog_ans"
+  if (!an) {
+    $( "#dialog_ans" ).html(output);
+    var dopts = {modal: true, width: 650, height: 600}; // See also min,max versions
+    $( "#dialog_ans" ).dialog(dopts);
+  }
+  else {
+    var tgtid = ev.routepath ? "routerdiv" : an.elsel;
+    console.log("Launching ansishow as action (tgtid): " + tgtid);
+    $( "#" + tgtid ).html(output);
+  }
   // Hook select-reset listeners
   function ansui_setup() {
     $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
@@ -416,7 +422,8 @@ var tabloadacts = [
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats", "help": "x.md"}, //DUAL
   //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
-  {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
+  // ADD: ansitab
+  {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl":"dockercat", hdlr: dockercat_show, url: "/dockerenv", path: "dockerenv"},
   {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
@@ -467,6 +474,9 @@ var tabloadacts = [
   },
   {"name": "ApiDocs", "elsel": "tabs-api", "url": "/apidoc", "tmpl": "", hdlr: apidoc, path: "apidoc"},
   // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appacts"},
+  // Ansible
+  {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"}
+
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -876,12 +886,14 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   var port = datasets.cfg.docker.port || 4243;
   if (!hname) { toastr.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
-  //console.log("Calling docker ...");
-  var url = 'http://'+hname+':'+port+'/v1.24/images/json';
+  console.log("Calling docker API fetcher with dialogsel: "+dialogsel);
+  var enttype = "images"; // "containers"
+  if (dialogsel == 'dockercont') { enttype = "containers"; }
+  var url = 'http://'+hname+':'+port+'/v1.24/'+enttype+'/json';
   axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
-    if (!pinfo ) { toastr.error("No data from " + hname); return; }
+    if (!pinfo ) { toastr.error("No docker data from " + hname); return; }
     if (!pinfo.length) { toastr.warning("No images found", "... on " + hname); return; }
     //  Creating grid to: '" + dialogsel + "'
     console.log("dockerinfo: got data " + pinfo + ""); // gridsel
