@@ -111,7 +111,7 @@ function app_init() { // global
   procrpt.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
-    console.log("Send file in path: " + path + " ("+stat.size+" B)"); // size:
+    console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
     // console.log(stat); // Stat Object
   };
   var staticconf_0 = {"setHeaders": logger };
