@@ -42,10 +42,17 @@ function respint(resp) {
     var foo = resp.request.agent.options.headers["foo"] = resp.headers['set-cookie'][0];
     if (foo) { console.log("COOKIE:", foo); }
   }
+  resp.headers["Access-Control-Allow-Origin"] = "*";
   return resp; }
 
-function reqint(config) { console.log("REQ-CONFIG: ", config); return config; }
-//axios.interceptors.request.use(reqint);
+function reqint(config) {
+  // .method is avail here !
+  config.withCredentials = true; // Set here to mimick coming from server
+  console.log("#### REQ-CONFIG: ", config);
+  
+  return config;
+}
+axios.interceptors.request.use(reqint);
 axios.interceptors.response.use(respint);
 var cfg = {
   headers: {"content-type": "application/json"},
