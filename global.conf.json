@@ -44,7 +44,8 @@
     "hdrbg": "https://cms.qz.com/wp-content/uploads/2018/12/tinyturtles.jpg?quality=75&strip=all&w=1600&h=1067",
     "apiena": 1,
     "authusers": ["ohollmen", "mrsmith", "auntnancy"],
-    "grpattr": "grpid"
+    "grpattr": "grpid",
+    "corshdr": 1
   },
   "groupsXX": [
     {"id": "nuc", "name": "NUCs", "patt": "^nuc"},

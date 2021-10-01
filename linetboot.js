@@ -552,7 +552,7 @@ function linet_mw(req, res, next) {
   // if (bootact[req.url]) {arp.getMAC(ipaddr, function(err, mac) { req.mac = mac; next(); }); } // ARP !
   
   //console.log("Setting CORS ...");
-  res.header("Access-Control-Allow-Origin", "*"); // Access-Control-Allow-Origin
+  if (global.core.corshdr) { res.header("Access-Control-Allow-Origin", "*"); } // Access-Control-Allow-Origin
   //res.header("Access-Control-Allow-Headers", "X-Requested-With");
   
   next();
