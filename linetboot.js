@@ -280,6 +280,9 @@ function app_init() { // global
   app.get("/instprofiles",  osinst.instprofiles_view);
   app.get("/ilogview",  osinst.ilog_view);
   app.get("/iloglisthosts",  osinst.ilog_view_hosts);
+  
+  app.get("/rpaddmems",  rp_add_mems);
+  
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2596,17 +2599,33 @@ function load_dc_services(fpath) {
   
 }
 /** Report portal member addition as web service.
+ * Add all logged in users to all groups for the ease of access for trusted people (in a
+ * simple environment where earlier situation holds true.
+ * Respond with data containing the array of projects where some member additons
+ * were done or empty array if no member additions were needed (all users already
+ * in all groups).
+ * Example of usage (e.g. via shell/shell script, errstatus enables setting HTTP
+ * response code to error status for http client to return shell error code):
+ * ```
+ * curl http://$LINETURL/rpaddmems?errstatus=1
+ * ```
  */
 function rp_add_mems(req, res) {
-  var jr = {status: "err", "msg": "Could not generate member additions. "};
-  var rp = require("reportportal");
+  var jr = { status: "err", "msg": "Could not perform member additions. " };
+  var rp = require("./reportportal.js");
+  //rp.init();
+  var q = req.query;
+  //console.log("Got query: ", q);
   rp.createusers((err, data) => {
     if (err) { jr.msg += err; return res.json(jr); }
     var projs     = data.projs;
     var usernames = data.usernames;
-    var cmdarr = rp.curl_cmds_gen(null, projs, usernames);
-    //console.log(cmdarr.join("\n"));
-    //process.exit(1);
-    res.json({status: "ok", data: cmdarr});
+    var opts = { dataonly: true };
+    var padd = rp.curl_cmds_gen(projs, usernames, opts);
+    rp.memadd_http(padd, (err, ress) => {
+      if (err) { jr.msg += err; if (q.errstatus) { res.status(400); } return res.json(jr); }
+      
+      res.json({status: "ok", data: ress, data2: padd});
+    });
   });
 }

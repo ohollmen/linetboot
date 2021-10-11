@@ -5,7 +5,8 @@ var async = require("async");
 var fs    = require("fs");
 var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
 if (!mcfg) { console.log("No main config"); process.exit(1); }
-var cfg = mcfg.reportportal ? mcfg.reportportal : mcfg;
+var cfg;
+cfg = mcfg.reportportal ? mcfg.reportportal : mcfg;
 
 // Authentication to API uses API token.
 
@@ -15,17 +16,22 @@ var burl = cfg.url; // API URL
 var memrole = cfg.memrole; // "MEMBER";
 var usernames = [];
 var debug = 0;
-
+var inited = 0;
 function init(_mcfg) {
-
+  if (inited) { return; }
+  if (_mcfg) { cfg = mcfg.reportportal ? mcfg.reportportal : mcfg; }
+  inited++;
 }
 if (process.argv[1].match("reportportal.js")) {
   if (process.env["RP_DEBUG"]) { debug = 1; }
+  //var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  //init(mcfg);
   createusers((err, data) => {
     if (err) { console.log("Error: "+ err); process.exit(1); }
     var projs     = data.projs;
     var usernames = data.usernames;
-    var cmdarr = curl_cmds_gen(null, projs, usernames);
+    if (!usernames) { console.log("No usernames from createusers() !"); process.exit(1); }
+    var cmdarr = curl_cmds_gen(projs, usernames);
     console.log(cmdarr.join("\n"));
     process.exit(0);
   });
@@ -42,9 +48,10 @@ function createusers(cb) {
     debug && console.error("Got users ",ress[0],"and projects "+ress[1]+"");
     var users = ress[0];
     var projs = ress[1];
+    
     usernames = users.map((u) => { return u.userId; }); // AoO => AoS
     //return curl_cmds_gen (null, projs, usernames); // OLD, hard
-    return cb(null, {projs: projs, username: usernames});
+    return cb(null, {projs: projs, usernames: usernames});
   });
   //async.waterfall([loadusers_rp, ], (err, ress) => { console.log("WF-COMPLETE"); });
 }
@@ -56,22 +63,29 @@ function loadusers_rp(cb) {
     var d = resp.data;
     var users = d.content;
     users = users.filter((u) => { return u.accountType == 'LDAP'; });
-    //debug && console.log("LDAP-Users:", users);
+    debug && console.log("LDAP-Users:", users);
     return cb(null, users);
   }).catch((ex) => {
-    console.error("Failed loading RP users:"+ex);
+    console.error("Failed loading RP users: "+ex);
     return cb(ex, null);
   });
 }
 
 /** Create curl addition commands synchronously.
-* Uses projects_add_mem to first generate data of mems to add.
+* Uses projects_add_mem() to first generate data of mems to add.
+* @param projs {array} - Array of projects from RP
+* @param usernames {array} - Array of (all) usernames (for LDAP/AD users) from RP.
 */
-function curl_cmds_gen (err, projs, usernames) {
-  if (err) { console.log("Error from project details lister !"); return(null); }
+function curl_cmds_gen (projs, usernames, opts) {
+  // NA: if (err) { console.log("Error from project details lister !"); return(null); }
   //var projs = data.projs;
   //var usernames = data.usernames;
-  var adds = projects_add_mem(projs, usernames);
+  var adds;
+  try { adds = projects_add_mem(projs, usernames); }
+  catch (ex) { console.log("Error creating additions structure: "+ex); return null; }
+  if (opts && opts.dataonly) {
+    return Object.keys(adds).map((k) => { return { pn: k, unames: adds[k] }; });
+  }
   var cmdarr = [];
   Object.keys(adds).forEach((pn) => {
     var url = cfg.url + "project/"+pn+"/assign";
@@ -85,6 +99,27 @@ function curl_cmds_gen (err, projs, usernames) {
     cmdarr.push(cmd);
   });
   return cmdarr;
+}
+// Add mems by http directly.
+function memadd_http(adds, cb) {
+  var axopts = { headers: { Authorization: "bearer "+atok, "content-type": "application/json"} };
+  async.map(adds, memsadd, (err, results) => {
+    if (err) { var emsg = "Some items had problems"; console.log(emsg); return cb(emsg, null); }
+    console.log("async memadd success");
+    return cb(null, results);
+  });
+  // Add to single project
+  function memsadd(item, cb) {
+    var url = cfg.url + "project/"+item.pn+"/assign";
+    var msg = { userNames: item.unames };
+    axios.put(url, msg, axopts).then( (resp) => {
+      console.log("memadd ok with RP");
+      return cb(null, item.pn);
+    }).catch( (ex) => {
+      console.log("memadd fail with RP");
+      return cb("memadd fail with RP", null);
+    });
+  }
 }
 
 /** Load Projects from RP (project/list).
@@ -106,12 +141,13 @@ function proj_load(cb) {
   }).catch((ex) => {
     // console.log();
     console.error("RP proj. list Error: "+ex);
-    cb(ex, null);
+    return cb(ex, null);
   });
 }
 
-// Get project details by (non-detailed) project listing entry.
-// Call the callback with details data.
+/** Get project details by (non-detailed) project listing entry.
+ * Call the callback with details data.
+ */
 function projget(p, cb) {
   var pn = p.projectName;
   debug && console.error("fetching individual project: "+pn);
@@ -119,16 +155,21 @@ function projget(p, cb) {
     // OK
     return cb(null, resp.data);
   }).catch((ex) => {
+    console.log("Problems getting project details for: "+pn+" ("+ex+")");
     return cb(ex, null);
   });
 }
 /* Check (syncronously) all groups and add member(s) as needed.
- * Return member addition structure for memberships that need to be added.
+ * @param projs {array} - An AoO of project objects
+ * @param usernames {array} - Array (AoS) of usernames (strings)
+ * @return member addition structure for memberships that need to be added.
  * Data is indexed by project (use in url) and the values are ready-to-use
  * as POST data in member addition.
  */
 function projects_add_mem(projs, usernames) {
   debug && console.error("Projs(to-add-mems-to): "+projs);
+  if (!projs || !Array.isArray(projs)) { throw "No projects or not in array"; }
+  if (!usernames || ! Array.isArray(usernames)) { throw "No usernames array"; }
   // Projects
   var allpadds = {};
   try {
@@ -173,6 +214,8 @@ var sampp = {
 };
 
 module.exports = {
+  init: init,
   createusers: createusers,
-  curl_cmds_gen: curl_cmds_gen
+  curl_cmds_gen: curl_cmds_gen,
+  memadd_http: memadd_http
 };
