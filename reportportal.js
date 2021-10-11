@@ -15,10 +15,19 @@ var burl = cfg.url; // API URL
 var memrole = cfg.memrole; // "MEMBER";
 var usernames = [];
 var debug = 0;
+
+function init(_mcfg) {
+
+}
 if (process.argv[1].match("reportportal.js")) {
   if (process.env["RP_DEBUG"]) { debug = 1; }
-  createusers((err) => {
-    
+  createusers((err, data) => {
+    if (err) { console.log("Error: "+ err); process.exit(1); }
+    var projs     = data.projs;
+    var usernames = data.usernames;
+    var cmdarr = curl_cmds_gen(null, projs, usernames);
+    console.log(cmdarr.join("\n"));
+    process.exit(0);
   });
 }
 /** Add all logged-in network users to RP groups.
@@ -29,16 +38,19 @@ if (process.argv[1].match("reportportal.js")) {
  */
 function createusers(cb) {
   async.parallel([ loadusers_rp, proj_load ], (err, ress) => {
-    if (err) { console.log("Failed either users load or projects load:"+ err); process.exit(1); }
+    if (err) { var estr = "Failed either users load or projects load:"+ err; console.log(estr); cb(estr, null); }
     debug && console.error("Got users ",ress[0],"and projects "+ress[1]+"");
     var users = ress[0];
     var projs = ress[1];
     usernames = users.map((u) => { return u.userId; }); // AoO => AoS
-    curl_cmds_gen (null, projs, usernames);
+    //return curl_cmds_gen (null, projs, usernames); // OLD, hard
+    return cb(null, {projs: projs, username: usernames});
   });
   //async.waterfall([loadusers_rp, ], (err, ress) => { console.log("WF-COMPLETE"); });
 }
-/** Load RP Users. Narrow userlist down to LDAP users only. */
+/** Load RP Users. Narrow userlist down to LDAP users only.
+* Call cb wit set of filtered users 
+*/
 function loadusers_rp(cb) {
   axios.get(cfg.url+"user/all", axopt).then((resp) => {
     var d = resp.data;
@@ -52,21 +64,28 @@ function loadusers_rp(cb) {
   });
 }
 
-// Create curl addition commands synchronously.
-// Uses projects_add_mem to first generate data of mems to add.
+/** Create curl addition commands synchronously.
+* Uses projects_add_mem to first generate data of mems to add.
+*/
 function curl_cmds_gen (err, projs, usernames) {
-  if (err) { console.log("Error from project details lister !"); process.exit(1); }
+  if (err) { console.log("Error from project details lister !"); return(null); }
+  //var projs = data.projs;
+  //var usernames = data.usernames;
   var adds = projects_add_mem(projs, usernames);
+  var cmdarr = [];
   Object.keys(adds).forEach((pn) => {
     var url = cfg.url + "project/"+pn+"/assign";
-    var msg = {userNames: adds[pn]}
+    var msg = {userNames: adds[pn]};
     var json = JSON.stringify(msg);
     var hdrs = ["Authorization: bearer "+atok, "Content-type: application/json"];
     var hdrpara = hdrs.map((p) => { return "-H '"+p+"'"; }).join(" ");
     // console.log("Project: "+pn+" => ", json);
-    console.log("curl -X PUT -d '"+json+"' "+hdrpara+" "+url);
+    var cmd = "curl -X PUT -d '"+json+"' "+hdrpara+" "+url;
+    //console.log(cmd);
+    cmdarr.push(cmd);
   });
-};
+  return cmdarr;
+}
 
 /** Load Projects from RP (project/list).
 * Get details by projget() (running it in parallel for all earlier results).
@@ -137,7 +156,7 @@ function users_create(users, defproj) {
   var newusers = users.map((u) => {
     // Note (in existing): accountType: "LDAP"
     var newuser = {accountRole: "USER", defaultProject: defproj,
-email: u[3], fullName: u[001], login: u[0], password: null,
+email: u[3], fullName: u["001"], login: u[0], password: null, // 001 vs "001"
 projectrole: memrole}; // "CUSTOMER"
     return newuser;
   });
@@ -153,3 +172,7 @@ var sampp = {
   "projectRole": "MEMBER"
 };
 
+module.exports = {
+  createusers: createusers,
+  curl_cmds_gen: curl_cmds_gen
+};

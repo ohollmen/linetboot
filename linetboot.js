@@ -2469,9 +2469,9 @@ function listguests(req, res) {
   var ecfg = global.esxi || null;
   if (!ecfg) { return res.json(jr); }
   esxi.init(global);
-  var host = req.params.host;
+  var host = req.params.host; // Grab wanted host, but validate below
   console.log("Got VM host name: '"+host+"'");
-  console.log("Known names: ", ecfg.vmhosts);
+  console.log("Known VM Host names: ", ecfg.vmhosts);
   if (!ecfg.vmhosts.includes(host)) { jr.msg += host + " is not one of registered hosts"; return res.json(jr);  }
   ////////// 
   var cont;
@@ -2594,4 +2594,19 @@ function load_dc_services(fpath) {
   return servs;
 } // load_dc_services
   
+}
+/** Report portal member addition as web service.
+ */
+function rp_add_mems(req, res) {
+  var jr = {status: "err", "msg": "Could not generate member additions. "};
+  var rp = require("reportportal");
+  rp.createusers((err, data) => {
+    if (err) { jr.msg += err; return res.json(jr); }
+    var projs     = data.projs;
+    var usernames = data.usernames;
+    var cmdarr = rp.curl_cmds_gen(null, projs, usernames);
+    //console.log(cmdarr.join("\n"));
+    //process.exit(1);
+    res.json({status: "ok", data: cmdarr});
+  });
 }
