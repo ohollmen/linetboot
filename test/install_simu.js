@@ -35,7 +35,7 @@ var totsize = 0;
 // Note binary data in resp may jam terminal
 // NOTE: resp.request Member agent (type Agent) agent.options
 function respint(resp) {
-  console.log("###### Resp has hdrs ",resp.headers);
+  console.log("###### Resp has ("+resp.path+") hdrs ",resp.headers);
   console.log("resp.request.agent.options: ",resp.request.agent.options);
   if (resp.headers['set-cookie'] && Array.isArray(resp.headers['set-cookie'])) {
     resp.request.agent.options.headers = {}; // if not ...

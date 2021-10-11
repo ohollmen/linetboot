@@ -454,6 +454,19 @@ function ibip_cell(val, item) {
    function pstime_cell(val, item) {
      // TODO: Color progressively by delta:
      //var dts = (Date().now()/1000) - val; // delta seconds // leave out "new" !
+     // TODO: Coloring ? See: loads_cell (151 / 215)
+     function l2c_ifhack(v2) {
+      var col = '#FFFFFF';
+      if (v2 > 86400) { col = "#CCCCCC"; } // 1d
+      if (v2 > 86400 * 7) { col = "#BBBBBB"; } // 1w
+      if (v2 > 86400 * 30) { col = "#AAAAAA"; }
+      if (v2 > 86400 * 90)   { col = "#888888"; }
+      return col;
+     }
+     var delta = (Date.now() / 1000) - val;
+     var c = l2c_ifhack(delta); // Calc color
+     // TODO: text color
+     //return "<span style=\"background-color: "+c+"\">" + intlDate.format(new Date(val*1000)) + "</span>";
      return intlDate.format(new Date(val*1000));
      //return val;
    }
@@ -486,7 +499,7 @@ function ibip_cell(val, item) {
       
       {name: "rss",   title: "RSS(kB)", type: "number", width: 30},
       {name: "size",  title: "SIZE(kB)", type: "number", width: 30}, // , visible: false
-      {name: "starttime", title: "Start Time", type: "number", width: 60, itemTemplate: pstime_cell},
+      {name: "starttime", title: "Start Time", type: "text", width: 60, itemTemplate: pstime_cell},
       {name: "utime", title: "User T", type: "number", width: 30, itemTemplate: pscputimecell},
       {name: "stime", title: "Sys T", type: "number", width: 30, itemTemplate: pscputimecell},
       

@@ -893,13 +893,13 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
-    if (!pinfo ) { toastr.error("No docker data from " + hname); return; }
-    if (!pinfo.length) { toastr.warning("No images found", "... on " + hname); return; }
+    if (!pinfo ) { toastr.error("No docker "+enttype+" data from " + hname); return; }
+    if (!pinfo.length) { toastr.warning("No "+enttype+" found", "... on " + hname); return; }
     //  Creating grid to: '" + dialogsel + "'
     console.log("dockerinfo: got data " + pinfo + ""); // gridsel
     cb(pinfo, dialogsel);
     // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
-  }).catch(function (error) { console.log(error); toastr.error("No Docker info", error); });
+  }).catch(function (error) { console.log(error); toastr.error("No Docker info"+ error); });
 }
 /** Display NFS exports from an NFS server.
  * @param hname {string} - Hostname
