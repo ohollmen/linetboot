@@ -95,10 +95,11 @@ append boot=live  components union=overlay username=user noswap noeject ip= vga=
 # - PXE Bootting: https://www.system-rescue.org/manual/PXE_network_booting/
 label sysresccd
 menu label System Rescue CD (Live)
-kernel http://{{ httpserver }}/sysresccd/boot/x86_64/vmlinuz
-INITRD http://{{ httpserver }}/sysresccd/boot/intel_ucode.img,http://{{ httpserver }}/sysresccd/boot/amd_ucode.img,http://{{ httpserver }}/sysresccd/boot/x86_64/sysresccd.img
-# NOT: append initrd=http://{{ httpserver }}/sysresccd copytoram setkmap=us
-APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/ checksum
+kernel http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/vmlinuz
+INITRD http://{{ httpserver }}/sysresccd/sysresccd/boot/intel_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/amd_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/sysresccd.img
+# NOT: append initrd=http://{{ httpserver }}/sysresccd/sysresccd copytoram setkmap=us
+# One more sysresccd/ in archisobasedir ?
+APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/sysresccd/ checksum
 SYSAPPEND 3
 
 # Clonezilla Live PXE
