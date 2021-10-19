@@ -453,7 +453,7 @@ initrd http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd
 # console=ttyS0 showopts
 append textmode=1 install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
-# FreeBSD (12) bootonly.iso (Network installer)
+# FreeBSD (12) bootonly.iso (Network installer, boots to console and lets launch manual install)
 # One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
 # NOTAVAIL: http://www.locolomo.org/howto/pxeboot/article.html
 # https://wiki.syslinux.org/wiki/index.php?title=MEMDISK - Explanation of memdisk module
@@ -475,7 +475,7 @@ initrd http://{{ httpserver }}/bootonly.iso
 # ORIG: append iso raw
 append iso
 
-# FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot, Starting the BTX loader)
+# FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot 0fae8c4b43c1f4d69c19617c0af43b28, Starting the BTX loader)
 # Installer: PC-SysInstall ("pc-sysinstall" on ISO, written in shell)
 # https://blog.narf.ssji.net/2013/06/pxelinux_openbsd_install/
 # The chainloader modules seems to be pxechain.com, but seems to be
@@ -499,9 +499,9 @@ initrd ::pxeboot
 
 # Ver 3: https://forums.freebsd.org/threads/pxe-boot-server.74328/
 # Note: This is effectively only a slight variant of "kernel pxechn.c32" + "initrd ::pxeboot" ... same kind of crash
-#label freebsd12pxe
-#menu label FreeBSD 12 with PXE keyword
-#pxe pxeboot
+label freebsd12pxe
+menu label FreeBSD 12 with PXE keyword
+pxe pxeboot
 
 
 # OpenBSD - Seems to vary slightly from PCBSD and FreeBSD
@@ -511,13 +511,26 @@ initrd ::pxeboot
 # Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
 # URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
 
-# mfsBSD
+# mfsBSD ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot )
+# - Comes as 1) abse edition (87MB) 2) se = Special Edition (308MB) 3) mini (29MB)
+# - http://www.wonkity.com/~wblock/docs/html/pxe.html
+# - https://blog.vx.sk/archives/46 - recommends using BSD pxeboot
 label mfsbsd
-menu label mfsBSD (Live)
+menu label mfsBSD ISO (Live)
 kernel memdisk
-#initrd http://{{ httpserver }}//images/mfsbsd/mfsbsd.gz raw
+# "... mfsbsd.gz raw" w/o any append:s alone should work.
+#initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso raw
 initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
 append iso
+
+label mfsbsd_img
+menu label mfsBSD IMG (Live)
+kernel memdisk
+# "... mfsbsd.gz raw" w/o any append:s alone should work.
+initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso raw
+#initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
+#append iso
+
 
 # Arch Linux
 # archiso_pxe_http hooks in archiso (https://wiki.archlinux.org/index.php/Archiso) it is possible to boot using HTTP (Also: NFS or NBD)

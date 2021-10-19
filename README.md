@@ -55,17 +55,31 @@ concurrently tasking aplications.
 Install and config instructions aim to advise on the minute config differences needed on various platforms
 (Mainly accounting for package name differences or e.g. loop mounting commands in linux vs. BSD).
 
-## What OS:s can be PXE installed with Linetboot ?
+## What OS:s can be PXE booted / installed with Linetboot ?
 
+Tool CD:s/ISO:s and utilities:
+- Gparted
+- System Rescue CD
+- Clonezilla
+- memtest86 (using Gparted bundled binary)
+- FreeDOS
+
+Full Operating systems with autoinstall:
 - Ubuntu Server (LTS): 14.04, 16.04, 18.04, 20.04
 - Debian 10 ("Buster", possibly older Debians)
 - Redhat, Centos: 6, 7 (7.6), 8 (8.2)
 - OpenSuse 15.2
-- Arch Linux (assisted by Alis-installer)
-- Ubuntu Desktop - in (non-automated) Live Install mode
+- Arch Linux (auto-install by Alis-installer)
+- Windows 2019
+
+Full Operating systems with Live mode and/or manual install:
+- Ubuntu Desktop 18.04 and 20.04 - in (non-automated) Live mode (and optional manual install)
+- FreeBSD 12.1 (boots to console for manual install)
+- mfsBSD 12.1 (boots to live login)
+
 -------------------------------------------------
 
-## Systems Linetboot Collaborates with:
+## Systems Linetboot Collaborates with
 
 - DHCP Server - PXE Bootload process starts here, DHCP gives instructions to PXE on where to look for bootloader (TFTP server name or IP,
   filename within the server)
