@@ -93,13 +93,15 @@ append boot=live  components union=overlay username=user noswap noeject ip= vga=
 # systemrescue-7.00-amd64.iso / systemrescue-8.05-amd64.iso
 # - Boot Options: https://www.system-rescue.org/manual/Booting_SystemRescueCd/
 # - PXE Bootting: https://www.system-rescue.org/manual/PXE_network_booting/
+# NOTE: The ISO image has subdir "sysresccd", so if Lineboot loop mount dir is name "sysresccd/" (isomnt/sysresccd/),
+# the sysresccd *should* be duplicated in paths (see below).
 label sysresccd
 menu label System Rescue CD (Live)
 kernel http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/vmlinuz
 INITRD http://{{ httpserver }}/sysresccd/sysresccd/boot/intel_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/amd_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/sysresccd.img
 # NOT: append initrd=http://{{ httpserver }}/sysresccd/sysresccd copytoram setkmap=us
-# One more sysresccd/ in archisobasedir ?
-APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/sysresccd/ checksum
+# archisobasedir should be plainly "sysresccd" (subdir on ISO) and archiso_http_srv should append /sysresccd/ (Lineboot loop mount, under docroot)
+APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://{{{ httpserver }}}/sysresccd/ checksum
 SYSAPPEND 3
 
 # Clonezilla Live PXE
