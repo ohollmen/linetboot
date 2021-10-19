@@ -350,6 +350,8 @@ initrd http://{{ httpserver }}/centos6/images/pxeboot/initrd.img
 # Note: Is auto=true hampering this
 append auto=true devfs=nomount ks=http://{{ httpserver }}/ks.cfg?osid=centos6
 
+# ## RedHat 8
+# Practically identical to centos7
 label redhat8
 menu label RedHat 8.X (TODO: Full Automated)
 kernel http://{{ httpserver }}/redhat8/images/pxeboot/vmlinuz
@@ -457,9 +459,9 @@ append textmode=1 install=http://{{ httpserver }}/opensuse152/ autoyast2=http://
 # One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
 # NOTAVAIL: http://www.locolomo.org/howto/pxeboot/article.html
 # https://wiki.syslinux.org/wiki/index.php?title=MEMDISK - Explanation of memdisk module
-# Note: (Ubuntu) memdisk
-# - is a linux kernel
-# - is located in /usr/lib/syslinux/memdisk
+# Note: syslinux/pxelinux memdisk
+# - is a linux kernel (by boot protocol)
+# - is located in (Ubuntu) /usr/lib/syslinux/memdisk
 # - comes from "syslinux-common" (dpkg -S /usr/lib/syslinux/memdisk)
 # - "fetch" is a BSD equivalent of wget/curl (e.g. in freebsd12/usr/bin/fetch)
 # Note: pc-sysinstall is a BSD installer with possible config (-c). Alternative: bsdinstall
@@ -541,6 +543,8 @@ pxe pxeboot
 # - Addl boot.conf options stty ... set ...
 # - Misc downloads: https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/
 #   - has pxeboot
+#   - Readme file: INSTALL.amd64
+#   - bsd.rd (rd=ram disk ?) is said to be "install kernel" (rd with kernel ?)
 # - Also: https://mirror.leaseweb.com/pub/OpenBSD/
 # - For autoinstall, see: https://daulton.ca/2018/08/openbsd-pxe-server/
 # - https://man.openbsd.org/autoinstall
@@ -558,6 +562,7 @@ pxe pxeboot
 # On shell there seems to be command "autoinstall" (Available network interfaces are: ... Which network should be used for initial DHCP request ? (or 'done'))
 # (boot) filename from DHCP decides on auto-install (fn: auto_install
 # triggers fetching of install.conf from http server (next-server)
+# Autoinstall step-by-step guide: http://daemonforums.org/showthread.php?t=11034
 label openbsd70
 menu label OpenBSD 7.0 by pxeboot
 KERNEL pxechn.c32
@@ -567,11 +572,22 @@ append http://{{{ httpserver }}}/pxeboot
 # BSD ramdisk on ISO: /isomnt/openbsd70/7.0/amd64/bsd.rd
 
 
-# mfsBSD ISO ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot )
+# mfsBSD ISO ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot. Full sys with shell and DNS)
 # - Comes as 1) standard edition (87MB maint. and repair) 2) se = Special Edition (308MB, best for install) 3) mini (29MB)
 # - http://www.wonkity.com/~wblock/docs/html/pxe.html
 # - https://blog.vx.sk/archives/46 - recommends using BSD pxeboot
+# - https://www.bsdcan.org/2010/schedule/attachments/142_pc-sysinstall-kris-moore-2010.pdf
 # - To install run (recommended by docs, e.g.): zfsinstall
+# - Has also /usr/sbin/bsdinstall, /usr/sbin/pc-sysinstall
+# - Autoinstall:
+#   - Start by: pc-sysinstall start-autoinstall <config> (pc-autoinstall.conf)
+#   - Runs /usr/share/pc-sysinstall/backend/startautoinstall.sh with config file param (pc-autoinstall.conf ? low-level / phase 1)
+#   - "pc_config:" (URL) is grepped from there,
+#   downloads config by HTTP (URL pc_config, typical: /cust-install.cfg). Stores it to file $INSTALL_CFG (/tmp/pc-sysinstall.cfg).
+#   runs "pc-sysinstall -c $INSTALL_CFG" (http downloaded config as param).
+# On Boot: runs dhclient (auto discovers if, e.g. bxe0), launches full system and shell
+# See: http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
+# Lot of info (on booted system): /usr/share/pc-sysinstall/doc/help-start-autoinstall
 label mfsbsd
 menu label mfsBSD ISO (Live)
 kernel memdisk
@@ -581,7 +597,8 @@ kernel memdisk
 initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
 append iso
 
-# mfsBSD IMG (Boots fine to login root/mfsroot)
+# mfsBSD IMG (Boots fine to login root/mfsroot, like ISO)
+# Boot-time Console output Line buffering is weird/fixed (lines come out intitially truncated)
 label mfsbsd_img
 menu label mfsBSD IMG (Live)
 kernel memdisk
