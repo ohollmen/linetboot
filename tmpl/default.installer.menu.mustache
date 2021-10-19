@@ -499,20 +499,36 @@ initrd ::pxeboot
 
 # Ver 3: https://forums.freebsd.org/threads/pxe-boot-server.74328/
 # Note: This is effectively only a slight variant of "kernel pxechn.c32" + "initrd ::pxeboot" ... same kind of crash
+# 2011 article https://blog.vx.sk/archives/46 recommends rename (for pxelinux) to pxeboot.0 and "KERNEL pxeboot.0"
+# https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/
+# "pxe pxeboot" early-crashes already pxelinux menu w/o any message.
 label freebsd12pxe
 menu label FreeBSD 12 with PXE keyword
 pxe pxeboot
 
 
-# OpenBSD - Seems to vary slightly from PCBSD and FreeBSD
-# https://eradman.com/posts/autoinstall-openbsd.html
+# OpenBSD 7.0 - Seems to vary slightly from PCBSD and FreeBSD
+# - https://www.openbsd.org/ ( https://www.openbsd.org/faq/faq4.html#Download )
+# - https://www.openbsd.org/faq/faq6.html#PXE
+# - https://eradman.com/posts/autoinstall-openbsd.html
+# - https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/
+# - Misc downloads: https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/
+#   - has pxeboot
 # Bootloader (NBP): auto_install -> pxeboot.amd64 (Note: symlink is a must filename triggers auto installation !!!)
 # Config: $tftproot/etc/boot.conf (stty com0 115200\nset tty com0)
 # Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
 # URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
+label openbsd70
+menu label OpenBSD 7.0 by pxeboot
+KERNEL pxechn.c32
+# Need to be dedicated to OpenBSD ?
+# Try utilizing pxeboot from loopmount (http)
+append http://{{{ httpserver }}}/pxeboot
+# BSD ramdisk: /isomnt/openbsd70/7.0/amd64/bsd.rd
 
-# mfsBSD ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot )
-# - Comes as 1) abse edition (87MB) 2) se = Special Edition (308MB) 3) mini (29MB)
+
+# mfsBSD ISO ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot )
+# - Comes as 1) standard edition (87MB maint. and repair) 2) se = Special Edition (308MB, best for install) 3) mini (29MB)
 # - http://www.wonkity.com/~wblock/docs/html/pxe.html
 # - https://blog.vx.sk/archives/46 - recommends using BSD pxeboot
 # - To install run (e.g.): zfsinstall
@@ -520,16 +536,17 @@ label mfsbsd
 menu label mfsBSD ISO (Live)
 kernel memdisk
 # "... .iso raw" (w/o append) crashes at "Loading boot sector... booting..."
+# but APPEND iso raw should be ok (per https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/)
 #initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso raw
 initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
 append iso
 
+# mfsBSD IMG (Boots fine to login root/mfsroot)
 label mfsbsd_img
 menu label mfsBSD IMG (Live)
 kernel memdisk
 # "... .img raw" w/o any append:s alone should work.
 initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.img raw
-
 
 
 # Arch Linux
