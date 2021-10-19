@@ -53,6 +53,7 @@ var osdisk   = require("./osdisk.js");
 var iblox    = require("./iblox.js");
 var postinst = require("./postinst.js");
 var procrpt  = require("./procreport.js");
+var covconn  = require("./covconn.js");
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
 var global = {};
@@ -282,6 +283,8 @@ function app_init() { // global
   app.get("/iloglisthosts",  osinst.ilog_view_hosts);
   
   app.get("/rpaddmems",  rp_add_mems);
+  covconn.init(global);
+  app.get("/covtgtchart",  covconn.express_report);
   
  } // sethandlers
   //////////////// Load Templates ////////////////
