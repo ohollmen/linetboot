@@ -515,10 +515,11 @@ pxe pxeboot
 # - Comes as 1) abse edition (87MB) 2) se = Special Edition (308MB) 3) mini (29MB)
 # - http://www.wonkity.com/~wblock/docs/html/pxe.html
 # - https://blog.vx.sk/archives/46 - recommends using BSD pxeboot
+# - To install run (e.g.): zfsinstall
 label mfsbsd
 menu label mfsBSD ISO (Live)
 kernel memdisk
-# "... mfsbsd.gz raw" w/o any append:s alone should work.
+# "... .iso raw" (w/o append) crashes at "Loading boot sector... booting..."
 #initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso raw
 initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
 append iso
@@ -526,10 +527,9 @@ append iso
 label mfsbsd_img
 menu label mfsBSD IMG (Live)
 kernel memdisk
-# "... mfsbsd.gz raw" w/o any append:s alone should work.
-initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso raw
-#initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.iso
-#append iso
+# "... .img raw" w/o any append:s alone should work.
+initrd http://{{ httpserver }}/mfsbsd-12.1-RELEASE-amd64.img raw
+
 
 
 # Arch Linux
