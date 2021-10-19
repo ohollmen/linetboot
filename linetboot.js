@@ -283,8 +283,10 @@ function app_init() { // global
   app.get("/iloglisthosts",  osinst.ilog_view_hosts);
   
   app.get("/rpaddmems",  rp_add_mems);
-  covconn.init(global);
-  app.get("/covtgtchart",  covconn.express_report);
+  if (global.cov) {
+    covconn.init(global);
+    app.get("/covtgtchart",  covconn.express_report);
+  }
   
  } // sethandlers
   //////////////// Load Templates ////////////////
