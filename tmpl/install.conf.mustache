@@ -1,3 +1,4 @@
+# This could reside on http (install.conf) or ramdisk (auto_install.conf
 Choose your keyboard layout = en
 System hostname = {{{ net.hostname }}}
 Password for root = {{{ user.password }}}
@@ -9,6 +10,7 @@ What timezone are you in = Canada/Eastern
 network interfaces = em0
 IPv4 address for em0 = dhcp
 Location of sets = http
+# Mirror: cdn.openbsd.org. httpserver if pkgs found on ISO
 HTTP Server = {{ httpserver }}
 Unable to connect using https. Use http instead? = yes
 Set name(s) = -g* -x* +xb*

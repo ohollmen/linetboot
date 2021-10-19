@@ -493,7 +493,8 @@ kernel pxechn.c32
 # Per https://wiki.syslinux.org/wiki/index.php?title=Pxechn.c32 this should work
 #initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
 # Said to work: APPEND images/FreeBSD12-64/boot/pxeboot (https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/)
-# Passes control to bootloader, but it crashes. No extra log items in TFTP
+# Dell laptop: Passes control to bootloader, but it crashes. No extra log items in TFTP
+# Dell server: Boots to simple shell
 initrd ::pxeboot
 # append raw
 
@@ -507,24 +508,40 @@ menu label FreeBSD 12 with PXE keyword
 pxe pxeboot
 
 
-# OpenBSD 7.0 - Seems to vary slightly from PCBSD and FreeBSD
+# OpenBSD 7.0 Boots to installer (bsd/bsd.rd tftp download super slow)
+# - Seems to vary slightly from PCBSD and FreeBSD
 # - https://www.openbsd.org/ ( https://www.openbsd.org/faq/faq4.html#Download )
 # - https://www.openbsd.org/faq/faq6.html#PXE
 # - https://eradman.com/posts/autoinstall-openbsd.html
 # - https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/
+# - https://www.cyberciti.biz/faq/openbsd-boot-install-using-pxe-preboot-execution-environment/
+# - Addl boot.conf options stty ... set ...
 # - Misc downloads: https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/
 #   - has pxeboot
+# - Also: https://mirror.leaseweb.com/pub/OpenBSD/
+# - For autoinstall, see: https://daulton.ca/2018/08/openbsd-pxe-server/
+# - https://man.openbsd.org/autoinstall
 # Bootloader (NBP): auto_install -> pxeboot.amd64 (Note: symlink is a must filename triggers auto installation !!!)
 # Config: $tftproot/etc/boot.conf (stty com0 115200\nset tty com0)
 # Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
 # URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
+# Assumes ramdisk to reside on original TFTP host /bsd, but supports config in TFTP path /etc/boot.conf.
+# Must be in fmt (e.g.): "boot tftp:/bsd/bsd.rd" (tftp: optional)
+# There can also be file auto_install in tftp root, should be symlink to tftpboot.
+# Also related: install.conf (recipe), which may be on http.
+# Installer on ramdisk takes a long time to load from TFTP, there are 5 fetches logged from bsd/bsd.rd (4MB gzipped image)
+# Installer prompts: Welcome to the OpenBSD/amd64 7.0 installation program.
+# (I)nstall, (U)pgrade, (A)utoinstall or (S)hell?
+# On shell there seems to be command "autoinstall" (Available network interfaces are: ... Which network should be used for initial DHCP request ? (or 'done'))
+# (boot) filename from DHCP decides on auto-install (fn: auto_install
+# triggers fetching of install.conf from http server (next-server)
 label openbsd70
 menu label OpenBSD 7.0 by pxeboot
 KERNEL pxechn.c32
 # Need to be dedicated to OpenBSD ?
-# Try utilizing pxeboot from loopmount (http)
+# HTTP download of pxeboot seems to work (pxeboot is not on ISO, must be downloaded separately from mirrors).
 append http://{{{ httpserver }}}/pxeboot
-# BSD ramdisk: /isomnt/openbsd70/7.0/amd64/bsd.rd
+# BSD ramdisk on ISO: /isomnt/openbsd70/7.0/amd64/bsd.rd
 
 
 # mfsBSD ISO ( https://mfsbsd.vx.sk/ Boots to login: root/mfsroot )
