@@ -89,16 +89,17 @@ kernel http://{{ httpserver }}/gparted/live/vmlinuz
 initrd http://{{ httpserver }}/gparted/live/initrd.img
 append boot=live  components union=overlay username=user noswap noeject ip= vga=788 fetch=http://{{ httpserver }}/gparted/live/filesystem.squashfs keyb=us gl_kbd=us gl_lang=en_US gl_numlk=off gl_batch nolocales
 
-# TODO: System Rescue CD (https://www.system-rescue.org/Download/)
-# systemrescue-7.00-amd64.iso
-# https://www.system-rescue.org/manual/PXE_network_booting/
-# label sysresc
-# menu label System Rescue CD (Live)
-# kernel http://{{ httpserver }}/sysresccd/boot/x86_64/vmlinuz
-# INITRD sysresccd/boot/intel_ucode.img,sysresccd/boot/amd_ucode.img,sysresccd/boot/x86_64/sysresccd.img
+# System Rescue CD (>= 6.X based on Arch: https://www.system-rescue.org/Download/)
+# systemrescue-7.00-amd64.iso / systemrescue-8.05-amd64.iso
+# - Boot Options: https://www.system-rescue.org/manual/Booting_SystemRescueCd/
+# - PXE Bootting: https://www.system-rescue.org/manual/PXE_network_booting/
+label sysresccd
+menu label System Rescue CD (Live)
+kernel http://{{ httpserver }}/sysresccd/boot/x86_64/vmlinuz
+INITRD http://{{ httpserver }}/sysresccd/boot/intel_ucode.img,http://{{ httpserver }}/sysresccd/boot/amd_ucode.img,http://{{ httpserver }}/sysresccd/boot/x86_64/sysresccd.img
 # NOT: append initrd=http://{{ httpserver }}/sysresccd copytoram setkmap=us
-# APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/ checksum
-# SYSAPPEND 3
+APPEND archisobasedir=sysresccd ip=dhcp archiso_http_srv=http://10.0.2.4/ checksum
+SYSAPPEND 3
 
 # Clonezilla Live PXE
 # Example almost directly from https://clonezilla.org/livepxe.php
