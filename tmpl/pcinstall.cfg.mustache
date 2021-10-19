@@ -1,25 +1,35 @@
-# 2nd stage Auto Install for FreeBSD 12.
-# This gets loaded by BSD Bootloader "pxeboot" config file (in e.g. TFTP) boot/pc-autoinstall.conf
+# 2nd stage Auto Install config for pc-autoinstall (FreeBSD 12).
+# Typical names: cust-install.cfg or pcinstall.cfg
+# This file gets configured by BSD Bootloader "pxeboot" config file (in e.g. TFTP) boot/pc-autoinstall.conf
 # by directirve (e.g.): "pc_config: http://.../cust-install.cfg" (typical suggested name)
 # Consider adding: /cust-install.cfg?mac=%%NIC_MAC%% (to identify machine)
 # For more info, aee (Directory): $ISOROOT/usr/share/examples/pc-sysinstall
 # # References
 # https://www.youtube.com/watch?v=Yz2_n2yicnc&t=884s
 # http://ftp.icm.edu.pl/packages/pcbsd/iso/10.3-RELEASE/amd64/docs/html/advanced.html
-#############
+############# Install ############
 # (fresh/upgrade/extract)
 installMode=fresh
+# For extract mode
+# installLocation=
 # # PCBSD/FreeBSD
 installType=FreeBSD
 # Default: installInteractive=no
 installInteractive=yes
-# dvd, usb, ftp, rsync, image
+# installMedium can be: dvd, usb, ftp, rsync, image
 # Seems ftp means also http (http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/)
 installMedium=ftp
+# On ISO: freebsd12/usr/freebsd-dist/MANIFEST
+# localpath=/usr/freebsd-dist/
+############# Components (Packages) ####################
+#installComponents=ports,src
+# If NOT specified in conf/pc-sysinstall.conf
+#installFile=freebsd-release.tbz
+# uzip,tar,dist
 packageType=dist
 distFiles=base src kernel
 # freebsd12
-ftpPath=ftp://{{{ httpserver }}}/pub/8.0/netinstall
+# ftpPath=ftp://{{{ httpserver }}}/pub/8.0/netinstall
 # TODO: Generate correct BSD device name
 ########## Localization ############
 # PC-BSD Only ?
@@ -35,24 +45,27 @@ hostname={{ net.hostname }}
 
 # AUTO-DHCP or device (e.g. et0, em0, nfe0)
 # netDev=nfe0
-netDev=em0
+# netDev=em0
 # This will rely on DHCP and make almost all settings below irrelevant
-#netIP=AUTO-DHCP
-#netSaveDev=AUTO-DHCP
-netIP={{ net.ipaddress }}
-netMask={{ net.netmask }}
-netNameServer={{ net.nameservers_first }}
-netDefaultRouter={{ net.gateway }}
+netIP=AUTO-DHCP
+netSaveDev=AUTO-DHCP
+# netIP={{ net.ipaddress }}
+# netMask={{ net.netmask }}
+# netNameServer={{ net.nameservers_first }}
+# netDefaultRouter={{ net.gateway }}
 ############# Disk #################
-# Partition table (MBR/GPT)
-#partscheme=MBR
+# See also: https://docs.freebsd.org/en/books/handbook/bsdinstall/
+# Partition table (MBR/GPT/BSD)
+partscheme=MBR
+# Memory dev (ramdisk):md0 (/dev/md0) On mfsBSD
 #disk0=ad0
-#partition=all
+partition=all
 # (none, bsd)
-#bootManager=none
-# for Partition table
+bootManager=none
+# for Partition table (only, not FS:s)
 #commitDiskPart
 # ----- Individual partitions ------
+# Units: MB. Types: UFS, UFS+S, UFS+J, ZFS, SWAP
 # Size 0 means use the rest of the slice size
 #disk0-part=UFS 2000 / 
 #disk0-part=SWAP 2000 none
@@ -60,15 +73,17 @@ netDefaultRouter={{ net.gateway }}
 ## For individual partitions (diskN-part items)
 #commitDiskLabel
 
-############# User #################
-#rootPass=mypass
+
+############# User(s) #################
+rootPass={{{ user.password }}}
 userName={{ user.username }}
 userComment={{ user.fullname }
 userPass={{{ user.password }}}
 # userEncPass=...
-userShell=/bin/bash
+userShell=/bin/sh
 userHome={{{ user.homedir }}}
 #userGroups=wheel,operator
+#autoLoginUser=mrsmith
 commitUser
 
 ########### Post_Install #############
@@ -78,5 +93,5 @@ commitUser
 #runCommand=echo 'root' | pw usermod root -h 0
 # Copy, run inside chroot
 #runScript=/root/test.sh
-# command outside the chroot woth $FSMNT set to mount pt. of installed system
+# command outside the chroot with $FSMNT set to mount pt. of installed system
 #runExtCommand=echo 'hey there'; touch $FSMNT/touched
