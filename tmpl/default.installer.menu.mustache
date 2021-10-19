@@ -255,7 +255,7 @@ append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug
 # Needs also file (in same path): "meta-data: instance-id: focal-autoinstall
 # Seems loop-mounted dir is not accepted url=... must be an ISO file. Note: must have kernel param autoinstall.
 label ubuntu2004
-menu label Install Ubuntu 20.04 Server (TODO: Automated)
+menu label Install Ubuntu 20.04 Server subiquity/Live (TODO: Automated)
 kernel http://{{ httpserver }}/ubuntu20/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu20/casper/initrd
 append ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/ root=/dev/ram0 ramdisk_size=1600000
@@ -268,7 +268,7 @@ append ip=dhcp url=http://{{ httpserver }}/ubuntu-20.04-live-server-amd64.iso au
 # http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/mini.iso
 # http://cdimage.ubuntu.com/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso <= USE THIS for preseed
 label ubuntu2004legacy
-menu label Install Ubuntu 20.04 Server - legacy preseed (TODO: Automated)
+menu label Install Ubuntu 20.04 Server - legacy preseed (Automated)
 kernel http://{{ httpserver }}/ubuntu20legacy/install/netboot/ubuntu-installer/amd64/linux
 initrd http://{{ httpserver }}/ubuntu20legacy/install/netboot/ubuntu-installer/amd64/initrd.gz
 append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=ubuntu20
@@ -461,10 +461,31 @@ append textmode=1 install=http://{{ httpserver }}/opensuse152/ autoyast2=http://
 # - is a linux kernel
 # - is located in /usr/lib/syslinux/memdisk
 # - comes from "syslinux-common" (dpkg -S /usr/lib/syslinux/memdisk)
+# - "fetch" is a BSD equivalent of wget/curl (e.g. in freebsd12/usr/bin/fetch)
 # Note: pc-sysinstall is a BSD installer with possible config (-c). Alternative: bsdinstall
-# https://github.com/trueos/pc-sysinstall/blob/master/examples/README
-# https://www.trueos.org/handbook/advanced.html
-# http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
+# - https://github.com/trueos/pc-sysinstall/blob/master/examples/README
+# - https://www.trueos.org/handbook/advanced.html
+# - http://web.mit.edu/freebsd/head/usr.sbin/pc-sysinstall/examples/
+# - https://forums.freebsd.org/threads/unattended-installation-of-freebsd.59699/
+# - https://www.freebsd.org/cgi/man.cgi?bsdinstall(8) - See subcommands auto, script
+# - https://wiki.freebsd.org/BSDInstall
+#   - freebsd12/usr/sbin/bsdinstall Shell script (<100 l.)
+#     - gets run N-times with subcommand that is utility name in bsdinstall -dir (see below)
+#   - freebsd12/usr/libexec/bsdinstall/ - Dir of shell script and ELF install utilities (autopart,adduser,hostname,netconfig,mirrorselect)
+# - pc-sysinstall freebsd12/usr/sbin/pc-sysinstall
+#   - Shell script, OLD: uses install.cfg as config (2011)
+#   - /usr/share/pc-sysinstall/pc-sysinstall.conf
+# - https://docs.freebsd.org/en/articles/remote-install/
+#  - conf/loader.conf (found boot/loader.conf boot/defaults/loader.conf)
+#  - conf/interfaces.conf (Not found on ISO)
+#  - conf/rc.conf (found etc/rc.conf, etc/defaults/rc.conf)
+#  - /isomnt/freebsd12/usr/freebsd-dist Directory has MANIFEST that lists files
+#    (e.g. base.txz) NOT on ISO (Must be in mirrors)
+# - FreeBSD ISO has pxeboot in boot/pxeboot
+# - https://louwrentius.com/freebsd-101-unattended-install-over-pxe-http-no-nfs.html
+#   - Shows use of bsdinstall with /etc/installerconfig
+#   - Seems /etc/rc.local gets run on boot and could/should be modded to fetch installerconfig etc.
+# - http://wiki.euserv.com/index.php/Manual_Installation_FreeBSD/en
 label freebsd12net
 menu label FreeBSD 12 Net ISO Install (by memdisk)
 linux /memdisk
@@ -496,6 +517,8 @@ kernel pxechn.c32
 # Dell laptop: Passes control to bootloader, but it crashes. No extra log items in TFTP
 # Dell server: Boots to simple shell
 initrd ::pxeboot
+# Try pxeboot by http from ISO loopmount
+# initrd http://{{{ httpserver }}}/freebsd12/boot/pxeboot
 # append raw
 
 # Ver 3: https://forums.freebsd.org/threads/pxe-boot-server.74328/
@@ -548,7 +571,7 @@ append http://{{{ httpserver }}}/pxeboot
 # - Comes as 1) standard edition (87MB maint. and repair) 2) se = Special Edition (308MB, best for install) 3) mini (29MB)
 # - http://www.wonkity.com/~wblock/docs/html/pxe.html
 # - https://blog.vx.sk/archives/46 - recommends using BSD pxeboot
-# - To install run (e.g.): zfsinstall
+# - To install run (recommended by docs, e.g.): zfsinstall
 label mfsbsd
 menu label mfsBSD ISO (Live)
 kernel memdisk

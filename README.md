@@ -62,6 +62,7 @@ Tool CD:s/ISO:s and utilities:
 - System Rescue CD
 - Clonezilla
 - memtest86 (using Gparted bundled binary)
+- HDT - Hardware Detection tool
 - FreeDOS
 
 Full Operating systems with autoinstall:
@@ -75,11 +76,12 @@ Full Operating systems with autoinstall:
 Full Operating systems with Live mode and/or manual install:
 - Ubuntu Desktop 18.04 and 20.04 - in (non-automated) Live mode (and optional manual install)
 - FreeBSD 12.1 (boots to console for manual install)
-- mfsBSD 12.1 (boots to live login)
+- mfsBSD 12.1 (boots to live login, let's install from there)
+- OpenBSD 7.0 (boots to installer prompt)
 
 -------------------------------------------------
 
-## Systems Linetboot Collaborates with
+## Systems Linetboot Depends-on and Collaborates With
 
 - DHCP Server - PXE Bootload process starts here, DHCP gives instructions to PXE on where to look for bootloader (TFTP server name or IP,
   filename within the server)
@@ -98,11 +100,12 @@ PXE Booting standard and respective implementations start by consulting local DH
 
 Hopefully you get to utilize an existing DHCP server. However you have to buddy-up with the admins of the server
 to tweak the config in a minor way. See section "Changes to local DHCP Server".
+Setting up your own DHCP Server (e.g. ISC DHCP Server or dnsmasq is not hard either).
 
 ## TFTP Server
 
-The first stage low level booting starts by loading (pxelinux) files 
-PXE Linux (e.g. pxelinux.0) is NOT a linux OS or system, but a network bootloader system with configurable menu system designed to boot linux from network. linetboot will minimize the usage of TFTP to absolute bare minimum - only pxelinux bootloader NBP components and boot menu will be gotten from TFTP. All Linux stuff (Kernel, Initial ramdisk) will be delivered by this system using HTTP (See following section).
+The first stage low level booting (coordinated by DHCP) starts by loading (pxelinux) bootloader files.
+PXE Linux (e.g. pxelinux.0) is NOT a linux OS or system, but a network bootloader system with configurable menu system designed to boot linux from network. linetboot will minimize the usage of TFTP to absolute bare minimum - only pxelinux bootloader NBP components and boot menu will be gotten from TFTP. All Linux stuff (Kernel, Initial ramdisk) will be delivered by this system using HTTP (See following section), which significantly speeds up file transfers.
 
 ## HTTP Server
 

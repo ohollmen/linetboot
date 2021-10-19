@@ -94,6 +94,7 @@ var recipes = [
   // /boot/pc-autoinstall.conf on TFTP ?
   {"url":"/pc-autoinstall.conf","ctype":"bsd1",      "tmpl":"pc-autoinstall.conf.mustache"},
   {"url":"/cust-install.cfg",   "ctype":"bsd2",      "tmpl":"pcinstall.cfg.mustache"},
+  {"url":"/install.conf",       "ctype":"openbsd",    "tmpl":"install.conf.mustache"}, // OpenBSD
   {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"},
   // Suse / Yast
   {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"}, // ctype: "*yast*" ?
