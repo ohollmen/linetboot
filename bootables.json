@@ -1,0 +1,90 @@
+{
+  "imgpath":"/usr/local/iso",
+  "mountpath": "/isomnt",
+  "urlprefix":"boot",
+  "httpserver": "192.168.1.141",
+  "note" : "Documenting list of ISO images usable (?) with Linetboot (2019-12-26)",
+  "items": [
+    {
+      "name":"GpartEd Live (Ramdisk Netboot)",
+      "note" : "gparted-live-0.31.0-1-amd64.iso gparted-live-0.33.0-1-amd64.iso proven",
+      "url_NEW":"https://downloads.sourceforge.net/gparted/gparted-live-1.0.0-5-amd64.iso",
+      "url":"https://downloads.sourceforge.net/gparted/gparted-live-0.31.0-1-amd64.iso",
+      "md5sum" : "0b277dc939440198d6ff1845ded786aa",
+      "lbl":"gparted",
+      "kernel": "live/vmlinuz",
+      "initrd": "live/initrd.img"
+    },
+    {
+      "name":"Clonezilla (Ramdisk Netboot)",
+      "note" : "",
+      "url":"https://sourceforge.net/projects/clonezilla/files/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso/download",
+      "url_final" : "https://phoenixnap.dl.sourceforge.net/project/clonezilla/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso",
+      "img_bn" : "clonezilla-live-2.6.3-7-amd64.iso",
+      "md5sum" : "b394e85c3a5df70a39569f4be966114a",
+      "lbl":"clzilla",
+      "kernel": "live/vmlinuz",
+      "initrd": "live/initrd.img"
+    },
+    {
+      "name":"Ubuntu 14.04 LTS",
+      "url":"http://old-releases.ubuntu.com/releases/14.04.5/ubuntu-14.04.5-server-amd64.iso",
+      "md5sum" : "dd54dc8cfc2a655053d19813c2f9aa9f",
+      "lbl":"ubuntu14",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    {
+      "name":"Ubuntu 18.04 LTS",
+      "note":"ubuntu-18.04.1-server-amd64.iso proven",
+      "url":"http://cdimage.ubuntu.com/releases/18.04/release/ubuntu-18.04.3-server-amd64.iso",
+      "md5sum" : "cb7cd5a0c94899a04a536441c8b6d2bf",
+      "lbl":"ubuntu18",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    {
+      "name":"Centos 6",
+      "url":"http://mirrors.oit.uci.edu/centos/6.10/isos/x86_64/CentOS-6.10-x86_64-minimal.iso",
+      "md5sum" : "0da4a1206e7642906e33c0f155d2f835",
+      "lbl":"centos6",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    {
+      "name":"Centos 7",
+      "url":"http://mirrors.oit.uci.edu/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso",
+      "md5sum" : "bd43d41e01c2a46b3cb23eb9139dce4b",
+      "lbl": "centos7",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    
+    {
+      "name":"Free DOS 1.0",
+      "url":"http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/1.0/fdboot.img",
+      "md5sum" : "",
+      "lbl": "freedos1",
+      "kernel": "memdisk",
+      "initrd": "fdboot.img"
+    },
+    {
+      "name":"Ubuntu 20.04 Mate Desktop LTS",
+      "note":"TODO: test",
+      "url":"http://cdimage.ubuntu.com/ubuntu-mate/releases/20.04/release/ubuntu-mate-20.04-desktop-amd64.iso",
+      "md5sum" : "bbf62e9abd1ad8cdde4e8789dd17ef46",
+      "lbl":"ubuntu20dt",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    {
+      "name": "OpenSuse 15.2",
+      "url": "http://download.opensuse.org/distribution/leap/15.2/iso/openSUSE-Leap-15.2-DVD-x86_64.iso",
+      "md5sum" : "eba94158bc2ca5ec1265aeb12f0606a1",
+      "lbl": "opensuse152",
+      "kernel": "",
+      "initrd": ""
+      
+    }
+  ]
+}
