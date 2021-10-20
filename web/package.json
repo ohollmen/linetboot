@@ -32,6 +32,7 @@
     "mustache": "3.0.1",
     "router66": "1.0.4",
     "showdown": "1.2.2",
+    "spin.js": "^4.1.1",
     "toastr": "2.1.4",
     "wolfy87-eventemitter": "5.2.9"
   },
@@ -42,6 +43,7 @@
     "events": "3.1.0"
   },
   "scripts": {
+    "pminfo": "echo 'Use yarn here (on web/ side)'",
     "NNNcopydeps": "cp -p $PROJ_PATH/router666/Router666.js $PROJ_PATH/webview/webview.js ./jsx/; chmod a-w ./jsx/*; ls -al ./jsx",
     "modinstall": "../node_modules/yarn/bin/yarn install"
   },
