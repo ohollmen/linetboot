@@ -492,14 +492,14 @@ label freebsd12net
 menu label FreeBSD 12 Net ISO Install (by memdisk)
 linux /memdisk
 #TODO: initrd http://{{ httpserver }}/freebsd12net/freebsd-install/bootonly.iso
-initrd http://{{ httpserver }}/bootonly.iso
+initrd http://{{ httpserver }}/FreeBSD-12.1-RELEASE-amd64-bootonly.iso
 # Original example from BSD discussion board has BOTH "iso raw". In https://wiki.syslinux.org/wiki/index.php?title=MEMDISK
 # these are given as exclusive. mfsBSD ISO works with append iso
 # ORIG: append iso raw
 append iso
 
 # FreeBSD 12 "PXE Loader 1.00" (boot/pxeboot 0fae8c4b43c1f4d69c19617c0af43b28, Starting the BTX loader)
-# Installer: PC-SysInstall ("pc-sysinstall" on ISO, written in shell)
+# Installer: PC-SysInstall ("pc-sysinstall" on ISO, written as shell-script)
 # https://blog.narf.ssji.net/2013/06/pxelinux_openbsd_install/
 # The chainloader modules seems to be pxechain.com, but seems to be
 # have been renamed to pxechn.c32 (syslinux-common)
@@ -513,11 +513,16 @@ menu label FreeBSD 12 (BSD pxeboot)
 # kw "pxe" is specific to NBP. "kernel" leads to loading ok, but "Booting kernel/failed: Invalid argument", "boot" - nothing (!).
 # linux memdisk; initrd http://.../pxeboot; append raw; starts boot but freezes
 kernel pxechn.c32
-# Per https://wiki.syslinux.org/wiki/index.php?title=Pxechn.c32 this should work
+# Per https://wiki.syslinux.org/wiki/index.php?title=Pxechn.c32 this should work, but says cannot load
+# (goes to pxechn.c32 that does not support http ?)
 #initrd http://{{ httpserver }}/freebsd12/boot/pxeboot
-# Said to work: APPEND images/FreeBSD12-64/boot/pxeboot (https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/)
+# Said to work (https://forums.freebsd.org/threads/unable-to-pxe-boot-freebsd-install-system.71758/)but NFS ?:
+# APPEND images/FreeBSD12-64/boot/pxeboot
 # Dell laptop: Passes control to bootloader, but it crashes. No extra log items in TFTP
-# Dell server: Boots to simple shell
+# Dell server: Boots to simple shell (not a full shell) w. ~ 15 commands (Test: show)
+# The pxeboot tries to NFS-mount / of next-server: refused mount request from 11.78.12.10 for / (/): no export entry
+# NOTE: FreeBSD pxeboot is hard-coded to do NFS ONLY, not TFTP (no support compiled in). Is able to derive TFTP server
+# as NFS server to try, but hard-wires path (to mount) as '/'.
 initrd ::pxeboot
 # Try pxeboot by http from ISO loopmount
 # initrd http://{{{ httpserver }}}/freebsd12/boot/pxeboot
@@ -528,6 +533,7 @@ initrd ::pxeboot
 # 2011 article https://blog.vx.sk/archives/46 recommends rename (for pxelinux) to pxeboot.0 and "KERNEL pxeboot.0"
 # https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/
 # "pxe pxeboot" early-crashes already pxelinux menu w/o any message.
+# Dell server: graphics glitch (on menu), but seems to be alive
 label freebsd12pxe
 menu label FreeBSD 12 with PXE keyword
 pxe pxeboot
