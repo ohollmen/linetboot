@@ -212,6 +212,7 @@ function app_init() { // global
   app.get('/hostpkgstats', host_pkg_stats);
   // Group lists
   app.get('/groups', grouplist);
+  app.get('/groups_inv', grouplist_inv);
   // Commands to list pkgs
   app.get('/allhostgen/:lbl', gen_allhost_output);
   app.get('/allhostgen', gen_allhost_output);
@@ -1132,7 +1133,7 @@ function hostinfolist (req, res) {
   });
   res.json(arr);
 }
-/** List Groups if configured (HTTP GET /groups).
+/** List Groups if configured in main config (HTTP GET /groups).
 */
 function grouplist(req, res) {
   var jr = {status: "err", msg: "Unable to List Host Groups."};
@@ -1150,6 +1151,16 @@ function grouplist(req, res) {
       g.hosts.push(h);
     });
   });
+  res.json(groups);
+}
+/** List inventory groups.
+ * 
+ */
+function grouplist_inv(req, res) {
+  var jr = {status: "err", msg: "Unable to List Host Groups."};
+  var gnames = hlr.groupnames();
+  if (!gnames || !Array.isArray(gnames)) { jr.msg += "No Groups !"; res.json(jr); }
+  var groups = gnames.map((gn) => { return {id: gn, name: gn}; });
   res.json(groups);
 }
 

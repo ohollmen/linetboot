@@ -311,10 +311,10 @@ function on_host_click(ev, barinfo) {
 /** Show Ansible UI */
 function ansishow(ev, an) {
   // var sets = ["aplays","aprofs"];
-  // OLD: groups: grps
-  var p = { hosts: db.hosts, groups: datasets["grps"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
+  // "grps" (OLD) => "grps_inv"
+  var p = { hosts: db.hosts, groups: datasets["grps_inv"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
   var output = rapp.templated('ansrun', p); // , "dialog_ans"
-  if (!an) {
+  if (!an) { // Dialog
     $( "#dialog_ans" ).html(output);
     var dopts = {modal: true, width: 650, height: 600}; // See also min,max versions
     $( "#dialog_ans" ).dialog(dopts);
@@ -329,6 +329,32 @@ function ansishow(ev, an) {
     $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
     $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
     $('#anssend').click(ansirun);
+    var time = Date.now();
+    var atmpls = {
+      pb : "ansible-playbook -i ~/.linetboot/hosts {{{ pb }}} -b -e '{{{ ejson }}}'",
+      facts : "mkdir {{ factdir }} ; ansible {{{ hns }}} -i ~/.linetboot/hosts -b -m setup --tree {{factdir}} -e '{{{ ejson }}}'; echo 'Facts in {{factdir}}'"
+    };
+    $('#anssend2').click((jev) => {
+      var extra = {ansible_user: "...", ansible_sudo_pass: "...", host: null};
+      var para = form_obj("#ansform", ["hostnames","hostgroups", "playbooks", ]); // "playprofile"
+      console.log("Got UI params: ", JSON.stringify(para, null, 2) );
+      console.log("JEV:",jev);
+      if ((para.hostnames && para.hostnames.length) && (para.hostgroups && para.hostgroups.length)) { return toastr.error("Only hostnames OR hostgroups !"); }
+      para.what = para.hostnames || para.hostgroups;
+      //if (para.what.length != 1) { return toastr.error(); } // NOT !
+      if (!para.playbooks.length || para.playbooks.length > 1) { return toastr.error("Only single playbook allowed !"); }
+      para.pb = para.playbooks[0];
+      extra.host = para.what.join(','); // Only on pb !
+      para.hns   = para.what.join(',');
+      para.ejson = JSON.stringify(extra);
+      para.time = Date.now();
+      para.factdir = "/tmp/facts_"+para.time;
+      //rapp.templated("simplegrid", act);
+      var out = Mustache.render(atmpls['pb'], para);
+      out += "\n"+Mustache.render(atmpls['facts'], para);
+      $('#anscmd').html(out); $('#anscmd').show();
+      //alert(out);
+    });
   }
   ansui_setup();
 }
@@ -352,7 +378,7 @@ function ansirun(jev) {
     return 0;
   }
   
-  if (is_not_given(para.playbooks) && is_not_given(para.playprofile)) { alert("Neither playbooks or playprofile given !"); return; }
+  if (is_not_given(para.playbooks) && is_not_given(para.playprofile)) { toastr.error("Neither playbooks or playprofile given !"); return; }
   axios.post("/ansrun", para).then(function (resp) {
     var rp = resp.data;
     if (!resp.headers["content-type"].match(/json/)) { return alert("ansrun: Non-JSON response"); }
@@ -635,7 +661,8 @@ function acts_uidisable(actitems) {
   // {id: "docindex", url: "/docindex.json"}
   var dnodes = [
     {id: "hostlist", url: "/list"},
-    {id: "grps", url: "/groups"},
+    {id: "grps",     url: "/groups"},
+    {id: "grps_inv", url: "/groups_inv"},
     {id: "aplays", url: "/anslist/play"},
     {id: "aprofs", url: "/anslist/prof"},
     {id: "cfg", url: "/config"},
