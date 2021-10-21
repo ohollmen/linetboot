@@ -1,4 +1,6 @@
+var spinopts = {lengthX: 37, widthX: 10, scale: 5, color: '#555', top: '80%'}; // TODO: Global (consistent)
 
+//import {Spinner} from 'spin.js';
 // OS/Version view ?
 function osview_guisetup() {
   // 3x views. Now in more specific location
@@ -130,34 +132,39 @@ function rmgmt(ev, act) {
  */
 function probeinfo(ev, act) {
   toastr.info("Running Network Probe ... Please Wait ...");
+  var el = document.getElementById(ev.viewtgtid);
+  console.log(el);
+  var spinner = new Spinner(spinopts).spin(el);
   axios.get(act.url).then(function (resp) { // '/nettest'
     var pinfo = resp.data.data;
+    spinner.stop();
     // console.log("Probe data: ", pinfo);
-    if (!pinfo || !pinfo.length) { alert("No Net Probe data"); return; }
+    if (!pinfo || !pinfo.length) { toastr.error("No Net Probe data"); return; }
     showgrid("jsGrid_probe", pinfo, fldinfo.netprobe);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-  }).catch(function (error) { console.log(error); });
+  }).catch(function (error) { spinner.stop(); console.log(error); });
 }
 /** Load Process and Uptime Information.
  */
 function loadprobeinfo(event, act) {
   toastr.info("Running Load Probe ... Please Wait ...");
   // TODO: Lookup tab (?) element (from ev.) that can be used for spinner elem, see ontabactivate
-  var target = event.viewtgtid; // From ontabactivate
-  var opts = {}; // TODO: Global (consistent)
-  //var spinner = new Spinner(opts).spin(target); // new Spin.Spinner or new Spinner() ?
+  var tgtid = event.viewtgtid; // From ontabactivate
+  
+  var el = document.getElementById(tgtid);
+  var spinner = new Spinner(spinopts).spin(el); // new Spin.Spinner or new Spinner() ?
   // target.appendChild(spinner.el); // When invoked w/o target: .spin()
   axios.get(act.url).then(function (resp) {
     var pinfo = resp.data.data;
-    //spinner.stop();
+    spinner.stop();
     // console.log("Probe data: ", pinfo);
-    if (!pinfo || !pinfo.length) { alert("No Load Probe data"); return; }
+    if (!pinfo || !pinfo.length) { toastr.error("No Load Probe data"); return; }
     showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
     if (act.uisetup) { act.uisetup(); console.log("CALLED UISETUP"); }
   })
   .catch(function (error) {
-    //spinner.stop();
+    spinner.stop();
     console.log(error);
   });
 }
