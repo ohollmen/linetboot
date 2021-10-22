@@ -22,6 +22,7 @@
     {
       "name": "System Rescue CD (8.0.5)",
       "note" : "Based on Arch on versions >=6.X ", "url":"https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/8.05/systemrescue-8.05-amd64.iso/download",
+      "img_bn" : "systemrescue-8.05-amd64.iso",
       "lbl": "sysresccd",
       "kernel":"sysresccd/sysresccd/boot/x86_64/vmlinuz",
       "initrd":"(3x)"
@@ -33,7 +34,7 @@
       "url_final" : "https://phoenixnap.dl.sourceforge.net/project/clonezilla/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso",
       "img_bn" : "clonezilla-live-2.6.3-7-amd64.iso",
       "md5sum" : "b394e85c3a5df70a39569f4be966114a",
-      "lbl":"clonezilla",
+      "lbl": "clonezilla",
       "kernel": "live/vmlinuz",
       "initrd": "live/initrd.img"
     },
@@ -73,9 +74,9 @@
     },
     {
       "name":"Ubuntu 20.04 LTS Server (Legacy/preseed)",
-      "note":"Use Legacy for preseed based install",
+      "note":"Use Legacy image for preseed based install",
       "url": "http://cdimage.ubuntu.com/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso",
-      "md5sum" : "???",
+      "md5sum" : "b92a9fac59262a934e6682191a6cbf10",
       "lbl":"ubuntu2004legacy",
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
@@ -89,17 +90,35 @@
       "initrd": "images/pxeboot/initrd.img"
     },
     {
-      "name":"Centos 7",
-      "url":"http://mirrors.oit.uci.edu/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso",
-      "md5sum" : "bd43d41e01c2a46b3cb23eb9139dce4b",
+      "name": "Centos 7",
+      "url_OLD":"http://mirrors.oit.uci.edu/centos/7.6.1810/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso",
+      "md5sum_OLD" : "bd43d41e01c2a46b3cb23eb9139dce4b",
+      "url":"http://mirrors.sonic.net/centos/7.9.2009/isos/x86_64/CentOS-7-x86_64-DVD-2009.iso",
+      "md5sum" : "5a3b0b3f4a6654ee195ec6edb6d938a4",
       "lbl": "centos7",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    {
+      "name": "Centos 8",
+      "url":"http://mirrors.sonic.net/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86_64-dvd1.iso",
+      "md5sum" : "d0f515715e370e1564f33856cb208577",
+      "lbl": "centos8",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    {
+      "name": "Rocky Linux 8.4",
+      "url":"https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.4-x86_64-dvd1.iso",
+      "md5sum" : "c1cce83eb6a3b880cd176e2d3614c00b",
+      "lbl": "rocky8",
       "kernel": "images/pxeboot/vmlinuz",
       "initrd": "images/pxeboot/initrd.img"
     },
     {
       "name":"Free DOS 1.0",
       "url":"http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/1.0/fdboot.img",
-      "md5sum" : "",
+      "md5sum" : "5008c37cf0506ed7a95b2cd8ecb7db77",
       "lbl": "freedos1",
       "kernel": "memdisk",
       "initrd": "fdboot.img"
@@ -115,7 +134,7 @@
     },
     {
       "name":"Arch Linux",
-      "note":"These are 'cycling' very radidly and old versions disappear quickly on mirrors.",
+      "note":"Image dirs are 'cycling' very radidly and old versions disappear quickly on mirrors.",
       "lbl":"archlinux2021",
       "md5sum":"c76867784b21d6f70cb156d9d1f113db",
       "url":"http://mirrors.acm.wpi.edu/archlinux/iso/2021.10.01/archlinux-2021.10.01-x86_64.iso",

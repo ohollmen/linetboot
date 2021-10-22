@@ -583,7 +583,7 @@ function ibip_cell(val, item) {
    }
    function haslocallysell (val, item) { return val ? "<i class=\"glyphicon glyphicon-check\"></i>" : ""; }
    var fldinfo_bootables = [
-    {name: "lbl", title: "Label", type: "text", width: 25},
+    {name: "lbl", title: "Boot Label", type: "text", width: 25},
     {name: "name", title: "Name", type: "text", width: 70},
     // {name: "btype", title: "Boot Type", type: "text", width: 20}, // tool, inst, live
     {name: "url", title: "Image Download URL", type: "text", width: 100},

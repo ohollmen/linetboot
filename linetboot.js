@@ -2663,6 +2663,7 @@ function bootables_list(req, res) {
   var path = require("path");
   arr.forEach((img) => {
     var fn = path.basename(img.url);
+    if (img.img_bn) { fn = img.img_bn; }
     var fna = isopath+"/"+fn;
     //console.log("Testing: "+fna);
     img.present = fs.existsSync(fna) ? 1 : 0;
@@ -2690,7 +2691,7 @@ function bootables_status(req, res) {
     var img2 = {lbl: img.lbl, status: "", code: 0};
     axios.head(img.url).then((resp) => {
       console.log("====== RESP ("+img.url+", "+resp.status+") ==========\n"); // DEBUG
-      console.log(resp);
+      //console.log(resp);
       
       img2.status = resp.statusText + " ("+resp.status+")"; // = "OK"
       img2.code = resp.status;
