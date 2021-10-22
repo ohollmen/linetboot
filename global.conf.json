@@ -36,6 +36,7 @@
   },
   "fact_path":  "~/hostinfo",
   "hostsfile" : "~/.linetboot/hosts",
+  "isopath": "/isoimages",
   "core": {
     "maindocroot": "/isomnt/",
     "addroot": ["/isoimages", "/usr/local/iso"],

@@ -288,7 +288,8 @@ function app_init() { // global
     covconn.init(global);
     app.get("/covtgtchart",  covconn.express_report);
   }
-  
+  app.get("/bs_list", bootables_list);
+  app.get("/bs_statuses", bootables_status);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2644,4 +2645,62 @@ function rp_add_mems(req, res) {
       res.json({status: "ok", data: ress, data2: padd});
     });
   });
+}
+/** Wrapper for static file bootables.json.
+ * Wrapped because of:
+ * - Possibly to share a copy between requests (require() - caching)
+ * - Need to dynamically fill-in "have-it" status
+ * - Wrap data with standard response.
+ */
+function bootables_list(req, res) {
+  var jr = {status: "err", msg: "Failed to get bootables data. "};
+  var bs = require("./bootables.json");
+  var isopath = global.isopath; // TODO: global.xxx.isopath; - Multiple paths, user resolve ... ?
+  if (!isopath) { jr.msg += "No Bootables ISO path configured."; return res.json(jr); }
+  if (!bs) { jr.msg += "Bootables file not loaded."; return res.json(jr); }
+  var arr = bs.items;
+  if (!arr) { jr.msg += "Bootable items not in array."; return res.json(jr); }
+  var path = require("path");
+  arr.forEach((img) => {
+    var fn = path.basename(img.url);
+    var fna = isopath+"/"+fn;
+    //console.log("Testing: "+fna);
+    img.present = fs.existsSync(fna) ? 1 : 0;
+  });
+  res.json({status: "ok", data: bs});
+}
+/** Check bootables availability with a HTTP HEAD request (collectively).
+ * TODO: Templating for URL ?
+ */
+function bootables_status(req, res) {
+  var jr = {status: "err", msg: "Failed to get status for bootables. "};
+  var bs = require("./bootables.json"); // dclone() ?
+  var arr = bs.items; // Image items
+  var t1 = Date.now();
+  async.map(arr, imagestatus, (err, ress) => {
+    if (err) { jr.msg += "Completion error: "+err; return res.json(jr); }
+    var t2 = Date.now();
+    return res.json({status: "ok", data: ress, time: (t2-t1)/1000});
+  });
+  /** Test availability for single Image on an URL.
+   * TODO: Have websocket inform frontend (by runtime config ?)
+   */
+  function imagestatus(img, cb) {
+    console.log("Look status of: "+img.name);
+    var img2 = {lbl: img.lbl, status: "", code: 0};
+    axios.head(img.url).then((resp) => {
+      console.log("====== RESP ("+img.url+", "+resp.status+") ==========\n"); // DEBUG
+      console.log(resp);
+      
+      img2.status = resp.statusText + " ("+resp.status+")"; // = "OK"
+      img2.code = resp.status;
+      var hdrs = resp.headers;
+      if (hdrs && hdrs["content-length"]) { img2.size = parseInt(hdrs["content-length"]); img2.status += " "+img2.size + " B.";}
+      return cb(null, img2);
+    }).catch((ex) => {
+      img2.status = "FAIL ("+ex.response.status+")";
+      img2.code = ex.response.status;
+      return cb(null, img2);
+    }); // Accept
+  }
 }

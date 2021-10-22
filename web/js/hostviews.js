@@ -450,8 +450,8 @@ var tabloadacts = [
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   // ADD: ansitab
   {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
-  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", path: "dockerenv"},
-  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
+  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", gdmem: "catalog", path: "dockerenv"},
+  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof", "tabs-bos"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
   {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq",    hdlr: bootgui, url: "", path: ""},
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
@@ -501,8 +501,8 @@ var tabloadacts = [
   {"name": "ApiDocs", "elsel": "tabs-api", "url": "/apidoc", "tmpl": "", hdlr: apidoc, path: "apidoc"},
   // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appacts"},
   // Ansible
-  {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"}
-
+  {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"},
+  {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", path: "bootables"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

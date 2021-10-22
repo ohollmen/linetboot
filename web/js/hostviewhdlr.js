@@ -243,23 +243,54 @@ function outfmts(ev, act) {
 function dockercat_show(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   var url = act.url;
+  console.log("GET: "+url);
   axios.get(url).then(function (resp) { // "/dockerenv"
     var d = resp.data;
-    if (!d || !d.data) { return $('#denvinfo').html("No "+act.name+" Info"); } // Docker Env.
-    //console.log(d.data);
+    if (!d) { return toastr.error("No data in HTTP request (resp.data) !"); }
+    d = d.data || d; // Try to pick "data"
+    // || !d.data
+    if (!d ) { return $('#denvinfo').html("No "+act.name+" Info"); } // Docker Env.
+    console.log("DATA:", d);
+    console.log("Place data to id: "+tgtid);
+    var el = document.getElementById(tgtid);
+    if (!el) { toastr.error(tgtid + " - No such element !"); }
     // Late-Templating (after we have data). Pass top-level data here
-    var cont = rapp.templated(act.tmpl, d.data); // '#'+tgtid // "dockercat"
+    var cont = rapp.templated(act.tmpl, d); // '#'+tgtid // "dockercat"
+    if (!cont) { console.log("No templated content\n"); }
     // act.elsel
+    
     $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     // TODO: Where to get 1) grid-array member (gdatamem, gdmem) ? 2) fldinfo key (same as tmpl name ?) ?
     var fiid = act.fsid || act.tmpl;
-    // var gridarr = act.gdmem || autoarray(d.data);
-    showgrid (act.gridid, d.data.catalog, fldinfo[fiid]); // "jsGrid_dockercat", .., .dockercat
+    
+    var garrmem = act.gdmem || autoarray(d);
+    console.log("FIID: "+fiid+", gdmem:"+garrmem);
+    showgrid (act.gridid, d[garrmem], fldinfo[fiid]); // "jsGrid_dockercat", d.data.catalog, .dockercat
     // TODO: Style w. padding, etc.
     // var dgopts = {}; // style for table ?
     //OLD: $("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
     
-    if (act.path == 'dockerenv') { uisetup_dockercat(act); } // TODO: if (act.uisetup) { act.uisetup(act); }
+    if (act.path == 'dockerenv') { uisetup_dockercat(act); }
+    if (act.path == "bootables") { uisetup_bootables(act); }
+    // TODO: if (act.uisetup) { act.uisetup(act); }
+  function uisetup_bootables(act) {
+    axios.get("/bs_statuses").then((resp) => {
+        
+        var d = resp.data.data;
+        if (!Array.isArray(d)) { return toastr.error("Not in array"); }
+        toastr.info("ISO statuses from "+d.length+" sources retrieved !");
+        d.forEach((img) => {
+          var id = "bsstatus_"+img.lbl;
+          console.log("Try set: "+id);
+          $("#"+id).html(img.status ); // + "("+img.code+")"
+          $("#"+id).attr('style', 'color: '+code2color(img.code)); // Color ...
+        });
+      }).catch((ex) => {  alert("Error !"); });
+      function code2color(code) {
+        if ((code >= 200) && (code < 300)) { return "#33FF33"; }
+        return "#AA0000";
+      }
+  }
   // UI Setup: Docker sync ops
   function uisetup_dockercat(act) {
     $(".docksync").click(function (jev) {
@@ -282,7 +313,7 @@ function dockercat_show(ev, act) {
     });
   } // uisetup
 
-  }).catch(function (err) { return toastr.error(err); });
+  }).catch(function (err) { return toastr.error(err, "Error getting "+act.name+" from "+act.url); });
   function autoarray(data) {
     var ks = Object.keys(data);
     var arrks = [];

@@ -572,14 +572,29 @@ function ibip_cell(val, item) {
      {name: "keymap", title: "Keymap", type: "text", width: 10},
      // TODO: osid ? piuser ?
    ];
+   function md5sum_trunc(val, item) {
+     if (!val) { return ''; }
+     return "<span title=\""+val+"\">"+val.substr(0, 4) + "..." + val.substr(28)+"</span>"; // 32 B
+   }
+   function boo_status(val, item) {
+     val = val || "";
+     
+     return "<span id=\"bsstatus_"+item.lbl+"\">"+val+"</span>";
+   }
+   function haslocallysell (val, item) { return val ? "<i class=\"glyphicon glyphicon-check\"></i>" : ""; }
    var fldinfo_bootables = [
-    {name: "lbl", title: "Label", type: "text", width: 80},
-    {name: "name", title: "Name", type: "text", width: 80},
+    {name: "lbl", title: "Label", type: "text", width: 25},
+    {name: "name", title: "Name", type: "text", width: 70},
+    // {name: "btype", title: "Boot Type", type: "text", width: 20}, // tool, inst, live
     {name: "url", title: "Image Download URL", type: "text", width: 100},
-    {name: "md5sum", title: "Image MD5", type: "text", width: 50},
+    {name: "md5sum", title: "Image MD5", type: "text", width: 20, itemTemplate: md5sum_trunc},
     
-    {name: "kernel", title: "Kernel Path", type: "text", width: 80},
-    {name: "initrd", title: "Initrd Path", type: "text", width: 80},
+    {name: "kernel", title: "Kernel Path", type: "text", width: 70},
+    {name: "initrd", title: "Initrd Path", type: "text", width: 70},
+    {name: "present", title: "Have it ?", type: "text", width: 10, itemTemplate: haslocallysell}, // title: "Usable" ?
+    {name: "status", title: "Status", type: "text", width: 20, itemTemplate: boo_status},
+    // Popup commands to download, mount (if needed), test local download, create menu item
+    //{name: "howto", title: "Howto", type: "text", width: 20, itemTemplate: function (val, item) {}}, // Help icon
 
    ];
    // TODO: Send sets as AoO, index by id
@@ -588,6 +603,6 @@ function ibip_cell(val, item) {
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
-      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs
+      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables
    };
    
