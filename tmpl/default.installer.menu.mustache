@@ -119,11 +119,12 @@ initrd http://{{ httpserver }}/clzilla/live/initrd.img
 append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
 
 # DBAN (https://sourceforge.net/projects/dban/files/dban/dban-2.3.0/)
-label dban
-menu label DBAN Darik's Boot and Nuke (Disk Erase)
-kernel /memdisk
-initrd http://{{ httpserver }}/dban-2.3.0_i586.iso
-append iso
+# This works fine but is too destructive to keep enabled in menu by default.
+#label dban
+#menu label DBAN Darik's Boot and Nuke (Disk Erase)
+#kernel /memdisk
+#initrd http://{{ httpserver }}/dban-2.3.0_i586.iso
+#append iso
 
 # Digabi OS / Abitti Exam Environment (file is a multi-partition image)
 # file koe.img: DOS/MBR boot sector; partition 1 ... partition 4 ... (all info given in "sectors")
@@ -650,6 +651,8 @@ append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
 sysappend 3
 
 # Same as above, but has script=... with alis installer run wrapper (gotten from Linetboot)
+# See /root/.zlogin => /root/.automated_script.sh on Arch ISO.
+# https://shirotech.com/linux/how-to-automate-arch-linux-installation/
 label archlinux_auto
 menu label Arch Linux (Full Auto Install)
 kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
