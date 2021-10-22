@@ -572,6 +572,16 @@ function ibip_cell(val, item) {
      {name: "keymap", title: "Keymap", type: "text", width: 10},
      // TODO: osid ? piuser ?
    ];
+   var fldinfo_bootables = [
+    {name: "lbl", title: "Label", type: "text", width: 80},
+    {name: "name", title: "Name", type: "text", width: 80},
+    {name: "url", title: "Image Download URL", type: "text", width: 100},
+    {name: "md5sum", title: "Image MD5", type: "text", width: 50},
+    
+    {name: "kernel", title: "Kernel Path", type: "text", width: 80},
+    {name: "initrd", title: "Initrd Path", type: "text", width: 80},
+
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,

@@ -237,24 +237,31 @@ function outfmts(ev, act) {
   .catch(function (error) { console.log(error); });
 }
 /** Show Info on catalogued Docker images.
- * 
+ * - Pass top-level Object that came in response data as data to templating
+ * - Pass auto-discovered or explicitly defined array set (by member name) to grid generator
  */
 function dockercat_show(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
-  axios.get("/dockerenv").then(function (resp) {
+  var url = act.url;
+  axios.get(url).then(function (resp) { // "/dockerenv"
     var d = resp.data;
-    if (!d || !d.data) { return $('#denvinfo').html("No Docker Env. Info"); }
+    if (!d || !d.data) { return $('#denvinfo').html("No "+act.name+" Info"); } // Docker Env.
     //console.log(d.data);
-    // Late-Templating (after we have data)
-    var cont = rapp.templated("dockercat", d.data); // '#'+tgtid
+    // Late-Templating (after we have data). Pass top-level data here
+    var cont = rapp.templated(act.tmpl, d.data); // '#'+tgtid // "dockercat"
     // act.elsel
     $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
-    showgrid ("jsGrid_dockercat", d.data.catalog, fldinfo.dockercat);
+    // TODO: Where to get 1) grid-array member (gdatamem, gdmem) ? 2) fldinfo key (same as tmpl name ?) ?
+    var fiid = act.fsid || act.tmpl;
+    // var gridarr = act.gdmem || autoarray(d.data);
+    showgrid (act.gridid, d.data.catalog, fldinfo[fiid]); // "jsGrid_dockercat", .., .dockercat
     // TODO: Style w. padding, etc.
     // var dgopts = {}; // style for table ?
-    //$("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
-    // UI Setup: Docker sync ops
-    // function uisetup(act) {
+    //OLD: $("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
+    
+    if (act.path == 'dockerenv') { uisetup_dockercat(act); } // TODO: if (act.uisetup) { act.uisetup(act); }
+  // UI Setup: Docker sync ops
+  function uisetup_dockercat(act) {
     $(".docksync").click(function (jev) {
       var img = this.getAttribute("data-image"); // .dataset.image;
       //console.log(img);
@@ -266,15 +273,25 @@ function dockercat_show(ev, act) {
       } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("Docker Sync Error: "+ex); }
       var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
       console.log("Docker run para:", p);
-      // Run ansible w. params /ansrun
+      // Run ansible w. params /ansrun. TODO: Add request para ?
       axios.post("/ansrun", p).then(function (resp) {
         var r = resp.data;
         if (r.status == 'err') { toastr.error(r.msg); }
         else { toastr.info(r.msg); }
       });
     });
-    // } // uisetup
-  }).catch(function (err) { alert(err); });
+  } // uisetup
+
+  }).catch(function (err) { return toastr.error(err); });
+  function autoarray(data) {
+    var ks = Object.keys(data);
+    var arrks = [];
+    // Pick only, pick first ?
+    ks.forEach((k) => { if (Array.isArray(data[k])) { arrks.push(k); } });
+    if (!arrks.length) { return null; }
+    if (arrks.length == 1) { return arrks[0]; }
+    return arrks[0]; // if allowed by config ("first")
+  }
 }
 /** Display docker-imager config files */
 function dockerimg_show(ev, act) {
