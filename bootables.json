@@ -21,8 +21,10 @@
     },
     {
       "name": "System Rescue CD (8.0.5)",
-      "note" : "Based on Arch on versions >=6.X ", "url":"https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/8.05/systemrescue-8.05-amd64.iso/download",
+      "note" : "Based on Arch on versions >=6.X ",
+      "url":   "https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/8.05/systemrescue-8.05-amd64.iso/download",
       "img_bn" : "systemrescue-8.05-amd64.iso",
+      "md5sum":"35684a4d6b725ca7ebfb84d1892a65c4",
       "lbl": "sysresccd",
       "kernel":"sysresccd/sysresccd/boot/x86_64/vmlinuz",
       "initrd":"(3x)"
@@ -30,7 +32,7 @@
     {
       "name":"Clonezilla (Ramdisk Netboot)",
       "note" : "",
-      "url":"https://sourceforge.net/projects/clonezilla/files/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso/download",
+      "url":        "https://sourceforge.net/projects/clonezilla/files/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso/download",
       "url_final" : "https://phoenixnap.dl.sourceforge.net/project/clonezilla/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso",
       "img_bn" : "clonezilla-live-2.6.3-7-amd64.iso",
       "md5sum" : "b394e85c3a5df70a39569f4be966114a",
@@ -160,14 +162,32 @@
       
     },
     {
-      "name": "OpenBSD 7.0",
+      "name": "FreeBSD 13.0 (disc1/970MB)",
+      "url": "https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/13.0/FreeBSD-13.0-RELEASE-amd64-disc1.iso",
+      "md5sum" : "8db6acda770626944731232a323e9bd9",
+      "lbl": "freebsd13net",
+      "kernel": "memdisk",
+      "initrd": "FreeBSD-12.1-RELEASE-amd64-bootonly.iso"
+      
+    },
+    {
+      "name": "OpenBSD 7.0 (ISO)",
       "note": "OpenBSD (chained) pxeboot manages to load bsd/bsd.rd by TFTP using /etc/boot.conf (also TFTP)",
-      "url": "https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/install70.img",
+      "url": "https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/install70.iso",
       "md5sum" : "a6a8091dceaa6a88972902b6616b38e8",
       "lbl": "openbsd70",
       "kernel": "pxechn.c32",
       "initrd": "pxeboot"
       
+    },
+    {
+      "name": "OpenBSD 7.0 (IMG)",
+      "note": "Raw Image version (not ISO). pxeboot NOT avail from ISO, but separately from https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/",
+      "url": "https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/install70.img",
+      "md5sum" : "988e8997a2d840ee2b979d471485be9f",
+      "lbl": "openbsd70img",
+      "kernel": "pxechn.c32",
+      "initrd": "pxeboot"
     }
   ]
 }

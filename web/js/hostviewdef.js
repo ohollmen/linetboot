@@ -581,7 +581,12 @@ function ibip_cell(val, item) {
      
      return "<span id=\"bsstatus_"+item.lbl+"\">"+val+"</span>";
    }
-   function haslocallysell (val, item) { return val ? "<i class=\"glyphicon glyphicon-check\"></i>" : ""; }
+   // TODO: Detect also mounted status
+   function haslocallysell (val, item) {
+     var ccont = val ? "<i class=\"glyphicon glyphicon-check\"></i>" : "";
+     if (item.mounted) { ccont += " (mnt)";}
+     return ccont;
+   }
    var fldinfo_bootables = [
     {name: "lbl", title: "Boot Label", type: "text", width: 25},
     {name: "name", title: "Name", type: "text", width: 70},

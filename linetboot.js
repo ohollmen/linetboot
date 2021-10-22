@@ -2656,6 +2656,7 @@ function bootables_list(req, res) {
   var jr = {status: "err", msg: "Failed to get bootables data. "};
   var bs = require("./bootables.json");
   var isopath = global.isopath; // TODO: global.xxx.isopath; - Multiple paths, user resolve ... ?
+  var mntpath = "/isomnt/";
   if (!isopath) { jr.msg += "No Bootables ISO path configured."; return res.json(jr); }
   if (!bs) { jr.msg += "Bootables file not loaded."; return res.json(jr); }
   var arr = bs.items;
@@ -2667,6 +2668,9 @@ function bootables_list(req, res) {
     var fna = isopath+"/"+fn;
     //console.log("Testing: "+fna);
     img.present = fs.existsSync(fna) ? 1 : 0;
+    // Mounted ?
+    var kfna = mntpath + img.kernel;
+    img.mounted = fs.existsSync(kfna) ? 1 : 0;
   });
   res.json({status: "ok", data: bs});
 }
@@ -2678,7 +2682,7 @@ function bootables_status(req, res) {
   var bs = require("./bootables.json"); // dclone() ?
   var arr = bs.items; // Image items
   var t1 = Date.now();
-  async.map(arr, imagestatus, (err, ress) => {
+  async.map(arr, imagerepostatus, (err, ress) => {
     if (err) { jr.msg += "Completion error: "+err; return res.json(jr); }
     var t2 = Date.now();
     return res.json({status: "ok", data: ress, time: (t2-t1)/1000});
@@ -2686,7 +2690,7 @@ function bootables_status(req, res) {
   /** Test availability for single Image on an URL.
    * TODO: Have websocket inform frontend (by runtime config ?)
    */
-  function imagestatus(img, cb) {
+  function imagerepostatus(img, cb) {
     console.log("Look status of: "+img.name);
     var img2 = {lbl: img.lbl, status: "", code: 0};
     axios.head(img.url).then((resp) => {

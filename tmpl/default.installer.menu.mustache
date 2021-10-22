@@ -538,6 +538,7 @@ kernel pxechn.c32
 # NOTE: FreeBSD pxeboot is hard-coded to do NFS ONLY, not TFTP (no support compiled in). Is able to derive TFTP server
 # as NFS server to try, but hard-wires path (to mount) as '/' (boot.nfsroot.path).
 # Sometimes fails (if enter is pressed ?). No manual keypresses are needed to boot (e.g. enter).
+# FreeBSD smartly bundles it's own pxeboot on ISO image (/boot/pxeboot). Check: strings /isomnt/freebsd12/boot/pxeboot | grep FreeBSD
 initrd ::pxeboot
 # Try pxeboot by http from ISO loopmount
 # initrd http://{{{ httpserver }}}/freebsd12/boot/pxeboot
@@ -587,6 +588,8 @@ pxe pxeboot
 # (boot) filename from DHCP decides on auto-install (fn: auto_install
 # triggers fetching of install.conf from http server (next-server)
 # Autoinstall step-by-step guide: http://daemonforums.org/showthread.php?t=11034
+# Way of telling if pxeboot is for OpenBSD: strings pxeboot | grep OpenBSD
+# The ramdisk bsd.rd is avail either in the ISO or https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/bsd.rd
 label openbsd70
 menu label OpenBSD 7.0 by pxeboot
 KERNEL pxechn.c32
