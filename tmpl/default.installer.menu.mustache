@@ -72,6 +72,7 @@ kernel http://{{ httpserver }}/gparted/live/memtest
 #kernel memtest86+
 
 # http://www.wonkity.com/~wblock/docs/html/pxe.html
+# Comes with Ubuntu (part of syslinux-common)
 label hdt
 menu label HDT - Hardware Detection tool
 kernel hdt.c32
@@ -116,6 +117,13 @@ kernel http://{{ httpserver }}/clzilla/live/vmlinuz
 initrd http://{{ httpserver }}/clzilla/live/initrd.img
 # nolocales
 append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+
+# DBAN (https://sourceforge.net/projects/dban/files/dban/dban-2.3.0/)
+label dban
+menu label DBAN Darik's Boot and Nuke (Disk Erase)
+kernel /memdisk
+initrd http://{{ httpserver }}/dban-2.3.0_i586.iso
+append iso
 
 # Digabi OS / Abitti Exam Environment (file is a multi-partition image)
 # file koe.img: DOS/MBR boot sector; partition 1 ... partition 4 ... (all info given in "sectors")
@@ -403,6 +411,10 @@ append auto=true devfs=nomount method=http://{{ httpserver }}/redhat8/ ks=http:/
 
 # label dell_r630
 # menu label Dell R630 Update
+# Dell M640 Seems to (suddenly) work, at least gets to functional shell (with kernel and initrd kept on their own lines ?)
+# 85 utils in /bin/. /etc/os-release says: CentOS Linux 7 (Core) dracut-033-568.el7 (Initramfs). Are we still on initrd ?
+# Has /run/initramfs/rdsosreport.txt (160360 B.)
+# No command df, but mount shows no NFS mounts even if requested on kernel CL.
 label dell_m640
 menu label Dell M640 Update
 kernel http://{{ httpserver }}/dell_m640/isolinux/SA.1
@@ -455,7 +467,8 @@ initrd http://{{ httpserver }}/opensuse152/boot/x86_64/loader/initrd
 # console=ttyS0 showopts
 append textmode=1 install=http://{{ httpserver }}/opensuse152/ autoyast2=http://{{ httpserver }}/autoinst.xml
 
-# FreeBSD (12) bootonly.iso (Network installer, boots to console and lets launch manual install)
+# FreeBSD (12) bootonly.iso (Network installer, boots to console shell and lets launch manual install)
+# Sometimes issuing comands in shell or just waiting crashes shell which triggers crash/reboot.
 # One option includes https://forums.freebsd.org/threads/install-over-pxe.22087/
 # NOTAVAIL: http://www.locolomo.org/howto/pxeboot/article.html
 # https://wiki.syslinux.org/wiki/index.php?title=MEMDISK - Explanation of memdisk module
@@ -522,7 +535,8 @@ kernel pxechn.c32
 # Dell server: Boots to simple shell (not a full shell) w. ~ 15 commands (Test: show)
 # The pxeboot tries to NFS-mount / of next-server: refused mount request from 11.78.12.10 for / (/): no export entry
 # NOTE: FreeBSD pxeboot is hard-coded to do NFS ONLY, not TFTP (no support compiled in). Is able to derive TFTP server
-# as NFS server to try, but hard-wires path (to mount) as '/'.
+# as NFS server to try, but hard-wires path (to mount) as '/' (boot.nfsroot.path).
+# Sometimes fails (if enter is pressed ?). No manual keypresses are needed to boot (e.g. enter).
 initrd ::pxeboot
 # Try pxeboot by http from ISO loopmount
 # initrd http://{{{ httpserver }}}/freebsd12/boot/pxeboot
@@ -533,7 +547,8 @@ initrd ::pxeboot
 # 2011 article https://blog.vx.sk/archives/46 recommends rename (for pxelinux) to pxeboot.0 and "KERNEL pxeboot.0"
 # https://eerielinux.wordpress.com/2021/02/05/multi-os-pxe-booting-from-freebsd-12-pxe-menu-and-bsd-pt-3/
 # "pxe pxeboot" early-crashes already pxelinux menu w/o any message.
-# Dell server: graphics glitch (on menu), but seems to be alive
+# Dell server: graphics glitch (on menu), but seems to be alive. Works with menu.c32 (w/o VESA mode) !
+# FreeBSD 12.1 pxeboot complains about /boot/loader/loader.lua . 26 commands menu (show, set usert, load, ...).
 label freebsd12pxe
 menu label FreeBSD 12 with PXE keyword
 pxe pxeboot
@@ -548,9 +563,10 @@ pxe pxeboot
 # - https://www.cyberciti.biz/faq/openbsd-boot-install-using-pxe-preboot-execution-environment/
 # - Addl boot.conf options stty ... set ...
 # - Misc downloads: https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/
-#   - has pxeboot
+#   - has pxeboot (3.53), which can be chain-loaded using http: by pxechn.32 (append)
 #   - Readme file: INSTALL.amd64
 #   - bsd.rd (rd=ram disk ?) is said to be "install kernel" (rd with kernel ?)
+#   - OpenBSD pxeboot defaults to using TFTP on original next-server, default OS (ramdisk/kernel) fn/URL: tftp:/bsd/bsd.rd
 # - Also: https://mirror.leaseweb.com/pub/OpenBSD/
 # - For autoinstall, see: https://daulton.ca/2018/08/openbsd-pxe-server/
 # - https://man.openbsd.org/autoinstall
@@ -559,7 +575,8 @@ pxe pxeboot
 # Recipe (e.g.): 00:1e:c9:4c:69:59-install.conf (http://server/00:1e:c9:4c:69:59-install.conf?path=6.7/amd64)
 # URL to autopartitioning template for disklabel = http://172.16.0.1/openbsd-pgdb.disklabel
 # Assumes ramdisk to reside on original TFTP host /bsd, but supports config in TFTP path /etc/boot.conf.
-# Must be in fmt (e.g.): "boot tftp:/bsd/bsd.rd" (tftp: optional)
+# Must be in fmt (e.g.): "boot tftp:/bsd/bsd.rd" (tftp: optional). This makes pxeboot auto-load the final OS.
+# Unfortunately http not supported.
 # There can also be file auto_install in tftp root, should be symlink to tftpboot.
 # Also related: install.conf (recipe), which may be on http.
 # Installer on ramdisk takes a long time to load from TFTP, there are 5 fetches logged from bsd/bsd.rd (4MB gzipped image)
