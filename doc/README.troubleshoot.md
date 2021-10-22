@@ -426,6 +426,12 @@ Hexadecimal IP address (.e.g 0A55E80B), or truncated variants of Hex IP Address 
     name rules)
   - RedHat firewall heuristics may refuse tftp traffic after too may rapid tries
   - Solution: Create symlink by one of the first tried filenames (e.g. MAC address with octets dash-separated).
+-  Initial menu has no LABEL entries!
+  - Note: menu.c32 in use (not vesamenu.c32)
+  - https://forums.fogproject.org/topic/13517/pxe-boot-initial-menu-has-no-label-entries/3
+  - ESXi and menu.c32 https://communities.vmware.com/t5/ESXi-Discussions/PXE-Booting-issues-ESXi-5-5-0/td-p/2177215
+  - Comimg from menu.c32 file (verified by strings, appears also in vesamenu.c32, but not in use at the time. No such string in lpxelinux.0)
+  - If error comes, workaround by issuing: boot> lpxelinux.0 menu.c32
 
 ## BSD "pxeboot"
 
