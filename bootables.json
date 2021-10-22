@@ -4,6 +4,10 @@
   "urlprefix":"boot",
   "httpserver": "192.168.1.141",
   "note" : "Documenting list of ISO images usable (?) with Linetboot (2019-12-26)",
+  "imgrepos": {
+    "freebsd12": "https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/12.1/",
+    "ubuntu18":"http://cdimage.ubuntu.com/releases/18.04/release/"
+  },
   "items": [
     {
       "name":"GpartEd Live (Ramdisk Netboot)",
@@ -25,6 +29,12 @@
       "lbl":"clzilla",
       "kernel": "live/vmlinuz",
       "initrd": "live/initrd.img"
+    },
+    {
+      "name": "DBAN - Darik's Boot and Nuke (Disk Erase)",
+      "url": "https://sourceforge.net/projects/dban/files/dban/dban-2.3.0/dban-2.3.0_i586.iso/download",
+      "md5sum": "33a1df4171e649462ef9679ac207aa77",
+      "lbl":"dban"
     },
     {
       "name":"Ubuntu 14.04 LTS",
