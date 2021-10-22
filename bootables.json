@@ -142,12 +142,31 @@
       "initrd": "3x"
     },
     {
-      "name": "OpenSuse 15.2",
+      "name": "OpenSuse Leap 15.2",
       "url": "http://download.opensuse.org/distribution/leap/15.2/iso/openSUSE-Leap-15.2-DVD-x86_64.iso",
       "md5sum" : "eba94158bc2ca5ec1265aeb12f0606a1",
       "lbl": "opensuse152",
       "kernel": "opensuse152/boot/x86_64/loader/linux",
       "initrd": "opensuse152/boot/x86_64/loader/initrd"
+      
+    },
+    {
+      "name": "FreeBSD 12.1 (disc1/910MB)",
+      "url": "https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/12.1/FreeBSD-12.1-RELEASE-amd64-disc1.iso",
+      "md5sum" : "dcf5123967405ed1aa51c7c7ec439134",
+      "lbl": "freebsd12net",
+      "kernel": "memdisk",
+      "initrd": "FreeBSD-12.1-RELEASE-amd64-bootonly.iso"
+      
+    },
+    {
+      "name": "OpenBSD 7.0",
+      "note": "OpenBSD (chained) pxeboot manages to load bsd/bsd.rd by TFTP using /etc/boot.conf (also TFTP)",
+      "url": "https://cdn.openbsd.org/pub/OpenBSD/7.0/amd64/install70.img",
+      "md5sum" : "a6a8091dceaa6a88972902b6616b38e8",
+      "lbl": "openbsd70",
+      "kernel": "pxechn.c32",
+      "initrd": "pxeboot"
       
     }
   ]
