@@ -113,10 +113,10 @@ SYSAPPEND 3
 # Removed: quiet
 label clonezilla
 menu label Clonezilla Live (Ramdisk Netboot)
-kernel http://{{ httpserver }}/clzilla/live/vmlinuz
-initrd http://{{ httpserver }}/clzilla/live/initrd.img
+kernel http://{{ httpserver }}/clonezilla/live/vmlinuz
+initrd http://{{ httpserver }}/clonezilla/live/initrd.img
 # nolocales
-append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clzilla/live/filesystem.squashfs
+append boot=live username=user union=overlay config components  noswap edd=on nomodeset nodmraid locales= keyboard-layouts=us ocs_live_run="ocs-live-general" ocs_live_extra_param="" ocs_live_batch=no net.ifnames=0 nosplash noprompt fetch=http://{{ httpserver }}/clonezilla/live/filesystem.squashfs
 
 # DBAN (https://sourceforge.net/projects/dban/files/dban/dban-2.3.0/)
 # This works fine but is too destructive to keep enabled in menu by default.
@@ -667,10 +667,14 @@ sysappend 3
 # http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/
 #   - 1.1/fd11src.iso
 #   - 1.2/FD12CD.iso
+# Note: Identical FreeDOS image is also found on clonezilla (2.6.3-7) ISO: live/freedos.img (Size: 1474560, Same MD5)
 label freedos1
 menu label FreeDOS 1.0 (Live)
 kernel /memdisk
-append initrd=http://{{ httpserver }}/freedos1/fdboot.img
+# append initrd=http://{{ httpserver }}/freedos1/fdboot.img
+# Depends on presence of clonezilla 2.6.3-7
+append initrd=http://{{ httpserver }}/clonezilla/live/freedos.img
+
 
 # Diskless client
 # https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt

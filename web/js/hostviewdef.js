@@ -361,6 +361,10 @@
      {name: "filecnt",   title: "File Cnt.", type: "text", width: 30, },
      {name: "status",    title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
      {name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
+     // Additional "join" fields
+     // {name: "loopdev",      title: "Loop Device",  type: "text", width: 40, },
+     //  {name: "imgfn",      title: "Image File (ISO)",  type: "text", width: 40, },
+     //  {name: "size",      title: "Image Size",  type: "text", width: 10, },
    ];
    function uname_cell(val, item) {
      return "<span class=\"unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</span>";

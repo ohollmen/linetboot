@@ -2036,12 +2036,13 @@ function bootreset(req, res) {
   }
   
 }
-/** List Media directories (Under maindocroot) GET: /medialist
+/** List Media directories (Under image mount dir) GET: /medialist
  * Additionally probes into stub directories to see if they are mounted (and have one or more files).
  * TODO: Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
  */
 function media_listing (req, res) {
   var jr = {status: "err", "msg": "Could properly list media dirs. "};
+  // TODO: This should be imgmntpath or isomntpath
   var path = global.core.maindocroot; // Already validated by main server globally
   if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; return res.json(jr); }
   var list = fs.readdirSync(path);
@@ -2061,9 +2062,59 @@ function media_listing (req, res) {
     // return e; // map
     list2.push(e);
   });
+  // Fails on MAc/BSD because of field layout, but does not crash.
+  losetup_assocs((err, csv) => {
+    if (err) { console.log("losetup_assocs faile: "+err); }
+    console.log("LO_ASSOCS:", csv);
+    // Index (by mountpt) and join !
+    var idx_mpt = {};
+    //csv.forEach((img) => { idx_mpt[img.Mounted] = img; });
+    /*list2.forEach((mp) => {
+      // Add imagefn, size
+      var img = idx_mpt[mp.path];
+      if (!img) { return; }
+      mp.imagefn = img.imagefn;
+      mp.size    = img.size;
+    });
+    */
+  });
   res.json({status: "ok", data: list2});
 }
-/** Provide info on loop mount.
+
+function losetup_assocs(cb) {
+  // Near-Copy of media_info
+  var idx = {}; // Index by "Filesystem"
+  cproc.exec("df", function (err, stdout, stderr) {
+    if (err) { return cb("Failed df:" + err, null); }
+    // Mac/BSD output max: 9
+    var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
+    console.log(csv);
+    if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
+    csv = csv.filter((it) => { return it.Filesystem.match(/\bloop\d+$/); });
+    csv.forEach((mnt) => { idx[mnt.Filesystem] = mnt; });
+    //return cb(null, csv); // return Already here ?
+    // Call tboot.getlosetup for each loopN
+    async.map(csv, resolveimage, (err, ress) => {
+      if (err) {} // Impossible ?
+      cb(null, csv);
+    });
+
+
+  });
+  function resolveimage(img, cb) {
+    img.imagefn = "";
+    tboot.getlosetup(img.Filesystem, function (err, imgfull) {
+      if (err) { console.log("Ignored error for getlosetup: "+err);  return cb(null, img); } // cb(err, null);  Accept error OK ?
+      img.imagefn = imgfull;
+      // Add size too
+      var stats;
+      try { stats = fs.statSync(imgfull); } catch (ex) { return cb(null, img); } // ex.toString()
+      img.size = stats.size;
+      cb(null, img);
+    });
+  }
+}
+/** Provide info on loop mount (based on mount point path).
  * Gets query (k-v) param "mid" valued to mount path (mount point) and
  * resolves it to undelying image.
  */
@@ -2077,6 +2128,7 @@ function media_info(req, res) {
   function getdf(cb) {
     cproc.exec("df", function (err, stdout, stderr) {
       if (err) { return cb("Failed df:" + err, null); }
+      // Mac/BSD output max: 9
       var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
       console.log(csv);
       if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
@@ -2089,17 +2141,17 @@ function media_info(req, res) {
     //cb(null, 1); // TEST ONLY
   }
   
-  // Adapter callback to adapt the cb-only signature to more sophisticated loopdev,cb signature.
+  // OLD: Adapter callback to adapt the cb-only signature to more sophisticated loopdev,cb signature.
   function getlosetup_wrap(cb) {
     // Adapt also the callback ?
     // grab outer-function-local loopdev
     tboot.getlosetup(loopdev, function (err, __imgfull) {
       if (err) { return cb(err, null); }
-      imgfull = __imgfull; // outer-function-loca limgfull
+      imgfull = __imgfull; // outer-function-local imgfull
       cb(null, __imgfull);
     });
   }
-  // Stat image ?
+  // Stat image (sync)
   function imagestat(cb) { // imgfull, 
     console.log("Continue by imgfull: " + imgfull);
     var stats;
@@ -2669,7 +2721,7 @@ function bootables_list(req, res) {
     //console.log("Testing: "+fna);
     img.present = fs.existsSync(fna) ? 1 : 0;
     // Mounted ?
-    var kfna = mntpath + img.kernel;
+    var kfna = mntpath + "/" + img.lbl + "/" + img.kernel;
     img.mounted = fs.existsSync(kfna) ? 1 : 0;
   });
   res.json({status: "ok", data: bs});

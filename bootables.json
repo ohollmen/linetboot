@@ -26,7 +26,7 @@
       "img_bn" : "systemrescue-8.05-amd64.iso",
       "md5sum":"35684a4d6b725ca7ebfb84d1892a65c4",
       "lbl": "sysresccd",
-      "kernel":"sysresccd/sysresccd/boot/x86_64/vmlinuz",
+      "kernel":"sysresccd/boot/x86_64/vmlinuz",
       "initrd":"(3x)"
     },
     {

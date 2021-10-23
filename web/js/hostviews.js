@@ -769,7 +769,7 @@ window.onload = function () {
   } // initapp
   
   
-  
+  /*
   $(document).on('keypress', function(ev){
     console.log(ev.originalEvent); // Dump
     // shiftKey, metaKey, ctrlKey
@@ -778,7 +778,7 @@ window.onload = function () {
     if ((ev.which == 13 || ev.which == 10) && ev.ctrlKey) { ansishow(); return false; }
     return true;
   });
-  
+  */
   
   // Experimental docker info
   // works w. "localhost" (dockerd) on localhost Browser
