@@ -41,7 +41,7 @@
       "initrd": "live/initrd.img"
     },
     {
-      "name": "DBAN (Disk Erase)",
+      "name": "DBAN Tools (Disk Erase)",
       "url": "https://sourceforge.net/projects/dban/files/dban/dban-2.3.0/dban-2.3.0_i586.iso/download",
       "md5sum": "33a1df4171e649462ef9679ac207aa77",
       "lbl":"dban",
@@ -82,6 +82,27 @@
       "lbl":"ubuntu2004legacy",
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    
+    
+    {
+      "name": "Debian 10.7.0 (Buster)",
+      "note": "Must get netboot.tar.gz 6d39746f551d7cdecdf1d75abb6027bb separately, must be matched to exact (point) version. http://ftp.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/netboot.tar.gz",
+      "url":  "http://cdimage.debian.org/cdimage/archive/10.7.0/amd64/iso-dvd/debian-10.7.0-amd64-DVD-1.iso",
+      "md5sum" : "",
+      "lbl":"debian10net",
+      "kernel": "debian-installer/amd64/linux",
+      "initrd": "debian-installer/amd64/initrd.gz"
+    },
+    {
+      "name": "Debian 11.1.0 (Bullseye)",
+      "note": "netboot.tar.gz in https://deb.debian.org/debian/dists/bullseye/main/installer-amd64/current/images/netboot/netboot.tar.gz",
+      "url_CURR": "https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-11.1.0-amd64-DVD-1.iso",
+      "url":      "https://cdimage.debian.org/cdimage/release/11.1.0/amd64/iso-dvd/debian-11.1.0-amd64-DVD-1.iso",
+      "md5sum" : "",
+      "lbl":"debian11net",
+      "kernel": "debian-installer/amd64/linux",
+      "initrd": "debian-installer/amd64/initrd.gz"
     },
     {
       "name":"Centos 6",
@@ -142,6 +163,16 @@
       "url":"http://mirrors.acm.wpi.edu/archlinux/iso/2021.10.01/archlinux-2021.10.01-x86_64.iso",
       "kernel": "archlinux/arch/boot/x86_64/vmlinuz-linux",
       "initrd": "3x"
+    },
+    
+    {
+      "name":"Alpine Linux Standard",
+      "note":"",
+      "lbl":"alpine314",
+      "md5sum":"5f4c07fb3790145a8ea552bb99bfecde",
+      "url":"https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-standard-3.14.2-x86_64.iso",
+      "kernel": "boot/vmlinuz-lts",
+      "initrd": "boot/initramfs-lts"
     },
     {
       "name": "OpenSuse Leap 15.2",
