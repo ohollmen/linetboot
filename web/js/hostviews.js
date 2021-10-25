@@ -329,9 +329,10 @@ function ansishow(ev, an) {
     $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
     $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
     $('#anssend').click(ansirun);
+    $('#anssend3').click(ansirun);
     var time = Date.now();
     var atmpls = {
-      pb : "ansible-playbook -i ~/.linetboot/hosts {{{ pb }}} -b -e '{{{ ejson }}}'",
+      pb : "ansible-playbook -i ~/.linetboot/hosts {{{ pb }}} -l {{ hns }} -b -e '{{{ ejson }}}'",
       facts : "mkdir {{ factdir }} ; ansible {{{ hns }}} -i ~/.linetboot/hosts -b -m setup --tree {{factdir}} -e '{{{ ejson }}}'; echo 'Facts in {{factdir}}'"
     };
     $('#anssend2').click((jev) => {
@@ -339,12 +340,18 @@ function ansishow(ev, an) {
       var para = form_obj("#ansform", ["hostnames","hostgroups", "playbooks", ]); // "playprofile"
       console.log("Got UI params: ", JSON.stringify(para, null, 2) );
       console.log("JEV:",jev);
-      if ((para.hostnames && para.hostnames.length) && (para.hostgroups && para.hostgroups.length)) { return toastr.error("Only hostnames OR hostgroups !"); }
-      para.what = para.hostnames || para.hostgroups;
+      console.log("ID:",this.id);
+      //if ((para.hostnames && para.hostnames.length) && (para.hostgroups && para.hostgroups.length)) { return toastr.error("Only hostnames OR hostgroups !"); }
+      //para.what = para.hostnames || para.hostgroups; // Either or
+      var what = [];
+      //what = what.concat(para.hostnames);
+      //para.what = what.concat(para.hostgroups);
+      para.what = what.concat(para.hostnames).concat(para.hostgroups);
       //if (para.what.length != 1) { return toastr.error(); } // NOT !
       if (!para.playbooks.length || para.playbooks.length > 1) { return toastr.error("Only single playbook allowed !"); }
       para.pb = para.playbooks[0];
       extra.host = para.what.join(','); // Only on pb !
+      
       para.hns   = para.what.join(',');
       para.ejson = JSON.stringify(extra);
       para.time = Date.now();
@@ -371,26 +378,68 @@ function ansirun(jev) {
   var para = form_obj("#ansform", ["hostnames","hostgroups", "playbooks", ]); // "playprofile"
   console.log("Got UI params: ", JSON.stringify(para, null, 2) );
   console.log("JEV:",jev);
+  console.log("ID:",this.id); // anssend, anssend3
   //return;
   function is_not_given(v) {
     if (!v) { return 1; }
     if (Array.isArray(v) && !v.length) { return 1; }
     return 0;
   }
-  
-  if (is_not_given(para.playbooks) && is_not_given(para.playprofile)) { toastr.error("Neither playbooks or playprofile given !"); return; }
-  axios.post("/ansrun", para).then(function (resp) {
+  var act2url = {anssend: "/ansrun", anssend3: "/ansfacts"};
+  if (this.id == 'anssend' && is_not_given(para.playbooks) && is_not_given(para.playprofile)) { toastr.error("Neither playbooks or playprofile given !"); $(but).removeAttr("disabled"); return; }
+  var url = act2url[this.id];
+  console.log("ansirun Call URL:" + url);
+  axios.post(url, para).then(function (resp) { // "/ansrun"
     var rp = resp.data;
     if (!resp.headers["content-type"].match(/json/)) { return alert("ansrun: Non-JSON response"); }
     if (!rp) { return alert("No ansible response !"); }
     $(but).removeAttr("disabled");
     // TODO: Toaster
     if (rp.status == 'err') { return toastr.error(rp.msg); }
-    toastr.info(rp.msg);
-    console.log("Got Ansible run server resp: ", rp);
-    // Unlock element
-    //$(but).click(ansirun);
-    
+    var id = rp.data ? rp.data.runid : 0;
+    if (!id) { return toastr.error("No runid in response !"); }
+    toastr.info("<li>Request ID: "+id+ "<li>"+ rp.msg, "Gather and Copy were run.");
+    console.log("Got Ansible run server resp ("+id+"): ", rp);
+    var opts = {
+      pollint: 5000,
+      trycnt: 20,
+      baseurl: "/ansackpoll?runid=",
+      cb: (data) => {
+        toastr.info("Completed in "+data.time_d +" s.", "Ansible op "+data.runid+" complete");
+      }
+    };
+    // Only (playbook) "anssend" button is compatible with ack-file.
+    // TODO: new Poller(opts).poll(id, cb);
+    if (but.id == 'anssend') { compl_ack_poll(id, opts); } // this.id does not work here (in axios ctx)
+    // NO NEED: Unlock element
+    //$(but).click(ansirun); // handler Assignment does not change
+    function compl_ack_poll(id, opts) {
+      var cnt = 0;
+      // cb = cb || opts.cb || function () { console.log("Completed polling for "+id); }
+      console.log("Start polling "+id);
+      var iid = setInterval(() => {
+        cnt++;
+        if (cnt >= opts.trycnt) { console.log("Tries ("+opts.trycnt+") exhausted"); clearInterval(iid); }
+        var url = opts.baseurl + id; // "/ansackpoll?runid="+id;
+        console.log("Inquire: "+url);
+        axios.get(url).then((resp) => {
+          var d = resp.data;
+          if (d.status == "err")  { console.log("Error at ..."+cnt+" - "+d.msg); clearInterval(iid); } // Error - Cancel poll
+          if (d.status == "wait") { console.log("Continue polling ..."+cnt); } // Continue wait
+          if (d.status == "ok")   {
+            console.log("Complete at "+cnt); clearInterval(iid);
+            console.log("Completion data: ", d.data);
+            // toastr.info("Ansible op "+d.data.runid+" complete !"); // id == d.data.runid
+            // TODO:
+            if (opts.cb) { opts.cb(d.data); }
+          } // Complete - Cancel poll
+        }).catch((ex) => { console.log("Exception at "+cnt); clearInterval(iid); }); // Error - Cancel poll
+      }, opts.pollint);
+      // return this;
+    }
+  }).catch((ex) => {
+    var resp = ex.response;
+    toastr.error(ex);
   });
   return false;
 }

@@ -222,8 +222,11 @@ function app_init() { // global
   app.get('/proctest', proctest);
   // Ansible
   app.post('/ansrun', ansible_run_serv);
+  app.post("/ansfacts", ansible_facts_gather);
   app.get('/anslist/play', ansible_plays_list);
   app.get('/anslist/prof', ansible_plays_list);
+  // 
+  app.get('/ansackpoll', ansible_op_poll);
   // NFS/Showmounts
   
   app.get('/showmounts/:hname', showmounts);
@@ -1320,7 +1323,7 @@ function ansible_run_serv(req, res) {
   var pbpath = acfg.pbpath; // process.env['PLAYBOOK_PATH'] ||
   if (!pbpath) { jr.msg += "Playbook path not given (in env or main config) !"; return res.json(jr); }
   acfg.pbpath = pbpath; // Override (at init ?)
-  acfg.invfn  = acfg.invfn || global.hostsfile;
+  acfg.invfn  = acfg.invfn || global.hostsfile; // Or put to p (run-specific cfg) ?
   // Define the policy of mandating hosts to be listed in hostsfile / known to linetboot
   if (!global.hostsfile) { jr.msg += "Playbook runs need 'hostsfile' in main config !"; return res.json(jr); }
   var p = req.body; // POST Params
@@ -1333,24 +1336,31 @@ function ansible_run_serv(req, res) {
   console.log("ansible_run_serv: Ansible run parameters:", p);
   if (typeof p != 'object') { jr.msg += "Please send POST body as Object"; return res.json(jr); }
   var step = "const"; // run-step
+  var runid = 0;
   try {
     p = new ans.Runner(p, acfg);
     // if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
+    p.xpara.host = p.hostselstr; // TODO here OR ansible_run({host: p.hostselstr});
     step = "playbook_resolve";
-    //var err = ans.playbooks_resolve(acfg, p);
     var err = p.playbooks_resolve(acfg);
-    if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
+    // if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
+    /*
     // Groups
     step = "grp_resolve";
-    var gnames = hlr.groupnames();
-    console.log("Inventory groups: ", gnames);
+    
+    var gnames = hlr.groupnames(); // Get all
+    console.log("Inventory group names(all): ", gnames);
     p.hostgrps_resolve(gnames); // OLD: global.groups
-    if (!p.hostnames || !p.hostnames.length) { throw "No hostnames"; }
+    if (!p.hostnames || !p.hostnames.length) { throw "No hostnames (after group resolution)"; }
+    // var hsel = p.hostselector(); // Called internally
+    
+    // console.log("generated hostsel-str: "+hsel);
+    */
     step = "run";
     console.log("Instance state before run(): ", p);
-    p.ansible_run(); // OLD: ans.ansible_run(p);
+    p.ansible_run(); // {host: p.hostselstr}
   } catch(ex) {
-    jr.msg += "Runner construction or execution failed (step="+step+"): "+ex;
+    jr.msg += "Runner construction, resolutions or execution failed (step="+step+"): "+ex;
     console.log("Error: msg:"+ jr.msg); // "Exception Step:"+step+
     return res.json(jr);
   }
@@ -1358,7 +1368,124 @@ function ansible_run_serv(req, res) {
     msg: "Running Async in background", "data": {runid: p.runid}};
   res.json(runinfo);
 }
-
+/** Gather Facts web handler.
+ * POST JOSN params are similar to ansible_run_serv, except any playbooks or play profiles are ignored.
+ * Gather facts to a temp directory for comparison.
+ */
+function ansible_facts_gather(req, res) {
+  var jr = {status: "err", msg: "Could not run Ansible Fact gather. "};
+  var acfg = global.ansible;
+  var p = req.body;
+  acfg.invfn  = acfg.invfn || global.hostsfile;
+  ["playbooks","playprofile"].forEach((k) => { delete p[k]; });
+  console.log("Start Facts gather ! p=", p);
+  var factpath_tmp;
+  try {
+    p = new ans.Runner(p, acfg);
+    console.log("Instantiated runner");
+    // var hsel = p.hostselector(); // Called internally
+    console.log("runner host scope: " + p.hostselstr);
+    console.log("state before this.fact_gather(): "+JSON.stringify(p, null, 2));
+    p.fact_gather((err, data) => {
+      if (err) { jr.msg += "POST Handler Received Errors during fact gather: "+err;  } // return res.json(jr);
+      factpath_tmp = p.factpath;
+      //////// Facts comparison: new vs. old - strive to accept only complete and non-corrupt facts /////
+      var files = fs.readdirSync(p.factpath, {}); // opts
+      console.log("Got files(raw): ", files);
+      var stats = files.map(function (fn) {var fna = p.factpath+"/"+fn;var s = fs.statSync(fna, {} ); return {size: s.size, fn: fn};}); // 
+      console.log("Got stats(freshly mapped): ", stats);
+      // Add size (size_o, o=old) from the in-use facts directory
+      // Have to try-catch for missing files ?
+      stats.forEach((s) => { var fna = global.fact_path+"/"+s.fn; var s2 = fs.statSync(fna, {} ); s.size_o = s2.size; });
+      console.log("Got stats: ", stats);
+      var cnt_total = stats.length;
+      stats = stats.filter(newfacts_accept);
+      console.log("Got acceptable: ", stats);
+      // Copy by loading and rewriting
+      stats.forEach((fst) => {
+        var err = copy_json(fst);
+        if (err) { console.log("Error "+err+" copying file: "+fst.fn); }
+      });
+      // TODO: Inform how many were flawed ! cnt_total vs stats.length (by now)
+      var cntstr = stats.length+" out of "+cnt_total+ " were okay";
+      // TODO: data: data
+      var rdata = {status: "ok", data: { runid: p.runid }, msg: "Hosts/Groups: "+p.hostselstr+" ("+cntstr+")"};
+      console.log("ansible_facts_gather send JSON: ", rdata);
+      return res.json(rdata);
+    });
+  }
+  catch (ex) { jr.msg += "Exception during fact gather: "+ex; return res.json(jr); }
+  // @return 0 on success, 1 and up on errors (1=load err. 2=parse err., 3=write err.)
+  // cproc.exec("cp "+factpath_tmp + "/" +fst.fn+" "+global.fact_path + "/" + fst.fn, (err, stdout, stderr) => {});
+  function copy_json(fst) { // fna1, fna2
+    var fna1 = factpath_tmp + "/" +fst.fn; // NEW
+    var fna2 = global.fact_path + "/" + fst.fn; // EXISTING (to be overwritten)
+    var debug = 1;
+    var cont = fs.readFileSync(fna1, 'utf8');
+    if (!cont) { return 1;}
+    var jtmp = cont ? JSON.parse(cont) : null;
+    if (!jtmp) { console.log("Loaded non-json or empty !?"); return 2; }
+    cont = JSON.stringify(jtmp); // , null, 2
+    var werr = 1;
+    try {
+      debug && console.log("Copying "+cont.length+" B. to "+fna2);
+      fs.writeFileSync(fna2, cont , {encoding: "utf8"} );
+      werr = 0;
+    } catch(ex) { console.log("Error writing: "+ex); return 3; }
+    // stat ?
+    return 0;
+  }
+  /** @param fst {object} File size stats (size, size_o) for comparable 2 files in 2 fact dirs and name (fn).
+   * Sample of bad facts:
+   * ```
+   * {"changed": false, "msg": "Failed to connect to the host via ssh: ssh: connect to host odroid-32 port 22: No route to host\r\n", "unreachable": true}
+   * ```
+  */
+  function newfacts_accept(fst) { // fst has 3 mems: fn, size, size_o
+    if (fst.size < 5000) { return 0; } // Suspect size !
+    var fna = factpath_tmp+"/"+fst.fn; // Existing
+    if (fs.existsSync(fna)) {
+      console.log("loading "+fna+ " as JSON to test it");
+      //var jtmp = require(fna); // Read New/Temp JSON
+      var cont = fs.readFileSync(fna, 'utf8');
+      var jtmp = cont ? JSON.parse(cont) : null;
+      // Look for Corrupt / Error results
+      // DO NOT (this is in all facts): if (jtmp && (jtmp.changed != undefined)) { console.log("Elim:"+fna);return 0; }
+      if (jtmp && (jtmp.unreachable != undefined)) { console.log("Elim:"+fna); return 0; }
+    }
+    // DO not use: if (fs.size < fst.size_o) { return 0; }
+    var ratio = fst.size / fst.size_o;  // new : old
+    console.log("Ratio(new:old): "+ratio);
+    if (ratio >= 1)  { return 1; }
+    if (ratio > 0.9) { return 1; } // Note difference between pretty and non-pretty !!!
+    return 0; // Be sceptic by default
+  }
+}
+/** Server handler for polling Ansible operation completion.
+ * Expected behavior on client based on status:
+ * - err - Error, not worth trying to retry
+ * - ok - Success with info, no need to retry
+ * - wait - not completed, continue poll / retry.
+ * On HTTP server error, client should take status=err measures.
+ */
+function ansible_op_poll(req, res) {
+  var jr = {"status": "err", "msg": "Could not Ack Completion."};
+  var id = req.query ? req.query.runid : 0;
+  if (!id) { jr.msg += "No runid passed"; return res.json(jr); }
+  // Check indication for runid completed
+  // See  Runner method ansible_run() (inner func oncomplete) to see how completion
+  // is stored and match that methodology (files ..) here.
+  var fname = ans.Runner.compfname(id);
+  if (!fname) { jr.msg += "No filename figured out for runid "+id; return res.json(jr); }
+  console.log("Look for ack-file: "+fname);
+  if (!fs.existsSync(fname)) { return res.json({status: "wait", msg: id + " Not complete yet ..."}); }
+  var cont = fs.readFileSync(fname, 'utf8');
+  var j = cont ? JSON.parse(cont) : null;
+  if (!j) { jr.msg += "File present, but failed to load ... for "+id; return res.json(jr); }
+  // Delete ? Prevent from being found again (by e.g. competing polling thread)
+  try { fs.unlinkSync(fname); } catch (ex) { console.log("Ack-results deletion failed: "+ex); }
+  return res.json({status: "ok", data: j});
+}
 /** List ansible profiles or playbooks (GET: /anslist/play /anslist/prof).
  * Examples of testing out listings via API:
  * ```
@@ -2068,17 +2195,19 @@ function media_listing (req, res) {
     console.log("LO_ASSOCS:", csv);
     // Index (by mountpt) and join !
     var idx_mpt = {};
-    //csv.forEach((img) => { idx_mpt[img.Mounted] = img; });
-    /*list2.forEach((mp) => {
+    csv.forEach((img) => { idx_mpt[img.Mounted] = img; });
+    list2.forEach((mp) => {
       // Add imagefn, size
       var img = idx_mpt[mp.path];
       if (!img) { return; }
+      mp.loopdev = img.Filesystem; // loopN
       mp.imagefn = img.imagefn;
       mp.size    = img.size;
     });
-    */
+    console.log(list2);
+    res.json({status: "ok", data: list2});
   });
-  res.json({status: "ok", data: list2});
+  // res.json({status: "ok", data: list2});
 }
 
 function losetup_assocs(cb) {
@@ -2088,7 +2217,7 @@ function losetup_assocs(cb) {
     if (err) { return cb("Failed df:" + err, null); }
     // Mac/BSD output max: 9
     var csv = hlr.csv_parse_data(stdout, {sep: /\s+/, max: 6});
-    console.log(csv);
+    //console.log(csv);
     if (!Array.isArray(csv)) { return cb("No Parsed CSV.", null); }
     csv = csv.filter((it) => { return it.Filesystem.match(/\bloop\d+$/); });
     csv.forEach((mnt) => { idx[mnt.Filesystem] = mnt; });
@@ -2105,6 +2234,7 @@ function losetup_assocs(cb) {
     img.imagefn = "";
     tboot.getlosetup(img.Filesystem, function (err, imgfull) {
       if (err) { console.log("Ignored error for getlosetup: "+err);  return cb(null, img); } // cb(err, null);  Accept error OK ?
+      console.log("Resolved imagefn: "+imgfull);
       img.imagefn = imgfull;
       // Add size too
       var stats;
