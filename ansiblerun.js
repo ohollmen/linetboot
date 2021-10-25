@@ -22,9 +22,9 @@ var path  = require('path');
 // Serialize xpara (key-val pairs) in first pass, feed here.
 // ansible_sudo_pass={{{ pass }}} host={{{ host }}}
 // \"{{{ xpara }}}\"
-var anscmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' --extra-vars '{{{ xpara }}}'";
-
-// var .. = {}; /// Config holder
+var anspbcmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' -l {{{ hostselstr }}} -e '{{{ xparastr }}}'";
+// hostselstr hostsfile modname factpath xparastr
+var anscmd = "ansible {{{ hostselstr }}} -i {{{ hostsfile }}} -m {{{ modname }}} -b --tree {{{ factpath }}} -e '{{{ xparastr }}}'";
 
 var pbprofs_def = {}; // {} (legacy) or  (new)
 //var acfg;
@@ -52,6 +52,7 @@ function ansible_detect(cb) {
  * @param hnarr {array} - Hostname array
  * @param grpname {string} - Optional Groupname to assign hosts into.
 */
+/*
 function hostsfile(hnarr, grpname) {
   if (!Array.isArray(hnarr)) { return null; }
   var cont = hnarr.join("\n");
@@ -67,6 +68,7 @@ function hostsfile(hnarr, grpname) {
   if (!fs.existsSync(fn)) { return null; }
   return fn;
 }
+*/
 
 /** Get a play profile from the config structure.
  * Pass profiles of config structure as the subsection "pbprofs" (array of objects).
@@ -80,47 +82,51 @@ function prof_get(profs, k) {
 }
 
 /** Resolve playbooks passed by basename to full playbook paths.
- * Only involves syncronous activity.
+ * Only involves syncronous activity. Throws exceptions on errors, which caller should catch.
  * Must be called for both playbooks and playprofile to make sure paths are absolute.
- * Resolves final playbooks to run (on this ansible run-session) onto p.playbooks
+ * Resolves final playbooks to run (on this ansible run-session) onto p.playbooks.
+ * All playbooks (whether coming from playprofile or playbooks) MUST be resolvable.
+ * @return 0 on clean resolution, 1 and up for errors
+ * @todo Resolve duality between error return and exception throwing (but works as it is now though)
  */
 Runner.prototype.playbooks_resolve = function (acfg) {
   var p = this; // NEW !
   //if (!p) { console.log("playbooks_resolve: No params"); return 1; }
   var playbooks   = p.playbooks; // Individual Playbooks (complete name ?)
   var playprofile = p.playprofile;
-  console.log("playbooks_resolve instance: ", p);
+  console.log("playbooks_resolve: instance: ", p);
   // For now do not allow both
-  if (playbooks && playprofile) { throw "playbooks vs playprofile is ambiguos. Only send one.";  } // jr.msg +=  return;
+  if (playbooks && playprofile)   { throw "playbooks vs playprofile is ambiguos. Only send one.";  } // jr.msg +=  return;
   if (!playbooks && !playprofile) { throw "Neither playbooks vs playprofile is given !"; }
+  // Play profile
   if (playprofile && !Array.isArray(acfg.pbprofs)) { // OLD: (!acfg.pbprofs) || (typeof acfg.pbprofs != 'object')
     console.log("pbprofs Type: "+ typeof acfg.pbprofs);
-    console.log( "playbook profiles not found in config (member \"pbprofs\", must be Array). Profile:'"+playprofile+"'"); // throw
+    throw "playbook profiles not found in config (member \"pbprofs\", must be Array). Profile:'"+playprofile+"'"; // throw
     
-    return 2;
+    // return 2;
   } 
   // Lookup list of individual playbooks (from where ?)
   var pbarr = p.playbooks;
   //if (p.playprofile) {  } // Lookup playbooks belonging to a profile
-  // Resolve playprofile to playbooks from profile
+  // Resolve playprofile to (local) playbooks from profile
   if (p.playprofile) {
     var prof = prof_get(acfg.pbprofs, p.playprofile); // acfg.pbprofs[playprofile]; // OLD Simple lookup from *Object*
-    if (!prof) { console.error("Could not find play profile by '"+p.playprofile+"' !"); return 3; }
+    if (!prof) { throw "Could not find play profile by '"+p.playprofile+"' !";  } // return 3;
     pbarr = prof.playbooks;
     if (pbarr && Array.isArray(pbarr)) { playbooks = pbarr; }
-    else { console.error("Playbooks from profile '"+p.playprofile+"' could not be resolved"); return 3; }
+    else { throw "Playbooks from profile '"+p.playprofile+"' could not be resolved";  } // return 3;
   }
-  // Ensure all playbooks are available
+  // Ensure all playbooks are available. We mandate all playbooks to be resolvable.
   var pbfullarr = [];
   playbooks.forEach(function (pb) {
     var pbfull = hlr.file_path_resolve(pb, acfg.pbpath);
-    console.log("PB Resolved from '"+pb+"' to '"+pbfull+"' (by file_path_resolve())");
     // throw "At least one of the playbooks not available (in "+acfg.pbpath+").";
     // Strict or forgiving (all correct or skip incorrect) ?
-    if (!pbfull) { console.error("Warning: Could not resolve book: "+pb); return 4; } // 
+    if (!pbfull) { throw "Warning: Could not resolve book: "+pb;  } // return 4;
+    console.log("PB Resolved from '"+pb+"' to '"+pbfull+"' (by file_path_resolve())");
     pbfullarr.push(pbfull);
   });
-  // Converted to full paths
+  // Converted to full paths in pbfullarr
   p.playbooks = pbfullarr;
   return 0;
 };
@@ -131,12 +137,13 @@ Runner.prototype.playbooks_resolve = function (acfg) {
  * @param grps {array} - Array of group names
  * @return ...
  */
+/*
 Runner.prototype.hostgrps_resolve = function (grps) {
   var grpidx = {};
   if (!this.hostgroups) { return; }
   var gnames = this.hostgroups;
   if (!Array.isArray(gnames)) { throw "Ansible HostGroups not in an array !"; }
-  if (!Array.isArray(grps)) { throw "Passed groupnames not in an array !"; }
+  if (!Array.isArray(grps))   { throw "Passed groupnames not in an array !"; }
   var hnames = [];
   var gmap = hlr.groupmemmap();
   function isarrayofstrings(grps) {
@@ -170,7 +177,22 @@ Runner.prototype.hostgrps_resolve = function (grps) {
   this.hostnames = hnames;
   return hnames;
 };
+*/
 
+/** Generate host selector combining the instance contained hosts and groups.
+ * Create a string compatible with:
+ * - ansible (first positional arg)
+ * - ansible-playbook --limit
+ * - ansible playbook YAM "hosts"
+ * - https://docs.ansible.com/ansible/latest/user_guide/intro_patterns.html
+ * Set this.hostselstr in instance and also return it.
+ * @return Host selector string
+*/
+Runner.prototype.hostselector = function () { // opts
+  var sel = [];
+  this.hostselstr = sel.concat(this.hostnames || []).concat(this.hostgroups || []).join(','); // or :
+  return this.hostselstr;
+}
 /** Run set of ansible playbooks on hosts by passed hostnames.
 * Note that runs are done based on "raw" parameters:
 * - hostnames - Raw Hostnames
@@ -189,15 +211,11 @@ Runner.prototype.ansible_run = function (xpara) { //
   // Validate hostnames against which ones we know through facts (hostcache).
   if (!p.hostnames) { throw "No hostnames passed (groups should be resolved to hostnames)"; }
   if (!p.playbooks) { throw "No playbooks passed / resolved (from profiles)"; }
-  // TODO:
-  // - Possibly retain host inventory params ? See below:
-  // - Use original "hosts" file, refine the host selector: --limit ... (-l)
-  var prun = { hostsfile: null, }; // CLI Run parameters -i ...
-  var fn; // Temp file !
-  if (p.invfn && fs.existsSync(p.invfn)) {
-    prun.hostsfile = p.invfn;
-    p.xpara.host = prun.limit = p.hostnames.join(','); // NEW !
-  }
+  if (!p.invfn)     { throw "No inventory file given";}
+  if (!fs.existsSync(p.invfn)) { throw "inventory does not exist !"; }
+  // var fn; // Temp file !
+  // DEPRECATED tmp-inventory
+  /*
   else {
     var defgrpname = "myhosts"; // Local Temp group name
     fn = hostsfile(p.hostnames, defgrpname); // Temporary !
@@ -205,68 +223,42 @@ Runner.prototype.ansible_run = function (xpara) { //
     prun.hostsfile = fn;
     console.log("Wrote ("+p.hostnames.length+") hosts for playbook run to temp file: '" + fn + "'");
   }
-  // Serialize Object contained params as string for --extra-vars (-e)
-  function xpara_ser(xps) {
-    // Must be Object, not Array
-    var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
-    return xparr.join(" ");
-  }
-  // Start running playbooks (TODO: async)
-  //OLD: var prun = { XXhostsfile: fn, XXXhost: grpname, XXXpass: p.pass, xpara: ""}; // NOT directly: global.hostsfile
+  */
   
-  
+  // XPARA
+  // Proprietary convention - pass in xpara ?
+  p.xpara.host = p.hostselstr; // prun.limit = p.hostnames.join(','); // NEW ! Deprecate from here ?
   console.log("xpara (before overrides)", p.xpara);
-  // Extra parameters for the -e / --extra-vars. Also consider -e @filename.json
-  // Add extra params from prun to p.xpara object and Serialize params into string member of prun at end (by mkxpara())
-  function xpara_add(xpara) { // Instance method (OLD: prun)
-    // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
-  
-    //OLD:if (xpara) { prun.xpara = mkxpara(xpara); }
-    //OLD:else if (p.xpara) { prun.xpara = mkxpara(p.xpara); }
-    if (!xpara) { return; }
-      Object.keys(xpara).forEach(function (k) {
-        if (xpara[k]) { p.xpara[k] = xpara[k]; }
-      });
-  }
-  xpara_add(xpara); // prun
+  if (xpara) { this.xpara_add(xpara); }
   // Serialize to prun at the very end
-  prun.xpara = xpara_ser(p.xpara);
+  var prun = { hostsfile: null, }; // CLI Run parameters -i ...
+  prun.hostsfile = p.invfn;
+  prun.xparastr = Runner.xpara_ser(p.xpara);
+  prun.hostselstr = p.hostselector();
   console.log("xpara (after overrides)", p.xpara);
   console.log("Command tmpl params: ", prun);
   var fullcmds = [];
   // Formulate full commands
   p.playbooks.forEach(function (pbfull) {
     prun.pb = pbfull; // Set Current playbook (of possibly many)
-    cont = Mustache.render(anscmd, prun);
+    var cont = Mustache.render(anspbcmd, prun);
     (p.debug > 1) && console.log("CMD:" + cont);
     fullcmds.push(cont);
   });
   console.log("Generated ("+fullcmds.length+") ansible-playbook commands: \n"+ JSON.stringify(fullcmds, null, 2));
-  /* TODO: pass config, attach handlers */
-  function runexec(cmd, cb) {
-    console.log("Start runexec by calling cproc.exec");
-    cproc.exec(cmd, function (err, stdout, stderr) {
-      if (err) { return cb(err, null); }
-      var anslogfile_o = "/tmp/ans_log_"+new Date().toISOString()+".stdout.txt";
-      var anslogfile_e = "/tmp/ans_log_"+new Date().toISOString()+".stderr.txt";
-      // TODO: Catch
-      fs.writeFileSync( anslogfile_o, stdout, {encoding: "utf8"} );
-      fs.writeFileSync( anslogfile_e, stderr, {encoding: "utf8"} );
-      console.log("Ansible cproc.exec success !");
-      cb(null, 69); // {stdout: stdout, stderr: stderr}
-    });
-  }
   
-  // Async Completion
+  
+  // Async Completion CB
   function oncomplete (err, results) {
     
     p.debug && console.log("Got ansible completion results: err:"+err+", res:"+ results);
     var time_e = new Date(); // Math.floor(new Date() / 1000);
-    var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000, runstyle: execstyle, numplays: fullcmds.length };
+    var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000,
+      runstyle: execstyle, numplays: fullcmds.length, runid: p.runid };
     console.log(runinfo);
-    
+    Runner.compfname(p.runid, runinfo);
     // Remove temp hosts file (fs.statSync(fn))
-    if (fn && !p.debug) { fs.unlinkSync(fn); }
+    // if (fn && !p.debug) { fs.unlinkSync(fn); } // tmp inventory
     // TODO: Notify Client ? Mark runner.runid done
     //if (p.ee) { p.ee.emit("ansplaycompl", runinfo); }
   }
@@ -287,9 +279,77 @@ Runner.prototype.ansible_run = function (xpara) { //
   }
   return;
 };
+/** Completion ack filename */
+Runner.compfname = function (runid, data) {
+  var fname = "/tmp/ack_"+runid+".json";
+  if (data) { fs.writeFileSync(fname, JSON.stringify(data, null, 2) , {encoding: "utf8"} ); }
+  return fname;
+}
+
+// Extra parameters for the -e / --extra-vars. Also consider -e @filename.json
+  // Add extra params from prun to p.xpara object and Serialize params into string member of prun at end (by mkxpara())
+Runner.prototype.xpara_add =  function (xpara) { // Instance method (OLD: prun)
+    // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
+  
+    //OLD:if (xpara) { prun.xpara = mkxpara(xpara); }
+    //OLD:else if (p.xpara) { prun.xpara = mkxpara(p.xpara); }
+    if (!xpara) { return; }
+    this.xpara = this.xpara || {};
+    Object.keys(xpara).forEach(function (k) {
+      if (xpara[k]) { this.xpara[k] = xpara[k]; } // !== undefined
+    });
+  }
+// Serialize Object contained params as string for --extra-vars (-e)
+Runner.xpara_ser = function (xps) {
+  // Must be Object, not Array
+  var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
+  //return xparr.join(" ");
+  return JSON.stringify(xps); // JSON. Must single-quote or save to file on caller side
+}
+
+/* TODO: pass config, attach handlers */
+  function runexec(cmd, cb) {
+    console.log("Start runexec by calling cproc.exec");
+    cproc.exec(cmd, function (err, stdout, stderr) {
+      if (err) { return cb(err, null); }
+      var anslogfile_o = "/tmp/ans_log_"+new Date().toISOString()+".stdout.txt";
+      // var anslogfile_e = "/tmp/ans_log_"+new Date().toISOString()+".stderr.txt"; // Always 0 (?)
+      // TODO: Catch
+      try {
+        fs.writeFileSync( anslogfile_o, stdout, {encoding: "utf8"} );
+        // fs.writeFileSync( anslogfile_e, stderr, {encoding: "utf8"} );
+      } catch (ex) { console.log("Error creating Ansible stderr,stdout logs !"); return cb(ex, null); }
+      console.log("Ansible cproc.exec success !");
+      var data = {cmd: cmd, logfile: anslogfile_o, status: "ok", };
+      cb(null, 69); // {stdout: stdout, stderr: stderr}
+    });
+  }
+/** Gather facts with host/group scope given in instance.
+ */
+Runner.prototype.fact_gather = function (cb) {
+  if (!cb) { console.log("fact_gather: cb missing !"); return; }
+  // hostselstr hostsfile modname factpath xparastr
+  var prun = { hostsfile: this.invfn, modname: "setup", };
+  // Create --tree path
+  prun.hostselstr = this.hostselector();
+  prun.xparastr = Runner.xpara_ser(this.xpara);
+  prun.factpath = '/tmp/facts_'+crypto.randomBytes(4).readUInt32LE(0)+"_"+Date.now();
+  this.factpath = prun.factpath; // Add to this (instance)
+  try {
+    fs.mkdirSync(prun.factpath); // ,'0777', true   ,{recursive: true}
+  } catch (ex) { console.log("Failed to create tree for facts !"); return cb(ex, null); }
+  var cmd = Mustache.render(anscmd, prun);
+  runexec(cmd, (err, data) => {
+    var puberr;
+    if (err) { puberr = "Some Errors in fact_gather !"; console.log("ERROR: "+err); data = null; }
+    console.log("Facts gather completed for '"+prun.hostselstr+"'. results in: '"+prun.factpath+"' !");
+    return cb(puberr, data);
+  });
+}
+
 /** Construct Ansible runner
 * 
-* @param cfg {object} - Context specific config
+* @param cfg {object} - Run-Context specific config (not global)
 * @param acfg {object} - Application (global/context independent) ansible config
 */
 function Runner(cfg, acfg) {
@@ -300,17 +360,21 @@ function Runner(cfg, acfg) {
   this.playbooks = cfg.playbooks;
   this.playprofile = cfg.playprofile;
   this.runstyle = cfg.runstyle;
-  //arres.forEach((k) => { this[k] = cfg[k]; });
+  this.ws = cfg.ws; // Web socket for notifications (acts also as flag)
+  //attrs.forEach((k) => { this[k] = cfg[k]; });
+  ////// XPARA /////////////
   this.xpara = cfg.xpara || {};
   ////// OLD: || process.env["ANSIBLE_PASS"]
+  ////////////// Global Conf ////////////////////
   // Store creds to xpara 
-  this.xpara.ansible_user = acfg.user;
+  this.xpara.ansible_user = cfg.user || acfg.user || process.env['USER'];
   // New?): ansible_become_password, Legacy(?): ansible_sudo_pass
-  this.xpara.ansible_become_password = acfg.pass;
-  // OLD: || process.env["LINETBOOT_ANSIBLE_DEBUG"]
+  this.xpara.ansible_become_password = cfg.pass || acfg.pass;
   this.debug = cfg.debug || acfg.debug || 0;
   this.debug = parseInt(this.debug);
   this.invfn = cfg.invfn || acfg.invfn || ""; // TODO: decide outside ?!
+  var hsel = this.hostselector();
+  if (!hsel) { throw "Runner: No hosts selected for ansible op(s)"; }
   // Keep acfg in instance ?
   // this.acfg = acfg;
   // NEW: Make unique id for run-session. Communicate this to front-end
@@ -386,7 +450,7 @@ function ansible_prof_list(acfg, foo) {
 module.exports = {
   init: init,
   ansible_detect: ansible_detect,
-  hostsfile: hostsfile,
+  // hostsfile: hostsfile,
   //playbooks_resolve: playbooks_resolve,
   // ansible_run: ansible_run,
   testpara: { playbooks: ["a.yaml", "b.yaml"], hostnames: ["host1","host2"] },
