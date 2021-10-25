@@ -257,6 +257,19 @@ Adding recipes is an expert option for special OS installations, but may be nece
 - OS installations not supported out-of-the-box by Linetboot
 - OS Installs that need extreme customization for their recipes
 
+### Section "ansible" - Ansible Runner
+
+- pbpath (str) - Playbook path containing colon-separated paths to possible playbook directories (Format like UNIX/Linux $PATH), order matters in resolving playbooks
+- user (str) - Ansible user (This users SSH key must be copied to any remote hosts where ansible playbooks are to be run)
+- pass (str) - Ansible remote sudo passwork
+- debug (int) - Produce diagnostics messages when running ansible
+- pbprofs (AoO) - Arraof of profile objects with
+  - name (str) - Descriptive name of Playbook profile
+  - lbl (str) - No spaces symbolic name of profile
+  - playbooks (arr) - Array of playbook names for this profile
+
+By default the inverntory file used will be the Linetboot inventory.
+
 ## Linetboot Environment Variables
 
 Environment Variables that can override settings in main config:
