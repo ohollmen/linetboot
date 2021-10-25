@@ -20,12 +20,11 @@ var yaml  = require('js-yaml');
 var path  = require('path');
 // Ansible command template. (Mustache)
 // Serialize xpara (key-val pairs) in first pass, feed here.
-// ansible_sudo_pass={{{ pass }}} host={{{ host }}}
-// \"{{{ xpara }}}\"
+// var anscmds = { // "pb", "setup"
 var anspbcmd = "ansible-playbook -i '{{{ hostsfile }}}' '{{{ pb }}}' -l {{{ hostselstr }}} -e '{{{ xparastr }}}'";
 // hostselstr hostsfile modname factpath xparastr
 var anscmd = "ansible {{{ hostselstr }}} -i {{{ hostsfile }}} -m {{{ modname }}} -b --tree {{{ factpath }}} -e '{{{ xparastr }}}'";
-
+//};
 var pbprofs_def = {}; // {} (legacy) or  (new)
 //var acfg;
 /**
@@ -253,7 +252,7 @@ Runner.prototype.ansible_run = function (xpara) { //
     
     p.debug && console.log("Got ansible completion results: err:"+err+", res:"+ results);
     var time_e = new Date(); // Math.floor(new Date() / 1000);
-    var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000,
+    var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, "time_d": (time_e-time_s)/1000,
       runstyle: execstyle, numplays: fullcmds.length, runid: p.runid };
     console.log(runinfo);
     Runner.compfname(p.runid, runinfo);
@@ -308,6 +307,7 @@ Runner.xpara_ser = function (xps) {
 }
 
 /* TODO: pass config, attach handlers */
+// Make into instance method ? Runner.prototype.runexec = 
   function runexec(cmd, cb) {
     console.log("Start runexec by calling cproc.exec");
     cproc.exec(cmd, function (err, stdout, stderr) {
@@ -320,8 +320,8 @@ Runner.xpara_ser = function (xps) {
         // fs.writeFileSync( anslogfile_e, stderr, {encoding: "utf8"} );
       } catch (ex) { console.log("Error creating Ansible stderr,stdout logs !"); return cb(ex, null); }
       console.log("Ansible cproc.exec success !");
-      var data = {cmd: cmd, logfile: anslogfile_o, status: "ok", };
-      cb(null, 69); // {stdout: stdout, stderr: stderr}
+      var data = {cmd: cmd, logfile: anslogfile_o, runstatus: "ok", };
+      cb(null, data); // {stdout: stdout, stderr: stderr}
     });
   }
 /** Gather facts with host/group scope given in instance.
@@ -343,7 +343,11 @@ Runner.prototype.fact_gather = function (cb) {
     var puberr;
     if (err) { puberr = "Some Errors in fact_gather !"; console.log("ERROR: "+err); data = null; }
     console.log("Facts gather completed for '"+prun.hostselstr+"'. results in: '"+prun.factpath+"' !");
+    if (data) { data.runid = this.runid; }
     return cb(puberr, data);
+    // TODO: Similar to ansible_run
+    //var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000,
+    //  runstyle: execstyle, numplays: fullcmds.length, runid: p.runid };
   });
 }
 
@@ -425,6 +429,7 @@ function ansible_play_list(acfg, pbpath) { // dirname
       // Lookup Playbook name ?
       node.playname = yf[0].name; // title ?
       if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
+      node.taskcnt = yf[0].tasks.length;
       // Store tasks ?
       fnodes.push(node);
     });
