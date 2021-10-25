@@ -357,14 +357,14 @@
    // Boot Dirs / ISO Media
    var fldinfo_bootmedia = [
      
-     {name: "path",      title: "Boot Media Path",  type: "text", width: 80, },
-     {name: "filecnt",   title: "File Cnt.", type: "text", width: 30, },
-     {name: "status",    title: "Status",  type: "text", width: 100, itemTemplate: bootmedia_status}, // 
-     {name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
-     // Additional "join" fields
-     // {name: "loopdev",      title: "Loop Device",  type: "text", width: 40, },
-     //  {name: "imgfn",      title: "Image File (ISO)",  type: "text", width: 40, },
-     //  {name: "size",      title: "Image Size",  type: "text", width: 10, },
+     {name: "path",      title: "Boot Media Path",  type: "text", width: 40, },
+     {name: "filecnt",   title: "File Cnt.", type: "text", width: 15, },
+     {name: "status",    title: "Status",  type: "text", width: 50, itemTemplate: bootmedia_status}, // 
+     //{name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
+     // Additional "join" fields (from losetup res.)
+     {name: "loopdev",   title: "Loop Device",  type: "text", width: 18, },
+     {name: "imagefn",   title: "Image File (ISO)",  type: "text", width: 60, },
+     {name: "size",      title: "Image Size",  type: "text", width: 10, },
    ];
    function uname_cell(val, item) {
      return "<span class=\"unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</span>";
