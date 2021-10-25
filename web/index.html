@@ -384,8 +384,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <form id="ansform">
 <fieldset>
 <legend>Host / HostGroup Scope</legend>
-<label>Individual Host(s)</label>
-<select id="hostnames" name="hostnames" multiple="multiple" size="10">
+<label style="width: 100px">Host(s)</label>
+<select id="hostnames" name="hostnames" multiple="multiple" size="10" style="width: 250px">
 {{#hosts}}
 <option value="{{ hname }}">{{ hname }}</option>
 {{/hosts}}
@@ -400,10 +400,10 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <fieldset>
 <legend>PlayBooks / PlayProfile Scope</legend>
-<label>Playbooks</label>
-<select id="playbooks" name="playbooks" multiple="multiple" size="5" style="width: 200px">
+<label style="width: 100px">Playbooks</label>
+<select id="playbooks" name="playbooks" multiple="multiple" size="5" style="width: 350px">
 {{#aplays}}
-<option value="{{ relname }}">{{ playname }} ({{ basename }})</option>
+<option value="{{ relname }}">{{ playname }} ({{ basename }}, {{ taskcnt }} tasks)</option>
 {{/aplays}}
 </select>
 
