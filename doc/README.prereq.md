@@ -148,11 +148,16 @@ Node.js and Node package manager from distro sources:
     # ... now install nodejs (comes w. npm)
     sudo yum install nodejs
 
-Generic linux tar install: Download: `wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz`
-All download options: https://nodejs.org/dist/v10.14.2/
+Generic linux tar Download (e.g. for 10.14.2):
+```
+wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
 
-See https://github.com/nodejs/help/wiki/Installation for installing under /usr/local/lib/nodejs.
-Alternative rsync install (directly) under /usr/local/:
+```
+See https://github.com/nodejs/help/wiki/Installation for installing under /usr/local/lib/nodejs
+(Some tweaks to shell run-config and environment needed).
+
+Alternative rsync install (directly) under /usr/local/ (no need to
+tweak shell run-config files like .bashrc):
 
     cd /tmp
     wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
@@ -165,7 +170,13 @@ Alternative rsync install (directly) under /usr/local/:
     # re-cache executables in $PATH
     hash -r
 
-The generic Node install from nodejs.org may become handy with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way. It is also very viable way of installing Node on MacOSX.
+
+The generic Node binaries install from nodejs.org may become handy:
+- with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way
+- with  Ubuntu (same situation as RH/Centos)
+- as a very viable way of installing Node on MacOSX
+
+All download options: Versions: https://nodejs.org/dist/ , Architecture/Platform variants (for e.g. 10.4.2) https://nodejs.org/dist/v10.14.2/ .
 
 ## Installing Ansible
 
