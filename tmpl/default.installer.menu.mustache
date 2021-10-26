@@ -710,7 +710,7 @@ linux  http://{{ httpserver }}/alpine314net/boot/vmlinuz-lts
 initrd http://{{ httpserver }}/alpine314net/boot/initramfs-lts
 # modules=loop,squashfs,sd-mod,usb-storage
 # Also (e.g): alpine_dev=nfs:192....:/srv/pxe. Need net module (e.g.) modprobe cnic ?
-append ip=dhcp modloop=http://{{ httpserver }}/alpine314/boot/modloop-lts
+append ip=dhcp modloop=http://{{ httpserver }}/alpine314net/boot/modloop-lts
 
 # FreeDOS
 # http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/
