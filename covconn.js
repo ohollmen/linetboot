@@ -10,11 +10,14 @@
 * # Poll coverity-server-up
 * node cov_proj_query.js poll
 * ```
-* 
+* # Refs
+* - https://stackoverflow.com/questions/46182257/handling-js-intervals-and-cron-jobs-using-pm2
+* - https://dev.to/michielmulders/why-we-stopped-using-npm-start-for-running-our-blockchain-core-s-child-processes-1ef4
 */
 var axios = require("axios");
 var async = require("async");
 var cproc = require("child_process");
+var fs    = require("fs");
 var cfg; // = mcfg.cov;
 var creds_b64 = ""; // Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
 var axopt = {headers: {Authorization: "basic "}}; // +creds_b64
@@ -35,12 +38,18 @@ var inited = 0;
 
 if (process.argv[1].match("covconn.js")) {
   // load config for CLI
-  var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
-  if (!mcfg) { apperror("No main config"); }
+  var cfgfname = process.argv[3] || process.env['COVPOLL_CFG'] || process.env["HOME"]+"/.linetboot/global.conf.json";
+  if (!fs.existsSync(cfgfname)) { apperror("No config ("+cfgfname+") found !"); }
+  var mcfg = require(cfgfname);
+  if (!mcfg) { apperror("main config ("+cfgfname+")could not be loaded"); }
+  console.log("Loaded cfg: "+cfgfname);
+  console.log("ENV:"+JSON.stringify(process.env, null, 2)+"\n");
   init(mcfg);
   if (!cfg) { apperror("No coverity config resolved from config"); }
   var ops = {list: list, report: report, poll: poll};
-  var op = process.argv.splice(2, 1);
+  // Allow special case for 'poll' to workaround pm2 limitations (e.g.):
+  // COVPOLL_CFG=./covpoll.conf.json node_modules/pm2/bin/pm2 start covconn.js
+  var op = process.env['COVPOLL_CFG'] ? 'poll' : process.argv.splice(2, 1);
   if (!op || !ops[op]) { usage("need valid op (try: "+Object.keys(ops).join(', ')+")!"); }
   ops[op]();
 
@@ -51,7 +60,8 @@ function init(_cfg) {
   if (!_cfg) { throw "Must pass (cov) config !"; }
   cfg = _cfg.cov ? _cfg.cov : _cfg;
   if (!cfg) { throw "No config after trying to look it up"; }
-  if (!cfg.url || !cfg.viewid || !cfg.projid || !cfg.user || !cfg.pass) { throw "Check Cov. Config: url, viewid, projid, user, pass !"; }
+  // || !cfg.viewid || !cfg.projid
+  if (!cfg.url  || !cfg.user || !cfg.pass) { throw "Check Cov. Config: url, viewid, projid, user, pass !"; }
   apiurl = cfg.url+"api/viewContents/snapshots/v1/"+cfg.viewid+"?projectId="+cfg.projid+"&rowCount=3000";
   creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
   axopt.headers.Authorization += creds_b64;
@@ -97,14 +107,15 @@ function report() {
 
 // Poll Coverity service every 10 seconds to detect it is up.
 // Make a dummy request to API and check valid response.
+// Needs config params: url, user, pass, polltestact, pollinterval
 function poll() {
   var interval =  cfg.pollinterval || 10000; // ms
   var stime = Date.now();
-  console.log("Starting ... Now: "+ stime + ", Interval: "+interval+" ms.");
+  console.log("Starting ... Now: "+ stime + ", Interval: "+interval+" ms. Action: "+cfg.polltestact);
   var status = "done"; // pend, done
   var prevstatus = "ok";
   var cmd = cfg.polltestact;
-  
+  // if (axopt.httptout ) { axopt.timeout = cfg.httptout; } // || 10000;
   // setInterval(function () { console.log("Hi !"); }, interval);
   setInterval(function () {
     if (status == "pend") { console.log("Status 'pend', pass ..."); return; }
@@ -121,7 +132,8 @@ function poll() {
     // if (status == "pend") { cb("Status pend. Cannot make another HTTP probe.", null); } // Guard against pending
     status = "pend";
     var info = { istrans: null, msg: null, ss: null}; // cb(null, rep); // to caller of probeservice (evinfo, pollinfo,probeinfo)
-    axios.get(cfg.url + "api/views/v1/", axopt).then((resp) => {
+    var url = cfg.url + "api/views/v1/";
+    axios.get(url, axopt).then((resp) => {
       var d = resp.data;
       // console.log(d); // DEBUG DUMP
       status = "done"; // done vs succ ?
@@ -141,7 +153,7 @@ function poll() {
     .catch((ex) => {
       // status = "done";
       // console.log("Error polling: "+ex);
-      var msg = "  - Service failure on Coverity server (Sample API URL: '"+cfg.url+"')";
+      var msg = "  - Service FAIL on Coverity server"; // (Sample API URL: '"+cfg.url+"')
       console.log(msg);
       var istrans = info.istrans = prevstatus != "err";
       info.ss = "fail";
@@ -153,12 +165,12 @@ function poll() {
       // if (prevstatus == "err") { status = "done"; return cb("Prev status err, not re-triggering action"); }
       ////////////// Action /////////////
       if (!cmd) { status = "done"; return cb("Failed test, but no action conf'd !", null); }
-      // var env = {COV_TEST_URL: cfg.url};
+      var env = {COVSRV_URL: url + "", COVSRV_EV_TRANSTO: 'DOWN', }; // COVSRV_EV_DESC: ...
       // status = "pend"; // Set pending to avoid overlapping polls
-
+      Object.keys(env).forEach((k) => { process.env[k] = env[k]; });
 
       console.log("  - Trigger: "+cmd);
-      cproc.exec(cmd, (err, stdout, stderr) => {
+      cproc.exec(cmd,  (err, stdout, stderr) => { // {env: env},
         //prevstatus = "err"; // Redundant when set above
         if (err) { status = "done"; return cb("Error launching action ("+cfg.polltestact+"): "+ err); }
 	console.log("stdout: "+stdout+"\n stderr: "+stderr+"\n");
