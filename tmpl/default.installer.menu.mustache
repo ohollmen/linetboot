@@ -664,14 +664,17 @@ append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/ s
 sysappend 3
 
 # Alpine Linux (https://wiki.alpinelinux.org/wiki/PXE_boot)
+# https://alpinelinux.org/downloads/
+# Avail. as: Standard, Extended, Netboot and Virtual (+some others) flavors
 # alpine_repo=... should be filled with apk repo (e.g. http://nl.alpinelinux.org/alpine/v2.5/main/)
 # See also: https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management
 # All alpine package repos seem to be server by nginx servers that do not allow dir listings (!)
 # This shows ok: http://nl.alpinelinux.org/alpine/v3.7/main/
 # APKINDEX.tar.gz seems to be the index file (Has ascii APKINDEX file w. k-v record structs in it)
-# Pakg basename and version are in different fields, apk suffix aloways implied/assumed for package file.
+# Pkg basename and version are in different fields, apk suffix aloways implied/assumed for package file.
 # filename = field-P + '-' + field-V + ".apk"
 # Installer appends arch (e.g. x86_64) to alpine_repo=.. value to get to index/package dir.
+# Use the dir of file ".boot_repository" (0 B.) as alpine_repo=... path (in URL).
 # Example of using fetch utility: fetch http://dl-3.alpinelinux.org/alpine/v3.6/main/x86_64/APKINDEX.tar.gz
 # https://wiki.alpinelinux.org/wiki/Enable_Community_Repository
 # https://wiki.alpinelinux.org/wiki/Installation
@@ -687,15 +690,27 @@ sysappend 3
 # Note: if modloop has http support, modules on NFS are unnecessary (per manual)
 # TODO: Use ssh_key=URL/sshkeys.pub (?)
 # Google: Alpine PXE Boot
-label alpine
-menu label Alpine v3.14.2 (?)
-linux http://{{ httpserver }}/alpine314/boot/vmlinuz-lts
+label alpine314
+menu label Alpine v3.14.2 Std/Ext (?)
+# Standard and Extended imgs: boot/vmlinuz-lts, initramfs-lts, boot/modloop-lts
+linux  http://{{ httpserver }}/alpine314/boot/vmlinuz-lts
 initrd http://{{ httpserver }}/alpine314/boot/initramfs-lts
 # modloop is a ~100MB Squashfs
 # modules=loop,squashfs,sd-mod,usb-storage
 # Also (e.g): alpine_dev=nfs:192....:/srv/pxe. Need net module (e.g.) modprobe cnic ?
 append ip=dhcp  alpine_repo=http://{{ httpserver }}/alpine314/apks modloop=http://{{ httpserver }}/alpine314/boot/modloop-lts
 # apkovl=http://{{ httpserver }}/localhost.apkovl.tar.gz
+
+label alpine314net
+menu label Alpine v3.14.2 Net (?)
+# Net imgs: boot/vmlinuz-lts, initramfs-lts, boot/modloop-lts
+# (Also -virt versions avail in tar.gz)
+# Does NOT have any alpine_repo=... dir in tar.gz
+linux  http://{{ httpserver }}/alpine314net/boot/vmlinuz-lts
+initrd http://{{ httpserver }}/alpine314net/boot/initramfs-lts
+# modules=loop,squashfs,sd-mod,usb-storage
+# Also (e.g): alpine_dev=nfs:192....:/srv/pxe. Need net module (e.g.) modprobe cnic ?
+append ip=dhcp modloop=http://{{ httpserver }}/alpine314/boot/modloop-lts
 
 # FreeDOS
 # http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/
@@ -718,6 +733,7 @@ append initrd=http://{{ httpserver }}/clonezilla/live/freedos.img
 # https://github.com/torvalds/linux/blob/master/net/ipv4/ipconfig.c#L1614
 # https://www.cleanwinner.com/2019/10/19/setting-up-a-server-for-diskless-clients-using-ubutnu-18-04lts-server/
 # https://www.hiroom2.com/2017/07/02/ubuntu-1604-pxeboot-thin-client-nfs-en/
+# Github: joelandman/tiburon
 # TODO (rsync support hard-links ?):
 # - Root-Part:
 #   - Hard-linked (h.l farms): /bin,/boot,/dev, /etc (DHCP), /lib, /lib32, /lib64, /libx32/, /run, /sbin
@@ -729,10 +745,12 @@ append initrd=http://{{ httpserver }}/clonezilla/live/freedos.img
 # - Modify: /etc/kernel/postinst.d/zz-update-grub, remove exec update-grub
 # - Test Kernel CL ip=bootp or rarp
 # - Possibly use: mkinitramfs (as advised in DisklessUbuntuHowto)
+# Does initrd need to be specialized / dedicated to nfsboot (See: joelandman/tiburon)
 #label diskless
 #menu label Diskless Ubuntu18 Client
-#kernel vmlinuz
-#append initrd=/initrd.img root=/dev/nfs nfsroot={{ nfsserver }}:/nfsroot/client-01 ip=dhcp rw
+#kernel http://{{ httpserver }}/vmlinuz
+#initrd http://{{ httpserver }}/initrd.img
+#append  root=/dev/nfs nfsroot={{ nfsserver }}:/nfsroot/client-01 ip=dhcp rw verbose
 
 # https://serverfault.com/questions/644793/what-are-the-attributes-required-by-the-component-element-in-windows-unatten
 # https://docs.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2013/ms125692(v=vs.121)?redirectedfrom=MSDN
