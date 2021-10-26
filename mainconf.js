@@ -238,7 +238,9 @@ function env_merge(global) {
  * @return None
  */
 function tilde_expand(obj, keyarr) {
-  if (typeof obj != 'object') { throw "Not an object"; }
+  // if (typeof obj != 'object') { throw "Not an object"; }
+  // Be forgiving about particular config section (e.g. "cov") existing ...
+  if (typeof obj != 'object') { console.log("Warning: Passed config section is not an 'object' (got: '"+typeof obj+"')"); return; }
   if (!Array.isArray(keyarr)) { throw "Not an array (of keys)"; }
   var home = process.env['HOME'];
   keyarr.forEach(function (pk) {
