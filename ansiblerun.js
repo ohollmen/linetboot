@@ -206,7 +206,7 @@ Runner.prototype.hostselector = function () { // opts
 */
 Runner.prototype.ansible_run = function (xpara) { // 
   p = this;
-  p.debug && console.log("ansible_run: instance params: " + JSON.stringify(p, null, 2));
+  p.debug && console.log("RUN: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
   if (!p.hostnames) { throw "No hostnames passed (groups should be resolved to hostnames)"; }
   if (!p.playbooks) { throw "No playbooks passed / resolved (from profiles)"; }
@@ -226,7 +226,7 @@ Runner.prototype.ansible_run = function (xpara) { //
   
   // XPARA
   // Proprietary convention - pass in xpara ?
-  p.xpara.host = p.hostselstr; // prun.limit = p.hostnames.join(','); // NEW ! Deprecate from here ?
+  // p.xpara.host = p.hostselstr; // prun.limit = p.hostnames.join(','); // NEW ! Deprecate from here ?
   console.log("xpara (before overrides)", p.xpara);
   if (xpara) { this.xpara_add(xpara); }
   // Serialize to prun at the very end
@@ -345,7 +345,7 @@ Runner.prototype.fact_gather = function (cb) {
     console.log("Facts gather completed for '"+prun.hostselstr+"'. results in: '"+prun.factpath+"' !");
     if (data) { data.runid = this.runid; }
     return cb(puberr, data);
-    // TODO: Similar to ansible_run
+    // TODO: Similar to playbook running
     //var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000,
     //  runstyle: execstyle, numplays: fullcmds.length, runid: p.runid };
   });
@@ -384,9 +384,7 @@ function Runner(cfg, acfg) {
   // NEW: Make unique id for run-session. Communicate this to front-end
   this.runid = new Date().getTime(); // ms
 }
-//Runner.prototype.ansible_run = ansible_run;
-//Runner.prototype.playbooks_resolve = playbooks_resolve;
-//Runner.prototype.hostgrps_resolve = hostgrps_resolve;
+
 /** List Ansible playbooks in pbpath (sync).
 * The items will have: basename, relname, playname.
 * Playbooks will be parsed as YAML on-the-fly to validate their YAML syntax (a minimun
@@ -456,8 +454,6 @@ module.exports = {
   init: init,
   ansible_detect: ansible_detect,
   // hostsfile: hostsfile,
-  //playbooks_resolve: playbooks_resolve,
-  // ansible_run: ansible_run,
   testpara: { playbooks: ["a.yaml", "b.yaml"], hostnames: ["host1","host2"] },
   Runner: Runner,
   ansible_play_list: ansible_play_list,

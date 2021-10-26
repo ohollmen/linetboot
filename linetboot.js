@@ -1340,7 +1340,7 @@ function ansible_run_serv(req, res) {
   try {
     p = new ans.Runner(p, acfg);
     // if (!p) { jr.msg += "Runner Construction failed"; return res.json(jr); }
-    p.xpara.host = p.hostselstr; // TODO here OR ansible_run({host: p.hostselstr});
+    //p.xpara.host = p.hostselstr; // TODO here OR below ?
     step = "playbook_resolve";
     var err = p.playbooks_resolve(acfg);
     // if (err) { jr.msg += "Error "+err+" resolving playbooks"; return res.json(jr); }
@@ -1358,11 +1358,13 @@ function ansible_run_serv(req, res) {
     */
     step = "run";
     console.log("Instance state before run(): ", p);
-    p.ansible_run(); // {host: p.hostselstr}
+    p.ansible_run({host: p.hostselstr}); // Pass host HERE
   } catch(ex) {
+    // FIXME: Write ack-file here, not HTTP response (OR 2 try-catch blocks)
     jr.msg += "Runner construction, resolutions or execution failed (step="+step+"): "+ex;
     console.log("Error: msg:"+ jr.msg); // "Exception Step:"+step+
     return res.json(jr);
+    //ans.Runner.compfname(p.runid, runinfo);
   }
   var runinfo = {status: "ok", event: "ansstart", time: Math.floor(new Date() / 1000),
     msg: "Running Async in background", "data": {runid: p.runid}};
@@ -1409,14 +1411,19 @@ function ansible_facts_gather(req, res) {
       // TODO: Inform how many were flawed ! cnt_total vs stats.length (by now)
       var cntstr = stats.length+" out of "+cnt_total+ " were okay";
       // TODO: data: data
-      var rdata = {status: "ok", data: { runid: p.runid }, msg: "Hosts/Groups: "+p.hostselstr+" ("+cntstr+")"};
-      console.log("ansible_facts_gather send JSON: ", rdata);
-      return res.json(rdata);
+      var runinfo = {status: "ok", data: { runid: p.runid }, msg: "Hosts/Groups: "+p.hostselstr+" ("+cntstr+")"};
+      console.log("ansible_facts_gather send JSON: ", runinfo);
+      return res.json(runinfo);
+      // ans.Runner.compfname(p.runid, runinfo); // Store to ack-file
     });
   }
+  // TODO: Remove res.json(...) from here -Don't send HTTP resp at the end of long running
   catch (ex) { jr.msg += "Exception during fact gather: "+ex; return res.json(jr); }
+  // Immediate resp ?
+  // var rdata = {status: "ok", data: { runid: p.runid }, msg: "Hosts/Groups: "+p.hostselstr}; // Cannot: +" ("+cntstr+")"
+  //return res.json(rdata);
   // @return 0 on success, 1 and up on errors (1=load err. 2=parse err., 3=write err.)
-  // cproc.exec("cp "+factpath_tmp + "/" +fst.fn+" "+global.fact_path + "/" + fst.fn, (err, stdout, stderr) => {});
+  // TODO: cproc.exec("cp "+factpath_tmp + "/" +fst.fn+" "+global.fact_path + "/" + fst.fn, (err, stdout, stderr) => {});
   function copy_json(fst) { // fna1, fna2
     var fna1 = factpath_tmp + "/" +fst.fn; // NEW
     var fna2 = global.fact_path + "/" + fst.fn; // EXISTING (to be overwritten)
