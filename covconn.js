@@ -49,6 +49,7 @@ if (process.argv[1].match("covconn.js")) {
   var ops = {list: list, report: report, poll: poll};
   // Allow special case for 'poll' to workaround pm2 limitations (e.g.):
   // COVPOLL_CFG=./covpoll.conf.json node_modules/pm2/bin/pm2 start covconn.js
+  // Must also set LINETBOOT_COV_PASS or COV_PASS
   var op = process.env['COVPOLL_CFG'] ? 'poll' : process.argv.splice(2, 1);
   if (!op || !ops[op]) { usage("need valid op (try: "+Object.keys(ops).join(', ')+")!"); }
   ops[op]();
@@ -60,7 +61,11 @@ function init(_cfg) {
   if (!_cfg) { throw "Must pass (cov) config !"; }
   cfg = _cfg.cov ? _cfg.cov : _cfg;
   if (!cfg) { throw "No config after trying to look it up"; }
+  // Should do only for CL modes
+  if (process.env["LINETBOOT_COV_PASS"]) { cfg.pass = process.env["LINETBOOT_COV_PASS"]; }
+  if (process.env["COV_PASS"]) { cfg.pass = process.env["COV_PASS"]; }
   // || !cfg.viewid || !cfg.projid
+  // || 
   if (!cfg.url  || !cfg.user || !cfg.pass) { throw "Check Cov. Config: url, viewid, projid, user, pass !"; }
   apiurl = cfg.url+"api/viewContents/snapshots/v1/"+cfg.viewid+"?projectId="+cfg.projid+"&rowCount=3000";
   creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
