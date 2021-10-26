@@ -68,10 +68,29 @@ if (an.uisetup && (typeof an.uisetup == 'function')) {
   .catch(function (error) { console.log(error); });
 }
 
-/** Display Hosts in Groups (in multiple grids)
+/** Display Entities in Grid contained Groups (in multiple grids).
+ * Reusable for almost any entities
+ * ```
+ * [
+ *   { // <= start of group 1
+ *     "id": "...",
+ *     "name": "...",
+ *     "items": [
+ *        {...}
+ *        {...}
+ *      ],
+ *   }, // end of group 1
+ *   {  // <= start of group 2
+ *     "id": "...",
+ *     "name":"...",
+ *     "items": [
+ *   ...
+ * ]
+ * ```
  * TODO: See how to handle dialog ui setup. uisetup could be done either
- * - In loop for each grid dataset
+ * - In loop for each grid dataset <= CURRENT
  * - After whole loop for all grids collectively.
+ * Action params: fsid (string) fset, set gridid: null, ... nattr - nameattr, ida - idattr (may be func), colla: coll(arr) attr
  * To support esp. latter the hname would need to be in each process record (!)
  * See: procinfo_uisetup(pinfoarr) for 
  */
@@ -81,15 +100,17 @@ function hostgroups(ev, act) {
   $('#' + elsel).html(''); // Clear
   var nattr = act.nattr || "name";
   var ida = act.ida || "id";
-  var colla = act.colla || "hosts";
-  var fsid = act.fsid || "hw";
+  var colla = act.colla || "items"; // items ? ("hosts" already in org act node)
+  var fsid = act.fsid; // NO default
+  if (!fsid) { return alert("No field layout !"); }
   toastr.info("Loading "+act.name);
   axios.get(act.url).then(function (resp) { // '/groups'
-    grps = resp.data; // AoOoAoO...
+    var grps = resp.data; // AoOoAoO...
+    // NOTE: Can we do this before knowing Arr/Obj (add !Array.isArray(grps) && ...
     if (grps.status && grps.status == 'err' && grps.msg) { return toastr.error("Error: "+grps.msg); }
     console.log("DATA:"+JSON.stringify(grps, null, 2));
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
-    if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // For staleproc use-case
+    if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // Auto-detect (e.g. For staleproc use-case)
     if (!Array.isArray(grps)) { toastr.clear(); return toastr.error("Results not in array !"); }
     // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
@@ -100,6 +121,7 @@ function hostgroups(ev, act) {
       var id = (typeof ida == "function") ? ida(g) : g[ida];
       if (typeof act.dataprep == 'function') { act.dataprep(g); } // Data-prep
       $('#' + elsel).append("<h2>"+g[nattr]+" ("+ arr.length +")</h2>\n"); // g.name
+      if ((!arr || !arr.length) && act.skipe) { return $('#' + elsel).append("<p style=\"font-size: 11px; \">No items.</p>"); } // No items, allow skip
       $('#' + elsel).append("<div id=\"grp_"+ id +"\"></div>\n");
       showgrid("grp_"+id, arr, fldinfo[fsid]); // "hw"
       if (typeof act.uisetup == 'function') { act.uisetup(arr); } // act
