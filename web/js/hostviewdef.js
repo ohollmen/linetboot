@@ -221,6 +221,13 @@
      // 
      return value ? "OK" : "-";
    }
+   function sshkeysfetch_cell(value, item) {
+     var cnt = 0;
+     fldinfo_sshkeys.forEach((n) => { console.log("Got: "+ item[n.name]); cnt += item[n.name] ? 1 : 0; }); // Short circuit / stop on first for ()
+     if (cnt > 1) { return ""; } // return cnt;
+     // Icon
+     return "<span class=\"sshkeyload\" data-hname=\""+item.hname+"\"><i class=\"glyphicon glyphicon-repeat\"></span>"; // -repeat -refresh
+   }
    var fldinfo_sshkeys = [
      hostfld, // Need hn ?
      {name: "rsa_pub",     title: "RSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
@@ -230,7 +237,8 @@
      {name: "ecdsa_pub",   title: "ECDSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
      {name: "ecdsa_priv",  title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
      {name: "ed25519_pub", title: "ED25519 Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ed25519_priv",title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell}
+     {name: "ed25519_priv",title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "actions",title: "Fetch", type: "text", width: 15, itemTemplate: sshkeysfetch_cell},
      
    ];
    function dockidcell(value, item) {
@@ -347,8 +355,11 @@
      {name: "reset",     title: "Set Default",  type: "text", width: 30, itemTemplate: reset_defboot, visible: true},
    ];
    function bootmedia_status(val, item) {
-     if (!item.filecnt) { return ("<span style=\"color: #C60C30\">Not mounted or present</span>"); }
-     return "Mounted (w. "+item.filecnt+" items on top dir)";
+     if (item.loopdev) {return "<span class=\"icontext\">Mounted Loop device</span> <i class=\"glyphicon glyphicon-cd\"></i>";} //  // -cd / -record
+     // All following are !item.loopdev
+     if (!item.filecnt) { return ("<span class=\"icontext\" style=\"color: #C60C30\">Empty Dir</span> <i class=\"glyphicon glyphicon-question-sign\"></i>"); } // 
+     //if (!item.filecnt) {}
+     return "<span class=\"icontext\">Bare Directory (w. files)</span> <i class=\"glyphicon glyphicon-folder-open\"></i>"; // (w. "+item.filecnt+" items on top dir) //   // Also -close
    }
    function bootmedia_info(val, item) {
      if (!item.filecnt) { return (""); }
@@ -358,7 +369,7 @@
    var fldinfo_bootmedia = [
      
      {name: "path",      title: "Boot Media Path",  type: "text", width: 40, },
-     {name: "filecnt",   title: "File Cnt.", type: "text", width: 15, },
+     {name: "filecnt",   title: "File Cnt.", type: "text", width: 10, },
      {name: "status",    title: "Status",  type: "text", width: 50, itemTemplate: bootmedia_status}, // 
      //{name: "actions",     title: "Info",  type: "text", width: 30, itemTemplate: bootmedia_info, visible: true},
      // Additional "join" fields (from losetup res.)

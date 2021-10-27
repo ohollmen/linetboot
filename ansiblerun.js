@@ -8,7 +8,9 @@
 ```
 
 ```
-
+References:
+* - Google: ansible host selector
+* - https://docs.ansible.com/ansible/latest/user_guide/intro_patterns.html
 */
 var crypto = require('crypto');
 var hlr   = require("./hostloader.js");

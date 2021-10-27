@@ -104,9 +104,13 @@ function hostgroups(ev, act) {
   var fsid = act.fsid; // NO default
   if (!fsid) { return alert("No field layout !"); }
   toastr.info("Loading "+act.name);
+  var spinner;
+  var spel = document.getElementById(ev.viewtgtid);
+  if (act.longload) { spinner = new Spinner(spinopts).spin(spel); }
   axios.get(act.url).then(function (resp) { // '/groups'
     var grps = resp.data; // AoOoAoO...
     // NOTE: Can we do this before knowing Arr/Obj (add !Array.isArray(grps) && ...
+    // spinner && spinner.stop();
     if (grps.status && grps.status == 'err' && grps.msg) { return toastr.error("Error: "+grps.msg); }
     console.log("DATA:"+JSON.stringify(grps, null, 2));
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
@@ -128,7 +132,8 @@ function hostgroups(ev, act) {
     });
     //if (typeof act.uisetup == 'function') { act.uisetup(); } // act
     toastr.clear();
-  }).catch(function (error) { console.log(error); });
+  }).catch(function (error) {  console.log(error); })
+  .finally(() => { spinner && spinner.stop(); });
 }
 /** Create Remote management info (grid).
 * Note: hosts unused (!)
@@ -159,12 +164,13 @@ function probeinfo(ev, act) {
   var spinner = new Spinner(spinopts).spin(el);
   axios.get(act.url).then(function (resp) { // '/nettest'
     var pinfo = resp.data.data;
-    spinner.stop();
+    
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No Net Probe data"); return; }
     showgrid("jsGrid_probe", pinfo, fldinfo.netprobe);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-  }).catch(function (error) { spinner.stop(); console.log(error); });
+  }).catch(function (error) {  console.log(error); }) // spinner.stop();
+  .finally(() => { spinner.stop(); });
 }
 /** Load Process and Uptime Information.
  */
@@ -178,17 +184,15 @@ function loadprobeinfo(event, act) {
   // target.appendChild(spinner.el); // When invoked w/o target: .spin()
   axios.get(act.url).then(function (resp) {
     var pinfo = resp.data.data;
-    spinner.stop();
+    // spinner.stop();
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No Load Probe data"); return; }
     showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
     if (act.uisetup) { act.uisetup(); console.log("CALLED UISETUP"); }
   })
-  .catch(function (error) {
-    spinner.stop();
-    console.log(error);
-  });
+  .catch(function (error) { console.log(error); })
+  .finally(() => { spinner.stop(); });
 }
 /** Display archived (and restorable) hostkeys.
  */
@@ -200,7 +204,20 @@ function sshkeys(ev, act) {
     //console.log("SSH Key data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No SSH Key data"); return; }
     showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
-    // $("#").click(function () { zzzzz(); }); // Reload. TODO: Wait ...
+    $(".sshkeyload").click(function () {
+      // Get host
+      var p = this.dataset;
+      console.log(p);
+      var hname = p.hname; // See: onrecipeclick this.dataset
+      toastr.info("TODO: load keys for "+hname);
+      // trigger ansible
+      var p = {hosts: [hname], aplays: [""], aprofs: []}; // See: ansishow
+      //axiops.post("/ansrun", p).then((resp) => {
+      //  
+      // // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
+      //}).catch((ex) => {  }).finally();
+      //zzzzz();
+    }); // Reload. TODO: Wait ...
   }).catch(function (error) { console.log(error); });
 }
 /** Display a package comparison view.
@@ -478,7 +495,10 @@ function medialist(ev, act) {
 function recipes() {
   function recipe_cell(val, item) {
     // href=\""+val+"?ip="+item.ipaddr+"\"
-    return "<a class=\"recipecell\" data-hn=\""+item.hname+"\" data-ip=\""+item.ipaddr+"\">"+val+"</a>";
+    //var ccont = val; // ORIG
+    var ccont = "<i class=\"glyphicon glyphicon-play\"></i>"; // Icon !
+    return "<a class=\"recipecell\" data-hn=\""+item.hname+"\" data-ip=\""+item.ipaddr+"\" data-rname=\""+val+"\" title=\""+val+" for "+item.hname+"\">"
+      +ccont+"</a>";
   }
   axios.get("/recipes").then(function (resp) {
     var d = resp.data;
@@ -502,14 +522,15 @@ function recipes() {
     function onrecipeclick(jev) {
       console.log("Click on recipe: "+this.href);
       var dopts = {modal: true, width: 900, height: 700};
-      console.log("EV:", jev); // event.type
-      console.log("THIS:", this);
-      console.log("TGT:", jev.target);
+      console.log("EV:", jev); // event.type // ICON: target:i, currentTarget: a, TEXT: Both: a
+      console.log("THIS:", this); // a always(?)
+      console.log("TGT:", jev.target); // ICON: i-elem (glyph) TEXT: a
       var p = this.dataset; // Use datase directly as params, add some params
-      p.rname = this.textContent;
+      //p.rname = this.textContent; // ICON as textContent will mess this up (rname will be empty, URL will be "" => "/web")
       //p.url = this.href;
       p.url = p.rname + "?ip=" + p.ip;
       p.type = "text/plain;charset=utf-8";
+      console.log("p=", p);
       //if (p.rname.match(/\.xml$/)) { p.type = "application/xml;charset=utf-8"; }
       // TODO: Choose template based on mime-type ?
       // Data URIs cannot be larger than 32,768 characters.
@@ -544,14 +565,12 @@ function loginform(ev, act) {
   rapp.templated(act.tmpl, act, ev.viewtgtid);
   $("#nav").hide();
   $("#loginbut").click(function () {
+    // TODO: ["username","password"].forEach((k) => { p[k] = document.getElementById(k); }
     var p = { username: $("#username").val(), password: $("#password").val() };
-    // var pp = {}; // POST params - Not needed, use p directly
-    // BAD: leaves express middleware logging creds !
-    // axios.get("/login", {params: p}).then( function (resp) {
-    // POST (more securely)
+    // POST creds
     axios.post("/login", p).then( function (resp) {
       var d = resp.data;
-      console.log("Response:", d);
+      console.log("Login Response:", d);
       if (d.status == "err") { toastr.error("Login Failed: " + d.msg); return; }
       if (!d.data) { toastr.error("userinfo Missing"); return; }
       if (!d.data.username) { toastr.error("username Missing (in userinfo)"); return; }
@@ -590,6 +609,9 @@ function logout(ev, act) {
 function showpeople(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
   $("#"+ev.viewtgtid).prepend(rapp.templated("searchui"));
+  // new Spinner
+  var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
+  var spinner = new Spinner(spinopts).spin(spel);
   function search(p) {
     // TODO: Analyze params to support different use cases
     // "/ldaptest"
@@ -622,7 +644,8 @@ function showpeople(ev, act) {
         return false;
       });
       
-    }).catch (function (ex) { console.log(ex); });
+    }).catch (function (ex) { console.log(ex); })
+    .finally( () => { spinner.stop(); });
   } // search (on top)
   $('#sbutt').click(function () {
     var p = {uname: $("#uname").val()};
@@ -639,6 +662,8 @@ function ibloxlist(ev, act) {
   rapp.templated("simplegrid", act, ev.viewtgtid);
   // , {params: p}
   toastr.info("Looking up Iblox host info ... please wait");
+  var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
+  var spinner = new Spinner(spinopts).spin(spel);
   axios.get("/ibshowhost").then(function (resp) {
     var d = resp.data;
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
@@ -676,19 +701,23 @@ function ibloxlist(ev, act) {
       }).catch((ex) => { toastr.error(ex); })
       .finally(() => { $('.syncbutt').prop('disabled', false); });
     });
-  }).catch (function (ex) { console.log(ex); });
+  }).catch (function (ex) { console.log(ex); })
+  .finally( () => { spinner.stop(); });
 }
 
 function eflowlist(ev, act) {
   //console.log("EFlow ...");
   rapp.templated("simplegrid", act, ev.viewtgtid);
   toastr.info("Request Resource Info from EFlow ... please wait...");
+  var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
+  var spinner = new Spinner(spinopts).spin(spel);
   axios.get(act.url).then(function (resp) { // "/eflowrscs"
     var d = resp.data;
+    // spinner.stop(); // See finally
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
     if (!d.data) { return toastr.error("No Data Found."); }
     if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
-    console.log(d.data);
+    //console.log(d.data);
     showgrid(act.gridid, d.data, fldinfo.eflow);
     $(".hostcell").click(on_host_click);
     $('.efena').change(function () {
@@ -708,9 +737,10 @@ function eflowlist(ev, act) {
         var darr = ["Disabled", "Enabled"];
         toastr.info("Changed resource "+rscname+ " to "+darr[d.data.ena]); // +    enabled= " + d.data.ena
       }).catch((ex) => { toastr.error(ex); })
-      .finally(() => { $(uithis).prop('disabled', false); })
+      .finally(() => {  $(uithis).prop('disabled', false); })
     });
-  }).catch (function (ex) { console.log(ex); });
+  }).catch (function (ex) { console.log(ex); })
+  .finally( () => { spinner.stop(); });
 }
 
 /** Show all guests from a VM Host.
