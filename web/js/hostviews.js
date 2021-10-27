@@ -542,7 +542,7 @@ var tabloadacts = [
     path:"dcomposer"},
   // See: Groups
   {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
-      nattr: "hname", "colla":"procs", "fsid": "proclist", "skipe":1,
+      nattr: "hname", "colla":"procs", "fsid": "proclist", "skipe":1, longload: 1,
       ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
       uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
       dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
