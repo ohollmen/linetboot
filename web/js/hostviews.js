@@ -752,6 +752,7 @@ window.onload = function () {
   }
   var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
   router.add(acts); /// ...filtered
+    if (!datasets.cfg) { return alert("No config - can't work without it !"); }
     // Page Branding (title, image)
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }

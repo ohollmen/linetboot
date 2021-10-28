@@ -752,6 +752,7 @@ function esxilist(ev, act) {
   toastr.clear();
   rapp.templated("simplegrid", act, ev.viewtgtid);
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
+  else { $('#'+ev.viewtgtid + " " + ".xui").html("No VM hosts in this system.").show(); return; }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
   function urlpara() {
