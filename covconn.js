@@ -110,9 +110,19 @@ function report() {
 
 }
 
-// Poll Coverity service every 10 seconds to detect it is up.
-// Make a dummy request to API and check valid response.
-// Needs config params: url, user, pass, polltestact, pollinterval
+/** Poll Coverity service every N number of seconds to detect it is up.
+* Make a dummy request to API and check valid response.
+* Needs config params: url, user, pass, polltestact, pollinterval
+* Example launch:
+* ```
+* # Start, follow log
+* COVPOLL_CFG=./covpoll.conf.json COV_PASS=Ma53cRt node ./covconn.js > /tmp/cov_poll_log.txt
+* tail -f /tmp/cov_poll_log.txt
+* # Stop
+* ps -ef | grep covconn
+* kill ...
+* ```
+*/
 function poll() {
   var interval =  cfg.pollinterval || 10000; // ms
   var stime = Date.now();
