@@ -748,7 +748,7 @@ window.onload = function () {
     console.log("Routing: "+act.name+" ('"+location.hash+"' ... "+act.path+")");
     if (!datasets.cfg.username) { location.hash = "loginform";  } // return;
     // Need to override in action for e.g. dialog (e.g. viewid)
-    event.viewtgtid = "routerdiv";
+    ev.viewtgtid = "routerdiv";
   }
   var router = new Router66({ noactcopy: 1, sdebug: 1, pre: preroute}); //defpath: "basicinfo",
   router.add(acts); /// ...filtered
