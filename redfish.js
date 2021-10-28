@@ -118,7 +118,9 @@ RFOp.prototype.request = function(host, auth) {
   // conf = this.conf || {};
   if (!auth || !auth.user || !auth.pass) { throw "No Credentials"; }
   var bauth = basicauth(auth);
-  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
+  var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" };
+  // Note: This Initially gets cloned from message prototype, however it can be changed by caller between
+  // new RFOp() and call to request()
   var msg = this.msg; // Copy ? Only for POST,PUT,PATCH
   var meth = this.m; //var meth = ops[p.op];
   if (!meth) { throw "request: meth missing in op:" + this.id; }

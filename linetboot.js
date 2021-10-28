@@ -1738,10 +1738,10 @@ function host_reboot(req, res) {
   
   var f = hostcache[p.hname];
   if (!f) { jr.msg += " No facts, Not a valid host:"+p.hname; return res.json(jr); }
+  var hps = hlr.hostparams(f);
   var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
   // Try to fall back to hostparams => bmcipaddr
   if (!rmgmt || !rmgmt.ipaddr) {
-    var hps = hlr.hostparams(f);
     // Could not fall back ...
     if (!hps || !hps.bmcipaddr) { jr.msg += " No rmgmt info (bmcipaddr) for host to contact."; return res.json(jr); }
     // Mock up rmgmt info
@@ -1752,12 +1752,12 @@ function host_reboot(req, res) {
   //if (!ipmiconf.testurl && !rmgmt) { jr.msg += " No rmgmt info for host to contact."; return res.json(jr); }
   console.log("rq:",rq);
   
-  var ipmiconf2 = redfish.gencfg(ipmiconf, hlr.hostparams(f));
+  var ipmiconf2 = redfish.gencfg(ipmiconf, hps);
   var rfop = new redfish.RFOp(p.op, ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
   if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   rfop.debug = 1;
   console.log("Constructed RFOp", rfop);
-  
+  if ((p.op == 'boot') && hps['rfresettype']) { this.msg.ResetType = hps['rfresettype']; }
   // use IP Address to NOT have to use DNS to resolve.
   //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   // "User-Agent": "curl/7.54.0"
