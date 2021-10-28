@@ -207,10 +207,10 @@ os-locale@^1.4.0:
   dependencies:
     lcid "^1.0.0"
 
-router66@1.0.4:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/router66/-/router66-1.0.4.tgz#98cd3e3cbf6d43af7d6a463ed1bce95c6992cc97"
-  integrity sha512-vUO7qRLjgyohTNlvv4MJ0Z8kCBj+QUy3UxIQabrp9fQLXmJAHtTN4rE90mh9IwuHD4p79O4ISIj4ybLfezuiqQ==
+router66@1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/router66/-/router66-1.0.5.tgz#52fb2aa2f3d742fd1ae1de3c5860e9049a45a66c"
+  integrity sha512-iJff3d787MYVmxrGslUzr+6BCFhY9hX9IPP7Kn8cJXxAXMhDFx7GP9/o/2BttHcwG5kW1i/6TcO292WyESZiRQ==
 
 showdown@1.2.2:
   version "1.2.2"
