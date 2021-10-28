@@ -293,6 +293,7 @@ function app_init() { // global
   }
   app.get("/bs_list", bootables_list);
   app.get("/bs_statuses", bootables_status);
+  app.get("/recipes_dump", osinst.recipes_view);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -1923,7 +1924,8 @@ function config_send(req, res) {
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
   // OS/Version view columns/fields
   if (web && web.xflds) { cfg.xflds = web.xflds; }
-  if (esxi.vmhosts) { cfg.vmhosts = esxi.vmhosts; }
+  // 
+  if (esxi && esxi.vmhosts) { cfg.vmhosts = esxi.vmhosts; }
   res.json(cfg);
 }
 

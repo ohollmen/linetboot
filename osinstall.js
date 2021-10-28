@@ -1135,6 +1135,11 @@ function instprofiles_view(req, res) {
   });
   return res.json({status: "ok", data: iprofs_arr});
 }
+
+function recipes_view(req, res) {
+   res.json(recipes);
+}
+
 /** Log install step for client.
  */
 function ilog(ip, type, msg) {
@@ -1202,5 +1207,6 @@ module.exports = {
   // To log from other modules
   ilog: ilog,
   ilog_view: ilog_view,
-  ilog_view_hosts: ilog_view_hosts
+  ilog_view_hosts: ilog_view_hosts,
+  recipes_view: recipes_view
 };
