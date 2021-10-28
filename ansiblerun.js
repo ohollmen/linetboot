@@ -210,10 +210,10 @@ Runner.prototype.ansible_run = function (xpara) { //
   p = this;
   p.debug && console.log("RUN: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
-  if (!p.hostnames) { throw "No hostnames passed (groups should be resolved to hostnames)"; }
-  if (!p.playbooks) { throw "No playbooks passed / resolved (from profiles)"; }
-  if (!p.invfn)     { throw "No inventory file given";}
-  if (!fs.existsSync(p.invfn)) { throw "inventory does not exist !"; }
+  if (!p.hostnames) { throw "No 'hostnames' passed (groups should be resolved to hostnames)"; }
+  if (!p.playbooks) { throw "No 'playbooks' passed / resolved (from profiles)"; }
+  if (!p.invfn)     { throw "No inventory file ('invfn') given";}
+  if (!fs.existsSync(p.invfn)) { throw "inventory file does not exist !"; }
   // var fn; // Temp file !
   // DEPRECATED tmp-inventory
   /*
@@ -229,7 +229,8 @@ Runner.prototype.ansible_run = function (xpara) { //
   // XPARA
   // Proprietary convention - pass in xpara ?
   // p.xpara.host = p.hostselstr; // prun.limit = p.hostnames.join(','); // NEW ! Deprecate from here ?
-  console.log("xpara (before overrides)", p.xpara);
+  console.log("xpara (before overrides)", this.xpara);
+  console.log("xpara overrides", xpara);
   if (xpara) { this.xpara_add(xpara); }
   // Serialize to prun at the very end
   var prun = { hostsfile: null, }; // CLI Run parameters -i ...
@@ -294,16 +295,19 @@ Runner.prototype.xpara_add =  function (xpara) { // Instance method (OLD: prun)
   
     //OLD:if (xpara) { prun.xpara = mkxpara(xpara); }
     //OLD:else if (p.xpara) { prun.xpara = mkxpara(p.xpara); }
-    if (!xpara) { return; }
+    if (!xpara) { return; } // Nothing to add
     this.xpara = this.xpara || {};
+    if (typeof this.xpara != 'object') { console.log("xpara not object, is: "+typeof this.xpara); return; }
+    console.log("xpara_add: this.xpara: ", this.xpara);
     Object.keys(xpara).forEach(function (k) {
+      console.log("Add "+ k + " val: "+ xpara[k]);
       if (xpara[k]) { this.xpara[k] = xpara[k]; } // !== undefined
-    });
+    }, this);
   }
 // Serialize Object contained params as string for --extra-vars (-e)
 Runner.xpara_ser = function (xps) {
   // Must be Object, not Array
-  var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
+  //var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
   //return xparr.join(" ");
   return JSON.stringify(xps); // JSON. Must single-quote or save to file on caller side
 }

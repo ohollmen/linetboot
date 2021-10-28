@@ -211,11 +211,13 @@ function sshkeys(ev, act) {
       var hname = p.hname; // See: onrecipeclick this.dataset
       toastr.info("TODO: load keys for "+hname);
       // trigger ansible
-      var p = {hosts: [hname], aplays: [""], aprofs: []}; // See: ansishow
-      //axiops.post("/ansrun", p).then((resp) => {
-      //  
-      // // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
-      //}).catch((ex) => {  }).finally();
+      var p = {hostnames: [hname], playbooks: ["sshkeyarch.yaml"], playprofile: ""}; // See: ansishow
+      //return;
+      axios.post("/ansrun", p).then((resp) => {
+        console.log("Key archive launched ok");
+       // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
+      }).catch((ex) => { console.log("Failed key arch launch: "+ex); })
+      .finally(() => { console.log("Finally there"); });
       //zzzzz();
     }); // Reload. TODO: Wait ...
   }).catch(function (error) { console.log(error); });

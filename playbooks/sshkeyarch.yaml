@@ -46,15 +46,15 @@
     - name: list keys
       shell: 'ls {{ sshdir }}/ssh_host*'
       register: keylist
-    - name: Store RSA Locally
-      copy:
-        dest: '{{ keyarchpath }}/{{ inventory_hostname }}/ssh_host_rsa_key'
-        content: "{{ sshkey.stdout }}"
-        owner: '{{ keyuser }}'
-        #group: '{{ keygroup }}'
-        mode: 0600
-      delegate_to: localhost
-      #when: 0
+    #- name: Store RSA Locally
+    #  copy:
+    #    dest: '{{ keyarchpath }}/{{ inventory_hostname }}/ssh_host_rsa_key'
+    #    content: "{{ sshkey.stdout }}"
+    #    owner: '{{ keyuser }}'
+    #    #group: '{{ keygroup }}'
+    #    mode: 0600
+    #  delegate_to: localhost
+    #  #when: 0
     - name: Sync Keys form remote to local
       shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath}}/{{ inventory_hostname }}'
       #when: 0

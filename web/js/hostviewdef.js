@@ -223,7 +223,9 @@
    }
    function sshkeysfetch_cell(value, item) {
      var cnt = 0;
-     fldinfo_sshkeys.forEach((n) => { console.log("Got: "+ item[n.name]); cnt += item[n.name] ? 1 : 0; }); // Short circuit / stop on first for ()
+     // Note this is purposely off-by-one as first field is "hname" (not key type)
+     // console.log("Got: "+ item[n.name]);
+     fldinfo_sshkeys.forEach((n) => {  cnt += item[n.name] ? 1 : 0; }); // Short circuit / stop on first for ()
      if (cnt > 1) { return ""; } // return cnt;
      // Icon
      return "<span class=\"sshkeyload\" data-hname=\""+item.hname+"\"><i class=\"glyphicon glyphicon-repeat\"></span>"; // -repeat -refresh
