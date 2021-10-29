@@ -728,7 +728,7 @@ window.onload = function () {
   // Init after loading mandatory data/config with DataLoader
   function initapp (response_dummy) {
     var cfg = datasets["cfg"] || {};
-    var tabui = cfg.tabui;
+    var tabui = 0; // cfg.tabui;
     // TODO: Navigation, e.g. var acts_menu = acts.filter((it) => { return it.menu; });
   //$('nav').html( webview.list(acts_menu, {titleattr: "name"}) );
   /////////////// Setup Tabs (Dynamic) ////////////////////
@@ -739,8 +739,8 @@ window.onload = function () {
   if (ccfg && Array.isArray(ccfg.disabled)) {
     ccfg.disabled.forEach((p) => { $("nav a[href='#"+p+"']").parent().hide(); });
   }
-  if (tabui) { tabui_setup(tabs); }
-  else { } // .sidebar_static Style changes (float ...)
+  //if (tabui) { tabui_setup(tabs); }
+  //else { } // .sidebar_static Style changes (float ...)
   /////////////// Router / routable acts ///////////////////
   var acts = tabloadacts.filter((ti) => { return ti.path; });
   // Can we do async preroute-op ?
@@ -787,7 +787,7 @@ window.onload = function () {
     //$( "#tabs" ).tabs( "load", 1 );
     // https://stackoverflow.com/questions/17967902/trigger-tab-activate-function-jquery-ui-tabs
     
-    if (tabui) { $( "#tabs" ).tabs("option", "active", 0 ); } // Required trans. Does not trigger if 0, but does with 1 (!)
+    // if (tabui) { $( "#tabs" ).tabs("option", "active", 0 ); } // Required trans. Does not trigger if 0, but does with 1 (!)
    
     
     
