@@ -497,8 +497,8 @@ var tabloadacts = [
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats", "help": "x.md"}, //DUAL
   //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
-  // ADD: ansitab
-  {"name": "Dev/Admin",   tabs: ["tabs-5","tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
+  // Disabled from here (groups): "tabs-5",
+  {"name": "Dev/Admin",   tabs: ["tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", gdmem: "catalog", path: "dockerenv"},
   {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof", "tabs-bos"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
@@ -541,7 +541,7 @@ var tabloadacts = [
     },
     path:"dcomposer"},
   // See: Groups
-  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl":null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
+  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
       nattr: "hname", "colla":"procs", "fsid": "proclist", "skipe":1, longload: 1,
       ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
       uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
@@ -710,7 +710,7 @@ function acts_uidisable(actitems) {
   // {id: "docindex", url: "/docindex.json"}
   var dnodes = [
     {id: "hostlist", url: "/list"},
-    {id: "grps",     url: "/groups"},
+    //{id: "grps",     url: "/groups"},
     {id: "grps_inv", url: "/groups_inv"},
     {id: "aplays", url: "/anslist/play"},
     {id: "aprofs", url: "/anslist/prof"},
