@@ -186,13 +186,15 @@ function disabled_detect(global) {
   // Reporting (in flux for transition to tabs) "reports"
   if (global.web && !global.web.reports) { dis.push("reports"); }
   // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
-  // in g.hostnames.lenght > 0.
+  // in g.hostnames.length > 0.
   // NOTE: We don't know if groups have been loaded (properly) and it will be hard to test here.
   if (global.groups && 1) {
     //dis.push("groups");
   }
   var esxi = global.esxi;
   if (esxi && !esxi.password) { dis.push("esxiguests"); } // Note UI term
+  var proc = global.procster;
+  if (proc && !proc.urlpath) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
   return dis;
 } // diabled_detect
 
