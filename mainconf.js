@@ -230,6 +230,11 @@ function env_merge(global) {
   // Override TFTP ROOT (tftp.root), esp. useful for Mac
   if (process.env["LINETBOOT_TFTP_ROOT"]) {  global.tftp.root = process.env["LINETBOOT_TFTP_ROOT"]; }
   if (process.env["LINETBOOT_ISOPATH"])   {  global.isopath = process.env["LINETBOOT_ISOPATH"]; }
+
+  if (process.env["LINETBOOT_IPMI_EXECBIN"])   {
+    if (!global.ipmi) {}
+    else { global.ipmi.execbin = process.env["LINETBOOT_IPMI_EXECBIN"]; }
+  }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

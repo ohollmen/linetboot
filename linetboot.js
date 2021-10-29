@@ -1757,13 +1757,13 @@ function host_reboot(req, res) {
   if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   rfop.debug = 1;
   console.log("Constructed RFOp", rfop);
-  if ((p.op == 'boot') && hps['rfresettype']) { this.msg.ResetType = hps['rfresettype']; }
+  if ((p.op == 'boot') && hps['rfresettype']) { rfop.msg.ResetType = hps['rfresettype']; console.log("Changed ResetType to: "+rfop.msg.ResetType); }
   // use IP Address to NOT have to use DNS to resolve.
   //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   // See if host (hps = Host params) needs to use IPMI because of buggy or non-existing RedFish interface
-  if (hps["bmcuseipmi"]) { rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
+  if (hps["bmcuseipmi"]) { console.log("Use IPMI !"); rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
   else { rfop.request(rmgmt.ipaddr, ipmiconf2); } // RedFish / HTTP
   return;
   //var meth = rfop.m; //var meth = ops[p.op];
@@ -1812,7 +1812,7 @@ function host_reboot(req, res) {
     jr.msg += err.toString();
     resp && console.log(resp.statusText); // Has: status, statusText
     resp && console.log(JSON.stringify(resp.data, null, 2));
-    console.log(rfop.m + " Error: "+err); // meth+
+    console.log(rfop.m + " Error: ", err); // meth+ error will be object
     var messages = [];
     if (resp && resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
       var arr = resp.data.error["@Message.ExtendedInfo"];

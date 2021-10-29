@@ -90,7 +90,8 @@
     "debug": 1,
     "useipmi": 0,
     "userf": 0,
-    "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5"
+    "testurl": "http://localhost:3000/redfish/v1/Systems/1/nuc5",
+    "execbin": ""
   },
   "probe" : {
     "tout": 5000,

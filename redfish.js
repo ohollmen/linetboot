@@ -25,6 +25,7 @@
  * - https://docs.oracle.com/cd/E24707_01/html/E24528/z400000c1016683.html
  */
 var axios = require("axios");
+var cproc = require("child_process");
 // TODO: Embed templating fragment for {{ sysid }} ?
 var ops = [
     {"id":"boot",  "m": "post",  url: "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset", msg: {"ResetType": "PowerCycle", }, "ipmi": "chassis power cycle"}, // chassis power reset
@@ -53,7 +54,7 @@ function sysid(f) {
  * @param hostparams {object} - Host key-value parameters from 'hosts' (inventory) file.
  */
 function gencfg(ipmicfg, hostparams) {
-  var cfg = {user: ipmicfg.user, pass: ipmicfg.pass, testurl: ipmicfg.testurl};
+  var cfg = {user: ipmicfg.user, pass: ipmicfg.pass, testurl: ipmicfg.testurl, execbin: ipmicfg.execbin};
   if (hostparams.bmccreds) {
     var up = hostparams.bmccreds.split(/:/);
     cfg.user = up[0];
@@ -75,7 +76,7 @@ function RFOp(opid, conf) {
   // if (f &&  f.ansible_system_vendor && f.ansible_system_vendor.match(/Dell/)) { sysid = "System.Embedded.1"; }
   this.url = op.url;
   this.msg = op.msg ? JSON.parse(JSON.stringify(op.msg)) : null; // Copy !
-  this.conf = conf; // TODO: utilize !
+  this.conf = conf || {}; // TODO: utilize !
   this.ipmi = op.ipmi;
 }
 /** Add ("register") operation. */
@@ -144,9 +145,23 @@ RFOp.prototype.request = function(host, auth) {
  */
 RFOp.prototype.request_ipmi = function(host, auth) {
   var msg = "";
-  var basecmd = "ipmitool —I lanplus -H '" +host+ "' -U '"+auth.user+"' -P '"+auth.user+"' ";
+  // See -A PASSWORD, -N 1 -R 10
+  // Node.js runtime says: No hostname specified!
+  //var basecmd = "ipmitool —I lanplus -A PASSWORD -H '" +host+ "' -U '"+auth.user+"' -P '"+auth.pass+"' ";
+  // Weirdly command works with -I ... at end, -H first (from CL).
+  // -A PASSWORD causes Authentication type PASSWORD not supported - even if manual / --help says it is.
+  // At least on CL: -I lanplus must be between -U and -P !! Got: Chassis Power Control: Cycle (Works consistently)
+  // In Node.js (exec) toggles interactive auth
+  var basecmd = "/usr/local/bin/ipmitool  -H '" +host+ "'  -U '"+auth.user+"' —I lanplus -P '"+auth.pass+"' ";
+ 
+  // -I in here (after -H) triggers interactive passwd prompt, ignoring -P !!
+  //var basecmd = "ipmitool  -H '" +host+ "' —I 'lanplus' -U '"+auth.user+"' -P '"+auth.pass+"' ";
+  var basecmd = "ipmitool  -H " +host+ "  -U "+auth.user+" —I lanplus -P "+auth.pass+" "; // NO quotes
+  var execargs = ["-H", host, "-U", auth.user, "-I", "lanplus", "-P ", auth.pass];
+  if (!this.err || !this.succ) { throw "Some of the err/succ callbacks missing !"; }
   if (!this.ipmi) { msg = "IPMI command not found for op: "+ this.op; console.log(msg); return this.err({}); }
   var ipmifullcmd = basecmd + this.ipmi; // Add ipmi sub command
+  execargs =  execargs.concat(this.ipmi.split(/\s+/));
   //if (rmgmt.enckey ) { ipmifullcmd += " -x " +rmgmt.enckey+" "; }
   function mk_ax_resp(iserr) {
     // Try to have all frequently accessed members here
@@ -156,11 +171,22 @@ RFOp.prototype.request_ipmi = function(host, auth) {
     if (iserr) {
       //r.status = 400;
       r = {response: r};
-      r.toString = function () { return this.r.message; }
+      // r.toString = function () { return this.r.message; } // TypeError: Cannot read property 'message' of undefined
+      r.toString = function () { return r.response; }
+      // 
     } // 
     return r;
   }
-  var run = cproc.exec(ipmifullcmd, function (err, stdout, stderr) {
+  var inst = this;
+  var opts = {shell: "/bin/bash"}; // cwd, env, timeout, encoding
+  // TODO: global.ipmi.execbin process.env["LINETBOOT_IPMI_EXECBIN"]
+  var execbin = this.conf.execbin || "/usr/bin/ipmitool"; // Mac brew: "/usr/local/bin/ipmitool";
+  console.log(process.env);
+  console.log("Full IPMI command: "+ipmifullcmd);
+  console.log("Full IPMI command (execv): ", execargs);
+
+  //var run = cproc.exec(ipmifullcmd, opts, function (err, stdout, stderr) {
+  var run = cproc.execFile(execbin, execargs, opts, function (err, stdout, stderr) {
     if (err) {
       msg += "Problem with ipmitool run:" + err;
       console.log(msg);
@@ -168,13 +194,13 @@ RFOp.prototype.request_ipmi = function(host, auth) {
       //return res.json(jr);
       // Simulate axios promise response ?
       var r = mk_ax_resp(1);
-      return this.err(r);
+      return inst.err(r);
     }
     
     console.log("Executed IPMI command successfully: " + stdout);
     //return res.json({status: "ok", data: {"msgarr": msgarr}});
     var r = mk_ax_resp(0);
-    return this.succ(r);
+    return inst.succ(r);
   });
 };
 // https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
