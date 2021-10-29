@@ -619,12 +619,29 @@ function ibip_cell(val, item) {
     //{name: "howto", title: "Howto", type: "text", width: 20, itemTemplate: function (val, item) {}}, // Help icon
 
    ];
+   var fldinfo_covstr = [
+    {"name": "snapshot","title": "Snapshot ID", type: "number", width: 10,},
+    //{"name": "streamName","title": "Stream", width: 50},
+    {"name": "snapshotVersion", "title": "Version",  type: "text", width: 30},
+    {"name": "snapshotTarget", "title": "Target", type: "text", width: 30},
+    {"name": "snapshotDate","title": "Date", type: "text", width: 40},
+    {"name": "buildTime","title": "Build time", type: "text", width: 25},
+    {"name": "fileCount","title": "File Count",  type: "number", width: 15},
+    // {"name": "snapshotDescription","title": "Description"},
+    {"name": "totalDetected","title": "Total Detected",  type: "number", width: 15,},
+    {"name": "newlyDetectedDefectCount","title": "Newly Detected",  type: "number", width: 15},
+    {"name": "newlyEliminatedDefectCount","title": "Newly Eliminated",  type: "number", width: 15},
+    
+    
+    
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
-      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables
+      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
+      "covstr": fldinfo_covstr
    };
    
