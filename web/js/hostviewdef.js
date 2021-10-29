@@ -584,7 +584,7 @@ function ibip_cell(val, item) {
      {name: "namesearch", title: "DNS Search Domains", type: "text", width: 50, itemTemplate: iprof_mulval},
      {name: "nisdomain", title: "NIS Domain", type: "text", width: 20},
      {name: "nisservers", title: "NIS Servers", type: "text", width: 50, itemTemplate: iprof_mulval},
-     {name: "timezone", title: "Timezone", type: "text", width: 30},
+     {name: "time_zone", title: "Timezone", type: "text", width: 30},
      {name: "locale", title: "Locale", type: "text", width: 30},
      {name: "keymap", title: "Keymap", type: "text", width: 10},
      // TODO: osid ? piuser ?
