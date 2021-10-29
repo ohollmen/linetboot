@@ -1762,8 +1762,9 @@ function host_reboot(req, res) {
   //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
-  //rfop
-  rfop.request(rmgmt.ipaddr, ipmiconf2);
+  // See if host (hps = Host params) needs to use IPMI because of buggy or non-existing RedFish interface
+  if (hps["bmcuseipmi"]) { rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
+  else { rfop.request(rmgmt.ipaddr, ipmiconf2); } // RedFish / HTTP
   return;
   //var meth = rfop.m; //var meth = ops[p.op];
   //if (meth == 'get') { delete(hdrs["content-type"]); rfmsg = null; }
@@ -2010,38 +2011,37 @@ function installrequest(req, res) {
   //  });
   //}
   ////////////////// Additionally set PXE boot /////////////////
+  var rmgmtpath = process.env["RMGMT_PATH"] || global.ipmi.path;
+  if (!rmgmtpath) { jr.msg += "No rmgmt path in env or config"; return res.json(jr); }
+  var icok = ipmi.rmgmt_exists(q.hname, rmgmtpath); // IPMI config OK
+  if (!icok) { jr.msg += "Some or all IPMI configs missing to lookup BMC IP."; return res.json(jr); }
+  log("Found IPMI info files for " + q.hname + ", load them ...");
+  let rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
+  if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
+  console.log("HAS-RMGMT:", rmgmt);
+  var hps = hlr.hostparams(f);
+  // Instantiate by IPMI Config (shares creds)
+  var ipmiconf2 = redfish.gencfg(global.ipmi, hps);
+  var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+  // Call host by MC ip address ...
+
+  // Need to use IPMI ?
+  if (hps["bmcuseipmi"]) { rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); return; }
   // RedFish (patch)
-  if (userf) {
-    var rmgmtpath = process.env["RMGMT_PATH"] || global.ipmi.path;
-    let rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
-    if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
-    // Instantiate by IPMI Config (shares creds)
-    var ipmiconf2 = redfish.gencfg(global.ipmi, hlr.hostparams(f));
-    var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
-    // Call host by MC ip address
-    rfop.request(rmgmt.ipaddr, ipmiconf2);
-    // TODO: Decorate these with better message extraction
-    function hdl_redfish_succ(resp) {
-      return res.json({status: "ok", data: {"msgarr": msgarr}});
-    }
-    function hdl_redfish_err(ex) {
-      console.log(ex.toString());
-      jr.msg += ex.toString();
-      return res.json(jr);
-    }
-  }
+  else if (1) { rfop.request(rmgmt.ipaddr, ipmiconf2); return; }
   // IPMI
-  else if (useipmi && ipmi.rmgmt_exists(q.hname)) {
+  else if (useipmi ) { // && ipmi.rmgmt_exists(q.hname) - Already checked
     //var cmd = "";
-    log("Found IPMI info files for " + q.hname);
-    let rmgmt = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
-    if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
-    console.log("HAS-RMGMT:", rmgmt);
-    /* NEW: ...
-    var ipmiconf2 = redfish.gencfg(global.ipmi, hlr.hostparams(f));
-    var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
-    rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2);
-    */
+    
+    // let rmgmt = ipmi.rmgmt_load(f); // Not needed for ipmi_cmd() !!!
+    //if (!rmgmt) { jr.msg += "No rmgmt info for host (by facts)"; return res.json(jr); }
+    //console.log("HAS-RMGMT:", rmgmt);
+    /* NEW: ... */
+    // ALREADY ABOVE: var ipmiconf2 = redfish.gencfg(global.ipmi, hps);
+    // ALREADY ABOVE: var rfop = new redfish.RFOp("setpxe", ipmiconf2).sethdlr(hdl_redfish_succ, hdl_redfish_err);
+    //rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2);
+    //return;
+
     // ipmitool lan print 1   ipmitool user list 1 chassis power status mc info  Reset BMC: mc reset cold [chassis] power soft
     // chassis bootparam set bootflag pxe
     var pxecmd = "chassis bootdev pxe"; // "lan print 1". Also options=persistent
@@ -2063,6 +2063,16 @@ function installrequest(req, res) {
     //return;
   }
   else { return res.json({status: "ok", data: {"msgarr": msgarr} }); }
+  //////////// Success / Error Functions
+  // TODO: Decorate these with better message extraction
+  function hdl_redfish_succ(resp) {
+    return res.json({status: "ok", data: {"msgarr": msgarr}});
+  }
+  function hdl_redfish_err(ex) {
+    console.log(ex.toString());
+    jr.msg += ex.toString();
+    return res.json(jr);
+  }
 }
 /** List MAC address named boot config (or symlink) files in pxelinux.cfg directory.
  */

@@ -183,8 +183,10 @@ function users_parse(userliststr, opts) {
 }
 /** Check merely that remote management info exists.
  * This does merely statting, no files are accessed for parsing.
+ * Checks IPMI info dir. presnence and *.lan.txt and *.users.txt files from within there.
  * @param hn {string} - Host name
  * @param rmgmtpath {string} - Path for IPMI files
+ * @return true value for IPMI configs available, false for some missing.
  */
 function rmgmt_exists(hn, rmgmtpath) {
   var debug = 1;

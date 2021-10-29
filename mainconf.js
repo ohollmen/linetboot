@@ -192,7 +192,7 @@ function disabled_detect(global) {
     //dis.push("groups");
   }
   var esxi = global.esxi;
-  if (esxi && !esxi.password) { dis.push("esxiguests"); } // Note UI term
+  if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) { dis.push("esxiguests"); } // Note UI term
   var proc = global.procster;
   if (proc && !proc.urlpath) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
   return dis;

@@ -100,7 +100,8 @@ RFOp.prototype.makeurl = function (host, extra) {
 };
 /** Set success and error operations for (asynchronous) RedFish operation.
  * The success and error calls recieve axios http call promise resolve and reject objects
- * (See axios api for that). 
+ * (See axios api for that).
+ * For pure IPMI simulated objects are created by request_ipmi() (by mk_ax_resp()).
  */
 RFOp.prototype.sethdlr = function (succcb, errcb) {
   this.succ = succcb;
@@ -148,10 +149,15 @@ RFOp.prototype.request_ipmi = function(host, auth) {
   var ipmifullcmd = basecmd + this.ipmi; // Add ipmi sub command
   //if (rmgmt.enckey ) { ipmifullcmd += " -x " +rmgmt.enckey+" "; }
   function mk_ax_resp(iserr) {
-    var r = {status: iserr, message: ""};
+    // Try to have all frequently accessed members here
+    var r = {status: iserr, statusText: "", message: msg, headers: {}, data: {}}; // Use local msg ? "Error in IPMI CLI call."
     // In error response is in member response
     // NOTE: error should have .toString() method
-    //if (iserr) { r = {response: r}; } // toString: function () { return this.message; }
+    if (iserr) {
+      //r.status = 400;
+      r = {response: r};
+      r.toString = function () { return this.r.message; }
+    } // 
     return r;
   }
   var run = cproc.exec(ipmifullcmd, function (err, stdout, stderr) {
