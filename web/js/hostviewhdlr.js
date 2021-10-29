@@ -103,6 +103,11 @@ function hostgroups(ev, act) {
   var colla = act.colla || "items"; // items ? ("hosts" already in org act node)
   var fsid = act.fsid; // NO default
   if (!fsid) { return alert("No field layout !"); }
+  // See disabled by act.elsel (TODO: Suppress whole tab)
+  if (datasets && datasets.cfg && datasets.cfg.disabled && datasets.cfg.disabled.includes(act.elsel)) {
+    return $('#' + elsel).append("<p style=\"font-size: 11px; \">"+act.name+" not enabled in this system.</p>");
+  }
+  // console.log("Disabled: ",datasets.cfg.disabled, " elsel:", act.elsel);
   toastr.info("Loading "+act.name);
   var spinner;
   var spel = document.getElementById(ev.viewtgtid);
