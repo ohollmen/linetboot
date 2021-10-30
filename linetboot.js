@@ -1763,7 +1763,7 @@ function host_reboot(req, res) {
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   // See if host (hps = Host params) needs to use IPMI because of buggy or non-existing RedFish interface
-  if (hps["bmcuseipmi"]) { console.log("Use IPMI !"); rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
+  if ((p.op == "boot") && hps["bmcuseipmi"]) { console.log("Use IPMI !"); rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
   else { rfop.request(rmgmt.ipaddr, ipmiconf2); } // RedFish / HTTP
   return;
   //var meth = rfop.m; //var meth = ops[p.op];
@@ -1816,7 +1816,9 @@ function host_reboot(req, res) {
     var messages = [];
     if (resp && resp.data.error && resp.data.error["@Message.ExtendedInfo"]) {
       var arr = resp.data.error["@Message.ExtendedInfo"];
-      messages = arr.map(function (it) { return it.Message; });
+      // arr.map is not a function 
+      if (Array.isArray(arr)) { messages = arr.map(function (it) { return it.Message; }); }
+      else { console.log("Warning: arr is not Array !"); }
       
     }
     jr.messages = messages;
