@@ -348,7 +348,7 @@ function ansishow(ev, an) {
       //para.what = what.concat(para.hostgroups);
       para.what = what.concat(para.hostnames).concat(para.hostgroups);
       //if (para.what.length != 1) { return toastr.error(); } // NOT !
-      if (!para.playbooks.length || para.playbooks.length > 1) { return toastr.error("Only single playbook allowed !"); }
+      if (!para.playbooks || !para.playbooks.length || para.playbooks.length > 1) { return toastr.error("Only single playbook allowed (provide one, but no more) !"); }
       para.pb = para.playbooks[0];
       extra.host = para.what.join(','); // Only on pb !
       
