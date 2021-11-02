@@ -817,11 +817,16 @@ append -c ESXi-7/boot.cfg
 ipappend 2
 
 # SmartOS https://wiki.smartos.org/pxe-booting-smartos/
-# label smartos
-# menu label SmartOS NetBoot
+# https://eerielinux.wordpress.com/2021/02/20/multi-os-pxe-booting-from-freebsd-12-linux-illumos-and-more-pt-4-2/
+label smartos
+menu label SmartOS NetBoot
 # Alternative (multiboot spec): kernel mboot.c32
 # The long date token is ${smartos-build}
 # kernel http://{{ httpserver }}/smartos/20121004T212912Z/platform/i86pc/kernel/amd64/unix
 # initrd http://{{ httpserver }}/smartos/20121004T212912Z/platform/i86pc/amd64/boot_archive
 # Rescue: standalone=true,noimport=true,
 # append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7xcIwGnllhzp2HnT.mDO7DpxYA' --- smartos/platform/i86pc/amd64/boot_archive
+# eerielinux (proven) way
+# kernel memdisk
+initrd http://{{ httpserver }}/smartos-latest-USB.img.gz
+append harddisk raw
