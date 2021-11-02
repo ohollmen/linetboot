@@ -181,7 +181,7 @@ RFOp.prototype.request_ipmi = function(host, auth) {
   var opts = {shell: "/bin/bash"}; // cwd, env, timeout, encoding
   // TODO: global.ipmi.execbin process.env["LINETBOOT_IPMI_EXECBIN"]
   var execbin = this.conf.execbin || "/usr/bin/ipmitool"; // Mac brew: "/usr/local/bin/ipmitool";
-  console.log(process.env);
+  // console.log(process.env);
   console.log("Full IPMI command: "+ipmifullcmd);
   console.log("Full IPMI command (execv): ", execargs);
 

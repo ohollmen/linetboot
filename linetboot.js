@@ -1757,13 +1757,15 @@ function host_reboot(req, res) {
   if (!rfop) { jr.msg += "Failed to create RFOp"; return res.json(jr); }
   rfop.debug = 1;
   console.log("Constructed RFOp", rfop);
+  var isbootop = {"boot": 1, "setpxe": 1}; // Boot related ops (NOT: info)
   if ((p.op == 'boot') && hps['rfresettype']) { rfop.msg.ResetType = hps['rfresettype']; console.log("Changed ResetType to: "+rfop.msg.ResetType); }
   // use IP Address to NOT have to use DNS to resolve.
   //var rfurl = rfop.makeurl(rmgmt.ipaddr, ipmiconf); // "https://"+rmgmt.ipaddr+rebooturl.base + "Systems/" + sysid + rebooturl[p.op];
   // "User-Agent": "curl/7.54.0"
   //var hdrs = { Authorization: "Basic "+bauth, "content-type": "application/json", "Accept":"*/*" }; // 
   // See if host (hps = Host params) needs to use IPMI because of buggy or non-existing RedFish interface
-  if ((p.op == "boot") && hps["bmcuseipmi"]) { console.log("Use IPMI !"); rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
+  // OLD: (p.op == "boot")
+  if ((isbootop[p.op]) && hps["bmcuseipmi"]) { console.log("Use IPMI (on "+p.op+" based on host param) !"); rfop.request_ipmi(rmgmt.ipaddr, ipmiconf2); } // IPMI (fallback)
   else { rfop.request(rmgmt.ipaddr, ipmiconf2); } // RedFish / HTTP
   return;
   //var meth = rfop.m; //var meth = ops[p.op];

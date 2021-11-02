@@ -53,7 +53,7 @@ While key names for key-value pairs are arbitrary (and may be used by ansible pl
 - bmcipaddr (str) - BMC IP Address (when no recorded IPMI info is available)
 - bmcuseipmi (bool) - Force use of IPMI for BMC ops, e.g. due to buggy or missing RedFish implementation.
 - rfresettype (str) - Use alternative Boot/Reset type when booting host by BMC RedFish interface (Built in Default: PowerCycle,
-some values worth trying: GracefulRestart, PushPowerButton, Nmi. View your "RedFish Info" via linetboot GUI to see what options
+some values worth trying: GracefulRestart, ForceRestart, PushPowerButton, Nmi. View your "RedFish Info" via linetboot GUI to see what options
 your BMC supports)
 - ptt (str) - partition table type for host with supported values: "mbr" - Master Boot Record / "gpt" - GUID Partition table
 - nbp (str) - Network boot program, bootloader to use for this host (name given by DHCP, available by TFTP) 
