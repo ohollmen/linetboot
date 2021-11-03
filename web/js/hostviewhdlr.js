@@ -832,17 +832,18 @@ function shellview_show(ev, act) {
   var hlist = datasets.hostlist;
    console.log(hlist.length + " hosts");
    // splice(1, 5).
-   var hnl = hlist.map((e) => { return e.hname; });
+   // Filter by nossh
+   var hnl = hlist.filter((e) => { return !e.nossh; }).map((e) => { return e.hname; });
    // console.log("hnl: ", hnl);
    
    //////////////// 
   var p = {shellid: "siab", hname: "", port: 4200};
   rapp.templated("t_shell", p, ev.viewtgtid);
-  hnl.forEach((hn) => {
-    var hlink = " <span class=\"shlink\" data-hname=\""+hn+"\" style=\"font-size: 10px\">"+hn+"</span> ";
-    $("#shlinks").append(hlink);
+  var hlinks = hnl.map((hn) => {
+    return " <li><span class=\"shlink\" data-hname=\""+hn+"\" style=\"font-size: 10px\">"+hn+"</span></li>";
     // console.log("Create link for "+hn);
-   });
+   }).join(' ');
+   $("#shlinks").append(hlinks);
   var el = document.getElementById(p.shellid);
   if (!el) { return toastr.error("Could not find terminal"); }
   // Set hanlder on host links
