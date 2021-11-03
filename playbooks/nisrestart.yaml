@@ -1,0 +1,23 @@
+# Restart NIS client related services (ypbind)
+# Optionally restarts
+# - nscd - daemon that possibly has NIS information cached
+# - autofs - automounter service that gets it's info from
+# With the keywords / vars above set to true value (each)
+# respective service is also restarted.
+- name: Restart NIS client
+  hosts: '{{ host }}'
+  become: yes
+  vars:
+    nscd: 0
+    autofs: 0
+  tasks:
+    # Ubuntu > 18 calls ypbind with alias "nis", but ypbinad works
+    # Use the more universal name here.
+    - name: NIS restart
+      shell: sudo service ypbind restart
+    - name: NSCD Restart
+      shell: sudo service nscd restart
+      when: nscd
+    - name: Restart autofs
+      shell: sudo service autofs restart
+      when: autofs

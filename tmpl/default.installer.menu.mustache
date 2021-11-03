@@ -832,6 +832,7 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 #append harddisk raw
 
 # CoreOS / Container OS / Fedora CoreOS (FCOS)
+# Can't get interfaces up. Try rd.neednet = 1
 # https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
 # Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
 label fcos
@@ -842,7 +843,7 @@ kernel http://{{ httpserver }}/fcos/images/pxeboot/vmlinuz
 # APPEND
 initrd http://{{ httpserver }}/fcos/images/pxeboot/initrd.img,http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img
 # Live PXE:
-append ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
+append rd.neednet=1 ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
 # Install ???
 # append coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://{{ httpserver }}/config.ign
 ipappend 2

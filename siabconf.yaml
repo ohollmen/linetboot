@@ -1,0 +1,34 @@
+# # Modify Shell-in-a-box config
+# 
+- name: Modify shellinabox config
+  hosts: "{{ host }}"
+  become: yes
+  gather_facts: yes
+  vars:
+    siab_cfg_deb: "/etc/default/shellinabox"
+    siab_cfg_rh: "/etc/sysconfig/shellinaboxd"
+    siab_port: 4200
+  tasks:
+    - Install shellinabox - Debian/Ubuntu
+      shell: apt-get install shellinabox
+      when: 'ansible_os_family == "Debian"'
+    - Install shellinabox
+      shell: yum install openssl shellinabox
+      when: 'ansible_os_family == "RedHat"'
+    # Ensure port
+    - name: Modify (Debian/Ubuntu) Config
+      lineinfile:
+        path: '{{ siab_cfg_deb }}'
+        state: present
+	regexp: '^SHELLINABOX_ARGS'
+	line: 'SHELLINABOX_ARGS="--no-beep -s /:SSH:{{ ansible_default_ipv4.address }}"'
+      when: 'ansible_os_family == "Debian"'
+    # TODO: Same for regexp: '^PORT=' line: 'PORT={{ siab_port }}'
+    - Modify (RH/Centos) Config
+      lineinfile:
+        path: '{{ siab_cfg_rh }}'
+	state: present
+	regexp: '^OPTS='
+	line: 'OPTS=" -s /:SSH:{{ ansible_default_ipv4.address }}"'
+      when: 'ansible_os_family == "RedHat"'
+

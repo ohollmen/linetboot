@@ -1,0 +1,36 @@
+# # Expose Docker API
+# Tweak systemd Docker (Daemon) Unit file to allow API visibility.
+# Note: expects systemd on the OS (i.e. will not work on Ubuntu 14.04 or RH/Centos 6.X)
+- name: Expose Docker API
+  vars:
+    # Path ok on Ubuntu 18, Centos 7
+    sysd_unit: /lib/systemd/system/docker.service
+    dport: "4243"
+  hosts: "{{ host }}"
+  become: yes
+  tasks:
+    - name: Alter (Ubu/Deb) Config
+      lineinfile:
+        path: "{{ sysd_unit }}"
+        state: present
+        create: no
+        regexp: '\bExecStart='
+        # Lose local socket: --containerd=/run/containerd/containerd.sock
+        line: "ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\""
+        backup: yes
+      when: 'ansible_os_family == "Debian"'
+    # See also: /etc/sysconfig/docker-network 
+    - name: Alter (RH/Centos) Config
+      lineinfile:
+        path: "{{ sysd_unit }}"
+        state: present
+        create: no
+        regexp: '\bExecStart='
+        # Lose local socket: --containerd=/run/containerd/containerd.sock
+        # line: "ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\""
+	line: "ExecStart=/usr/bin/dockerd-current -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\" \\"
+        backup: yes
+      when: 'ansible_os_family == "RedHat"'
+    - name: Restart docker daemon
+      shell: systemctl daemon-reload; systemctl restart docker
+
