@@ -131,7 +131,8 @@ dotlinetboot:
 	@ls -al ~/.linetboot
 	
 jsdoc: FORCE
-	jsdoc linetboot.js -R README.md -c doc/.jsdoc.conf.json
+	# jsdoc
+	node_modules/jsdoc/jsdoc.js linetboot.js ansiblerun.js osinstall.js hostloader.js mainconf.js redfish.js -R README.md -c doc/.jsdoc.conf.json
 	#mkdir -p out/doc; cd out/doc; [ ! -L "netbootseq.png" ] && ln -s ../../doc/netbootseq.png netbootseq.png
 	mkdir -p out/doc; cd out/doc; if [ ! -L "netbootseq.png" ]; then ln -s ../../doc/netbootseq.png netbootseq.png; fi
 htmldoc: FORCE
