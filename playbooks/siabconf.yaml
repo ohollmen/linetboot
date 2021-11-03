@@ -21,7 +21,7 @@
         path: '{{ siab_cfg_deb }}'
         state: present
 	regexp: '^SHELLINABOX_ARGS'
-	line: 'SHELLINABOX_ARGS="--no-beep -s /:SSH:{{ ansible_default_ipv4.address }}"'
+	line: 'SHELLINABOX_ARGS="--no-beep -s /:SSH:{{ ansible_default_ipv4.address }} -m \"*\""'
       when: 'ansible_os_family == "Debian"'
     # TODO: Same for regexp: '^PORT=' line: 'PORT={{ siab_port }}'
     - Modify (RH/Centos) Config

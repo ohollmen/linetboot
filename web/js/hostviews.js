@@ -552,6 +552,8 @@ var tabloadacts = [
   // Ansible
   {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"},
   {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", path: "bootables"},
+  // shell
+  {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", gridid: "", path: "shell"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

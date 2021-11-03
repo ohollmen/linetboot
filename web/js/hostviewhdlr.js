@@ -825,3 +825,35 @@ function apidoc(ev, act) {
   }).catch (function (ex) { console.log(ex); });
 }
 //////////// Dialog handlers ////////////////////
+// Shell view
+// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe
+function shellview_show(ev, act) {
+  // TEST: Extract hosts from dataloader cache
+  var hlist = datasets.hostlist;
+   console.log(hlist.length + " hosts");
+   // splice(1, 5).
+   var hnl = hlist.map((e) => { return e.hname; });
+   // console.log("hnl: ", hnl);
+   
+   //////////////// 
+  var p = {shellid: "siab", hname: "", port: 4200};
+  rapp.templated("t_shell", p, ev.viewtgtid);
+  hnl.forEach((hn) => {
+    var hlink = " <span class=\"shlink\" data-hname=\""+hn+"\" style=\"font-size: 10px\">"+hn+"</span> ";
+    $("#shlinks").append(hlink);
+    // console.log("Create link for "+hn);
+   });
+  var el = document.getElementById(p.shellid);
+  if (!el) { return toastr.error("Could not find terminal"); }
+  // Set hanlder on host links
+  // $(".shlink").click((jev) => { let el = jev.target; alert(el.dataset.hname);  }); // dataset.hname (NOT: this - why ?)
+  $(".shlink").click(sethost);
+  function sethost(jev) {
+    var evel = jev.target;
+    var hname = evel.dataset.hname;
+    $("#s_hname").html(hname);
+    el.src = "https://"+hname+":"+p.port;
+    //el.src = "http://"+p.hname+":3000/preseed.cfg"; // "/web"
+    console.log("Set URL to: "+el.src+ " on "+el);
+  }
+}
