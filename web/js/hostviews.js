@@ -882,13 +882,21 @@ function pkg_stats(ev, act) {
   // Param: prop (for stat), label/name, scaling, canvas sel.
   //var gscale = 1000;
   // Routing event ?
-  // TODO(data): {charts: [{},{}, ...]}
+  // TODO(data, all in one ?): {charts: [{},{}, ...]}
+  var chdefs = [
+    { title: "Package Stats", lblprop: "hname", url:"/hostpkgcounts", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000},
+    { title: "CPU Counts", lblprop: "hname", url: "/hostcpucounts", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
+    { title: "Memory Stats", lblprop: "hname", url: "/hostmemstats", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
+    { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
+  ];
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
+  //async.map(chdefs, fetchchart, (err, ress) => { toastr.info("Done with charts"); });
+  //return;
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = {title: "Package Stats", lblprop: "hname", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000};
+    var chdef = chdefs[0];
     createchart(data, chdef); // "Packages", "pkgcnt", 'canvas_pkg'
   }).catch(function (ex) { console.log(ex); });
   
@@ -897,27 +905,38 @@ function pkg_stats(ev, act) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = { title: "CPU Counts", lblprop: "hname", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10};
-    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+    var chdef = chdefs[1];
+    createchart(data, chdef);
   }).catch(function (ex) { console.log(ex); });
   // 
   axios.get('/hostmemstats').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = { title: "Memory Stats", lblprop: "hname", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10};
-    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+    var chdef = chdefs[2];
+    createchart(data, chdef);
   }).catch(function (ex) { console.log(ex); });
   
   axios.get('/distrostats').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Distro stats error: " + d.msg); return; }
     var data = d.data;
-    var chdef = { title: "OS Distro Stats", lblprop: "distname", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1};
-    createchart(data, chdef); // "CPU:s", "numcpus", 'canvas_cpu'
+    var chdef = chdefs[3];
+    createchart(data, chdef);
   }).catch(function (ex) { console.log(ex); });
   // TODO: /cpuarchstats
-  
+  // Fetch and create/display chart
+  function fetchchart(chdef, cb) {
+    if (!chdef.url) { alert("No URL for chart !"); return; }
+    // clone chdef to add stats about ch-dataset ?
+    axios.get(chdef.url).then(function (resp) {
+      var d = resp.data;
+      if (d.status == "err") { alert(chdef.title + " stats error: " + d.msg); return; }
+      var data = d.data;
+      createchart(data, chdef);
+      return cb(null, chdef);
+    }).catch((ex) => { console.log(ex); return cb(ex, null); });
+  }
   // Uses global: cmap, global scales, outer: gscale (for ... suggestedMax)
   function createchart(data, chdef) { // label, vprop, canvasid
     var vprop    = chdef.chcols[0].attr;
