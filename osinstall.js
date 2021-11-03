@@ -169,7 +169,11 @@ function url_config_type(url) {
   return recipes_idx[url].ctype;
 }
 
-// Wrapper for getting template content
+/** Wrapper for getting template content by URL.
+ * @param url {string} - URL through which recipe was called
+ * @param forcefn {string} - template filename to force for this URL instead of one looked up from recipe info
+ * @return template content
+ */
 function template_content(url, forcefn) {
   var recipe = recipes_idx[url]; // url
   if (!recipe) { console.log("No recipe for URL: "+ url); return ""; }
@@ -263,7 +267,12 @@ function url_hdlr_set(app) {
   //});
 }
 //////////////////// OS INSTALL Main ///////////////////////
-
+/** Detect IP v4 address from HTTP request.
+ * Address can come from
+ * - Request TCP/IP Connection socket
+ * - HTTP (proxy set) header "x-forwarded-for" (This will override the socket IP as "more actual")
+ * @return IP Address
+ */
 function ipaddr_v4(req) {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   console.log("x-forwarded-for: "+req.headers['x-forwarded-for']);

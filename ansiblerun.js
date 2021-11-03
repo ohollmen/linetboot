@@ -1,4 +1,6 @@
-/** Ansible Runner
+/** @file
+ * 
+* Ansible Runner
 * Ways to control user identity / creds in Ansible:
 - Ansible config file: DEFAULT_REMOTE_USER ()
 - Playbook: remote_user
@@ -6,7 +8,7 @@
 
 # Testing Playbooks Manually
 ```
-
+ansible-playbook -i ... book.yaml -e "..."
 ```
 References:
 * - Google: ansible host selector
@@ -136,7 +138,7 @@ Runner.prototype.playbooks_resolve = function (acfg) {
  * If this.hostgroups is said to be a "virtual group" `["all"]`, all hosts are gathered from groups.
  * TODO: Should go by Linetboot known hosts, as groups may not be defined. Where to get these ?
  * @param grps {array} - Array of group names
- * @return ...
+ * @return hostnames
  */
 /*
 Runner.prototype.hostgrps_resolve = function (grps) {
@@ -289,7 +291,9 @@ Runner.compfname = function (runid, data) {
 }
 
 // Extra parameters for the -e / --extra-vars. Also consider -e @filename.json
-  // Add extra params from prun to p.xpara object and Serialize params into string member of prun at end (by mkxpara())
+/** Add extra params from current run context to ansiblerunner before executing playbook.
+ * Add params to `this.xpara` object.
+ */
 Runner.prototype.xpara_add =  function (xpara) { // Instance method (OLD: prun)
     // By default we have already set defaults (in p.xpara) for ansible_sudo_pass, host, these may still be overriden by xpara (if passed)
   
@@ -304,7 +308,9 @@ Runner.prototype.xpara_add =  function (xpara) { // Instance method (OLD: prun)
       if (xpara[k]) { this.xpara[k] = xpara[k]; } // !== undefined
     }, this);
   }
-// Serialize Object contained params as string for --extra-vars (-e)
+/** Serialize Object contained params as string for --extra-vars (-e).
+* @return Serialized parameters as (JSON) string.
+*/
 Runner.xpara_ser = function (xps) {
   // Must be Object, not Array
   //var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
@@ -312,8 +318,14 @@ Runner.xpara_ser = function (xps) {
   return JSON.stringify(xps); // JSON. Must single-quote or save to file on caller side
 }
 
-/* TODO: pass config, attach handlers */
-// Make into instance method ? Runner.prototype.runexec = 
+/** Wrap running cproc.exec() for any ansible command.
+ * Write log of stdout to a file (under /tmp)
+ * @param cmd {string} - Ansible command
+ * @param cb {function} - Callback to call with stats info data
+ * @todo pass config, attach handlers 
+ * @todo Make into instance method ? Runner.prototype.runexec = 
+ * @todo Embed timing stats here (single op/ single playbook)
+*/
   function runexec(cmd, cb) {
     console.log("Start runexec by calling cproc.exec");
     cproc.exec(cmd, function (err, stdout, stderr) {
@@ -324,13 +336,15 @@ Runner.xpara_ser = function (xps) {
       try {
         fs.writeFileSync( anslogfile_o, stdout, {encoding: "utf8"} );
         // fs.writeFileSync( anslogfile_e, stderr, {encoding: "utf8"} );
-      } catch (ex) { console.log("Error creating Ansible stderr,stdout logs !"); return cb(ex, null); }
+      } catch (ex) { console.log("Error creating Ansible stdout  log !"); return cb(ex, null); } // (stderr?)
       console.log("Ansible cproc.exec success !");
       var data = {cmd: cmd, logfile: anslogfile_o, runstatus: "ok", };
       cb(null, data); // {stdout: stdout, stderr: stderr}
     });
   }
 /** Gather facts with host/group scope given in instance.
+ * @param cb {function} - callback to call (with err, data) after async running of gathering.
+ * @return none (call cb and pass results to it)
  */
 Runner.prototype.fact_gather = function (cb) {
   if (!cb) { console.log("fact_gather: cb missing !"); return; }
@@ -357,10 +371,11 @@ Runner.prototype.fact_gather = function (cb) {
   });
 }
 
-/** Construct Ansible runner
+/** Construct Ansible runner.
 * 
-* @param cfg {object} - Run-Context specific config (not global)
+* @param cfg {object} - Run-Context specific config (not global, with: hostnames,hostgroups,playbooks,playprofile, ...)
 * @param acfg {object} - Application (global/context independent) ansible config
+* @return Object instance
 */
 function Runner(cfg, acfg) {
   var attrs = ["hostnames", "hostgroups", "playbooks",  "playprofile", "runstyle"]; // , "debug"
@@ -397,6 +412,7 @@ function Runner(cfg, acfg) {
 * requirement to be able to run them as playbooks).
 * @param acfg {object} - Ansible Config Object
 * @param pbpath {string} - Playbook Path (of ':' - delimited path items)
+* @return Playbook objects in an array ( with basename, relname, playname)
 */
 function ansible_play_list(acfg, pbpath) { // dirname
   // List dir(s)
@@ -441,9 +457,10 @@ function ansible_play_list(acfg, pbpath) { // dirname
   return fnodes;
 }
 /** List profiles in simple AoO format (for the Web gui select).
- * 
+ * @param acfg {object} - Ansible config
+ * @return Play profiles (as AoO)
  */
-function ansible_prof_list(acfg, foo) {
+function ansible_prof_list(acfg) {
   if (!acfg.pbprofs) { console.error("Warning: No ansible profiles"); return []; }
   var dtype = Array.isArray(acfg.pbprofs) ? 'arr' : 'obj';
   if (dtype != 'arr') { console.error("Ansible play profiles not in array"); return null; }

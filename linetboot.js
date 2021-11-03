@@ -495,11 +495,12 @@ function ldcopts_by_conf(ldc) {
   }
   return ldcopts;
 }
-// Bind LDAP Connection and call an (optional) cb
-// @param ldc {object} - LDAP Connection config (with "binddn" and "bindpass", e.g. from main config, see docs)
-// @param ldconn {object} - LDAP client / connection to bind
-// @param cb {function} - Optional callback function to call with err,ldconn
-// Passing cb is highly recommended, otherwise errors are handled by throwing an exception.
+/** Bind LDAP Connection and call an (optional) cb
+* @param ldc {object} - LDAP Connection config (with "binddn" and "bindpass", e.g. from main config, see docs)
+* @param ldconn {object} - LDAP client / connection to bind
+* @param cb {function} - Optional callback function to call with err,ldconn
+* Passing cb is highly recommended, otherwise errors are handled by throwing an exception.
+*/
 function ldconn_bind_cb(ldc, ldconn, cb) {
   cb = cb || function (err, data) {
     if (err) { throw "Error Bindng (no explicit cb): "+ err; }
@@ -606,10 +607,10 @@ function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 *      http://localhost:3000/installevent/start
 * 
 * ## Event Types
-* Modeled along typical Linux installers, the allowed even types are:
+* Modeled along typical Linux installers, the allowed event types are:
 * - start - Start of installation
 * - end - End of installation (Also has legacy alias "done")
-* - post - 
+* - post - After main part of installation
 * ## Testing Events submission
 * 
 * Especially the "end" event with its triggered actions may be worth getting familiar with and
@@ -1626,6 +1627,10 @@ function hostp_prop_aggr(req, res) {
   });
   res.json({status:"ok", data: arr});
 }
+
+//function rawchart() {
+//  
+//}
 
 /** Present pkg stats (yes/no) for set of pkgs.
  * Send both js-grid grid def and AoO data.

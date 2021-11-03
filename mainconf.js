@@ -29,7 +29,7 @@ function error(msg) {
 }
 /** Load main configuration.
  * @param globalconf {string} - Filename for main configuration.
- * @return 
+ * @return handle to main config (object)
  */
 function mainconf_load(globalconf) {
   if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
