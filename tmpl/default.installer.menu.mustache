@@ -821,12 +821,28 @@ ipappend 2
 label smartos
 menu label SmartOS NetBoot
 # Alternative (multiboot spec): kernel mboot.c32
-# The long date token is ${smartos-build}
-# kernel http://{{ httpserver }}/smartos/20121004T212912Z/platform/i86pc/kernel/amd64/unix
-# initrd http://{{ httpserver }}/smartos/20121004T212912Z/platform/i86pc/amd64/boot_archive
+# The long date token in example URL:s is ${smartos-build} (e.g. 20121004T212912Z), does not exist on ISO:s
+kernel http://{{ httpserver }}/smartos/platform/i86pc/kernel/amd64/unix
+initrd http://{{ httpserver }}/smartos/platform/i86pc/amd64/boot_archive
 # Rescue: standalone=true,noimport=true,
-# append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7xcIwGnllhzp2HnT.mDO7DpxYA' --- smartos/platform/i86pc/amd64/boot_archive
-# eerielinux (proven) way
-kernel memdisk
-initrd http://{{ httpserver }}/smartos-latest-USB.img.gz
-append harddisk raw
+append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7xcIwGnllhzp2HnT.mDO7DpxYA' --- smartos/platform/i86pc/amd64/boot_archive
+# eerielinux (proven) way. Except: Ramdisk at ..., length ...  Not enough memory to decompress image (need 0x73a20e00 bytes)
+# kernel memdisk
+#initrd http://{{ httpserver }}/smartos-latest-USB.img.gz
+#append harddisk raw
+
+# CoreOS / Container OS / Fedora CoreOS (FCOS)
+# https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
+# Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
+label fcos
+menu label Fedora CoreOS 34
+# fedora-coreos-32.20200726.3.1-live-kernel-x86_64
+kernel http://{{ httpserver }}/fcos/images/pxeboot/vmlinuz
+# initrd from example fedora-coreos-32.20200726.3.1-live-initramfs.x86_64.img, fedora-coreos-32.20200726.3.1-live-rootfs.x86_64.img
+# APPEND
+initrd http://{{ httpserver }}/fcos/images/pxeboot/initrd.img,http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img
+# Live PXE:
+append ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
+# Install ???
+# append coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://{{ httpserver }}/config.ign
+ipappend 2
