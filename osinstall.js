@@ -137,6 +137,9 @@ function pp_fcos(out, d) {
   //console.log("Got YAML: "+out);
   try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
   if (y) {
+    delete(y.variant);
+    y.ignition = { version: y.version };
+    delete(y.version);
     var p = y.passwd;
     if (p && p.users && p.users[0]) { camelcase(p.users[0]); }
     out2 = JSON.stringify(y, null, 2);
