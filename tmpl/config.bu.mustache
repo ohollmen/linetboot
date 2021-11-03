@@ -1,0 +1,49 @@
+# https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/
+# https://coreos.github.io/butane/specs/
+# https://coreos.github.io/butane/examples/
+# Getting butane: https://docs.openshift.com/container-platform/4.8/installing/install_config/installing-customizing.html
+#   - curl https://mirror.openshift.com/pub/openshift-v4/clients/butane/latest/butane --output butane
+# Running butane: ./butane --pretty config.bu
+variant: fcos
+version: 1.4.0
+passwd:
+  users:
+    - name: {{ user.username }}
+      uid: {{ user.uidnum }}
+      gecos: {{ user.fullname }}
+      home_dir: {{{ user.homedir }}}
+      # primary_group: {{ }}
+      groups:
+        - wheel
+      #ssh_authorized_keys:
+      #  - ssh-rsa AAAA...
+      # E.g. mkpasswd --method=yescrypt
+      #password_hash: {{ user.password_crypted }}
+      no_create_home: false
+      #shell: 
+  #groups:
+  #  - name, gid, password_hash:
+  # directories:
+  #  - path: /home_install:
+  storage:
+    # E.g. scripts
+    files:
+      - path: /tmp/foo
+        contents:
+          source: http://{{ httpserver }}/preseed.cfg
+        mode: 0644
+  #  disks:
+  #    - device: /dev/sda
+  #      wipe_table: 1
+  #      partitions:
+  #        - number: 1
+  #          label: var
+  #          size_mib: 
+  #          resize: false
+  # filesystems:
+  #  - device: /dev/sda1
+  #    format: ext4
+  #    path: /
+  #    label: root
+  #systemd:
+  #  units: ...

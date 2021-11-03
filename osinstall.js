@@ -103,6 +103,8 @@ var recipes = [
   // Ubuntu 20 ("focal") "autoinstall" yaml (not template-only) ?
   // https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
   {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", "pp": pp_subiquity},
+  // FCOS JSON /config.ign. Recommended to create (Butane) YAML, convert (with Butane/podman) to ign JSON
+  {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "pp": pp_fcos}, // TODO: ign.mustache
 ];
 function pp_subiquity(out, d) {
   var out2 = out;
@@ -124,6 +126,34 @@ function pp_subiquity(out, d) {
     out2 = "#cloud-config\n"+yaml.safeDump(y, ycfg);
   }
   return out2;
+}
+// FCOS (YAML-to-JSON)
+function pp_fcos(out, d) {
+  var out2 = out;
+  var y;
+  var ycfg = {
+    'styles': { '!!null': 'canonical' },
+  };
+  //console.log("Got YAML: "+out);
+  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
+  if (y) {
+    var p = y.passwd;
+    if (p && p.users && p.users[0]) { camelcase(p.users[0]); }
+    out2 = JSON.stringify(y, null, 2);
+  }
+  return out2;
+  function camelcase(obj) {
+    var re = /_([a-z])/g;
+    Object.keys(obj).forEach((k) => {
+      if (k.match('_')) {
+        console.log("Underscore key: "+k);
+	var rep = k.replace(re, function (match, p1) { return p1.toUpperCase(); });
+	console.log("Replace with: "+rep);
+	obj[rep] = obj[k];
+	delete(obj[k]);
+      }
+    });
+  }
 }
 var recipes_idx = {};
 
