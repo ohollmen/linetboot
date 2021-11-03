@@ -128,6 +128,8 @@ function pp_subiquity(out, d) {
   return out2;
 }
 // FCOS (YAML-to-JSON)
+// Do essentially what "butane" utility does to Butane-syntax YAML. Includes Initial cut
+// on converting keys with "_([a-z])" to uppercase($1) (e.g. home_dir => homeDir)
 function pp_fcos(out, d) {
   var out2 = out;
   var y;
@@ -150,10 +152,10 @@ function pp_fcos(out, d) {
     Object.keys(obj).forEach((k) => {
       if (k.match('_')) {
         console.log("Underscore key: "+k);
-	var rep = k.replace(re, function (match, p1) { return p1.toUpperCase(); });
-	console.log("Replace with: "+rep);
-	obj[rep] = obj[k];
-	delete(obj[k]);
+        var rep = k.replace(re, function (match, p1) { return p1.toUpperCase(); });
+        console.log("Replace with: "+rep);
+        obj[rep] = obj[k];
+        delete(obj[k]);
       }
     });
   }
@@ -348,7 +350,8 @@ function preseed_gen(req, res) {
   var xip = req.query["ip"]; // eXplicit IP
   var ip = ipaddr_v4(req); // Detect IP
   // TODO: Review osid / oshint concept (and for what all it is used (1. Mirrors, 2. ...)
-  var osid = req.query["osid"] || global.targetos || "ubuntu18"; // TODO: 1) Later. recipe.osid
+  // DEPRECATED: global.targetos ||
+  var osid = req.query["osid"] ||  "ubuntu18"; // TODO: 1) Later. recipe.osid
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   // Lookup directly by IP
   var f = hostcache[ip]; // Get facts. Even no facts is ok for new hosts.
@@ -805,12 +808,19 @@ function recipe_params_disk(d, osid, ctype) {
  * @param osid - OS id label (from boot menu recipe URL) passed to server as query parameter
  * @param ctype - Config type
  * @return Mirror config with "hostname" and "directory".
+ * 
+ * ## Info on mirror settings on OS
+ * - Debian/Ubuntu:
+ * - Centos: Directive "url --url http://..." (Addl repos: repo --name ... --baseurl ...)
+ *   - Directory should have subdir repodata/ (and file .discinfo ?)
+ * 
+ * Refs:
+ * - https://serverfault.com/questions/147321/kickstart-ks-cfg-where-should-url-url-point
+ * - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-kickstart-syntax
  */
 function mirror_info(global, osid, ctype) {
   osid = osid || "";
-  var choose_mirror = function (mir) {
-    return mir.directory.indexOf(osid) > -1 ? 1 : 0; // OLD: global.targetos
-  };
+  
   // Logic for missing osid but calls via URL "/preseed.cfg" (e.g. "Recipes Preview")
   // if (!osid && somerecipe.url.match(/^preseed.cfg/)) { osid = 'ubuntu'; } // Force Default on missing osid ?
   var mirrcfg = {osid: osid, hostname: global.httpserver, directory: ""}; // Default to local linetboot server and loop mounted media as mirror
@@ -822,6 +832,8 @@ function mirror_info(global, osid, ctype) {
     {patt: "^ubuntu",   dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com"}, // ^ubuntu(\d+) ?
     // NOT: Assume "netboot" (netboot.tar.gz) and NO repos/packages in tar.gz
     {patt: "^debian",   dir: "/debian", inetmirrhost: "ftp.us.debian.org"} // useinet: true
+    // Centos ...
+    
   ];
   // lookup match node
   var mn = mirrmatch.find((mn) => { return osid.match(new RegExp(mn.patt)); });
@@ -841,7 +853,7 @@ function mirror_info(global, osid, ctype) {
      console.log("Generated-mirrcfg:", mirrcfg);
      return mirrcfg;
   }
-  // For ubuntu / debian set params to use in mirror/http/hostname and mirror/http/directory
+  // For ubuntu / debian set params to use in recipe vars mirror/http/hostname and mirror/http/directory
   if (global.inst.inetmirror) {
     if (osid.match(/^ubuntu/)) { return {hostname: "us.archive.ubuntu.com", directory: "/ubuntu"}; }
     // See: https://www.debian.org/mirror/list (http://ftp.us.debian.org/debian/)
@@ -853,10 +865,9 @@ function mirror_info(global, osid, ctype) {
     if (osid.match(/^debian/)) { return {hostname: global.httpserver, directory: "/debian"}; }
   }
   // Legacy (to-be-discontinued) way of choosing mirror
+  var choose_mirror = function (mir) { return mir.directory.indexOf(osid) > -1 ? 1 : 0; };
   var mirror = global.mirrors.filter(choose_mirror)[0]; // NOT: Set {} by default
-  if (!mirror) {
-    console.log("No Mirror"); return null;
-  } // NOT Found ! Hope we did not match many either.
+  if (!mirror) { console.log("No Mirror"); return null; } // NOT Found ! Hope we did not match many either.
   console.log("Found Mirror("+osid+"):", mirror);
   mirror = dclone(mirror); // NOTE: This should already be a copy ?
   // Linetboot or other globally used Mirror

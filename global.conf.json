@@ -182,50 +182,20 @@
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
-  "targetos": "ubuntu14",
+  "targetosXX": "ubuntu14",
   "useurlmapping": false,
-  "remote": {
+  "remoteXX": {
     "fspath": "/home/someuser/linetremote",
     "url" : "http://{{ hostname }}:3000/"
   },
-  "mirrorhost": "192.168.1.141:3000",
+  "mirrorhostXX": "192.168.1.141:3000",
   "mirrors": [
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/ubuntu14"
-      
-    },
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/ubuntu16"
-      
-    },
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/ubuntu18"
-      
-    },
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/centos6"
-      
-    },
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/centos7"
-      
-    },
-    {
-      "hostname":"192.168.1.141:3000",
-      
-      "directory": "/gparted"
-      
-    }
+    { "hostname":"192.168.1.141:3000", "directory": "/ubuntu14" },
+    { "hostname":"192.168.1.141:3000", "directory": "/ubuntu16" },
+    { "hostname":"192.168.1.141:3000", "directory": "/ubuntu18" },
+    { "hostname":"192.168.1.141:3000", "directory": "/centos6" },
+    { "hostname":"192.168.1.141:3000", "directory": "/centos7" },
+    { "hostname":"192.168.1.141:3000", "directory": "/gparted" }
   ],
   "ansible" : {
     "pbpath":"./playbooks:~/ansible-test",

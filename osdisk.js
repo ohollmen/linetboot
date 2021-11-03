@@ -1,4 +1,5 @@
 /** @file
+ *
  * # OS Install Disk Related Functionality
  * 
  * This module generates disk part of the OS Install recipes in the formats the recipes require.
@@ -186,7 +187,8 @@ function diskinfo(req, res) {
   var xip = req.query["ip"]; // eXplicit IP
   var ip = osinst.ipaddr_v4(req); // Detect IP
   // TODO: Review osid / oshint concept (and for what all it is used (1. Mirrors, 2. ...)
-  var osid = req.query["osid"] || global.targetos || "ubuntu18"; // TODO: 1) Later. recipe.osid
+  // DEPRECATED: global.targetos ||
+  var osid = req.query["osid"] || "ubuntu18"; // TODO: 1) Later. recipe.osid
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   // Lookup directly by IP
   var f = hostcache[ip]; // Get facts. Even no facts is ok for new hosts.
