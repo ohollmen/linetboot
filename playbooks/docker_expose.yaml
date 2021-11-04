@@ -28,7 +28,7 @@
         regexp: '\bExecStart='
         # Lose local socket: --containerd=/run/containerd/containerd.sock
         # line: "ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\""
-	line: "ExecStart=/usr/bin/dockerd-current -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\" \\"
+        line: "ExecStart=/usr/bin/dockerd-current -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\" \\"
         backup: yes
       when: 'ansible_os_family == "RedHat"'
     - name: Restart docker daemon
