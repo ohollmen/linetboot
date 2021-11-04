@@ -832,7 +832,12 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 #append harddisk raw
 
 # CoreOS / Container OS / Fedora CoreOS (FCOS)
-# Can't get interfaces up. Try rd.neednet = 1
+# Can't get interfaces up to working state. Try rd.neednet = 1
+# NetworkManager not starting because dbus not running (Also no config files for NM).
+# Need to issue (e.g):
+#   ip addr add 192.168.1.15/24 dev eno1
+#   ip route add default via 192.168.1.1 dev eno1
+# See tools in /usr/sbin/coreos-*
 # https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
 # Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
 label fcos
