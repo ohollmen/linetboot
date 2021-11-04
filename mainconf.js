@@ -194,7 +194,8 @@ function disabled_detect(global) {
   var esxi = global.esxi;
   if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) { dis.push("esxiguests"); } // Note UI term
   var proc = global.procster;
-  if (proc && !proc.urlpath) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
+  // !proc.urlpath ... does not seemed to be filled in any examples
+  if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
   return dis;
 } // diabled_detect
 
