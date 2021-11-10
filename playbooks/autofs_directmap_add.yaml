@@ -1,0 +1,34 @@
+# Add autofs directmap
+# Pass mounts in a json file (with -e param, AoO in var mounts, with mntpt, opts, servpaths)
+# File may also contain overrides for automaster, amtimeout (see below).
+- name: Add autofs directmap
+  hosts: '{{ host }}'
+  become: yes
+  vars:
+    automaster: '/etc/auto.master'
+    amincdir:   '/etc/auto.master.d'
+    amtimeout: 30
+    inmaster: false
+  tasks:
+    - name: Add direct map reference (to master)
+      lineinfile:
+        path: '{{ automaster }}'
+        state: present
+        create: yes
+        regexp: '^/-\s+/etc/auto\.extra'
+        line: '/- /etc/auto.extra --timeout={{ amtimeout }}'
+        backup: yes
+      when: inmaster
+    - name: Add direct map via include
+      copy:
+        content: '/- /etc/auto.extra --timeout={{ amtimeout }}\n'
+        dest: '{{ amincdir }}/extra.autofs'
+        backup: yes
+      when: not inmaster
+    # This applies independent of where config was located (master / include)
+    - name: Add extra (direct) map
+      template:
+        src: auto.extra.j2
+        dest: /etc/auto.extra
+        backup: yes
+      when: mounts
