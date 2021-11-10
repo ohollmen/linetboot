@@ -21,7 +21,8 @@
       when: inmaster
     - name: Add direct map via include
       copy:
-        content: '/- /etc/auto.extra --timeout={{ amtimeout }}\n'
+        # "..." for interp.
+        content: "/- /etc/auto.extra --timeout={{ amtimeout }}\n"
         dest: '{{ amincdir }}/extra.autofs'
         backup: yes
       when: not inmaster
