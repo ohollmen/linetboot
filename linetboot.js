@@ -54,6 +54,7 @@ var iblox    = require("./iblox.js");
 var postinst = require("./postinst.js");
 var procrpt  = require("./procreport.js");
 var covconn  = require("./covconn.js");
+var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
 var global = {};
@@ -336,7 +337,11 @@ function app_init() { // global
     var gok = hlr.group_mems_setup(groups, hostarr);
     if (!gok) { console.error("Problems in resolving dynamic group members"); }
   }
-  
+  if (global.gcp) {
+    gcp = require("./gcpops.js").init(global.gcp);
+    // gcp.
+
+  }
   
   // console.log(groups); // DEBUG
   

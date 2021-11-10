@@ -2,7 +2,7 @@
   "name": "linetboot",
   "version": "1.0.0",
   "description": "Linux Network Boot and Installation System",
-  "main": "netboot.js",
+  "main": "linetboot.js",
   "dependencies": {
     "async": "2.6.1",
     "axios": "0.20.0",
@@ -27,9 +27,10 @@
     "docker-image": "ohollmen/docker-imager"
   },
   "optionalDependencies": {
+    "@google-cloud/compute": "^3.0.0",
     "morgan": "1.9.1",
-    "serve-static": "1.13.2",
-    "node-arp": "1.0.6"
+    "node-arp": "1.0.6",
+    "serve-static": "1.13.2"
   },
   "scripts": {
     "pminfo": "echo 'The successful package manager of this week is npm.'",

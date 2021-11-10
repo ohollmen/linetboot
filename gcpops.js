@@ -3,14 +3,21 @@
 * ## References
 * - API Code: https://github.com/googleapis/nodejs-compute/
 * - Examples: https://github.com/googleapis/nodejs-compute/tree/main/samples
+* - https://www.npmjs.com/package/@google-cloud/compute
+* - https://github.com/googleapis/gax-nodejs/blob/main/client-libraries.md#creating-the-client-instance
+
 * ## InstanceClient
 * - /blob/main/src/v1/instances_client.ts (~l. 2000 ?)
 * - Calls this.innerApiCalls.insert ?
 */
-// const compute = require('@google-cloud/compute');
+const compute = require('@google-cloud/compute');
+
+// var compute = new Compute(); // Older version
+// var axios = require("axios");
+
 //var gcp = require('google-cloud'); // gcp.compute
-// Hmmm (!?)
-//const computeProtos = gcp.compute.protos.google.cloud.compute.v1;
+// Hmmm (!?) gcp.
+// const computeProtos = compute.protos.google.cloud.compute.v1;
 
 var vmcfg = {
   project: "compute-29058235482", // Note: this is longer id, not just name of project
@@ -56,7 +63,11 @@ var cfg;
 function init(_cfg) {
   cfg = _cfg.gcp || _cfg;
   if (!cfg) { throw "No gcp config !"; }
-  
+  if (!compute) { throw "Compute module not loaded !"; }
+  // Check cfg mems ?
+  //Object.keys(vmcfg)
+  vmcfg = cfg;
+  return module.exports;
 }
 
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
@@ -74,6 +85,12 @@ function createmsg(vmcfg) {
   n0.name = vmcfg.netname;
   return vmmsg;
 }
+/** Create client (mainly auth) config. */
+function clientconfig() {
+  // Store apikey to file to access via keyFilename ?
+  return {projectId: cfg.project, fallback: true, };
+}
+
 /** Create universal instance indentity filter to use in ops.
 * Consists of project, zone and instance (Instanve name).
 * Usable for many instancesClient ops like: , start, stop,
@@ -98,27 +115,43 @@ async function waitop(operation, vmcfg) {
         zone: operation.zone.split('/').pop(), // vmcfg.zone ?
       });
   }
+  // Evaluate success ... (???)
+  console.log(operation);
   return 1;
 }
 if (process.argv[1].match(/gcpops.js$/)) {
-  var msg = createmsg(vmcfg);
+  var mcfname = process.env["HOME"]+"/.linetboot/global.conf.json";
+  var mcfg = require(mcfname);
+  init(mcfg.gcp);
+  var msg = createmsg(cfg);
   console.log(msg);
-  process.exit(1);
+  listInstancesOfProject(cfg);
+  // process.exit(1);
+  // gcp.
   /*
-  const instancesClient = new gcp.compute.InstancesClient();
-  const [response] = await instancesClient.insert(msg);
-  let operation = response.latestResponse;
-  waitop(operation, vmcfg);
-  console.log('Instance created.');
-  */
+  // kfn: .json, .pem or .p12
+  var iccfg = {projectId: cfg.project, keyFilename: "", fallback: true};
+  const instancesClient = new compute.InstancesClient();
+  // const [response] = await instancesClient.insert(msg);
+  instancesClient.insert(msg).then((response, foo) => {
+    let operation = response.latestResponse;
+    waitop(operation, cfg);
+    console.log('Waited ... Instance created.');
+  });
+ */
+  //process.exit(0);
 }
 
 
   
 async function listInstancesOfProject(vmcfg) {
-  const instancesClient = new compute.InstancesClient();
-  var qpara = { project: project,maxResults: 100, };
+  // console.log(compute);
+  const instancesClient = new compute.InstancesClient(); // new
+  
+  var qpara = { project: cfg.project, zone: cfg.zone, maxResults: 100, };
+  console.log("Query by: ", qpara);
   const aggListRequest = instancesClient.aggregatedListAsync(qpara);
+// Also list()
   // See note from: samples/listAllInstances.js
   // Despite using the `maxResults` parameter, you don't need to handle the pagination
   // yourself. The returned object handles pagination automatically,
@@ -126,7 +159,7 @@ async function listInstancesOfProject(vmcfg) {
   var arr = [];
   var debug = 1;
   // await after for !!!??? Related to auto-iteration ?
-  for  (const [zone, instancesObject] of aggListRequest) {
+  for await (const [zone, instancesObject] of aggListRequest) {
     const instances = instancesObject.instances;
 
     if (instances && instances.length > 0) {
@@ -139,3 +172,9 @@ async function listInstancesOfProject(vmcfg) {
   }
   return arr;
 }
+
+module.exports = {
+  init: init,
+  waitop: waitop,
+  listInstancesOfProject: listInstancesOfProject,
+};
