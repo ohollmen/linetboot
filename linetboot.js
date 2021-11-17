@@ -54,6 +54,7 @@ var iblox    = require("./iblox.js");
 var postinst = require("./postinst.js");
 var procrpt  = require("./procreport.js");
 var covconn  = require("./covconn.js");
+var ldconnx   = require("./ldconn.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -254,7 +255,7 @@ function app_init() { // global
   app.get("/mediainfo", media_info);
   app.get("/apidoc", apidoc);
   app.get("/recipes",  osinst.recipe_view);
-  app.get("/ldaptest",  ldaptest);
+  app.get("/ldaptest",  ldconnx.ldaptest); // Moved
   app.get("/diskinfo",  osdisk.diskinfo);
   //BAN: app.get("/login",  login);
   app.post("/login",  login);
@@ -409,7 +410,7 @@ function app_init() { // global
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
   var ldc = global.ldap;
-  
+  // Check LD config
   if (ldc && (ldc.host && !ldc.disa)) {
     //var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
     //ldcopts.reconnect = true;
@@ -418,9 +419,10 @@ function app_init() { // global
     var ldccc =    {bindmsg: "Initial binding.", cb: function () { http_start(); }};
     var ldccc_re = {bindmsg: "Re-bind after connection error.",};
     // function ld_conn(ldc, ldccc) {
-    var ldcopts = ldcopts_by_conf(ldc);
+    var ldcopts = ldconnx.ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
-    ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
+    ldconnx.init(ldconn); // Must be connected, but before any activity
+    ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
     /*
     ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
@@ -475,53 +477,6 @@ function app_init() { // global
     // return;
   } // if ldc ...
   else { http_start(); }
-}
-function ldcopts_by_conf(ldc) {
-  var proto = ldc.ssl ? "ldaps" : "ldap";
-  var port  = ldc.ssl ? "636" : "389";
-  var ldcopts = { url: proto+'://' + ldc.host + ":"+port, strictDN: false};
-  ldcopts.reconnect = true;
-  if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
-  // Certificate ?
-  if (ldc.nonsec) {
-    ldcopts.tlsOptions = {'rejectUnauthorized': false};
-  }
-  // https://github.com/ldapjs/node-ldapjs/issues/307
-  // NOT Complete yet
-  if (ldc.cert) {
-    var certpath = "";
-    var tls = {
-      host: 'plat.com',
-      key:  fs.readFileSync(certpath+'/clientkey.pem'),
-      cert: fs.readFileSync(certpath+'/clientcrt.pem'),
-      ca:   fs.readFileSync(certpath+'/cacert.pem') // !!
-    };
-    //ldcopts.tlsOptions = tls;
-  }
-  return ldcopts;
-}
-/** Bind LDAP Connection and call an (optional) cb
-* @param ldc {object} - LDAP Connection config (with "binddn" and "bindpass", e.g. from main config, see docs)
-* @param ldconn {object} - LDAP client / connection to bind
-* @param cb {function} - Optional callback function to call with err,ldconn
-* Passing cb is highly recommended, otherwise errors are handled by throwing an exception.
-*/
-function ldconn_bind_cb(ldc, ldconn, cb) {
-  cb = cb || function (err, data) {
-    if (err) { throw "Error Bindng (no explicit cb): "+ err; }
-    console.log("No further/explicit cb to call, but bound successfully as "+ldc.binddn);
-  };
-  if (!ldconn) { return cb("No LD Connection to bind", null); }
-  ldconn.bind(ldc.binddn, ldc.bindpass, function(err, bres) {
-      if (err) { return cb(err, null); } // throw "Error binding connection: " + err;
-      var d2 = new Date(); // toISOString()
-      console.log(d2.toISOString()+" Bound to: " + ldc.host + " as "+ldc.binddn); // , bres
-      //ldbound = 1;
-      // Note: pay attention to this in a reusable version
-      //return http_start(); // Hard
-      //if (ldccc.cb) { ldccc.cb(); }   // generic
-      return cb(null, ldconn); // No need: if (cb) {}
-    }); // bind
 }
 
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
@@ -2344,60 +2299,7 @@ function media_info(req, res) {
   }
 }
 
-/** LDAP Connection test.
- * global ldconn; ldbound;
- * Init: check (ldc.host !ldc.disa), do client inst and async bind.
- * Request: in app.use MW check if (ldbound and !sess) { block...}
- * On client. In onpageload check session. Take router into use. Check router middleware
 
- */
-function ldaptest(req,res) {
-  //var ldap = require('ldapjs');
-  var jr = {status: "err", msg: "LDAP Search failed."};
-  var ldc = global.ldap;
-  var q = req.query;
-  req.session.cnt =  req.session.cnt ?  req.session.cnt + 1 : 1;
-  if (req.session && req.session.qs) { console.log("Adding: "+q.uname); req.session.qs.push(q.uname); }
-  if (!ldconn || !ldbound) { jr.msg += "No Connection"; jr.qs = req.session; return res.json(jr); }
-    var ents = [];
-    var d1 = new Date();
-    //  TODO: Only select 
-    var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
-    if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
-    lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
-    console.log(d1.toISOString()+" Search: ", lds);
-    ldconn.search(lds.base, lds, function (err, ldres) {
-      var d2 = new Date();
-      if (err) { throw d2.toISOString()+" Error searching: " + err; }
-      ldres.on('searchReference', function(referral) {
-        console.log('referral: ' + referral.uris.join());
-      });
-      ldres.on('end', function (result) {
-        console.log("Final result:"+ldres);
-        //console.log(JSON.stringify(ents, null, 2));
-        console.log(ents.length + " Results for " + lds.filter);
-        return res.json({status: "ok", data: ents});
-      });
-      ldres.on('error', function(err) {
-        console.error('error: ' + err.message);
-        res.json({status: "err", msg: "Search error: "+err.message});
-      });
-      ldres.on('searchEntry', function(entry) {
-        // console.log('entry: ' + JSON.stringify(entry.object, null, 2));
-        ents.push(entry.object);
-      });
-      //console.log("Got res:"+res);
-      //console.log(JSON.stringify(res));
-    });
-    function filter_gen(ldc, q) {
-      var fcomps = [];
-      fcomps.push(ldc.unattr+"="+q.uname);
-      ["displayName","mobile","mail", "manager", "employeeID"].forEach((k) => { return k + "="+q.uname; });
-      // fcomps.push(ldc.unattr+"="+q.uname);
-      var fstr = fcomps.map((c) => { return "("+c+")"; }).join(''); // ')('
-      return "(|"+fstr+")";
-    }
-}
 /** Login to application by performing LDAP authentication and app level authorization.
  * Uses main config core.authusers (Array) to authorize users to use linetboot app.
  */
@@ -2428,13 +2330,13 @@ function login(req, res) {
   console.log("Query by: ", lds);
   var ents = [];
   // For every auth, grab a fresh connection
-  var ldcopts = ldcopts_by_conf(ldc);
+  var ldcopts = ldconnx.ldcopts_by_conf(ldc);
   var ldconn = ldap.createClient(ldcopts); // Bind conn.
   console.log("Start Login, local ldconn: "+ ldconn ); // + " ldconn"+ ldconn
   // Bind ldconn with main creds here (to not rely on main conn)
-  ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
+  ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
   //search(ldconn); // old
-  // 
+  // LDAP Search by connection
   function search(ldconn) {
   
   ldconn.search(lds.base, lds, function (err, ldres) {
@@ -2453,9 +2355,9 @@ function login(req, res) {
       if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
       var uent = ents[0];
       console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
-      var ldc_user = {binddn: uent.dn, bindpass: q.password};
+      var ldc_user = { binddn: uent.dn, bindpass: q.password };
       // TODO:
-      ldconn_bind_cb(ldc_user, ldconn, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } user_bind_ok(ldconn, uent); });
+      ldconnx.ldconn_bind_cb(ldc_user, ldconn, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } user_bind_ok(ldconn, uent); });
       /*
       ldconn.bind(uent.dn, q.password, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }
@@ -2493,7 +2395,8 @@ function login(req, res) {
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
   }
-}
+} // login
+
 /*
 events.js:167
       throw er; // Unhandled 'error' event

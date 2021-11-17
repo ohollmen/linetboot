@@ -5,7 +5,11 @@
 # If there are drastic customizations to defaultdomain, yp.conf and auto.master,
 # Make a copy of your own and possibly use external files (content => src).
 # Note: To pass/override arrays (e.g. nisservers here) you have to pass them
-#  as JSON (either by inline -e '{...}' or file -e '@nispara.json'
+# as JSON (either by inline -e '{...}' or file -e '@nispara.json'.
+# Example:
+# ```
+# ansible-playbook -i ~/.linetboot/hosts nissetup.yaml -e '{"nisservers": [...]}' -e 'nisdomain=home ansible_user= ansible_become_pass='
+# ```
 - name: Setup NIS Client Machine
   hosts: "{{ host }}"
   become: true
@@ -14,11 +18,35 @@
     amm: 'auto.master'
     nisdomain: 'unknown'
     nisservers: ['nis1','nis2','nis3']
+    inmaster: false
+    swinst: false
   tasks:
+    - name: Install RH/Centos SW deps
+      shell: yum -y install yp-tools nfs-utils autofs rpcbind nscd
+      when: 'swinst and ansible_os_family == "RedHat"'
+    - name: Install Debian/Ubuntu SW deps
+      # apt-get install -yq --no-install-recommends
+      apt:
+        update_cache: yes
+        state: present
+        force_apt_get: yes
+        install_recommends: no
+        name: ["rpcbind", "nis", "nfs-common", "autofs", "nscd"]
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      vars:
+        pkgs: 1
+      when: 'swinst and ansible_os_family == "Debian"'
     - name: Copy NIS-prioritized nsswitch.conf
-      copy: src=../scripts/nsswitch.conf dest=/etc/nsswitch.conf backup=yes
+      copy:
+        src: '../scripts/nsswitch.conf'
+        dest: '/etc/nsswitch.conf'
+        backup: yes
     - name: Create NIS Domain file
-      copy: content="{{ nisdomain }}\n" dest=/etc/defaultdomain backup=yes
+      copy:
+        content: "{{ nisdomain }}\n"
+        dest: /etc/defaultdomain
+        backup: yes
     # Must template. have to be static file yp.conf.j2 ?
     # May have to use copy to copy content to (temp) file
     # https://stackoverflow.com/questions/13002848/how-do-i-convert-an-array-to-string-using-the-jinja-template-engine
@@ -29,13 +57,23 @@
         content: "{% for server in nisservers %}ypserver {{ server }}\n{% endfor %}"
         dest: '/etc/yp.conf'
         backup: yes
+    # NOTE: The location 
     - name: Add auto master map ("amm")
       copy:
         content: "+{{ amm }}\n"
-        dest: '/etc/auto.master'
+        #dest: '/etc/auto.master'
+        dest: '/etc/auto.master.d/auto.master.autofs'
         backup: yes
+      when: not inmaster
+    - name: Add NIS auto master map ("amm")
+      lineinfile:
+        path: /etc/auto.master
+        state: present
+        regexp: '^\+auto.master$'
+        line: '+{{ amm }}'
+      when: inmaster
     # Restart associated services by systemd systemctl
-    # TODO: Check similarity to Coentos/Implement respective differing cmds
+    # TODO: Check similarity to Centos/Implement respective differing cmds
     # Use plain old shell (as opposed to fancy systemctl module) for now
     - name: Restart Services
       shell: systemctl restart nis autofs nscd
