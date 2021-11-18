@@ -618,8 +618,9 @@ function showpeople(ev, act) {
   $("#"+ev.viewtgtid).prepend(rapp.templated("searchui"));
   // new Spinner
   var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
-  var spinner = new Spinner(spinopts).spin(spel);
+  
   function search(p) {
+    var spinner = new Spinner(spinopts).spin(spel);
     // TODO: Analyze params to support different use cases
     // "/ldaptest"
     axios.get(act.url, {params: p}).then(function (resp) {
