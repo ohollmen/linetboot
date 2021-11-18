@@ -421,7 +421,7 @@ function app_init() { // global
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldconnx.ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
-    ldconnx.init(ldconn); // Must be connected, but before any activity
+    ldconnx.init(global.ldap, ldconn); // Must be connected, but before any activity
     ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
     /*
@@ -494,6 +494,7 @@ function linet_mw(req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
   if (0) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
+  // req.ldconn = ldconn; // Consider for (passing to) web handlers
   //req.session.num++;
   
   if (req.session && !req.session.qs) {
@@ -2334,30 +2335,48 @@ function login(req, res) {
   var ldconn = ldap.createClient(ldcopts); // Bind conn.
   console.log("Start Login, local ldconn: "+ ldconn ); // + " ldconn"+ ldconn
   // Bind ldconn with main creds here (to not rely on main conn)
-  ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) { jr.msg += err; return res.json(jr); } console.log("Search "+q.username);return search(ldconn); });
+  ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {
+    if (err) { jr.msg += err; return res.json(jr); }
+    console.log("Search "+q.username);
+    return search(ldconn, lds, (err, data) => {
+      if (err) { jr.msg += err; return res.json(jr); }
+      // NEW: Do user_bind_ok() here
+      return user_bind_ok(ldconn, data); // data == uent
+    });
+  });
   //search(ldconn); // old
-  // LDAP Search by connection
-  function search(ldconn) {
+  /** Search for account presence + bind with pass.
+   * @param ldconn {object} - LD Connection
+   * @param lds {object} - LD Search params
+   * @param cb {function} - Callback to call with logged-in user entry
+   * @return None, but call callback with error or user entry
+   */
+  function search(ldconn, lds, cb) { // TODO: lds (Note: need refactor res.json() )
   
   ldconn.search(lds.base, lds, function (err, ldres) {
-    if (err) { jr.msg +=  "Error searching user"+q.username+": " + err; return res.json(jr);  }
+    if (err) { var msg =  "Error searching user"+q.username+": " + err;   return cb(msg, null); } // return res.json(jr);
     
     ldres.on('searchReference', function(referral) {
       console.log('referral: ' + referral.uris.join());
     });
     // result, result.status
     ldres.on('end', function (result) {
+      var msg = "Error getting login search result. ";
       console.log("Final (user search) result:"+ldres);
       //console.log(JSON.stringify(ents, null, 2));
       console.log(ents.length + " Results for " + lds.filter);
-      if (ents.length < 1) { jr.msg += "No users by "+q.username; return res.json(jr);}
-      if (ents.length > 1) { jr.msg += "Multiple users by "+q.username + " (ambiguous)"; return res.json(jr);}
-      if (!req.session) { jr.msg += "Session Object not available"; return res.json(jr); }
+      if (ents.length < 1) { msg += "No users by "+q.username; return cb(msg, null);} // return res.json(jr);
+      if (ents.length > 1) { msg += "Multiple users by "+q.username + " (ambiguous)"; return cb(msg, null); } // return res.json(jr);
+      if (!req.session)    { msg += "Session Object not available"; return cb(msg, null); } // return res.json(jr);
       var uent = ents[0];
       console.log("Found unique auth user entry successfully: "+q.username+" ("+uent.dn+") ... Try auth...");
       var ldc_user = { binddn: uent.dn, bindpass: q.password };
       // TODO:
-      ldconnx.ldconn_bind_cb(ldc_user, ldconn, function (err, ldconn) {if (err) { jr.msg += "Auth user bind error"; return res.json(jr); } user_bind_ok(ldconn, uent); });
+      ldconnx.ldconn_bind_cb(ldc_user, ldconn, function (err, ldconn) {
+        if (err) { msg += "Auth user bind error:"+err; return cb(msg, null); } //   return res.json(jr);
+        // user_bind_ok(ldconn, uent); // OLD (in here)
+        return cb(null, uent); // NEW
+      });
       /*
       ldconn.bind(uent.dn, q.password, function(err, bres) {
         if (err) { jr.msg += "Could not bind as "+q.username+" ... "+ err; console.log(jr.msg); return res.json(jr); }

@@ -4,11 +4,15 @@
  */
  
 //var ldap = require('ldapjs');
+var ldcfg;
 var ldconn;
 var ldbound;
-
-function init(_ldconn) {
+var inited = 0;
+function init(_ldcfg, _ldconn) {
+  if (inited) { return; }
+  ldcfg = _ldcfg;
   ldconn = _ldconn;
+  inited++;
 }
 function setbound(_ldbound) {
   ldbound = _ldbound;
@@ -54,7 +58,7 @@ function ldconn_bind_cb(ldc, ldconn, cb) {
       if (err) { return cb(err, null); } // throw "Error binding connection: " + err;
       var d2 = new Date(); // toISOString()
       console.log(d2.toISOString()+" Bound to: " + ldc.host + " as "+ldc.binddn); // , bres
-      ldbound = 1; // Re-enabled (to maintain state within module) 2021-11
+      ldbound = 1; // Re-enabled (to maintain state within module) 2021-11 (e.g. for ldaptest)
       // Note: pay attention to this in a reusable version
       //return http_start(); // Hard
       //if (ldccc.cb) { ldccc.cb(); }   // generic
@@ -71,8 +75,9 @@ function ldconn_bind_cb(ldc, ldconn, cb) {
  */
 function ldaptest(req, res) {
   //var ldap = require('ldapjs');
-  var jr = {status: "err", msg: "LDAP Search failed."};
-  var ldc = global.ldap;
+  var jr = {status: "err", msg: "LDAP Search failed. "};
+  var ldc = ldcfg; // global.ldap;
+  if (!ldc) { jr.msg += "No app LDAP config."; return res.json(jr); }
   var q = req.query;
   req.session.cnt =  req.session.cnt ?  req.session.cnt + 1 : 1;
   if (req.session && req.session.qs) { console.log("Adding: "+q.uname); req.session.qs.push(q.uname); }
