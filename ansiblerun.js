@@ -436,13 +436,14 @@ function ansible_play_list(acfg, pbpath) { // dirname
       var suff = fname.slice((Math.max(0, fname.lastIndexOf(".")) || Infinity) + 1);
       console.log("Encountered: "+fname+ " suff:" + suff);
       if ((suff != "yml") && (suff != "yaml")) { return 0; }
-      console.log("Got:" + suff);
+      console.log("- Got valid suffix:" + suff);
       //path.basename(); // Already basenames
       var relname = dirname + "/" + fname;
       var node = { basename: fname, relname: relname };
       // TODO: Catch exception an bypass faulty yaml
       var yf;
-      try { yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8')); } catch (ex) {}
+      try { yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8')); }
+      catch (ex) { console.log("Failed to parse: "+relname+" .. "+ex); }
       if (!yf) { console.log("Failed to load(relfn): "+relname); return; }
       //console.log(JSON.stringify(yf, null, 2));
       // TODO: Checks here !
