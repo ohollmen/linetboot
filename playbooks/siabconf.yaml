@@ -1,5 +1,7 @@
 # # Modify Shell-in-a-box config
 # 
+# Install shellinabox dependencies on Ubuntu or RedHat (aut-detected) and configure to
+# expose SSH access the shellinabox way.
 - name: Modify shellinabox config
   hosts: "{{ host }}"
   become: yes
@@ -9,10 +11,10 @@
     siab_cfg_rh: "/etc/sysconfig/shellinaboxd"
     siab_port: 4200
   tasks:
-    - Install shellinabox - Debian/Ubuntu
+    - name: Install shellinabox - Debian/Ubuntu
       shell: apt-get install shellinabox
       when: 'ansible_os_family == "Debian"'
-    - Install shellinabox
+    - name: Install shellinabox
       shell: yum install openssl shellinabox
       when: 'ansible_os_family == "RedHat"'
     # Ensure port
@@ -20,15 +22,15 @@
       lineinfile:
         path: '{{ siab_cfg_deb }}'
         state: present
-	regexp: '^SHELLINABOX_ARGS'
-	line: 'SHELLINABOX_ARGS="--no-beep -s /:SSH:{{ ansible_default_ipv4.address }} -m \"*\""'
+        regexp: '^SHELLINABOX_ARGS'
+        line: 'SHELLINABOX_ARGS="--no-beep -s /:SSH:{{ ansible_default_ipv4.address }} -m \"*\""'
       when: 'ansible_os_family == "Debian"'
     # TODO: Same for regexp: '^PORT=' line: 'PORT={{ siab_port }}'
-    - Modify (RH/Centos) Config
+    - name: Modify (RH/Centos) Config
       lineinfile:
         path: '{{ siab_cfg_rh }}'
-	state: present
-	regexp: '^OPTS='
-	line: 'OPTS=" -s /:SSH:{{ ansible_default_ipv4.address }}"'
+        state: present
+        regexp: '^OPTS='
+        line: 'OPTS=" -s /:SSH:{{ ansible_default_ipv4.address }}"'
       when: 'ansible_os_family == "RedHat"'
 
