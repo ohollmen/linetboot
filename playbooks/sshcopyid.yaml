@@ -1,5 +1,6 @@
-- name: Inital ssh-copy-id
-  # become: yes
+- name: Perform ssh-copy-id from localhost
+  # Important to *only* be current user
+  become: no
   hosts: '{{ host }}'
   connection: local
   #gather_facts: false
