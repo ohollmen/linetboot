@@ -90,7 +90,13 @@ Full Operating systems with Live mode and/or manual install:
 
 If you use Linetboot only as Asset Inventory, the DHCP and TFTP would note be needed.
 
+There are also many additional / optional features with associated connectivity
+options to integrate with neighboring systems:
+
+![Connecticity / Integrations](doc/connint.png "Connecticity / Integrations")
+
 <!--
+
 
 # Overview of Network boot and Install Subsystems
 
@@ -167,6 +173,8 @@ If you have problems getting ansible running on linetboot machine, the hostinfo 
 
 Currently an explicit list of hosts to be allowed to be booted/installed by linetbot system is in global config under key "hostnames" (See: "Linetboot configuration" for more info). Hosts outside this list will not be counted in from the hostinfo directory.
 -->
+
+## Further Reading on Linetboot
 
 For further info see Linetboot documentation for:
 
