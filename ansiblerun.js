@@ -451,6 +451,7 @@ function ansible_play_list(acfg, pbpath) { // dirname
       node.playname = yf[0].name; // title ?
       if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
       node.taskcnt = yf[0].tasks.length;
+      node.vars = yf[0].vars || {};
       // Store tasks ?
       fnodes.push(node);
     });
