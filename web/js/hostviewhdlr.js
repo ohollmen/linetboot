@@ -783,12 +783,47 @@ function esxilist(ev, act) {
     if (!Array.isArray(d)) { return toastr.error("Data Not in Array."); } // d.data
     console.log(d); // d.data
     showgrid(act.gridid, d, fldinfo.esxilist); // d.data
+    //var csv = $("#"+act.gridid).jsGrid("exportData", expcfg);
+    //console.log("CSV:\n",csv);
+    console.log("# Guests for "+host);
+    //var opts = {sep: ','};
+    var csv = gridexp(fldinfo.esxilist, d); 
+    console.log(csv);
     
   }).catch (function (ex) { console.log(ex); });
+  var expcfg = {
+    type: "csv", //Only CSV supported
+    subset: "all", // | "visible", //Visible will only output the currently displayed page
+    delimiter: "|", //If using csv, the character to seperate fields
+    includeHeaders: true, //Include header row in output
+    encapsulate: false, //Surround each field with quotes
+    newline: "\n", //Newline character to use (\r\n)
+    // filter: (item) => { return 1; }, transformations: {"attr": (val) => { return val; }}
+  };
+  //
   //function loadhostglist(host) {
   //  
   //}
 }
+
+function gridexp(flds_g, data, opts) {
+  opts = opts || {};
+  //var flds_g = fldinfo.esxilist;
+  var flds = flds_g.map((col) => { return col.name; });
+  opts.sep = opts.sep || ",";
+  //var hdr = fldinfo.esxilist.map((col) => { return col.name; }).join(',');
+  var lines = [];
+  //opts.debug && console.log("HDR:"+flds.join(sep)+"\n");
+  lines.push(flds.join(opts.sep));
+  data.forEach((it) => {
+    var varr = flds.map((fn) => { return it[fn]; });
+    varr = varr.map((v) => { return (typeof v == 'string') ? v.replace(opts.sep, "\\"+opts.sep) : v; });
+    //opts.debug && console.log("LINE:"+varr.join(sep)+"\n");
+    lines.push(varr.join(opts.sep));
+  });
+  return lines.join("\n");
+}
+
 /* Present (ESXi host) Items in a listing to choose item from. */
 function esxihostmenu(act, vmhosts) {
   var cont = "";
