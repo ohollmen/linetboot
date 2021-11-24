@@ -338,7 +338,7 @@ function app_init() { // global
     var gok = hlr.group_mems_setup(groups, hostarr);
     if (!gok) { console.error("Problems in resolving dynamic group members"); }
   }
-  if (global.gcp) {
+  if (global.gcp && !global.gcp.disa) {
     gcp = require("./gcpops.js").init(global.gcp);
     // gcp.
 
