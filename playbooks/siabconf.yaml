@@ -10,10 +10,17 @@
     siab_cfg_deb: "/etc/default/shellinabox"
     siab_cfg_rh: "/etc/sysconfig/shellinaboxd"
     siab_port: 4200
+    copycert: ''
+    pkgurl_deb: 'http://mirrors.kernel.org/ubuntu/pool/universe/s/shellinabox/shellinabox_2.19_amd64.deb'
+    use_deb: 0
   tasks:
     - name: Install shellinabox - Debian/Ubuntu
       shell: apt-get install shellinabox
-      when: 'ansible_os_family == "Debian"'
+      when: 'ansible_os_family == "Debian" and use_deb == 0'
+    # Alt install
+    - name: Install for 18.04
+      shell: 'cd /tmp && wget {{ pkgurl_deb }} && dpkg -i `basename {{ pkgurl_deb }}`'
+      when: use_deb
     - name: Install shellinabox
       shell: yum install openssl shellinabox
       when: 'ansible_os_family == "RedHat"'
@@ -33,4 +40,13 @@
         regexp: '^OPTS='
         line: 'OPTS=" -s /:SSH:{{ ansible_default_ipv4.address }}"'
       when: 'ansible_os_family == "RedHat"'
-
+    # Default in Deb/Ubu: /var/lib/shellinabox (aka: SHELLINABOX_DATADIR. concatenated(orig): priv + cert (e.g. fullchain.pem) >> certificate.pem )
+    # Lot of others have reverse order (however parser can rely on BEGIN ..)
+    # Seems certificate.pem is the default certificate (unless ssh client called by different name, certificate-$HN.pem will be used).
+    # See also --cert $CERTPATH, don't: --disable-ssl
+    - name: Copy certificate in place
+      copy:
+        src: '{{ copycert }}'
+        dest: '/var/lib/shellinabox/'
+      when: copycert
+        
