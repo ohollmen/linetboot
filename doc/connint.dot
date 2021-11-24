@@ -1,0 +1,39 @@
+digraph G {
+  # rankdir=LR;
+  # size="8,6"; ratio=fill; # node[fontsize=24];
+  edge [fontsize=10];
+  linet [shape=box,label=Linetboot,fontsize=20,color=gray,
+style=rounded, penwidth=3.0];
+  front [shape=box,style=rounded,label=WebBrowser];
+  # \n(e.g. Win.AD)
+  ldap [label="LDAP"];
+  # TODO: color=>edge, fillcolor=> N/A, bgcolor=> N/A
+  # Must have style=filled
+  # TODO: break down to subgraph: UNDI, Bootloader, OS Installer
+  pxe [label="PXE(boot)\nClient",style=filled,fillcolor="#eeeeee"];
+  front -> linet [label=HTTP,penwidth=2.0];
+  # Commercial
+  linet -> ESXi [label="SOAP/XML",style=dotted];
+  linet -> EFlow [label="REST/JSON",style=dotted];
+  linet -> InfoBlox [label="REST/JSON",style=dotted];
+  linet -> SSH [label="netprobe,uptime,\nBMCinfo,Ansible"];
+  front -> Docker [label="HTTP/CORS"];
+  front -> Procster [label="HTTP/CORS"];
+  linet -> Procster [label="HTTP"];
+  linet -> ldap [label="Auth"];
+  # PXE
+  pxe -> linet [label="HTTP:\nkernel,initrd"];
+  pxe -> linet [label="HTTP:OS pkg"];
+  pxe -> DHCP;
+  pxe -> TFTP [label="NBP\n(bootloader)"];
+  pxe -> TFTP [label="Legacy:\nkernel,initrd", style=dotted];
+  # Config file generation, Content population
+  linet -> DHCP [style=dashed,label="Config\(rsync)"];
+  linet -> TFTP [style=dashed,label="Conigure bootmenu,\nPopulate NBP:s\n(rsync)"];
+  # front -> c [constraint=false];
+  # MUST be prefixed with "cluster"
+  #  
+  subgraph "cluster_host" { labelloc=b; style="rounded"; bgcolor="#eeeeee"; label="Host-N"; Procster; Docker; SSH; }
+  #subgraph "cluster_host" { labelloc=t; style="rounded"; bgcolor="#eeeeee"; label="PXE"; UNDI; NBP; OSInst }
+  # subgraph "host" { ldap; }
+}
