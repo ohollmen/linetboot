@@ -14,6 +14,7 @@
       copy:
         src: '{{ src  }}/{{ script }}'
         dest: '{{ destpath }}'
+        mode: 755
         backup: no
       when: 0
     - name: Copy License
