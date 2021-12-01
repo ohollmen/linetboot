@@ -148,7 +148,8 @@ function mainconf_process(global) {
 function hasnofiles(dir) {
     if (!dir) { return 1; }
     var files;
-    try { files = fs.readdirSync(dir); } catch (ex) { return 1; };
+    try { files = fs.readdirSync(dir); }
+    catch (ex) { return 1; }
     if (files.length > 1) { return 0; }
     return 1;
   }
@@ -196,6 +197,8 @@ function disabled_detect(global) {
   var proc = global.procster;
   // !proc.urlpath ... does not seemed to be filled in any examples
   if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
+  var cov = global.cov;
+  if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("cov"); }
   return dis;
 } // diabled_detect
 
