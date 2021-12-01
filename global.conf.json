@@ -179,6 +179,18 @@
     "vmhosts": ["esxi1","esxi2","esxi3","esxi4","esxi5","esxi6"],
     "debug": 1
   },
+  "cov": {
+       "url":  "https://coverity-server.mycompany.com/",
+       "user": "",
+       "pass": "",
+       "projid": "0",
+       "viewid": "0",
+       "refilter": "^rel_xxx$",
+       "sby": "snapshotTarget",
+       "bgcolor": "#1456DD",
+       "pollinterval": 3000,
+       "polltestact": "./alarm.js"
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
