@@ -1,5 +1,5 @@
-# Install Coverity
-- name: Install Coverity from Shell Archive
+# Install Coverity Analysis
+- name: Install Coverity Analysis from Shell Archive
   hosts: '{{ host }}'
   vars:
     src: '/usr/local/covpkg/'
@@ -15,12 +15,14 @@
         src: '{{ src  }}/{{ script }}'
         dest: '{{ destpath }}'
         backup: no
+      when: 0
     - name: Copy License
       copy:
-        src: '{{ src  }}/'
+        src: '{{ src  }}/license.dat'
         dest: '{{ destpath }}'
-        backup: no 
+        backup: no
+      when: 1
     - name: Run Package
       shell: '{{ destpath }}/{{ script }} -q {{ sopts }} --component.sdk=true --component.skip.documentation=true'
-      when: 0
+      when: 1
 
