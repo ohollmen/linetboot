@@ -1,5 +1,9 @@
-/** Inquire info from proprietary Infoblox DHCP/DNS management system.
+/** @file
+* Inquire info from proprietary Infoblox DHCP/DNS management system.
+* 
 * Infoblox provides a REST API to inquire and modify IP Address management related DHCP/DNS Info.
+* @todo CSV Merge w.macaddr (possibly next-server/boot-server, bootfile). See "CSV Import" in GUI.
+* Creating a stub of (Infobox-proprietary) CSV, See:  "Infoblox CSV Import Format"
 */
 var ibconf;
 var hostarr;
