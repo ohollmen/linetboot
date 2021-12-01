@@ -1194,7 +1194,12 @@ function rmgmt_list(req, res) {
   var jr = {"status": "err", msg: "Error Processing Remote interfaces."};
   // function dummy_add(dum) { arr.push(dum); } // Dummy entry w/o rm info.
   // Sync Load
-  hostarr.forEach(function (f) { var ent = ipmi.rmgmt_load(f, rmgmtpath); arr.push(ent); });
+  hostarr.forEach(function (f) {
+    var ent = ipmi.rmgmt_load(f, rmgmtpath);
+    var hps = hlr.hostparams(f) || {};
+    if (hps.norf) { ent.norf = 1; }
+    arr.push(ent);
+  });
   // Resolve names (if resolve=true)
   if (resolve) {
     async.map(arr, ipmi.lan_hostname, function(err, results) {
@@ -1202,7 +1207,7 @@ function rmgmt_list(req, res) {
       res.json(results);
     });
     return;
-  }
+  } // resolve
   res.json(arr);
 }
 /** Perform set of network probe tests by DNS, Ping, SSH ()
