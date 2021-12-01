@@ -1,0 +1,26 @@
+# Install Coverity
+- name: Install Coverity from Shell Archive
+  hosts: '{{ host }}'
+  vars:
+    src: '/usr/local/covpkg/'
+    script: 'cov-analysis-linux64-2021.03.sh'
+    sopts: '--installation.dir={{ instroot }} --license.region={{ region }} --license.agreement=agree --license.type.choice=0 --license.cov.path={{ destpath }}/license.dat   '
+    destpath: '/tmp/'
+    instroot: '/path/to/cov/'
+    region: 0
+  become: no
+  tasks:
+    - name: Copy Package
+      copy:
+        src: '{{ src  }}/{{ script }}'
+        dest: '{{ destpath }}'
+        backup: no
+    - name: Copy License
+      copy:
+        src: '{{ src  }}/'
+        dest: '{{ destpath }}'
+        backup: no 
+    - name: Run Package
+      shell: '{{ destpath }}/{{ script }} -q {{ sopts }} --component.sdk=true --component.skip.documentation=true'
+      when: 0
+
