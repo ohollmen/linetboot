@@ -1,10 +1,12 @@
 # Install Coverity Analysis
+# Seems that the installer is smart enough to create intermediate missing path steps (up to install root).
+# For now the expectation is have SHell archive and license file (license.dat) in the same source directory (See 'src').
 - name: Install Coverity Analysis from Shell Archive
   hosts: '{{ host }}'
   vars:
     src: '/usr/local/covpkg/'
     script: 'cov-analysis-linux64-2021.03.sh'
-    sopts: '--installation.dir={{ instroot }} --license.region={{ region }} --license.agreement=agree --license.type.choice=0 --license.cov.path={{ destpath }}/license.dat   '
+    sopts: '--installation.dir={{ instroot }} --license.region={{ region }} --license.agreement=agree --license.type.choice=0 --license.cov.path={{ destpath }}/license.dat'
     destpath: '/tmp/'
     instroot: '/path/to/cov/'
     region: 0
@@ -16,14 +18,13 @@
         dest: '{{ destpath }}'
         mode: 755
         backup: no
-      when: 0
+      #when: 0
     - name: Copy License
       copy:
         src: '{{ src  }}/license.dat'
         dest: '{{ destpath }}'
         backup: no
-      when: 1
-    - name: Run Package
+      #when: 1
+    - name: Run Installer Package
       shell: '{{ destpath }}/{{ script }} -q {{ sopts }} --component.sdk=true --component.skip.documentation=true'
-      when: 1
-
+      #when: 1
