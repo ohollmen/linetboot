@@ -199,6 +199,8 @@
    function redfish_cell(val, item) {
      if (item.uptime && !item.hasrm) { return "-"; } // No Rmgmt info. Misbehaved when shared.
      if ((item.rmhname !== undefined) && !item.ipaddr) { return "-"; }
+     // Additionally block with explicit flag
+     if (item.norf) { return "-"; }
      return "<a class=\"rfop\" data-hname=\""+item.hname+"\" data-op='info' Xhref=\"/rf/info/"+item.hname+"\" data-tgt=\"rfdialog\">Info</a>" + '';
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"?pxe\">PXE Boot</a>" +
             //"<a class=\"rfop\" data-op='boot' Xhref=\"/rf/boot/"+item.hname+"\">Reboot</a>";
