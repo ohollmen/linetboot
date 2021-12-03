@@ -1,0 +1,30 @@
+# # Allow more auth ways for ssh
+# Note: This playbook was created as a way to not get locked out of remote host (with no console or display)
+# because of SSH keys not being accessible due to file system permissions
+# (e.g. some user maintenance related chmod/chown/usermod shuffle going on).
+# You'd be wise to revert any loosening up made by this script, which
+# actually this same script can do (override values for vars: ... from
+# command line).
+- name: Allow more auth ways during host setup
+  hosts: '{{ host }}'
+  vars:
+    ssh_root: 'yes'
+    ssh_pass: 'yes'
+  become: yes
+  tasks:
+    - name: Allow root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        state: present
+        line: 'PermitRootLogin {{ ssh_root }}'
+    - name: Allow Interactive Password Login
+      lineinfile:
+        path:  /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        state: present
+        line: 'PasswordAuthentication {{ ssh_pass }}'
+    - name: User Identity
+      shell: 'echo $USER'
+      register: echouser
+    - debug: msg='User is {{ echouser.stdout }}'
