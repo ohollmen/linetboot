@@ -1,0 +1,6 @@
+- name: Reboot all selected hosts
+  hosts: '{{ host }}'
+  become: yes
+  tasks:
+    - name: Reboot Host
+      shell: reboot
