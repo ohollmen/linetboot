@@ -28,3 +28,5 @@
       shell: 'echo $USER'
       register: echouser
     - debug: msg='User is {{ echouser.stdout }}'
+    - name: Reload SSH Config
+      shell: service ssh reload
