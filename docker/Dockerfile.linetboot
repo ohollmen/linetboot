@@ -1,0 +1,50 @@
+# Build by:   docker build --rm=true -t 'linetboot:0.0.1' -f Dockerfile.linetboot .
+# Run by:     docker run --rm=true -i -t 'linetboot:0.0.1' bash
+# Rem-tag by: docker tag linetboot:0.0.1 foo.com/linetboot:0.0.1
+# Push by:    docker push foo.com/linetboot:0.0.1
+# Use -d for backgrounding (daemon). -P for publish
+FROM node:12-buster
+LABEL maintainer="Olli Hollmen" description="Linetboot App Server"
+# Early env settings and
+# Package Installations
+# Prevent "Configuring tzdata" during pkg install
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Los_Angeles
+RUN apt-get update && apt-get install -y --no-install-recommends wget locales 
+# ENV MYUTIL_VER=1.0
+# External / Third party raw packages ?
+# file://./
+COPY ./ /linetboot
+
+
+# Create Dirs (RUN mkdir ...) ?
+RUN mkdir -p  /linetboot
+
+# Create symlinks (RUN ln -s ...) ?
+RUN ln -s /linetboot/ /root/linetboot
+
+# Env. Additions ?
+ENV LC_ALL=en_US.UTF-8 LANGUAGE=en_US
+
+# Ubuntu/Debian hacks for locales. Note: requires apt package "locales" (!)
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+# en_US.UTF-8 not needed ? Or above not needed if passed ?
+# Interactive alt to this woule be `dpkg-reconfigure locales`
+RUN locale-gen en_US.UTF-8
+RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+# Use Addition (?) -G sudo
+# RUN useradd -c "The User" -d /home/1000 -m -s /bin/bash 1000
+# Run Commands
+#USER :
+# Cwd for RUN, CMD, ENTRYPOINT, COPY and ADD (to follow)
+#WORKDIR /foo
+# Expose ports (See also mapping by: docker run -p Psrc:Pdest)
+#EXPOSE 8
+#EXPOSE 300
+
+# apt-get clean
+
+# Default Main command (when no command is passed with docker run)
+# Note if ENTRYPOINT is in exec form, CMD (in exec form) becomes
+# (add'l) params to ENTRYPOINT command.
+CMD bash

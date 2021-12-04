@@ -4,3 +4,6 @@ out
 package-lock.json
 tmpl/*~
 playbooks/*.retry
+web/bootables.json
+web/swagger.yaml
+intdir/
