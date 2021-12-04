@@ -431,8 +431,9 @@ function ibip_cell(val, item) {
      
      return "<input class=\"syncbutt\" type=\"button\" data-hname=\""+item.hname+"\" value=\"Sync\" >";
    }
+   // Note type: "text" forces toString() and cmp must be done using stringified form.
    function ibdhcp_cell(val, item) {
-     if (val == true) { return "<span style='font-weight: bold;'>"+val+"</span>"; }
+     if (val == "true") { return "<span style='font-weight: bold;'>"+val+"</span>"; }
      return "<span style='color: #888888;'>"+val+"</span>";
    }
    var fldinfo_iblox = [
@@ -441,7 +442,7 @@ function ibip_cell(val, item) {
      {name: "macaddr", title: "Mac Addr", type: "text", width: 110, css: "macaddr"},
      {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 100, itemTemplate: ibip_cell},
      {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 110, css: "macaddr", itemTemplate: ibmac_cell},
-     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20, itemTemplate: ibdhcp_cell}, // 
+     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20, itemTemplate: ibdhcp_cell}, // Has bool
      {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, visible: false},
      {name: "nbp", title: "Boot File", type: "text", width: 80, visible: false},
      // Need rethink. Most of time host is not known in IB
