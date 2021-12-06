@@ -1,7 +1,14 @@
 /** @file
  * 
- * # Various Linetboot over-the network probing and monitoring operations.
+ * # Various Linetboot over-the network probing and real-time monitoring operations.
  * 
+ * Network reachability test:
+ * - Ping Host to check host is alive (w. network interface up)
+ * - Lookup host by IP and check DNS name (matching host inventory name)
+ * - SSH Onto host programmatically (Using public/private key auth) to see host is accessible
+ * Host Load and uptime test:
+ * - See 1, 5 and 15 minute CPU loads
+ * - Show uptime and number of logged-in users
  */
 var dns  = require("dns");
 var ping = require('ping');
@@ -51,7 +58,8 @@ function init(popts) {
   if (popts.debug) { opts.debug = popts.debug; }
 }
 /** Probe Network connectivity and setup on single host (DNS, Ping, SSH).
-* @todo Convert to async.series, call netresolve or netprobe
+ * The checks *must* be run in sequence as following steps are dependent on the earlier (e.g. host must be pinable to SSH in).
+* @todo Convert the sequence to async.series, call netresolve or netprobe
 */
 function resolve(hnode, cb) {
   cb = cb || function () {};
@@ -66,7 +74,7 @@ function resolve(hnode, cb) {
   var sshcmd = "uptime";
   if (typeof cb != 'function') { throw "resolve: cb is not a function !"; }
   // dns module: resolve4, resolveAny, resolveCname
-  // Note: None of the cb() or promise calls should. The calls should *ONLY*
+  // Note: None of the cb() or promise calls should fail (even if check fails). The calls should *ONLY*
   // set statistics on various probe stages (ipok, nameok, sshconn) in prec
   dns.resolveAny(hn, dnsopts, function (err, addrs) {
     if (err) { console.log("Resolution error: " + err); return cb(null, prec); }
