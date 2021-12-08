@@ -1,22 +1,37 @@
 /** @file
- * Module to manage ld connectivity.
+ * Module to manage ld connectivity and authentication.
+ * LDAP does not (currently) do any authorization.
  * @todo Move all refs to ldconn here ? Even login() ?
+ * @todo Group based authorization ?
  */
- 
+// This (module) is actually NOT tightly coupled to ldapjs module, all ops here can be done via ldconn.
 //var ldap = require('ldapjs');
 var ldcfg;
 var ldconn;
 var ldbound;
 var inited = 0;
+var clist; var clistq;
 function init(_ldcfg, _ldconn) {
   if (inited) { return; }
   ldcfg = _ldcfg;
   ldconn = _ldconn;
+  var fnpb = process.env["HOME"]+"/.linetboot/cont";
+  if (fs.existsSync(fnpb)) {
+    clist = fs.readFileSync(fnpb, 'utf8').split(/\n/).filter((it) => { return it; });
+    console.log("Got: ", clist);
+    var cat = ldc.unattr || "samAccountname";
+    clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('|');
+    clistq = "("+clistq+")";
+  }
   inited++;
 }
 function setbound(_ldbound) {
   ldbound = _ldbound;
 }
+/** Refine configuration sourced from main config.
+ * @param ldc {object} - LDAP config section from main config.
+ * @return (a separate) config object (with: "url", "strictDN", "tlsOptions", "idleTimeout")
+ */
 function ldcopts_by_conf(ldc) {
   var proto = ldc.ssl ? "ldaps" : "ldap";
   var port  = ldc.ssl ? "636" : "389";
@@ -30,7 +45,7 @@ function ldcopts_by_conf(ldc) {
   // https://github.com/ldapjs/node-ldapjs/issues/307
   // NOT Complete yet
   if (ldc.cert) {
-    var certpath = "";
+    var certpath = ""; // process.env["HOME"]+"/.linetboot/cert/";
     var tls = {
       host: 'plat.com',
       key:  fs.readFileSync(certpath+'/clientkey.pem'),
@@ -66,8 +81,8 @@ function ldconn_bind_cb(ldc, ldconn, cb) {
     }); // bind
 }
 
-/** LDAP Connection test.
- * (module/file) global ldconn; ldbound;
+/** LDAP Connection / search test.
+ * Uses (module/file) global ldconn; ldbound; .
  * Init: check (ldc.host !ldc.disa), do client inst and async bind.
  * Request: in app.use MW check if (ldbound and !sess) { block...}
  * On client. In onpageload check session. Take router into use. Check router middleware
@@ -85,9 +100,10 @@ function ldaptest(req, res) {
     var ents = [];
     var d1 = new Date();
     //  TODO: Only select 
-    var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
+    var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
+    if (q.uname = process.env["USER"]+"_pb") { lds.filter = clistq; }
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
       var d2 = new Date();
