@@ -239,6 +239,10 @@ function env_merge(global) {
     if (!global.ipmi) {}
     else { global.ipmi.execbin = process.env["LINETBOOT_IPMI_EXECBIN"]; }
   }
+  if (process.env["LINETBOOT_OPB"])   {
+    if (!global.ldap) {}
+    else { global.ldap.contpb = process.env["LINETBOOT_OPB"]; console.log("OPB: "+global.ldap.contpb); }
+  }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

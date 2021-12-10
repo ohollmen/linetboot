@@ -787,8 +787,8 @@ function esxilist(ev, act) {
     //console.log("CSV:\n",csv);
     console.log("# Guests for "+host);
     //var opts = {sep: ','};
-    var csv = gridexp(fldinfo.esxilist, d); 
-    console.log(csv);
+    //var csv = gridexp(fldinfo.esxilist, d); 
+    //console.log(csv);
     
   }).catch (function (ex) { console.log(ex); });
   var expcfg = {
