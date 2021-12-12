@@ -1,11 +1,11 @@
 /** @file
  * 
- * # RedFish Operations on BCM
+ * # RedFish Operations on BMC (Baseboard Management Controller)
  * 
  * This module allows executing simple high level Remote management operations via RedFish BMC API.
+ * Although the module name is Redfish, most of the ops can be also executed using IPMI (older binary protocol).
  * 
- * # Typical sequence of Setting up RFOp:
- * 
+ * Typical sequence of Setting up RFOp:
  * 
  *      var rmgmt = ipmi.rmgmt_load(f, rmgmtpath);
  *      // Instantiate by IPMI Config (shares creds)
@@ -13,14 +13,25 @@
  *      rfop.sethdlr(hdl_redfish_succ, hdl_redfish_err);
  *      // Call host by MC ip address
  *      rfop.request(rmgmt.ipaddr, ipmiconf);
- * # TODO
+ * 
+ * ## TODO
+ * 
  * Consider a mandatory "discovery call" to "/redfish/v1/Systems/System.Embedded.1/" (or equivalent).
  * One of the rmaing (chicken-and-egg type) problems is that to formulate the info URL the "Id" in info response is needed.
  * The discovery call would help:
  * - Choosing appropriate "ResetType" (preference order could be set by module)
  * - Get to know "PowerState"
- * - 
- * # References
+ * 
+ * ## Ops (Operations) structure
+ * 
+ * Ops contains an array of objects (AoO) for command information. Each entry in it has members:
+ * - id (string) - Abstract symbol label for command (e.g. "boot")
+ * - m (string) - HTTP method for RedFish based call (post/get/patch/...)
+ * - url (string) - Relative URL path from server top URL for RedFish URL call
+ * - msg (obj_or_arr) - Message data for RedFish call (object or array)
+ * - ipmi (string) - IPMI command line command to be executed with ipmitool (do not include ipmitool command name, e.g. "chassis power cycle" to reboot)
+ * 
+ * ## References
  * - https://www.tzulo.com/crm/knowledgebase/47/IPMI-and-IPMITOOL-Cheat-sheet.html
  * - https://docs.oracle.com/cd/E24707_01/html/E24528/z400000c1016683.html
  */
@@ -79,7 +90,9 @@ function RFOp(opid, conf) {
   this.conf = conf || {}; // TODO: utilize !
   this.ipmi = op.ipmi;
 }
-/** Add ("register") operation. */
+/** Add (or register") operation.
+ * Add operations (object) to ops command table (and index of the module).
+ */
 RFOp.add = function (op) {
   if (!op.id) { throw "No ID for new Op!"; }
   if (ops_idx[op.id]) { throw "Op by id "+op.id+" already in"; }
@@ -113,7 +126,10 @@ RFOp.prototype.sethdlr = function (succcb, errcb) {
   return this;
 };
 /** Make a HTTP request for the RedFish operation.
- * 
+ * Lauches asynchronous HTTP call and calls the RF request object contained .succ/.err callbacks
+ * for cases success and error respectively.
+ * @param host {string} - Hostname (with optional ':' delimited port)
+ * @param auth {object} - Auth creds. object w. members user, pass
  */
 RFOp.prototype.request = function(host, auth) {
   var rfop = this;
@@ -152,11 +168,11 @@ RFOp.prototype.request_ipmi = function(host, auth) {
   // -A PASSWORD causes Authentication type PASSWORD not supported - even if manual / --help says it is.
   // At least on CL: -I lanplus must be between -U and -P !! Got: Chassis Power Control: Cycle (Works consistently)
   // In Node.js (exec) toggles interactive auth
-  var basecmd = "/usr/local/bin/ipmitool  -H '" +host+ "'  -U '"+auth.user+"' —I lanplus -P '"+auth.pass+"' ";
+  // var basecmd = "/usr/local/bin/ipmitool  -H '" +host+ "'  -U '"+auth.user+"' —I lanplus -P '"+auth.pass+"' ";
  
   // -I in here (after -H) triggers interactive passwd prompt, ignoring -P !!
-  //var basecmd = "ipmitool  -H '" +host+ "' —I 'lanplus' -U '"+auth.user+"' -P '"+auth.pass+"' ";
-  var basecmd = "ipmitool  -H " +host+ "  -U "+auth.user+" —I lanplus -P "+auth.pass+" "; // NO quotes
+  ///////var basecmd = "ipmitool  -H '" +host+ "' —I 'lanplus' -U '"+auth.user+"' -P '"+auth.pass+"' ";
+  //var basecmd = "ipmitool  -H " +host+ "  -U "+auth.user+" —I lanplus -P "+auth.pass+" "; // NO quotes
   var execargs = ["-H", host, "-U", auth.user, "-I", "lanplus", "-P ", auth.pass];
   if (!this.err || !this.succ) { throw "Some of the err/succ callbacks missing !"; }
   if (!this.ipmi) { msg = "IPMI command not found for op: "+ this.op; console.log(msg); return this.err({}); }
@@ -172,7 +188,7 @@ RFOp.prototype.request_ipmi = function(host, auth) {
       //r.status = 400;
       r = {response: r};
       // r.toString = function () { return this.r.message; } // TypeError: Cannot read property 'message' of undefined
-      r.toString = function () { return r.response; }
+      r.toString = function () { return r.response; };
       // 
     } // 
     return r;
@@ -193,13 +209,13 @@ RFOp.prototype.request_ipmi = function(host, auth) {
       //console.log(stderr);
       //return res.json(jr);
       // Simulate axios promise response ?
-      var r = mk_ax_resp(1);
+      let r = mk_ax_resp(1);
       return inst.err(r);
     }
     
     console.log("Executed IPMI command successfully: " + stdout);
     //return res.json({status: "ok", data: {"msgarr": msgarr}});
-    var r = mk_ax_resp(0);
+    let r = mk_ax_resp(0);
     return inst.succ(r);
   });
 };
