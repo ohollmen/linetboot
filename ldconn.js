@@ -15,7 +15,7 @@ function init(_ldcfg, _ldconn) {
   if (inited) { return; }
   ldcfg = _ldcfg;
   ldconn = _ldconn;
-  var fnpb = process.env["HOME"]+"/.linetboot/cont";
+  var fnpb = ldcfg.contbp || process.env["HOME"]+"/.linetboot/contpb";
   if (fs.existsSync(fnpb)) {
     clist = fs.readFileSync(fnpb, 'utf8').split(/\n/).filter((it) => { return it; });
     console.log("Got: ", clist);
@@ -23,6 +23,7 @@ function init(_ldcfg, _ldconn) {
     clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('|');
     clistq = "("+clistq+")";
   }
+  else { console.log("No contpb\n"); }
   inited++;
 }
 function setbound(_ldbound) {
