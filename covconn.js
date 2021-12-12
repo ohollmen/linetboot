@@ -341,6 +341,12 @@ function express_report(req, res) {
   if (!["build","rel"].includes(rep)) { jr.msg += "No report: "+rep; return res.json(jr); }
   cov_proj_stats(apiurl, function (err, d) {
     if (err) { jr.msg += err; return res.json(jr); }
+    //For now: Detect use-case by url (!chart => grid)
+    if (req.url && !req.url.match(/chart/)) {
+      // Should start: {\n"viewContentsV1": { ...
+      //console.log(d);
+      return res.json(d);
+    }
     // var rep = 'build';
     var cdata = report_chart(d, rep);
     if (!cdata) { jr.msg += "Could not create Streams (snapshotTarget) chart"; return res.json(jr); }

@@ -602,7 +602,7 @@ function ibip_cell(val, item) {
      return "<span id=\"bsstatus_"+item.lbl+"\">"+val+"</span>";
    }
    // TODO: Detect also mounted status
-   function haslocallysell (val, item) {
+   function haslocallycell (val, item) {
      var ccont = val ? "<i class=\"glyphicon glyphicon-check\"></i>" : "";
      if (item.mounted) { ccont += " (mnt)";}
      return ccont;
@@ -616,14 +616,18 @@ function ibip_cell(val, item) {
     
     {name: "kernel", title: "Kernel Path", type: "text", width: 70},
     {name: "initrd", title: "Initrd Path", type: "text", width: 70},
-    {name: "present", title: "Have it ?", type: "text", width: 10, itemTemplate: haslocallysell}, // title: "Usable" ?
+    {name: "present", title: "Have it ?", type: "text", width: 10, itemTemplate: haslocallycell}, // title: "Usable" ?
     {name: "status", title: "Status", type: "text", width: 20, itemTemplate: boo_status},
     // Popup commands to download, mount (if needed), test local download, create menu item
     //{name: "howto", title: "Howto", type: "text", width: 20, itemTemplate: function (val, item) {}}, // Help icon
 
    ];
+   /** */
+   function snapid_cell(val, item) {
+     return "<span class=\"ccid\" data-snid=\""+val+"\">"+val+"</span>";
+   }
    var fldinfo_covstr = [
-    {"name": "snapshot","title": "Snapshot ID", type: "number", width: 10,},
+    {"name": "snapshot","title": "Snapshot ID", type: "number", width: 10, itemTemplate: snapid_cell},
     //{"name": "streamName","title": "Stream", width: 50},
     {"name": "snapshotVersion", "title": "Version",  type: "text", width: 30},
     {"name": "snapshotTarget", "title": "Target", type: "text", width: 30},

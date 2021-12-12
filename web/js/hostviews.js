@@ -555,9 +555,11 @@ var tabloadacts = [
   // shell
   {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", gridid: "", path: "shell"},
   // Cov (for now only manually routable)
-  {name: "Release Build Defects", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
+  // NEW: Cov Top level tabbed
+  {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"},
+  {name: "Release Build Defects (Chart)", elsel: "cov-1", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
     setupui: null, canid: "canvas_blds", chtype: "bar", limit: 120},
-  {name: "Release Defects", tmpl: "simplegrid", tmplid: "simplegrid", gridid:"covstr", url: "/cov_proj_data.json", hdlr: rapp.fetchgrid_cov, path: "covgrid", }
+  {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid:"covstr", url_old: "/cov_proj_data.json", url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", }
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

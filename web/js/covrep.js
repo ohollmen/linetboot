@@ -59,7 +59,7 @@ rapp.fetchgrid_cov = function (ev, act) {
   //$('#vtitle').html(act.name);
   var url = act.genurl ? act.genurl(act) : act.url;
   axios.get(url).then( function (resp) {
-    var d = resp.data; // AoO
+    var d = resp.data; // Coverity Object
     //var arr = rapp.respdata(resp);
     var arr = d.viewContentsV1.rows;
     if (!arr || !Array.isArray(arr)) { return alert("No data"); }
@@ -72,7 +72,17 @@ rapp.fetchgrid_cov = function (ev, act) {
     //if (!fi) { alert(); }
     cfg.data = arr; cfg.fields = fi[act.gridid];
     $("#" + act.gridid).jsGrid(cfg);
+    var idx = {};
+    arr.forEach((it) => { idx[it.snapshot] = it; });
     //console.log(JSON.stringify(arr, null, 2));
+    // data-cid
+    $(".ccid").click((jev) => {
+      var snid = jev.target.dataset.snid; // Snap
+      //console.log(jev.target);
+      //console.log("CID: "+cid);
+      console.log(idx[snid]);
+      //alert(cid);
+    });
   })
   .catch(function (error) { console.log(error); });
 };
