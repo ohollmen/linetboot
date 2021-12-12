@@ -1,24 +1,28 @@
 /** @file
 
- Netboot server for Installation of OS
+ # Netboot server for Installation of OS
+ 
  Author Copyright: Olli Hollmen 2018
  
- # Generate content w. mustache CL utility
+ ## Generate content w. mustache CL utility
  
  cat initialuser.json | ./node_modules/mustache/bin/mustache - ./tmpl/preseed.cfg.mustache
  
- # Testing Static content (e.g. OS Image) delivery
+ ## Testing Static content (e.g. OS Image) delivery
  
  cd /tmp
  md5sum /boot/memtest86+.bin
  wget http://localhost:3000/memtest86+.bin
  md5sum memtest86+.bin
  
- # Allow use as component
+ ## Allow use as component
+ 
  Need to set headers (Taken from Docker sent headers):
+ ```
  Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, X-Registry-Auth
  Access-Control-Allow-Methods: HEAD, GET, POST, DELETE, PUT, OPTIONS
  Access-Control-Allow-Origin: *
+ ```
 */
 "use strict;";
 // 'esversion: 6';
@@ -289,7 +293,7 @@ function app_init() { // global
   app.get("/iloglisthosts",  osinst.ilog_view_hosts);
   
   app.get("/rpaddmems",  rp_add_mems);
-  if (global.cov) {
+  if (global.cov && global.cov.pass) {
     covconn.init(global);
     app.get("/covtgtchart",  covconn.express_report);
     app.get("/covtgtgrid",  covconn.express_report);
