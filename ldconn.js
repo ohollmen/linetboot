@@ -6,6 +6,7 @@
  */
 // This (module) is actually NOT tightly coupled to ldapjs module, all ops here can be done via ldconn.
 //var ldap = require('ldapjs');
+var fs = require('fs');
 var ldcfg;
 var ldconn;
 var ldbound;

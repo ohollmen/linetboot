@@ -198,7 +198,7 @@ function disabled_detect(global) {
   // !proc.urlpath ... does not seemed to be filled in any examples
   if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
   var cov = global.cov;
-  if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("cov"); }
+  if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("coverity"); }
   return dis;
 } // diabled_detect
 

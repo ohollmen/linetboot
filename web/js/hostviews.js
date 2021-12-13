@@ -698,21 +698,22 @@ function acts_uidisable(actitems) {
   if (!dis) { return alert("disabled setting is completely absent"); }
   if (!Array.isArray(dis)) { console.log("Disable-list not in an array"); return;}
   if (!dis.length) { console.log("Nothing to disable"); return; }
-  //if (!Array.isArray(dis)) { return alert("disabled ... not an Array"); }
   // Do not check acts_rmitem() return values strictly as items may already be removed.
   dis.forEach((fstr) => {
     console.log("Check:"+fstr);
     // var rmby = "path"; var lbl = fstr;
     //if (fstr == 'ipmi')      { acts_rmitem(actitems, "elsel", "tabs-6"); } // 
+    /*
     if (fstr == 'groups')    { acts_rmitem(actitems, "path", "groups"); }
     if (fstr == 'dockerenv') { acts_rmitem(actitems, "path", "dockerenv"); }
     if (fstr == 'hostkeys')  { acts_rmitem(actitems, "path", "hostkeys"); }
     if (fstr == 'pkgstats')  { acts_rmitem(actitems, "path", "pkgstats"); }
     if (fstr == 'ibloxlist') { acts_rmitem(actitems, "path", "ibloxlist"); }
     if (fstr == 'eflowlist') { acts_rmitem(actitems, "path", "eflowlist"); }
-    if (fstr == 'esxiguests') { acts_rmitem(actitems, "path", "esxiguests"); }
-    if (fstr == 'cov') { acts_rmitem(actitems, "path", "coverity"); } // TODO: 1:1
-    // acts_rmitem(actitems, rmby, lbl);
+    if (fstr == 'esxiguests'){ acts_rmitem(actitems, "path", "esxiguests"); }
+    if (fstr == 'coverity')  { acts_rmitem(actitems, "path", "coverity"); }
+    */
+    acts_rmitem(actitems, "path", fstr);
   });
 }
 // Also 2nd {params: {}}

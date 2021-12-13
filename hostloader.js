@@ -227,7 +227,7 @@ function hosts_load(global) {
       hnames.forEach((hn) => {
         // Make sure colls.hostparams[hn] is object
         colls.hostparams[hn] = colls.hostparams[hn] || {};
-        console.log("Assigning group vars for group "+gn+"");
+        debug && console.log("Assigning group vars for group "+gn+"");
         Object.keys(gvs).forEach((varkey) => {
           if (colls.hostparams[hn][varkey]) { return; } // Do not override ! Consider: != undefined ?
           colls.hostparams[hn][varkey] = gvs[varkey];

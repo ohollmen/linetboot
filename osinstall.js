@@ -228,7 +228,7 @@ function init(conf, _patch_params) { // TODO: 2nd: _mod
   if (!iptrans)   { throw "No iptrans config"; }
   user = conf.user;
   if (!user)      { throw "No initial user config"; }
-  if (conf.iprofs) { iprofs = conf.iprofs; console.log("Got install profiles: ", iprofs); } // Optional iprofs
+  if (conf.iprofs) { iprofs = conf.iprofs; console.log("Got install profiles: " + iprofs); } // Optional iprofs
   // TODO: patch_params
   if (_patch_params) { console.log("Got patch_params customization CB"); patch_params_custom = _patch_params; }
   // NEW: if (_mod) { mod = _mod; }
