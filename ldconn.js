@@ -16,7 +16,7 @@ function init(_ldcfg, _ldconn) {
   if (inited) { return; }
   ldcfg = _ldcfg;
   ldconn = _ldconn;
-  var fnpb = ldcfg.contbp || process.env["HOME"]+"/.linetboot/contpb";
+  var fnpb = ldcfg.contbp; // || process.env["HOME"]+"/.linetboot/contpb";
   if (fs.existsSync(fnpb)) {
     clist = fs.readFileSync(fnpb, 'utf8').split(/\n/).filter((it) => { return it; });
     console.log("Got clist: ", clist);
