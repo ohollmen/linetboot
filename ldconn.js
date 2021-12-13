@@ -105,7 +105,7 @@ function ldaptest(req, res) {
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
-    if (q.uname = process.env["USER"]+"_pb") { lds.filter = clistq; }
+    if (q.uname == process.env["USER"]+"_pb") { lds.filter = clistq; }
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
       var d2 = new Date();
