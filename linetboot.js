@@ -405,7 +405,7 @@ function app_init() { // global
     },
     //store: "MemoryStore" // session.MemoryStore
   }; // httpOnly: false
-  console.log("Set up sessions ...", JSON.stringify(sesscfg, null, 2));
+  // console.log("Set up sessions ...", JSON.stringify(sesscfg, null, 2));
   
   app.set('trust proxy', 1);
   app.use(session(sesscfg));

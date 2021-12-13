@@ -17,14 +17,24 @@ function init(_ldcfg, _ldconn) {
   ldcfg = _ldcfg;
   ldconn = _ldconn;
   var fnpb = ldcfg.contbp; // || process.env["HOME"]+"/.linetboot/contpb";
-  if (fs.existsSync(fnpb)) {
-    clist = fs.readFileSync(fnpb, 'utf8').split(/\n/).filter((it) => { return it; });
-    console.log("Got clist: ", clist);
-    var cat = ldc.unattr || "sAMAccountname";
-    clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('|');
-    clistq = "("+clistq+")";
+  //console.log(ldcfg);
+  //console.log("CONTPB: '"+ldcfg.contpb+"'");
+  if (fs.existsSync(ldcfg.contpb)) {
+    try {
+      clist = fs.readFileSync(ldcfg.contpb, 'utf8').split(/\n/).filter((it) => {
+        if (it.match(/^#/)) { return 0; }
+        if (it.match(/^\s*$/)) { return 0; }
+        return it;
+      });
+    } catch (ex) { console.log("Error loading: "+ldcfg.contpb+" : "+ex); }
+    // console.log("Got clist: ", clist);
+    var cat = ldcfg.unattr || "sAMAccountname";
+    if (clist) {
+      clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('');
+      clistq = "(|"+clistq+")";
+    }
   }
-  else { console.log("No contpb\n"); }
+  // else { console.log("No contpb ("+ldcfg.contbp+")\n"); }
   inited++;
 }
 function setbound(_ldbound) {
