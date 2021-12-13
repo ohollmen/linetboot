@@ -19,8 +19,8 @@ function init(_ldcfg, _ldconn) {
   var fnpb = ldcfg.contbp || process.env["HOME"]+"/.linetboot/contpb";
   if (fs.existsSync(fnpb)) {
     clist = fs.readFileSync(fnpb, 'utf8').split(/\n/).filter((it) => { return it; });
-    console.log("Got: ", clist);
-    var cat = ldc.unattr || "samAccountname";
+    console.log("Got clist: ", clist);
+    var cat = ldc.unattr || "sAMAccountname";
     clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('|');
     clistq = "("+clistq+")";
   }
@@ -105,7 +105,7 @@ function ldaptest(req, res) {
     if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
-    if (q.uname == process.env["USER"]+"_pb") { lds.filter = clistq; }
+    if ((q.uname == process.env["USER"]+"_pb") && clistq) { lds.filter = clistq; }
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
       var d2 = new Date();

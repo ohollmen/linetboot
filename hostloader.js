@@ -1,5 +1,5 @@
 /** @file
- * # Load (ansible style) host inventory file and host facts
+ * ## Load (ansible style) host inventory file and host facts
  * 
  * This linetboot module implements:
  * - Hosts list / inventory loading (from a simple text file similar to ansible hosts inventory)
@@ -12,8 +12,10 @@ var fact_path;
 var colls;
 var debug = 0;
 /** Initialize host loader module.
-* - fact_path
-* - colls (Various host related Collections)
+ * 
+* @param global {object} - Main config (for e.g. fact_path)
+* @param gcolls {object{} - Host collections (hostcache, hostarr, groups).
+* 
 */
 function init(global, gcolls) {
   // TODO: Store whole global config.
@@ -407,32 +409,32 @@ function file_path_resolve(fname, path) {
 * @param hostarr {array} - Array of host facts to refer to during member resolution
 */
 function group_mems_setup(groups, hostarr) {
-    if (!Array.isArray(groups)) { console.log("Configured Groups not in array !"); return null; }
-    var isgrouped = {}; // Flags (counts ?) for hosts joined to any/some group (by name pattern).
-    var grp_other = []; // Groups with no pattern and policy == 'nongrouped'
-    // TODO: Make more generic and allow matching on any attribute (not just hostname)
-    groups.forEach(function (it) {
-      
-      if (it.patt) {
-        var re = new RegExp(it.patt);
-        // it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
-        it.hostnames = hostarr.reduce(function (oarr, h) {
-          if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
-          return oarr;
-        }, []);
-      }
-      if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
-      if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
-    });
-    // Second pass for non-grouped
-    // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
-    // othernames - hostnames of non-grouped / other hosts
-    var othernames = hostarr.reduce(function (oarr, h) {
-      if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); }
-      return oarr;
-    }, []);
-    grp_other.forEach(function (g) { g.hostnames = othernames; });
-      return 1; // No need: isgrouped / grp_other
+  if (!Array.isArray(groups)) { console.log("Configured Groups not in array !"); return null; }
+  var isgrouped = {}; // Flags (counts ?) for hosts joined to any/some group (by name pattern).
+  var grp_other = []; // Groups with no pattern and policy == 'nongrouped'
+  // TODO: Make more generic and allow matching on any attribute (not just hostname)
+  groups.forEach(function (it) {
+    
+    if (it.patt) {
+      var re = new RegExp(it.patt);
+      // it.hosts = hostarr.filter(function (h) { return h.ansible_fqdn.match(re); });
+      it.hostnames = hostarr.reduce(function (oarr, h) {
+        if (h.ansible_fqdn.match(re)) { oarr.push(h.ansible_fqdn); }
+        return oarr;
+      }, []);
+    }
+    if (it.hostnames) { it.hostnames.forEach(function (hn) { isgrouped[hn] = 1; }); } // Increment ?
+    if (!it.patt && it.policy == 'nongrouped') { grp_other.push(it); }
+  });
+  // Second pass for non-grouped
+  // var others = hostarr.filter(function (h) { return ! isgrouped[h.ansible_fqdn]; });
+  // othernames - hostnames of non-grouped / other hosts
+  var othernames = hostarr.reduce(function (oarr, h) {
+    if ( ! isgrouped[h.ansible_fqdn]) {oarr.push(h.ansible_fqdn); }
+    return oarr;
+  }, []);
+  grp_other.forEach(function (g) { g.hostnames = othernames; });
+  return 1; // No need: isgrouped / grp_other
 }
 
 /** Filter hosts (array) by regexp pattern in "ansible_fqdn" (or other given property).
@@ -459,7 +461,7 @@ function hosts_filter(hostarr, patt, propname) {
  * All propseries to allow indexing (mac,ip,hname) should be present.
  * @param h {object} - Minimal host record with hname,macaddr,ipaddr (And optional bmcipaddr)
  * @param global {object} - Main config with likely-to-be-valid info to create fake facts.
- * 
+ * @return Minimal facts (with most essential info only)
  */
 function host2facts(h, global) {
   var f = {ansible_default_ipv4: {}, ansible_dns: {nameservers: [] } };
@@ -507,6 +509,10 @@ function csv_parse(fname, opts) {
   return csv_parse_data(cont, opts);
   
 }
+/** Parse CSV in somewhat naive way.
+ * @param cont {string} - CSV Content (as scalar string)
+ * @param opts {object} - Parsing options (w. hdr, sep, max
+ */
 function csv_parse_data(cont, opts) {
   opts = opts || {sep: ',', max: -1};
   var lines = cont.split("\n");

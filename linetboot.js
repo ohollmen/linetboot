@@ -426,6 +426,7 @@ function app_init() { // global
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldconnx.ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
+    console.log("init LDAP");
     ldconnx.init(global.ldap, ldconn); // Must be connected, but before any activity
     ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
