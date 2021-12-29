@@ -1,0 +1,55 @@
+# # Install Jenkins server (on Ubuntu)
+# Install Jenkins from Jenkins APT repo, Install Java 8 and startup jenkins
+# ## TODO
+# Allow similar flow for Centos (See: https://www.jenkins.io/doc/book/installing/linux/)
+- name: Install Jenkins
+  hosts: '{{ host }}'
+  become: yes
+  # Various paths and URL:s
+  vars:
+    keyurl: 'https://pkg.jenkins.io/debian-stable/jenkins.io.key'
+    keyfile: '/usr/share/keyrings/jenkins-keyring.asc'
+    jrepourl: 'https://pkg.jenkins.io/debian-stable binary/'
+    japtlistfn: '/etc/apt/sources.list.d/jenkins.list'
+    initpassfile: '/var/lib/jenkins/secrets/initialAdminPassword'
+  tasks:
+    - name: Install Jenkins Repo Key
+      shell: 'curl -fsSL {{ keyurl }} | sudo tee {{ keyfile }} > /dev/null'
+    - name: Save Repo URL
+      shell: 'echo deb [signed-by={{ keyfile }}]   {{ jrepourl }} | sudo tee {{ japtlistfn }}   > /dev/null'
+    # sudo apt-get update
+    # sudo apt-get install jenkins
+    - name: Install Jenkins
+      apt: name={{ item }} update_cache=yes state=present force_apt_get=yes install_recommends=no
+      with_items:
+        - jenkins
+	- openjdk-8-jre
+      # ls -al /usr/share/keyrings/jenkins-keyring.asc
+      # curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo tee   /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+      # ls -al /usr/share/keyrings/jenkins-keyring.asc
+      # ls -al /etc/apt/sources.list.d/jenkins.list
+      # cat /usr/share/keyrings/jenkins-keyring.asc
+      # sudo apt-get update
+      # sudo apt-get install jenkins
+      # sudo apt-get install openjdk-8-jre
+      - name: Start Jenkins
+        shell: sudo systemctl start jenkins
+      # sudo systemctl status jenkins
+      - name: Register Intial hash/pass token
+        shell: cat {{ initpassfile }}
+        register: md5pass
+      - name: Show token to plabook running admin
+        debug: msg='Initial unlock pass/token {{ md5pass.stdout }}'
+      # TODO: Complex interaction with Jenkins Web GUI.
+      # Possibly marginally doable, form params serialization, redirects involved.
+      # May not be worth rev. engineering, fully automating.
+      # See mocked up steps below gathered so far to continue effort.
+      # POST ... action="j_spring_security_check"
+      # Redirects to: http://192.168.1.127:8080/ and sets cookie, use -L (--location)
+      #- name: Send Password (equivalent to GUI submission)
+      #  shell: curl -c /tmp/jc.txt --insecure -L -X POST http://{{ inventory_hostname }}:8080/j_spring_security_check -d 'from=%2F&j_username=admin&j_password={{ md5pass.stdout }}'
+      #- name: Next curl
+      #  shell: curl -c /tmp/jc.txt --insecure ...
+	
+
+
