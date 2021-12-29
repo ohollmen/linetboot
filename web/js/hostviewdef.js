@@ -638,9 +638,12 @@ function ibip_cell(val, item) {
     {"name": "totalDetected","title": "Total Detected",  type: "number", width: 15,},
     {"name": "newlyDetectedDefectCount","title": "Newly Detected",  type: "number", width: 15},
     {"name": "newlyEliminatedDefectCount","title": "Newly Eliminated",  type: "number", width: 15},
-    
-    
-    
+   ];
+   // Jenkins Jobs
+   var fldinfo_jjobs = [
+     //{"name": "name", "title": "Job Name",  type: "text", width: 40},
+     //{"name": "url", "title": "Job URL",  type: "text", width: 80}, // url
+     // color
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
@@ -649,6 +652,6 @@ function ibip_cell(val, item) {
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
-      "covstr": fldinfo_covstr
+      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs,
    };
    

@@ -243,6 +243,10 @@ function env_merge(global) {
     if (!global.ldap) {}
     else { global.ldap.contpb = process.env["LINETBOOT_OPB"]; console.log("OPB: "+global.ldap.contpb); }
   }
+  if (process.env["LINETBOOT_JENKINS_PASS"])   {
+    if (!global.jenkins) {}
+    else { global.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
+  }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

@@ -191,6 +191,11 @@
        "pollinterval": 3000,
        "polltestact": "./alarm.js"
   },
+  "jenkins": {
+    "host": "192.168.1.127:8080",
+    "user": "ohollmen",
+    "pass":""
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],

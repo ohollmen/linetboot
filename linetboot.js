@@ -301,6 +301,8 @@ function app_init() { // global
   app.get("/bs_list", bootables_list);
   app.get("/bs_statuses", bootables_status);
   app.get("/recipes_dump", osinst.recipes_view);
+  
+  app.get("/jenkins_jobs", jenkins_jobs);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -426,7 +428,7 @@ function app_init() { // global
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldconnx.ldcopts_by_conf(ldc);
     ldconn = ldap.createClient(ldcopts);
-    console.log("init LDAP");
+    //console.log("init LDAP");
     ldconnx.init(global.ldap, ldconn); // Must be connected, but before any activity
     ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
@@ -1875,6 +1877,7 @@ function dockerenv_info(req, res) {
  */
 function config_send(req, res) {
   var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}};
+  console.log("Create config for user ");
   // Docker host group
   var dock = global.docker;
   var core = global.core;
@@ -2411,7 +2414,7 @@ function login(req, res) {
     });
     //console.log("Got res:"+res);
     //console.log(JSON.stringify(res));
-  });
+  }); // ldconn.search
   
   } // search
   // Send final success response
@@ -2856,4 +2859,23 @@ function bootables_status(req, res) {
       return cb(null, img2);
     }); // Accept
   }
+}
+/** Fetch info from Jenkins API.
+ * Wrap response with standard Linetboot response wrapping.
+ * @todo Possibly server multiple URL:s / views, provide multi-http request aggregation.
+ */
+function jenkins_jobs(req, res) {
+  var jcfg = global.jenkins;
+  var jr = {status: "err", msg: "Failed to get Jenkins jobs. "};
+  if (!jcfg) { jr.msg += "No Jenkins config."; return res.json(jr); }
+  var url = "http://"+jcfg.user+":"+jcfg.pass+"@"+jcfg.host+"/api/json?pretty=true";
+  console.log("Concluded URL: "+ url);
+  axios.get(url).then((resp) => {
+    var d = resp.data;
+    if (!d) { jr.msg += "No Jenkins data."; return res.json(jr); }
+    return res.json({status: "ok", data: d});
+  }).catch((ex) => {
+    jr.msg += "Jenkins request failed: "+ ex;
+    return res.json(jr);
+  });
 }
