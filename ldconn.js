@@ -19,20 +19,12 @@ function init(_ldcfg, _ldconn) {
   var fnpb = ldcfg.contbp; // || process.env["HOME"]+"/.linetboot/contpb";
   //console.log(ldcfg);
   //console.log("CONTPB: '"+ldcfg.contpb+"'");
-  if (fs.existsSync(ldcfg.contpb)) {
-    try {
-      clist = fs.readFileSync(ldcfg.contpb, 'utf8').split(/\n/).filter((it) => {
-        if (it.match(/^#/)) { return 0; }
-        if (it.match(/^\s*$/)) { return 0; }
-        return it;
-      });
-    } catch (ex) { console.log("Error loading: "+ldcfg.contpb+" : "+ex); }
+  if (ldcfg.contpb) {
+    clist = pb_parse(ldcfg.contpb);
+    if (!clist) { inited++; return; }
     // console.log("Got clist: ", clist);
     var cat = ldcfg.unattr || "sAMAccountname";
-    if (clist) {
-      clistq = clist.map((it) => { return "("+cat+"="+it+")"; }).join('');
-      clistq = "(|"+clistq+")";
-    }
+    clistq = pb_filter(clist, cat);
   }
   // else { console.log("No contpb ("+ldcfg.contbp+")\n"); }
   inited++;
@@ -40,6 +32,31 @@ function init(_ldcfg, _ldconn) {
 function setbound(_ldbound) {
   ldbound = _ldbound;
 }
+/** Parse simple pb file
+ * Return an object that will also hold the (generated) filter (later)
+*/
+function pb_parse(fname) {
+  var fok = fs.existsSync(ldcfg.contpb);
+  var clist = null;
+  if (!fok) { return null; }
+  try {
+    clist = fs.readFileSync(ldcfg.contpb, 'utf8').split(/\n/).filter((it) => {
+      if (it.match(/^#/)) { return 0; }
+      if (it.match(/^\s*$/)) { return 0; }
+      return it;
+    });
+  } catch (ex) { console.log("Error loading: "+ldcfg.contpb+" : "+ex); return null; }
+  return clist;
+}
+function pb_filter(clist, ida) {
+  var clisq = null;
+  if (clist) {
+    clistq = clist.map((it) => { return "("+ida+"="+it+")"; }).join('');
+    clistq = "(|"+clistq+")";
+  }
+  return clistq;
+}
+
 /** Refine configuration sourced from main config.
  * @param ldc {object} - LDAP config section from main config.
  * @return (a separate) config object (with: "url", "strictDN", "tlsOptions", "idleTimeout")

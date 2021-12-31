@@ -97,6 +97,7 @@ function mainconf_process(global) {
     tilde_expand(dkr, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
   }
   tilde_expand(global.ansible, ["pbpath"]);
+  tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -189,6 +190,7 @@ function disabled_detect(global) {
   // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
   // in g.hostnames.length > 0.
   // NOTE: We don't know if groups have been loaded (properly) and it will be hard to test here.
+  // NOTE: The global.groups are already dealt with oabove !!!
   if (global.groups && 1) {
     //dis.push("groups");
   }
@@ -199,6 +201,8 @@ function disabled_detect(global) {
   if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
   var cov = global.cov;
   if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("coverity"); }
+  var jenk = global.jenkins;
+  if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
   return dis;
 } // diabled_detect
 
@@ -211,6 +215,8 @@ function env_merge(global) {
   // TOP
   if (process.env["FACT_PATH"])           { global.fact_path = process.env["FACT_PATH"]; }
   if (process.env["LINETBOOT_DEBUG"])	    { global.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
+  // NOTE: This has been moved from top to "core"
+  if (process.env["LINETBOOT_MAINDOCROOT"])	{ global.core.maindocroot = process.env["LINETBOOT_MAINDOCROOT"]; }
   // INST
   if (process.env["LINETBOOT_USER_CONF"])   { global.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
   if (process.env["LINETBOOT_SSHKEY_PATH"]) { global.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
@@ -247,6 +253,7 @@ function env_merge(global) {
     if (!global.jenkins) {}
     else { global.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
   }
+
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

@@ -150,7 +150,11 @@ function app_init() { // global
   // global.mirror.docroot
   // For local disk boot (recent) kernels and network install as well
   var maindocroot = global.core.maindocroot;
-  if (!fs.existsSync(maindocroot)) { console.error("Main docroot '"+maindocroot+"' does not exist"); process.exit(1); }
+  if (!fs.existsSync(maindocroot)) {
+    console.error("Error/Warning: Main docroot '"+maindocroot+"' does not exist");
+    // 
+    //process.exit(1);
+  }
   // https://expressjs.com/en/4x/api.html#express.static
   var staticconf = {dotfiles: "allow"}; // setHeaders, index, fallthrough=false (to short circuit)
   // Allow enabling 
