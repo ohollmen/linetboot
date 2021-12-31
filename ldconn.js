@@ -23,8 +23,8 @@ function init(_ldcfg, _ldconn) {
     clist = pb_parse(ldcfg.contpb);
     if (!clist) { inited++; return; }
     // console.log("Got clist: ", clist);
-    var cat = ldcfg.unattr || "sAMAccountname";
-    clistq = pb_filter(clist, cat);
+    var ida = ldcfg.unattr || "sAMAccountname";
+    clistq = pb_filter(clist, ida);
   }
   // else { console.log("No contpb ("+ldcfg.contbp+")\n"); }
   inited++;
@@ -36,16 +36,18 @@ function setbound(_ldbound) {
  * Return an object that will also hold the (generated) filter (later)
 */
 function pb_parse(fname) {
-  var fok = fs.existsSync(ldcfg.contpb);
+  var fok = fs.existsSync(fname);
   var clist = null;
   if (!fok) { return null; }
   try {
-    clist = fs.readFileSync(ldcfg.contpb, 'utf8').split(/\n/).filter((it) => {
+    clist = fs.readFileSync(fname, 'utf8').split(/\n/).filter((it) => {
       if (it.match(/^#/)) { return 0; }
       if (it.match(/^\s*$/)) { return 0; }
+      // Trim ?
+      it = it.trim();
       return it;
     });
-  } catch (ex) { console.log("Error loading: "+ldcfg.contpb+" : "+ex); return null; }
+  } catch (ex) { console.log("Error loading: "+fname+" : "+ex); return null; }
   return clist;
 }
 function pb_filter(clist, ida) {
@@ -129,9 +131,10 @@ function ldaptest(req, res) {
     var ents = [];
     var d1 = new Date();
     //  TODO: Only select 
-    if (!q.uname) { jr.msg += "No Query criteria."; return res.json(jr); }
+    if (!q.uname && !q.pblbl) { jr.msg += "No Query criteria."; return res.json(jr); }
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
+    // Custom query. TODO: q.pblbl
     if ((q.uname == process.env["USER"]+"_pb") && clistq) { lds.filter = clistq; }
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
