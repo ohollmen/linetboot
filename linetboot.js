@@ -58,7 +58,8 @@ var iblox    = require("./iblox.js");
 var postinst = require("./postinst.js");
 var procrpt  = require("./procreport.js");
 var covconn  = require("./covconn.js");
-var ldconnx   = require("./ldconn.js");
+var ldconnx  = require("./ldconn.js");
+var deployer = require("./deployer.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -116,6 +117,7 @@ function app_init() { // global
   // "setHeaders": function (res,path,stat) {}
   osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
   procrpt.init(global);
+  deployer.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -307,6 +309,11 @@ function app_init() { // global
   app.get("/recipes_dump", osinst.recipes_view);
   
   app.get("/jenkins_jobs", jenkins_jobs);
+  app.get("/deploy", deployer.deploy); // /deploy/:proj/:dlbl (This would pop. q.params)
+  app.post("/deploy", deployer.deploy);
+  //app.get("/initdeploy", deployer.initdeploy);
+  //app.post("/initdeploy", deployer.initdeploy);
+  app.get("/deploy_config", deployer.config);
  } // sethandlers
   //////////////// Load Templates ////////////////
   

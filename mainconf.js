@@ -98,6 +98,8 @@ function mainconf_process(global) {
   }
   tilde_expand(global.ansible, ["pbpath"]);
   tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
+  var deploy = global.deployer;
+  if (deploy) { tilde_expand(deploy, ["deployfn"]); }
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -203,6 +205,8 @@ function disabled_detect(global) {
   if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("coverity"); }
   var jenk = global.jenkins;
   if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
+  var dr = global.deployer;
+  if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn)) { dis.push("deploy"); }
   return dis;
 } // diabled_detect
 

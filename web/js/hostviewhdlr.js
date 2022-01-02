@@ -894,3 +894,58 @@ function shellview_show(ev, act) {
     console.log("Set URL to: "+el.src+ " on "+el);
   }
 }
+/** Deploy Git projects (configured on server side).
+ */
+function proj_deploy(ev, act) {
+  var tgtid = ev.viewtgtid;
+  rapp.templated(act.tmpl, act, tgtid);
+  axios.get(act.url).then((resp) => {
+    var d = resp.data.data;
+    if (!Array.isArray(d)) { return toastr.error(act.name + " config is not an array!"); }
+    if (act.uisetup) { act.uisetup(d); } // deploy_uisetup(d);
+  }).catch((ex) => {
+    alert("Bad: "+ex);
+    toastr.error("Problems loading deployment info: "+ex);
+  });
+  
+  
+}
+
+function deploy_uisetup(dpconf) {
+  console.log("Got conf:", dpconf);
+  var opt1 = document.getElementById("projlbl");
+  var opt2 = document.getElementById("dlbl");
+  var el3  = document.getElementById("initial");
+  webview.addoptions(dpconf, opt1, {aname: "name", aid: "projlbl"}); // 
+  //opt1.
+  $('#projlbl').on('change', function(jev) { // selectmenuchange
+    console.log("projlbl Changed: ", this);
+    let v = $(this).val();
+    console.log("projlbl has value: " + v);
+    // Choose deployment options accordingly
+    var pr = dpconf.find((pr) => { return pr.projlbl == v; });
+    if (!pr) { toastr.error("No project found by: "+v); }
+    var dopts = pr.deploydest;
+    console.log("Changing deployment options to: ", dopts);
+    webview.addoptions(dopts, opt2, {aname: "userhost", aid: "dlbl"});
+  });
+  
+  // TODO: Check [0] (detect from chosen project ?)
+  let v = $(opt1).val();
+  var pr = dpconf.find((pr) => { return pr.projlbl == v; });
+  var dopts = pr.deploydest;
+  // dpconf[0].deploydest
+  webview.addoptions(dopts, opt2, {aname: "userhost", aid: "dlbl"});
+  $('#deploybut').on('click', function(jev) {
+    var p = {projlbl: $(opt1).val(), dlbl: $(opt2).val(), initial: $(el3).is(':checked') }; //$(el3).val()
+    console.log("Send: "+JSON.stringify(p));
+    // GET:{ params: p}
+    axios.post("/deploy", p).then((resp) => {
+      var d = resp.data;
+      if (d.status == "err") { return toastr.error("Deploy error: " + d.msg); }
+      toastr.info("Deploy success with info: " + d.data);
+    }).catch((ex) => {
+      alert("Bad: "+ex);
+    });
+  });
+}

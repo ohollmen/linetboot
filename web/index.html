@@ -200,6 +200,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <li><a href="#eflowlist">EFlow</a></li>
 <li><a href="#esxiguests">ESXi</a></li>
 <li><a href="#coverity">Coverity</a></li>
+<li><a href="#deploy">Deploy</a></li>
 <li><a href="#logout">Logout</a></li>
 </ul>
 </nav>
@@ -630,6 +631,17 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <h3>Shell for: <span id="s_hname">{{{ hname }}}</span></h3>
   <iframe id="{{{ shellid }}}" src="" width="880" height="400"></iframe> <!--  -->
   </div>
+</script>
+
+<script id="t_deploy" type="text/template" desc="Deploy Git Project">
+  <h3>Deploy Git Project</h3>
+  <form id="deployform">
+    <input type="checkbox" id="initial" value="1">Initial Deployment<br>
+  <label style="width:200px">Project</label><select id="projlbl" name="projlbl"></select><br>
+  
+  <label style="width:200px">Deployment Instance</label><select id="dlbl" name="dlbl"></select><br>
+  <input id="deploybut" type="button" value="Deploy !">
+  </form>
 </script>
 
 </body>
