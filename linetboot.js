@@ -1198,8 +1198,8 @@ function grouplist_inv(req, res) {
       h.disksize = sda.size; // Has unit "MB","GB",...
       h.diskvirt = sda.virtual;
     }
-    h.biosver = h.ansible_bios_version;
-    h.biosdate = h.ansible_bios_date;
+    h.biosver = f.ansible_bios_version;
+    h.biosdate = f.ansible_bios_date;
   }
 /** List Remote Management interfaces for hosts that have them.
 * Display on URL /hostrmgmt
@@ -2818,11 +2818,11 @@ function bootables_list(req, res) {
   var jr = {status: "err", msg: "Failed to get bootables data. "};
   var bs = require("./bootables.json");
   var isopath = global.isopath; // TODO: global.xxx.isopath; - Multiple paths, user resolve ... ?
-  var mntpath = "/isomnt/";
+  var mntpath = global.core.maindocroot || "/isomnt/";
   if (!isopath) { jr.msg += "No Bootables ISO path configured."; return res.json(jr); }
   if (!bs) { jr.msg += "Bootables file not loaded."; return res.json(jr); }
   var arr = bs.items;
-  if (!arr) { jr.msg += "Bootable items not in array."; return res.json(jr); }
+  if (!arr || !Array.isArray(arr)) { jr.msg += "No Bootable items or items not in array."; return res.json(jr); }
   var path = require("path");
   arr.forEach((img) => {
     var fn = path.basename(img.url);
