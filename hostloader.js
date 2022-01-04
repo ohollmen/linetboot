@@ -5,6 +5,10 @@
  * - Hosts list / inventory loading (from a simple text file similar to ansible hosts inventory)
  * - JSON host facts loading from ansible collected JSON fact files
  * - Loading extra / custom hosts from a CSV format text files
+ * 
+ * # References
+ * 
+ * - Ubuntu 20.04 / python3 Breaks facts format () ... https://www.claudiokuenzler.com/blog/989/ansible-linux-distribution-release-discovery-handle-ubuntu-20.04
  */
 "use strict;";
 var fs = require("fs");
