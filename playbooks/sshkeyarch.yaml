@@ -13,7 +13,9 @@
   gather_facts: no
   vars:
     sshdir: /etc/ssh
-    keyarchpath: /tmp/hostkeys
+    # Legacy / testing default
+    # keyarchpath: /tmp/hostkeys
+    keyarchpath: '{{ lookup("env","HOME") }}/.linetboot/sshkeys'
     keyuser: '{{ lookup("env","USER") }}'
     # Should work in Debian distros
     keygroup: '{{ lookup("env","USER") }}'
@@ -55,6 +57,6 @@
     #    mode: 0600
     #  delegate_to: localhost
     #  #when: 0
-    - name: Sync Keys form remote to local
-      shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath}}/{{ inventory_hostname }}'
+    - name: Sync Keys (push) form remote to local
+      shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath }}/{{ inventory_hostname }}'
       #when: 0
