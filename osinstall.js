@@ -1175,12 +1175,13 @@ function recipe_view(req, res) {
   res.json({status: "ok", grid: grid, urls: urls, data: [], rdata: recipes, scriptnames: scriptnames});
 }
 /** Web handler for viewing installation profiles (HTTP GET).
+ * Installation profiles are loaded already at module init.
  */
 function instprofiles_view(req, res) {
-  var jr = {status: "err", msg: "Problem loading install profiles. "};
+  var jr = { status: "err", msg: "Problem loading install profiles. " };
   if (!iprofs) { jr.msg += "No install profiles (null)"; return res.json(jr); }
   var keys = Object.keys(iprofs);
-  if (!keys.length) { jr.msg += "No install profiles (null)"; return res.json(jr); }
+  if (!keys.length) { jr.msg += "No install profile keys"; return res.json(jr); }
   var iprofs_arr = [];
   keys.forEach((k) => {
     iprofs[k].id = k;
