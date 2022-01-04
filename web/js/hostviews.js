@@ -24,45 +24,98 @@ var rapp;var fldinfo;var Chart;var window;var Mustache; var webview;
       itemTemplate: function (value,item) { return item.hname; }
    });
    // jsGrid.fields.actionButton = ActionButtonField;
-   
-   function js_grid_filter (filter) {
-       //console.log("Filter:" + JSON.stringify(filter));
-       //console.log("This::", this);
-       if (!this.datakey) { throw "Data key not defined for filtering";  } // return;
-       if (!this[this.datakey]) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
-       var myarr = this[this.datakey];
-       if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
-       var fkeys = Object.keys(filter);
-       var debug = this.filterdebug || 0;
-       if (debug) { console.log("Filter keys:" + JSON.stringify(fkeys)); }
-       //OLD: var arr = $.grep(db.hosts, function(item)
-       var arr = myarr.filter(function (item) { // db[this.datakey]
-         //console.log("Host: ", item);
-         //return {"hname": "foo"};
-          var fk; var keep = 1;
-          for (var i = 0;fk = fkeys[i];i++) {
-            var fval = filter[fk];
-            // console.log(fk +"="+fval);
-            // console.log("No Filter for " + fk);
-            if (!filter[fk]) {  continue; } // Filter is always string
-            var re = new RegExp(fval);
-            if (item[fk].match(re)) { debug && console.log("Match in val  " + item[fk]); continue; }
-            return 0;
-            //keep = 0; // NA
-          }
-         return 1;
-       });
-       if (debug) { console.log("After filter:" + arr.length + " items"); }
-       return arr;
-     }
-   // 
-   var db = {
-     datakey: "hosts",
-     filterdebug: 0,
-     // The filter here is and object keyed by col names
-     // this here is the db
-     loadData: js_grid_filter
-   };
+/** Filter items in JSGrid.
+ * See showgrid
+ */
+function js_grid_filter (filter) {
+  var debug = this.filterdebug || 0;
+  debug && console.log("Grid-Filter:" + JSON.stringify(filter));
+  debug && console.log("Grid-filter-This:", this);
+  if (!this.datakey) { throw "Data key not defined for filtering";  } // return;
+  if (!this[this.datakey]) { throw "Data key ("+this.datakey+") does not exist in controller"; } // return;
+  var myarr = this[this.datakey];
+  if (!Array.isArray(myarr)) { throw "Data key ("+this.datakey+") in controller is not array (dataset) form"; } // return;
+  var fkeys = Object.keys(filter).filter((k) => { return filter[k]; });
+  var matchers = filter_matchers(filter, fkeys);
+  if (debug) { console.log("Actual Filter keys:" + JSON.stringify(fkeys)); }
+  var arr = myarr.filter(function (item) { // db[this.datakey]
+    //console.log("Host: ", item);
+    //return {"hname": "foo"};
+    var fk; // var keep = 1;
+    for (var i = 0;fk = fkeys[i];i++) {
+      ////var fval = filter[fk];
+      // console.log(fk +"="+fval);
+      // console.log("No Filter for " + fk);
+      ////if (!filter[fk]) {  continue; } // Filter is always string
+      ////var re = new RegExp(fval);
+      var re = matchers[fk];
+      if (!item[fk]) { console.log("No property '" + fk + "' in row object: ", item); return 0; } // Orig: continue; Eliminate / return 0;
+      var t = typeof item[fk];
+      // The following can be e.g. 'object' (where itemTemplate: ... makes it display a reasonable value)
+      if (typeof item[fk] != 'string') { debug && console.log("Not a string to match in '"+fk+"': "+item[fk]+" got:"+t); continue; }
+      if (item[fk].match(re)) { debug && console.log("Match in key = "+fk+", val = " + item[fk]); continue; }
+      return 0;
+      //keep = 0; // NA
+    }
+    return 1; // keep
+  }); // filter
+  if (debug) { console.log("After filter:" + arr.length + " items"); }
+  return arr;
+  // Create matchers by *actual* (in-effect) filter keys.
+  function filter_matchers(filter, fkeys) {
+    var matchers = {};
+    if (!Array.isArray(fkeys)) { return null; }
+    fkeys.forEach((fk) => {
+      var fval = filter[fk];
+      if (!fval) { return; }
+      var re = new RegExp(fval);
+      matchers[fk] = re;
+      // matchers[fk] = new RegExp(filter[fk]);
+    });
+    return matchers;
+  }
+}
+
+// 
+var db = {
+  datakey: "hosts",
+  filterdebug: 1,
+  // The filter here is an object keyed by col names
+  // this here is the db
+  loadData: js_grid_filter
+};
+var gridopts_std = {
+    // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
+    width: "100%",
+    //height: "400px",
+    pageSize: 120,
+    //inserting: true,
+    //editing: true,
+    sorting: true,
+    paging: true,
+    filtering: true,
+    
+    data: null, // griddata,
+ 
+    controller: null, // db,
+    // rowClass: function (item,itemidx) { return "redhat"; },
+    // rowClick: function (evpara) { alert("Row Click !"); },
+    fields: null, // fields
+  };
+function showgrid_opts(divid, griddata, fields) {
+  var gridopts = rapp.dclone(gridopts_std);
+  gridopts.data   = griddata;
+  gridopts.fields = fields;
+  // NOTE: Use a unique thing for datakey: ... (e.g. divid OR append name props of fields ...
+  var mydb = {datakey: divid, filterdebug: 1, loadData: js_grid_filter}; // rapp.dclone(db);
+  //mydb.loadData = js_grid_filter;
+  mydb[divid] = griddata;
+  gridopts.controller = mydb;
+  //gridopts.controller = db; // Global
+  return gridopts;
+}
+  // var gridopts = 
+  
    var scales = {
       yAxes: [
         {
@@ -250,14 +303,15 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
 */
 function on_host_click(ev, barinfo) {
   // console.log("Ev:", ev, " Val:"); //  // , "td"
-  var tmplsel = "#singlehost";
+  // var tmplsel = "#singlehost";
   var hname; // Get some other way than just html (data-hname="+e.hname+") ... ev.target.dataset.hname;
   hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
   // Try treating this as Chart.js event (w. barinfo Array)
   if (!hname && barinfo && Array.isArray(barinfo)) { hname = barinfo[0]._model.label; }
   if (!hname) { alert("No hostname !"); return; }
-  // Lookup host
-  var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+  // Lookup host. Form global cache / datasets
+  //var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
+  var ent = datasets.hostlist.filter(function (it) { return it.hname == hname; })[0];
   if (!ent) { return alert("No host ent by name "+ hname); }
   //var tmpl = $(tmplsel).html();
   //var output = Mustache.render(tmpl, ent); // {hname: hname}
@@ -312,7 +366,9 @@ function on_host_click(ev, barinfo) {
 function ansishow(ev, an) {
   // var sets = ["aplays","aprofs"];
   // "grps" (OLD) => "grps_inv"
-  var p = { hosts: db.hosts, groups: datasets["grps_inv"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
+  var p = { //hosts: db.hosts,
+    hosts: datasets["hostlist"],
+    groups: datasets["grps_inv"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
   var output = rapp.templated('ansrun', p); // , "dialog_ans"
   if (!an) { // Dialog
     $( "#dialog_ans" ).html(output);
@@ -493,7 +549,7 @@ var tabloadacts = [
   {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", 
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
   {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
-  {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", path: "hostkeys"}, // DUAL
+  {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", fsetid: "sshkeys", path: "hostkeys", uisetup: sshkeys_uisetup}, // DUAL
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", path: "pkgstats", "help": "x.md"}, //DUAL
   //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
@@ -506,7 +562,7 @@ var tabloadacts = [
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
   {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist",  gridid: "jsGrid_bootmedia", path: ""},
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes, url: "/recipes",  gridid: "jsGrid_recipes", path: ""},
-  {"name": "Install Profiles",  "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fdefs: "iprofs", path: ""},
+  {"name": "Install Profiles",  "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fsetid: "iprofs", path: ""},
   {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: "", path: "loginform"},
   // logout (todo: literal template)
   {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
@@ -532,7 +588,7 @@ var tabloadacts = [
         // toastr.info("Click on "+Object.keys(jev));
         simplegrid_url(jev, an);
       });
-    },
+    }, // uisetup
     urlpara:  (ev, an) => {
       var dcfn;var ds = ev.target.dataset;
       if (ds && ds.dcfn) { dcfn = ds.dcfn; }
@@ -562,6 +618,9 @@ var tabloadacts = [
   {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid:"covstr", url_old: "/cov_proj_data.json", url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", },
   // 
   {name: "Deploy Project",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
+  // "uisetupXX": deploy_uisetup,
+  {name: "Deployable Projects",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
+  {name: "Application Actions",  hdlr: actinfo, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -768,7 +827,7 @@ window.onload = function () {
     // Page Branding (title, image)
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
-    db.hosts = datasets["hostlist"];
+    // db.hosts = datasets["hostlist"]; // Legacy ...Can't do this globally. now handled by each showgrid()
     // Immediate grids
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
     ee.on("on_jsGrid_dist_done", function (d) {  });
@@ -897,8 +956,8 @@ function pkg_stats(ev, act) {
   // TODO(data, all in one ?): {charts: [{},{}, ...]}
   var chdefs = [
     { title: "Package Stats", lblprop: "hname", url:"/hostpkgcounts", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000},
-    { title: "CPU Counts", lblprop: "hname", url: "/hostcpucounts", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
-    { title: "Memory Stats", lblprop: "hname", url: "/hostmemstats", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
+    { title: "CPU Counts",    lblprop: "hname", url: "/hostcpucounts", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
+    { title: "Memory Stats",  lblprop: "hname", url: "/hostmemstats", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
     { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
   ];
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
@@ -941,6 +1000,7 @@ function pkg_stats(ev, act) {
   function fetchchart(chdef, cb) {
     if (!chdef.url) { alert("No URL for chart !"); return; }
     // clone chdef to add stats about ch-dataset ?
+    //chdef = rapp.dclone(chdef);
     axios.get(chdef.url).then(function (resp) {
       var d = resp.data;
       if (d.status == "err") { alert(chdef.title + " stats error: " + d.msg); return; }
@@ -1123,24 +1183,11 @@ function showgrid (divid, griddata, fields) {
   if (!Array.isArray(griddata)) { toastr.error("No Grid data " + divid); return; }
   if (!Array.isArray(fields)) { toastr.error("No fields data " + divid); return; }
   console.log("showgrid: Generating grid into div (id): " + divid + " w. "+griddata.length+" items.");
-  $("#" + divid).jsGrid({ // "#jsGrid"
-    // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
-    width: "100%",
-    //height: "400px",
-    pageSize: 120,
-    //inserting: true,
-    //editing: true,
-    sorting: true,
-    paging: true,
-    filtering: true,
-    
-    data: griddata,
- 
-    controller: db,
-    // rowClass: function (item,itemidx) { return "redhat"; },
-    // rowClick: function (evpara) { alert("Row Click !"); },
-    fields: fields
-  });
+  // "#jsGrid"
+  // var gridopts = rapp.dclone(gridopts_std); // Not only this
+  // Generate Grid specific opts
+  var gridopts = showgrid_opts(divid, griddata, fields);
+  $("#" + divid).jsGrid(gridopts);
   // Emit (done divid) !
   ee.emit("on_"+divid+"_done", {msg: "Hello!", divid: divid});
 }
