@@ -191,6 +191,7 @@ Installation Environment universal parameters (with fairly obvious meanings, not
   - password (str) - login password for user (in clear text for now)
   - groups (array-of-str) - The OS groups user should be member of (These groups should be existing out-of-box OS created groups to be on safe side)
   - homedir (str) - Home directory for user
+- iprofsconfig (str) - Filename for Installation Profiles Configuration (Initial default value is Linetboot example config, but as you come up with your own (using example as model), its recommended you place it in "~/.linetboot/iprofs.conf.json".
 
 See also "net" section above for install-time network settings (Object with global network base settings).
 
