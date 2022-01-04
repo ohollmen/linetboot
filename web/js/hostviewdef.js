@@ -661,20 +661,38 @@ function ibip_cell(val, item) {
      if (!val){return "";}
      if(!Array.isArray(val)){return "???";}
      return val.join(", ");
+   }
+   function act_hdlr_cell(val, item) {
+     if (typeof val == 'undefined') { return ""; }
+     var src = val.toString();
+     var m; var funcname = "???";
+     if (typeof src == 'string' && (m = src.match(/function\s+(\w+)/))) {
+       if (m) { funcname = m[1]; }
      }
+     //return typeof val; // Raw func, causes JSGrid to exec
+     //return val.toString(); // src
+     return funcname;
+   }
+   // UI-Setup: Add click handler to invoke iframe w. data
+   function appurl_cell(val, item) {
+     
+   }
    var fldinfo_actinfo = [
-     {"name": "path",    "title": "Route Path",  type: "text", width: 25},
-     {"name": "name",    "title": "Action Name",  type: "text", width: 45},
-     {"name": "elsel",    "title": "Tab Label",  type: "text", width: 45},
-     {"name": "tabs",    "title": "Sub-tabs",  type: "text", width: 45, itemTemplate: subtabs_cell},
-     {"name": "tmpl",    "title": "Template (lbl)",  type: "text", width: 45},
-     {"name": "url",    "title": "Data URL",  type: "text", width: 45},
-     {"name": "gridid",    "title": "GridID",  type: "text", width: 45},
-     {"name": "fsetid",    "title": "Field Defs (lbl)",  type: "text", width: 25},
-     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
-     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
-     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
-     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+     {"name": "path",    "title": "Route Path",  type: "text", width: 20},
+     {"name": "name",    "title": "Action Name", type: "text", width: 40},
+     {"name": "elsel",   "title": "Tab Label",   type: "text", width: 20},
+     {"name": "tabs",    "title": "Sub-tabs",    type: "text", width: 35, itemTemplate: subtabs_cell},
+     {"name": "tmpl",    "title": "Template (lbl)", type: "text", width: 20},
+     {"name": "url",     "title": "Data URL",    type: "text", width: 35},
+     {"name": "gridid",  "title": "GridID",      type: "text", width: 25},
+     {"name": "fsetid",  "title": "Field Defs (lbl)",  type: "text", width: 20},
+     {"name": "hdlr",    "title": "Handler",     type: "text", width: 25, itemTemplate: act_hdlr_cell},
+     {"name": "uisetup", "title": "UI Setup",    type: "text", width: 25, itemTemplate: act_hdlr_cell},
+     //{"name": "dataid",  "title": "Data ID - ???", type: "text", width: 25},
+     //{"name": "dsid",    "title": "Cached Data(set) id",  type: "text", width: 25}, // THIS is dataset id
+     {"name": "dialogid",    "title": "Dialog ID",  type: "text", width: 25},
+     //{"name": "",    "title": "",  type: "text", width: 25},
+     //{"name": "",    "title": "",  type: "text", width: 25},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

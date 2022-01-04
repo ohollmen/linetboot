@@ -536,7 +536,7 @@ function tabsetview(ev, act) {
 // Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
 var tabloadacts = [
   {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
-  // Non-routables
+  // Tabs (NOTE: dataid unused, See: dsid (used by simplegrid_cd)
   {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", uisetup: osview_guisetup}, // url: "/list" (All 3)
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw", gridid: "jsGrid_hw", uisetup: osview_guisetup},
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", uisetup: osview_guisetup}, // Last could have hdlr ?
@@ -556,7 +556,7 @@ var tabloadacts = [
   // Disabled from here (groups): "tabs-5",
   {"name": "Dev/Admin",   tabs: ["tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", gdmem: "catalog", path: "dockerenv"},
-  {"name": "Boot/Install","elselXX": "tabs-10", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof", "tabs-bos"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
+  {"name": "Boot/Install", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof", "tabs-bos"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
   {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq",    hdlr: bootgui, url: "", path: ""},
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist, url: "/tftplist",  gridid: "jsGrid_pxelinux", path: ""},
@@ -567,7 +567,7 @@ var tabloadacts = [
   // logout (todo: literal template)
   {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: "", path: "logout"},
   // Directory  (TODO: composite templating)
-  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid",     "hdlr": showpeople,    url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
+  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid",     "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
   // Iblox
   {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", path: "ibloxlist"},
@@ -575,8 +575,8 @@ var tabloadacts = [
   // esxi
   {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
   
-  {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", "dataid": "", gridid: "jsGrid_dcomposer",
-    fsetid: "dcomposer", uisetup: (an) => {
+  {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", path:"dcomposer",
+    uisetup: (an) => { // dcomposer_uisetup
       var fs = datasets.cfg.docker.files;
       var cont = "";
       // toastr.info(fs);
@@ -595,7 +595,7 @@ var tabloadacts = [
       if (!dcfn && datasets.cfg.docker.files) { dcfn = datasets.cfg.docker.files[0]; }
       return "fn="+dcfn;
     },
-    path:"dcomposer"},
+  },
   // See: Groups
   {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
       nattr: "hname", "colla":"procs", "fsid": "proclist", "skipe":1, longload: 1,

@@ -26,10 +26,10 @@ function simplegrid_cd(ev, an) {
   // var fsid = m[1];
   if (an.dsid) { dsid = an.dsid; }
   var d = datasets[dsid];
-  if (!d) { return alert("No dataset found"); }
-  if (!Array.isArray(d)) { return alert("dataset no in array"); }
+  if (!d) { return alert("No (cached) dataset found"); }
+  if (!Array.isArray(d)) { return alert("dataset not in an array"); }
   showgrid(an.gridid,  d, fldinfo[m[1]]);
-  if (an.uisetup) { an.uisetup(); } // TODO: Params ? (see rapp)
+  if (an.uisetup) { an.uisetup(an, d); } // TODO: Params ? (see rapp)
 }
 /** Simple grid from URL.
  */
@@ -144,15 +144,15 @@ function hostgroups(ev, act) {
 * Note: hosts unused (!)
 */
 function rmgmt(ev, act) {
-  
-  axios.get('/hostrmgmt').then(function (resp) {
+  // How is "simplegrid" templating prepped ?
+  axios.get('/hostrmgmt').then(function (resp) { // act.url
     // Shared global for event handler... on_rmgmt_click
     rmgmt_data = resp.data; // TODO: .data
     // console.log("Remote Mgmt data: ", rmgmt_data);
     if (!rmgmt_data || !rmgmt_data.length) { alert("No rmgmt data"); return; } // Dialog
     var hr = 0; // Has remote management
     if (!rmgmt_data.filter((it) => {return it.ipaddr; }).length) { $('#'+act.elsel).append("<p>Remote management not in use in this environment.</p>"); return; }
-    showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt);
+    showgrid("jsGrid_rmgmt", rmgmt_data, fldinfo.rmgmt); // act.gridid, ...,  fldinfo[act.fsetid]
     // $("jsGrid_rmgmt .hostcell").click(on_rmgmt_click); // UI Setup
     //$("jsGrid_rmgmt .rfop").click(); // Dedicate
     $('.rfop').click(on_docker_info); // VERY Shared.
@@ -171,8 +171,8 @@ function probeinfo(ev, act) {
     var pinfo = resp.data.data;
     
     // console.log("Probe data: ", pinfo);
-    if (!pinfo || !pinfo.length) { toastr.error("No Net Probe data"); return; }
-    showgrid("jsGrid_probe", pinfo, fldinfo.netprobe);
+    if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; }
+    showgrid("jsGrid_probe", pinfo, fldinfo.netprobe); // act.gridid  ... fldinfo[act.fsetid]
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
   }).catch(function (error) {  console.log(error); }) // spinner.stop();
   .finally(() => { spinner.stop(); });
