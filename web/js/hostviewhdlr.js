@@ -207,25 +207,37 @@ function sshkeys(ev, act) {
   axios.get(act.url).then(function (resp) { // '/ssh/keylist'
     var pinfo = resp.data.data;
     //console.log("SSH Key data: ", pinfo);
-    if (!pinfo || !pinfo.length) { toastr.error("No SSH Key data"); return; }
-    showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys);
-    $(".sshkeyload").click(function () {
-      // Get host
-      var p = this.dataset;
-      console.log(p);
-      var hname = p.hname; // See: onrecipeclick this.dataset
-      toastr.info("TODO: load keys for "+hname);
-      // trigger ansible
-      var p = {hostnames: [hname], playbooks: ["sshkeyarch.yaml"], playprofile: ""}; // See: ansishow
-      //return;
-      axios.post("/ansrun", p).then((resp) => {
-        console.log("Key archive launched ok");
-       // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
-      }).catch((ex) => { console.log("Failed key arch launch: "+ex); })
-      .finally(() => { console.log("Finally there"); });
-      //zzzzz();
-    }); // Reload. TODO: Wait ...
+    if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // SSH Keys
+    showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
+    // uisetup ?
+    //sshkeys_uisetup(act, pinfo);
+    if (act.uisetup) { act.uisetup(act, pinfo); } // pinfo
   }).catch(function (error) { console.log(error); });
+}
+/** Note: This ansible triggering UI setup (click => fetch SSH keys) requires
+ * 2-way ssh-copy-id between the linetboot and remote host (whose keys are being archived).
+ * Things to check: See README.sshsetup.md
+ *
+ */
+function sshkeys_uisetup(act, pinfo) {
+  if (!Array.isArray(pinfo)) { return toastr.error("Keylist not in array !!"); }
+  $(".sshkeyload").click(function () {
+    // Get host
+    var p = this.dataset;
+    console.log(p);
+    var hname = p.hname; // See: onrecipeclick this.dataset
+    toastr.info("Note: If copy hangs with SSH interactivity, you need to do further SSH setup (See README.sshsetup.md in documentation)", "Load keys for "+hname);
+    // trigger ansible
+    var p = { hostnames: [hname], playbooks: ["sshkeyarch.yaml"], playprofile: "" }; // See: ansishow
+    //return;
+    axios.post("/ansrun", p).then((resp) => {
+      console.log("Key archive launched ok (on server)");
+     // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
+     
+    }).catch((ex) => { console.log("Failed key arch launch: "+ex); return; })
+    .finally(() => { console.log("Finally there"); });
+    //zzzzz();
+  }); // Reload. TODO: Wait ...
 }
 /** Display a package comparison view.
  * Note: dot (".") i field name (here: package name, jsgrid: "name") causes a problem in grid
@@ -563,7 +575,7 @@ function instprofiles(ev, act) {
     }
     d = d.data; // Grab *actual* data
     console.log(d);
-    showgrid(act.gridid, d, fldinfo[act.fdefs]);
+    showgrid(act.gridid, d, fldinfo[act.fsetid]);
   }).catch((ex) => { toastr.error(ex); });
 }
 
@@ -898,21 +910,24 @@ function shellview_show(ev, act) {
  */
 function proj_deploy(ev, act) {
   var tgtid = ev.viewtgtid;
+  console.log("Deploy ev.viewtgtid: "+tgtid);
   rapp.templated(act.tmpl, act, tgtid);
   axios.get(act.url).then((resp) => {
     var d = resp.data.data;
     if (!Array.isArray(d)) { return toastr.error(act.name + " config is not an array!"); }
-    if (act.uisetup) { act.uisetup(d); } // deploy_uisetup(d);
+    if (act.uisetup) { act.uisetup(act, d); } // deploy_uisetup(d);
+    if (act.tmpl && act.tmpl.match(/grid/)) {
+      showgrid(act.gridid, d, fldinfo[act.fsetid]);
+    }
   }).catch((ex) => {
     alert("Bad: "+ex);
     toastr.error("Problems loading deployment info: "+ex);
   });
-  
-  
 }
 
-function deploy_uisetup(dpconf) {
+function deploy_uisetup(act, dpconf) {
   console.log("Got conf:", dpconf);
+  if (!Array.isArray(dpconf)) { return alert("deploy_uisetup: dpconf not in Array !"); }
   var opt1 = document.getElementById("projlbl");
   var opt2 = document.getElementById("dlbl");
   var el3  = document.getElementById("initial");
@@ -939,13 +954,29 @@ function deploy_uisetup(dpconf) {
   $('#deploybut').on('click', function(jev) {
     var p = {projlbl: $(opt1).val(), dlbl: $(opt2).val(), initial: $(el3).is(':checked') }; //$(el3).val()
     console.log("Send: "+JSON.stringify(p));
+    var spel = document.getElementById("routerdiv"); // ev.viewtgtid
+    var spinner = new Spinner(spinopts).spin(spel);
     // GET:{ params: p}
     axios.post("/deploy", p).then((resp) => {
       var d = resp.data;
       if (d.status == "err") { return toastr.error("Deploy error: " + d.msg); }
       toastr.info("Deploy success with info: " + d.data);
     }).catch((ex) => {
-      alert("Bad: "+ex);
-    });
+      toastr.error("Problems with Deployment: "+ex);
+    }).finally(() => {  spinner.stop(); }); // spinner &&
   });
+}
+
+
+function actinfo(ev, act) {
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  rapp.templated(act.tmpl, act, tgtid);
+  // rapp.dclone();
+    // var pinfo = resp.data.data;
+    //console.log("SSH Key data: ", pinfo);
+    // if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // SSH Keys
+    showgrid(act.gridid, tabloadacts, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
+    // uisetup ?
+    //if (act.uisetup) { act.uisetup(act, pinfo); } // pinfo
+  
 }
