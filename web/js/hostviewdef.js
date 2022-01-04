@@ -259,14 +259,32 @@
    // Probe version from "Labels"
    function dockver(value, item) {
      if (!value) { return ""; }
+     if (Array.isArray(value)) { return ""; }
      // Pretty sure it's object
-     if (!value.version) { return "-"; }
-     return value.version;
+     //if (!value.version) { return "-"; }
+     //return value.version;
+     //var lblset = Object.keys(value)
+    var lblset = ["maintainer", "description"].map((k) => { return k+": "+(value[k] ? value[k] : ""); }).join("<br>");
+    return lblset;
    }
    function docktags(value, item) {
-     if (!value || !value.length) { return ""; }
-     var cntstr = value.length > 1 ? "("+value.length+")" : "";
-     return value[0] + cntstr;
+     if (!value || !value.length) {
+       // Use RepoDigests for fallback (also an array), but parse
+       var rd = item.RepoDigests;
+       if (rd && Array.isArray(rd) && (rd.length > 0)) {
+        var rdarr = rd[0].split('@');
+        if (rdarr[0]) { return finalwrap(rdarr[0]); }
+       }
+       else { return ""; }
+    } 
+     // var cntstr = value.length > 1 ? "("+value.length+")" : "";
+     if (!Array.isArray(value) || value.length < 1) { return ""; }
+     return finalwrap(value[0]); // + cntstr;
+     function finalwrap(durl) {
+       var bn = durl;
+       if (durl.match(/\//)) { var carr = durl.split(/\//); bn = carr.pop(); }
+       return "<span title=\""+durl+"\">"+bn+"</span>";
+     }
    }
    /**/
    function haspackagecell(value, item) {
@@ -278,13 +296,15 @@
      return "";
    }
    var fldinfo_dockerimg = [
+     // When null, could take path from "RepoDigests" (appends: ...@sha256:50717054ef7f3...)
      {name: "RepoTags",     title: "Tag(s)",  type: "text", width: 100, itemTemplate: docktags},
-     {name: "Labels",     title: "Version",  type: "text", width: 50, itemTemplate: dockver},
+     // Object with k-v pairs (e.g. description, maintainer, license, name, vendor, ...)
+     {name: "Labels",     title: "Labels",  type: "text", width: 60, itemTemplate: dockver},
      // To ISO
-     {name: "Created",     title: "Created",  type: "text", width: 90, itemTemplate: tscell},
+     {name: "Created",     title: "Created",  type: "text", width: 80, itemTemplate: tscell},
      {name: "Id", title: "Id", type: "text", width: 52, itemTemplate: dockidcell},
-     {name: "ParentId", title: "ParentId", type: "text", width: 60, itemTemplate: dockidcell},
-     {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return value /1000000; }},
+     {name: "ParentId", title: "ParentId", type: "text", width: 60, visible: false, itemTemplate: dockidcell},
+     {name: "Size",     title: "Size (MB)",  type: "text", width: 55, itemTemplate: function (value, item) { return (value /1000000).toFixed(1); }},
    ];
    // Container
    function contimg_cell(val, item) {
@@ -521,16 +541,16 @@ function ibip_cell(val, item) {
       {name: "ppid", title: "PPid", type: "number", width: 25},
       {name: "state", title: "State", type: "text", width: 25, itemTemplate: pstate_cell},
       {name: "owner", title: "User", type: "text", width: 45},
-      {name: "cmd", title: "Cmd", type: "text", width: 60},
+      {name: "cmd", title: "Cmd", type: "text", width: 60}, // Truncates ? (by procps ? procster ? ..?)
       {name: "cmdline", title: "Cmdline", type: "text", width: 150, visible: false}, // Or grab substr.
       
       {name: "rss",   title: "RSS(kB)", type: "number", width: 30},
       {name: "size",  title: "SIZE(kB)", type: "number", width: 30}, // , visible: false
       {name: "starttime", title: "Start Time", type: "text", width: 60, itemTemplate: pstime_cell},
-      {name: "utime", title: "User T", type: "number", width: 30, itemTemplate: pscputimecell},
-      {name: "stime", title: "Sys T", type: "number", width: 30, itemTemplate: pscputimecell},
+      {name: "utime", title: "User T", type: "number", width: 25, itemTemplate: pscputimecell},
+      {name: "stime", title: "Sys T", type: "number", width: 25, itemTemplate: pscputimecell},
       
-      {name: "cpuid", title: "Core #", type: "number", width: 30},
+      {name: "cpuid", title: "Core #", type: "number", width: 20},
       // Replaced w. pidlink
       {name: "act",   title: "View", type: "text", width: 30, visible: false, itemTemplate: psact_cell},
       
