@@ -4,7 +4,7 @@
      if (value == "Debian") { img = "iconfinder_debian_386459.svg"; }
      if (value == "Ubuntu") { img = "iconfinder_Ubuntu_2744987.svg"; }
      if (value == "RedHat") { img = "iconfinder_redhat_7353.png"; }
-     
+     if (value == "MacOSX") { img = "104490_apple_icon.svg"; }
      return value + "<img src=\"img/"+img+"\" class=\"osicon\">"; // 
    }
    function rotcell(value, item) {
@@ -59,6 +59,10 @@
      var n = item.hname;
      return value ? "<span class=\"nfsinfo\" data-tgt=\"nfsinfo\" data-hname=\""+n+"\">NFS</span>" : "";
    }
+   function bver_cell(val, item) {
+     if (val && val.length > 10) { return(val.substr(0, 10)+".."); }
+     return val ? val : "n/a";
+    }
    // TODO: Populate dynamic fields separately (at server or client ?)
    var fldinfo_dist = [
      hostfld,
@@ -67,6 +71,9 @@
      {name: "distname",  title: "Distro", type: "text", width: 80, itemTemplate: distrocell }, // css: "osicon"
      {name: "distver",   title: "Ver", type: "number", width: 50},
      {name: "kernelver", title: "Kernel", type: "text", width: 90},
+     // Long lost ...
+     {name: "biosver", title: "BIOS Ver.", type: "text", width: 45, itemTemplate: bver_cell},
+     {name: "biosdate", title: "BIOS Date", type: "text", width: 45},
      // Dynamic (visible: false). Enable by web.xflds
      {name: "use", title: "Usage", type: "text", width: 80},
      {name: "loc", title: "Location", type: "text", width: 80},
@@ -645,6 +652,30 @@ function ibip_cell(val, item) {
      //{"name": "url", "title": "Job URL",  type: "text", width: 80}, // url
      // color
    ];
+   var fldinfo_dproj = [
+     {"name": "name",    "title": "Project Name",  type: "text", width: 40},
+     {"name": "projlbl", "title": "Label",  type: "text", width: 20},
+     {"name": "srcrepo", "title": "Repository",  type: "text", width: 60},
+   ];
+   function subtabs_cell(val, item){
+     if (!val){return "";}
+     if(!Array.isArray(val)){return "???";}
+     return val.join(", ");
+     }
+   var fldinfo_actinfo = [
+     {"name": "path",    "title": "Route Path",  type: "text", width: 25},
+     {"name": "name",    "title": "Action Name",  type: "text", width: 45},
+     {"name": "elsel",    "title": "Tab Label",  type: "text", width: 45},
+     {"name": "tabs",    "title": "Sub-tabs",  type: "text", width: 45, itemTemplate: subtabs_cell},
+     {"name": "tmpl",    "title": "Template (lbl)",  type: "text", width: 45},
+     {"name": "url",    "title": "Data URL",  type: "text", width: 45},
+     {"name": "gridid",    "title": "GridID",  type: "text", width: 45},
+     {"name": "fsetid",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+     //{"name": "",    "title": "Field Defs (lbl)",  type: "text", width: 25},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -652,6 +683,6 @@ function ibip_cell(val, item) {
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
-      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs,
+      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo
    };
    
