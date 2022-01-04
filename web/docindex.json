@@ -55,6 +55,11 @@
       "grp":"ins"
     },
     {
+      "title" : "SSH Setup for Linetboot",
+      "urlpath" : "doc/README.sshsetup.md",
+      "grp":"ins"
+    },
+    {
       "title" : "OS Installation",
       "urlpath" : "doc/README.osinstall.md",
       "grp":"osi"
