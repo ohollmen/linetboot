@@ -62,8 +62,15 @@ function iprofs_load(global) {
   if (!fs.existsSync(iconf)) { console.error("Install profile conf ("+iconf+") does not exist !"); return null; }
   var ips = require(iconf) || null;
   // Validate (Object, string keys valued to objects)
-
+  if (typeof ips !== 'object') { console.log("iprofs - not an object"); return null; }
+  var okcnt = 0;
+  Object.keys(ips).forEach((k) => { okcnt += is_iprof(ips[k]); });
+  if (!okcnt) { console.log("iprofs - none of the nodes are vallid configs"); return 0; } // For now even "some okay" is "okay"
   return ips;
+  function is_iprof(e) {
+    if (e.domain && e.netmask && e.gateway) { return 1; }
+    return 0;
+  }
 }
 
 /** Validate config and expand shell-familiar "~" -notation on path / file vars.
