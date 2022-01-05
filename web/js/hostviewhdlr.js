@@ -319,7 +319,7 @@ function dockercat_show(ev, act) {
     
     $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     // TODO: Where to get 1) grid-array member (gdatamem, gdmem) ? 2) fldinfo key (same as tmpl name ?) ?
-    var fiid = act.fsid || act.tmpl;
+    var fiid = act.fsetid; //  || act.tmpl; (old: act.fsid)
     
     var garrmem = act.gdmem || autoarray(d);
     console.log("FIID: "+fiid+", gdmem:"+garrmem);
@@ -452,12 +452,13 @@ function bootgui(ev, act) {
 // In a separate tab, make this to an action handler, not merely event
 function tftplist(ev, act) {
   // TODO: "Join" with hostname here or server side ?
-  axios.get("/tftplist").then(function (resp) {
+  axios.get(act.url).then(function (resp) { // "/tftplist"
     var d = resp.data;
     console.log(d);
-    showgrid("jsGrid_pxelinux", d.data, fldinfo.pxelinux);
-    // Handle Click on (Default Boot) Reset Link
+    showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // "jsGrid_pxelinux", ..., fldinfo.pxelinux
+    // UISETUP: Handle Click on (Default Boot) Reset Link
     $(".defboot").click(defboot_reset);
+    // if (act.uisetup) { act.uisetup(); }
   }).catch(function (err) { console.log(err); });
 }
 // Click handler for Boot item reset (to default)
@@ -480,11 +481,12 @@ function defboot_reset(jev) {
 }
 function medialist(ev, act) {
   // TODO: Why do we not template here ?
-  axios.get("/medialist").then(function (resp) {
+  axios.get(act.url).then(function (resp) { // "/medialist"
     var d = resp.data;
     console.log(d);
-    showgrid("jsGrid_bootmedia", d.data, fldinfo.bootmedia);
-    // Handle Click on Media Info
+    showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // "jsGrid_bootmedia" ... fldinfo.bootmedia
+    // UISETUP: Handle Click on Media Info
+    // function medialist_uisetup() {
     $(".mediainfo").click(function (jev) {
       var p = this.dataset.path;
       // Pop up dialog
@@ -505,13 +507,14 @@ function medialist(ev, act) {
       }).catch(function (ex) { toastr.error(ex.toString()); });
       return false;
     });
+    // }; // medialist_uisetup
   }).catch(function (err) { console.log(err); });
 }
 
 /** Present a Preview grid on various supported recipes.
  * Should also include other templated content (e.g. boot menu).
  */
-function recipes() {
+function recipes(ev, act) {
   function recipe_cell(val, item) {
     // href=\""+val+"?ip="+item.ipaddr+"\"
     //var ccont = val; // ORIG
@@ -642,13 +645,13 @@ function showpeople(ev, act) {
       if (!d.data) { return toastr.error("No Data Found."); }
       if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
       var uarr = d.data;
-      showgrid(act.gridid, uarr, fldinfo.ldad);
+      showgrid(act.gridid, uarr, fldinfo[act.fsetid]); // fldinfo.ldad
       // if (cb) { cb(d.data); }
       // Need to index or populate id / sequence numbers
       var idx = {};
       d.data.forEach((it) => { idx[it.sAMAccountName] = it; });
       console.log("Assign click hdlr");
-      // TODO: Alternatively fetch by DN
+      // Secondary UISETUP: TODO: Alternatively fetch by DN
       $('.unamecell').click(function (jev) {
         //console.log("Calling click hdlr");
         var un = this.dataset.uid;
@@ -667,8 +670,9 @@ function showpeople(ev, act) {
     }).catch (function (ex) { console.log(ex); })
     .finally( () => { spinner.stop(); });
   } // search (on top)
+  // UISETUP
   $('#sbutt').click(function () {
-    var p = {uname: $("#uname").val()};
+    var p = { uname: $("#uname").val() };
     toastr.info("Search by: "+p.uname);
     search(p);
   });
@@ -706,7 +710,8 @@ function ibloxlist(ev, act) {
       // See also jsgrid doc and jsGrid.fields for type-extensibility.
       item.usedhcp = typeof item.usedhcp == 'undefined' ? "" : item.usedhcp.toString();
     });
-    showgrid(act.gridid, d.data, fldinfo.iblox);
+    showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // fldinfo.iblox
+    // UISETUP:
     $('.syncbutt').click(function () {
       var hname = this.dataset.hname;
       // TODO: lock/disable buttons
