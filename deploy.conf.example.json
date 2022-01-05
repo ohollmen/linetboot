@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Curl at GitHub",
+    "projlbl": "curl",
+    "srcrepo": "https://github.com/curl/curl.git",
+    "deploydest": [
+      {
+        "dlbl": "myserver",
+        "userhost": "mrsmith@some.company.info",
+        "path": "/home/mrsmith/curl/",
+        "precmd" :"",
+        "postcmd" :""
+      },
+      {
+        "dlbl": "yourserver",
+        "userhost": "joedoe@other.company.info",
+        "path": "/home/joedoe/curl/",
+        "precmd" :"",
+        "postcmd" :""
+      }
+    ]
+  }
+]

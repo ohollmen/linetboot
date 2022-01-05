@@ -197,7 +197,8 @@
     "pass":""
   },
   "deployer": {
-    "deployfn": "~/.linetboot/deploy.conf.json"
+    "deployfn": "~/.linetboot/deploy.conf.json",
+    "deployfn_EXAMPLE": "~/linetboot/deploy.conf.example.json"
   },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
