@@ -599,7 +599,7 @@ var tabloadacts = [
   {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", fsetid: "bootables",
     path: "bootables", uisetup: uisetup_bootables },
   // shell
-  {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", gridid: "", path: "shell"},
+  {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", path: "shell"},
   // Cov (for now only manually routable)
   // NEW: Cov Top level tabbed
   {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"},
@@ -701,7 +701,7 @@ function ontabactivate( event, ui ) {
   //if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
   // Pre-handler ("like-routing-handler") templating. Handler may need to re-template.
   if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
-  console.log("Action node:", an);
+  console.log("abactivate - Action node:", an);
   //console.log(event);
   event.viewtgtid = an.elsel; // Target View ID (Uses more specific/nested containing element than the top-level / main containing element)
   // TODO: Dispatch like a route handler
@@ -746,7 +746,7 @@ function acts_rmitem(acts, attr, val) {
 // TODO: Make into reusable by passing disable-list
 function acts_uidisable(actitems) {
   var cfg = datasets["cfg"];
-  if (!cfg) { alert("No config dataset."); }
+  if (!cfg) { return alert("No config dataset."); }
   var dis = cfg.disabled;
   //////
   if (!dis) { return alert("disabled setting is completely absent"); }
@@ -956,7 +956,7 @@ function pkg_stats(ev, act) {
     { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
   ];
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
-  async.map(chdefs, fetchchart, (err, ress) => { toastr.info("Done with charts"); });
+  async.map(chdefs, fetchchart, (err, ress) => { console.log("Done with charts"); });
   return;
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
@@ -1042,7 +1042,7 @@ function pkg_stats(ev, act) {
 
 
 
-/** fetch docker info and pass tu UI-geared callback.
+/** fetch docker info and pass to UI-geared callback.
 * @param hname {string} - Hostname
 * @param gridsel {string} - Selector (id, "#...") for grid (TODO: dialogsel)
 */

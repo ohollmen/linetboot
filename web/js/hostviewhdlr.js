@@ -571,7 +571,7 @@ function recipes(ev, act) {
       console.log("EV:", jev); // event.type // ICON: target:i, currentTarget: a, TEXT: Both: a
       console.log("THIS:", this); // a always(?)
       console.log("TGT:", jev.target); // ICON: i-elem (glyph) TEXT: a
-      var p = this.dataset; // Use datase directly as params, add some params
+      var p = this.dataset; // Use dataset directly as params, add some params
       //p.rname = this.textContent; // ICON as textContent will mess this up (rname will be empty, URL will be "" => "/web")
       //p.url = this.href;
       p.url = p.rname + "?ip=" + p.ip;
@@ -1025,4 +1025,9 @@ function actinfo(ev, act) {
 
 function actinfo_uisetup(act, data) {
   //alert("Hello");
+  $('.urlcell').click((jev) => {
+    var evel = jev.target;
+    // TODO: See recipes review dialog invocation: recipes / onrecipeclick
+    //alert(evel.dataset.url);
+  });
 }

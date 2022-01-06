@@ -695,7 +695,8 @@ function ibip_cell(val, item) {
    }
    // UI-Setup: Add click handler to invoke iframe w. data
    function appurl_cell(val, item) {
-     
+     if (!val) { return ""; }
+     return "<span class=\"urlcell\" data-url=\""+val+"\">"+val+"</span>";
    }
    var fldinfo_actinfo = [
      {"name": "path",    "title": "Route Path",  type: "text", width: 20},
@@ -703,7 +704,7 @@ function ibip_cell(val, item) {
      {"name": "elsel",   "title": "Tab Label",   type: "text", width: 20},
      {"name": "tabs",    "title": "Sub-tabs",    type: "text", width: 35, itemTemplate: subtabs_cell},
      {"name": "tmpl",    "title": "Template (lbl)", type: "text", width: 20},
-     {"name": "url",     "title": "Data URL",    type: "text", width: 35},
+     {"name": "url",     "title": "Data URL",    type: "text", width: 35, itemTemplate: appurl_cell},
      {"name": "gridid",  "title": "GridID",      type: "text", width: 25},
      {"name": "fsetid",  "title": "Field Defs (lbl)",  type: "text", width: 20},
      {"name": "hdlr",    "title": "Handler",     type: "text", width: 25, itemTemplate: act_hdlr_cell},
