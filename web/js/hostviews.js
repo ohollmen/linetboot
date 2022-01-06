@@ -773,7 +773,7 @@ function acts_uidisable(actitems) {
 // Also 2nd {params: {}}
   // {id: "docindex", url: "/docindex.json"}
   var dnodes = [
-    {id: "hostlist", url: "/list"},
+    {id: "hostlist", url: "/list"}, // exptype: "string" / "object"
     //{id: "grps",     url: "/groups"},
     {id: "grps_inv", url: "/groups_inv"},
     {id: "aplays", url: "/anslist/play"},
@@ -952,11 +952,12 @@ function pkg_stats(ev, act) {
     { title: "Package Stats", lblprop: "hname", url:"/hostpkgcounts", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000},
     { title: "CPU Counts",    lblprop: "hname", url: "/hostcpucounts", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
     { title: "Memory Stats",  lblprop: "hname", url: "/hostmemstats", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
+    // Note: When changing to "pie" will keep the grid. TODO: Have config opts to eliminate grid (for "pie")
     { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
   ];
   if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
-  //async.map(chdefs, fetchchart, (err, ress) => { toastr.info("Done with charts"); });
-  //return;
+  async.map(chdefs, fetchchart, (err, ress) => { toastr.info("Done with charts"); });
+  return;
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
@@ -1026,7 +1027,8 @@ function pkg_stats(ev, act) {
     var copts = { responsive: true, legend: {position: 'top', display: false}, scales: scales2, onClick: on_host_click}; // onCC
     if (chdef.noclick) { delete(copts.onClick);  }
     //window.myBar =
-    new Chart(ctx, { type: 'bar', data: cdata, options: copts });
+    var subtype = chdef.subtype; // "bar". ("pie" ?)
+    new Chart(ctx, { type: subtype, data: cdata, options: copts });
   } // createchart
 } // pkg_stats
 
