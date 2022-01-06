@@ -66,31 +66,38 @@ rapp.fetchgrid_cov = function (ev, act) {
     // showgrid("content", arr, fi.builds); // fi.change
     //document.getElementById('content').innerHTML =
     contbytemplate(act.tmpl, act, tgtid);
-    //showgrid(act.gridid, arr,  fldinfo[act.gridid]); // 
-    var cfg = rapp.dclone(rapp.gridcfg);
-    var fi = fldinfo; //window.fi; // Alt fields "cache" ? || rapp.fi || 
-    //if (!fi) { alert(); }
-    cfg.data = arr; cfg.fields = fi[act.gridid];
-    $("#" + act.gridid).jsGrid(cfg);
-    var idx = {};
-    arr.forEach((it) => { idx[it.snapshot] = it; });
-    //console.log(JSON.stringify(arr, null, 2));
-    // data-cid
-    $(".ccid").click((jev) => {
-      var snid = jev.target.dataset.snid; // Snap
-      //console.log(jev.target);
-      //console.log("CID: "+cid);
-      console.log(idx[snid]);
-      //alert(cid);
-    });
+    showgrid(act.gridid, arr,  fldinfo[act.fsetid]); // Last: act.gridid
+    if (0) {
+      var cfg = rapp.dclone(rapp.gridcfg);
+      var fi = fldinfo; //window.fi; // Alt fields "cache" ? || rapp.fi || 
+      //if (!fi) { alert(); }
+      cfg.data = arr; cfg.fields = fi[act.gridid];
+      $("#" + act.gridid).jsGrid(cfg);
+    }
+    // UISETUP
+    if (act.uisetup) { act.uisetup(act, arr); }
   })
   .catch(function (error) { console.log(error); });
 };
 
+function covgrid_uisetup(act, arr) {
+  var idx = {};
+  arr.forEach((it) => { idx[it.snapshot] = it; });
+  //console.log(JSON.stringify(arr, null, 2));
+  // data-cid
+  $(".ccid").click((jev) => {
+    var snid = jev.target.dataset.snid; // Snap
+    //console.log(jev.target);
+    //console.log("CID: "+cid);
+    console.log(idx[snid]);
+    //alert(idx[snid]);
+  });
+}
 
 var acts_cov = [
   // /rep_rel.json => /covtgtchart?rep=rel
-  {name: "Release Defects (Chart)", tmpl: "t_chart", url: "/covtgtchart?rep=rel", hdlr: rapp.showchart_cov, path: "rels", setupui: null, canid: "canvas_rel", chtype: "bar"},
+  {name: "Release Defects (Chart)", tmpl: "t_chart", url: "/covtgtchart?rep=rel", hdlr: rapp.showchart_cov, path: "rels", setupui: null,
+    canid: "canvas_rel", chtype: "bar"},
   // /rep_build.json => /covtgtchart?rep=build 
   {name: "Release Build Defects (Chart)", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "builds",
     setupui: null, canid: "canvas_blds", chtype: "bar", limit: 120},

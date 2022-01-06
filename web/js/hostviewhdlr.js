@@ -20,15 +20,17 @@ function simplegrid_cd(ev, an) {
   contbytemplate(an.tmpl, an, an.elsel);
   // rapp.templated(an.tmpl, an, an.elsel);
   // Extract fldinfo label from gridid (... or alternative way ?)
-  var m = an.gridid.match(/^jsGrid_(\w+)/);
-  if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
+  if (0) {
+    var m = an.gridid.match(/^jsGrid_(\w+)/);
+    if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
+  }
   var dsid = "hostlist";
   // var fsid = m[1];
   if (an.dsid) { dsid = an.dsid; }
   var d = datasets[dsid];
   if (!d) { return alert("No (cached) dataset found"); }
   if (!Array.isArray(d)) { return alert("dataset not in an array"); }
-  showgrid(an.gridid,  d, fldinfo[m[1]]);
+  showgrid(an.gridid,  d, fldinfo[an.fsetid]); // fldinfo[m[1]]
   if (an.uisetup) { an.uisetup(an, d); } // TODO: Params ? (see rapp)
 }
 /** Simple grid from URL.
@@ -49,24 +51,36 @@ function simplegrid_url(ev, an) {
     //var an2 = rapp.dclone(an);
     contbytemplate(an.tmpl, an, ttgt); //document.getElementById('content').innerHTML =
 
-// NEW: Look for extended ui generator (was: an.xuigen)
-// Must be late, after templating !!
-if (an.uisetup && (typeof an.uisetup == 'function')) {
-  console.log("Calling UI-Setup for "+an.name);
-  an.uisetup(an);
-}
-
+    // NEW: Look for extended ui generator (was: an.xuigen)
+    // Must be late, after templating !!
+    // Can this be *after* showgrid() ?
+    if (an.uisetup && (typeof an.uisetup == 'function')) {
+      console.log("Calling UI-Setup for "+an.name);
+      an.uisetup(an, arr); // Added data param (even if unused by uisetp)!!!
+    }
     showgrid(an.gridid, arr, fldinfo[an.fsetid]); // 
-    return;
-    /////////////////////////////////////////////////////////
-    var cfg = rapp.dclone(rapp.gridcfg);
-    //var fi = window.fi; // Alt fields "cache" ? || rapp.fi || 
-    cfg.data = arr; cfg.fields = fi[act.gridid];
-    $("#" + act.gridid).jsGrid(cfg);
-    //console.log(JSON.stringify(arr, null, 2));
-  })
-  .catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); });
 }
+/////////////////////////////////////////////////////////
+    //var cfg = rapp.dclone(rapp.gridcfg);
+    //////////var fi = window.fi; // Alt fields "cache" ? || rapp.fi || 
+    //cfg.data = arr; cfg.fields = fi[act.gridid];
+    //$("#" + act.gridid).jsGrid(cfg);
+    //console.log(JSON.stringify(arr, null, 2));
+
+    function dcomposer_uisetup(an) { // 
+      var fs = datasets.cfg.docker.files;
+      var cont = "";
+      // toastr.info(fs);
+      fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
+      $(".xui").html(cont);
+      $(".xui").show();
+      // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
+      $(".vmglink").click(function (jev) {
+        // toastr.info("Click on "+Object.keys(jev));
+        simplegrid_url(jev, an);
+      });
+    } // uisetup
 
 /** Display Entities in Grid contained Groups (in multiple grids).
  * Reusable for almost any entities
@@ -94,14 +108,14 @@ if (an.uisetup && (typeof an.uisetup == 'function')) {
  * To support esp. latter the hname would need to be in each process record (!)
  * See: procinfo_uisetup(pinfoarr) for 
  */
-function hostgroups(ev, act) {
+function multigridview(ev, act) {
   var elsel = ev.routepath ? "routerdiv" : act.elsel;
   //console.log("Generate into: " + elsel);
   $('#' + elsel).html(''); // Clear
   var nattr = act.nattr || "name";
   var ida = act.ida || "id";
   var colla = act.colla || "items"; // items ? ("hosts" already in org act node)
-  var fsid = act.fsid; // NO default
+  var fsid = act.fsetid; // NO default
   if (!fsid) { return alert("No field layout !"); }
   // See disabled by act.elsel (TODO: Suppress whole tab)
   if (datasets && datasets.cfg && datasets.cfg.disabled && datasets.cfg.disabled.includes(act.elsel)) {
@@ -133,7 +147,7 @@ function hostgroups(ev, act) {
       if ((!arr || !arr.length) && act.skipe) { return $('#' + elsel).append("<p style=\"font-size: 11px; \">No items.</p>"); } // No items, allow skip
       $('#' + elsel).append("<div id=\"grp_"+ id +"\"></div>\n");
       showgrid("grp_"+id, arr, fldinfo[fsid]); // "hw"
-      if (typeof act.uisetup == 'function') { act.uisetup(arr); } // act
+      if (typeof act.uisetup == 'function') { act.uisetup(act, arr); } // act
     });
     //if (typeof act.uisetup == 'function') { act.uisetup(); } // act
     toastr.clear();
@@ -172,7 +186,7 @@ function probeinfo(ev, act) {
     
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; }
-    showgrid("jsGrid_probe", pinfo, fldinfo.netprobe); // act.gridid  ... fldinfo[act.fsetid]
+    showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); //  "jsGrid_probe" ...  fldinfo.netprobe
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
   }).catch(function (error) {  console.log(error); }) // spinner.stop();
   .finally(() => { spinner.stop(); });
@@ -191,10 +205,10 @@ function loadprobeinfo(event, act) {
     var pinfo = resp.data.data;
     // spinner.stop();
     // console.log("Probe data: ", pinfo);
-    if (!pinfo || !pinfo.length) { toastr.error("No Load Probe data"); return; }
-    showgrid("jsGrid_loadprobe", pinfo, fldinfo.proc);
+    if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // Load Probe
+    showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); // "jsGrid_loadprobe"
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-    if (act.uisetup) { act.uisetup(); console.log("CALLED UISETUP"); }
+    if (act.uisetup) { act.uisetup(act, pinfo); console.log("CALLED UISETUP"); } // act, pinfo unused
   })
   .catch(function (error) { console.log(error); })
   .finally(() => { spinner.stop(); });
@@ -328,50 +342,14 @@ function dockercat_show(ev, act) {
     // var dgopts = {}; // style for table ?
     //OLD: $("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
     
-    if (act.path == 'dockerenv') { uisetup_dockercat(act); }
-    if (act.path == "bootables") { uisetup_bootables(act); }
-    // TODO: if (act.uisetup) { act.uisetup(act); }
-  function uisetup_bootables(act) {
-    axios.get("/bs_statuses").then((resp) => {
-        
-        var d = resp.data.data;
-        if (!Array.isArray(d)) { return toastr.error("Not in array"); }
-        toastr.info("ISO statuses from "+d.length+" sources retrieved !");
-        d.forEach((img) => {
-          var id = "bsstatus_"+img.lbl;
-          console.log("Try set: "+id);
-          $("#"+id).html(img.status ); // + "("+img.code+")"
-          $("#"+id).attr('style', 'color: '+code2color(img.code)); // Color ...
-        });
-      }).catch((ex) => {  alert("Error !"); });
-      function code2color(code) {
-        if ((code >= 200) && (code < 300)) { return "#33FF33"; }
-        return "#AA0000";
-      }
-  }
-  // UI Setup: Docker sync ops
-  function uisetup_dockercat(act) {
-    $(".docksync").click(function (jev) {
-      var img = this.getAttribute("data-image"); // .dataset.image;
-      //console.log(img);
-      // TODO: Use syncgrps (arr), not hostgrp
-      var syncgrps;
-      try {
-        syncgrps = datasets.cfg.docker.syncgrps; // See main cfg, mainconf.js
-        if (!syncgrps || !syncgrps.length) {  throw "No sync groups !"; } // if (!syncgrp || !syncgrp.length) {}
-      } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("Docker Sync Error: "+ex); }
-      var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
-      console.log("Docker run para:", p);
-      // Run ansible w. params /ansrun. TODO: Add request para ?
-      axios.post("/ansrun", p).then(function (resp) {
-        var r = resp.data;
-        if (r.status == 'err') { toastr.error(r.msg); }
-        else { toastr.info(r.msg); }
-      });
-    });
-  } // uisetup
+    //if (act.path == 'dockerenv') { uisetup_dockercat(act); }
+    //if (act.path == "bootables") { uisetup_bootables(act); }
+    // TODO:
+    if (act.uisetup) { act.uisetup(act, []); }
+ 
 
   }).catch(function (err) { return toastr.error(err, "Error getting "+act.name+" from "+act.url); });
+  // ...
   function autoarray(data) {
     var ks = Object.keys(data);
     var arrks = [];
@@ -382,6 +360,48 @@ function dockercat_show(ev, act) {
     return arrks[0]; // if allowed by config ("first")
   }
 }
+
+function uisetup_bootables(act) {
+  axios.get("/bs_statuses").then((resp) => {
+      
+      var d = resp.data.data;
+      if (!Array.isArray(d)) { return toastr.error("Not in array"); }
+      toastr.info("ISO statuses from "+d.length+" sources retrieved !");
+      d.forEach((img) => {
+        var id = "bsstatus_"+img.lbl;
+        console.log("Try set: "+id);
+        $("#"+id).html(img.status ); // + "("+img.code+")"
+        $("#"+id).attr('style', 'color: '+code2color(img.code)); // Color ...
+      });
+    }).catch((ex) => {  alert("Bootables Error !"); });
+    function code2color(code) {
+      if ((code >= 200) && (code < 300)) { return "#33FF33"; }
+      return "#AA0000";
+    }
+}
+// UI Setup: Docker sync ops
+function uisetup_dockercat(act) {
+  $(".docksync").click(function (jev) {
+    var img = this.getAttribute("data-image"); // .dataset.image;
+    //console.log(img);
+    // TODO: Use syncgrps (arr), not hostgrp
+    var syncgrps;
+    try {
+      syncgrps = datasets.cfg.docker.syncgrps; // See main cfg, mainconf.js
+      if (!syncgrps || !syncgrps.length) {  throw "No sync groups !"; } // if (!syncgrp || !syncgrp.length) {}
+    } catch (ex) { console.log("Docker hostgrp EX: "+ex); return toastr.error("Docker Sync Error: "+ex); }
+    var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
+    console.log("Docker run para:", p);
+    // Run ansible w. params /ansrun. TODO: Add request para ?
+    axios.post("/ansrun", p).then(function (resp) {
+      var r = resp.data;
+      if (r.status == 'err') { toastr.error(r.msg); }
+      else { toastr.info(r.msg); }
+    });
+  });
+} // uisetup
+
+
 /** Display docker-imager config files */
 function dockerimg_show(ev, act) {
   
@@ -457,8 +477,10 @@ function tftplist(ev, act) {
     console.log(d);
     showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // "jsGrid_pxelinux", ..., fldinfo.pxelinux
     // UISETUP: Handle Click on (Default Boot) Reset Link
-    $(".defboot").click(defboot_reset);
-    // if (act.uisetup) { act.uisetup(); }
+    // uisetup: (act, data) = {
+    // $(".defboot").click(defboot_reset);
+    //}
+    if (act.uisetup) { act.uisetup(act, d.data); }
   }).catch(function (err) { console.log(err); });
 }
 // Click handler for Boot item reset (to default)
@@ -486,30 +508,32 @@ function medialist(ev, act) {
     console.log(d);
     showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // "jsGrid_bootmedia" ... fldinfo.bootmedia
     // UISETUP: Handle Click on Media Info
-    // function medialist_uisetup() {
-    $(".mediainfo").click(function (jev) {
-      var p = this.dataset.path;
-      // Pop up dialog
-      //alert(p);
-      var url = "/mediainfo?mid=" + p;
-      axios.get(url).then(function (resp) {
-        var d = resp.data;
-        if (!d) { return toastr.error("No media info"); }
-        if (d.status == 'err') { return toastr.info(p + " Does not seem to be a loop mounted image"); }
-        console.log(d);
-        //return;
-        // Dialog "pattern"
-        //document.getElementById('midialog').innerHTML =
-        rapp.templated("mitmpl", d.data, 'midialog');
-        var dopts2 = {modal: true, width: 500, height: 200};
-        //$( "#midialog" ).html(output); // NOT needed
-        $( "#midialog" ).dialog(dopts2);
-      }).catch(function (ex) { toastr.error(ex.toString()); });
-      return false;
-    });
-    // }; // medialist_uisetup
+    if (act.uisetup) { act.uisetup(act, d.data); }
   }).catch(function (err) { console.log(err); });
 }
+
+function medialist_uisetup() {
+  $(".mediainfo").click(function (jev) {
+    var p = this.dataset.path;
+    // Pop up dialog
+    //alert(p);
+    var url = "/mediainfo?mid=" + p;
+    axios.get(url).then(function (resp) {
+      var d = resp.data;
+      if (!d) { return toastr.error("No media info"); }
+      if (d.status == 'err') { return toastr.info(p + " Does not seem to be a loop mounted image"); }
+      console.log(d);
+      //return;
+      // Dialog "pattern"
+      //document.getElementById('midialog').innerHTML =
+      rapp.templated("mitmpl", d.data, 'midialog');
+      var dopts2 = {modal: true, width: 500, height: 200};
+      //$( "#midialog" ).html(output); // NOT needed
+      $( "#midialog" ).dialog(dopts2);
+    }).catch(function (ex) { toastr.error(ex.toString()); });
+    return false;
+  });
+}; // medialist_uisetup
 
 /** Present a Preview grid on various supported recipes.
  * Should also include other templated content (e.g. boot menu).
@@ -688,7 +712,7 @@ function ibloxlist(ev, act) {
   toastr.info("Looking up Iblox host info ... please wait");
   var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
   var spinner = new Spinner(spinopts).spin(spel);
-  axios.get("/ibshowhost").then(function (resp) {
+  axios.get(act.url).then(function (resp) { // "/ibshowhost"
     var d = resp.data;
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
     if (!d.data) { return toastr.error("No Data Found."); }
@@ -704,6 +728,7 @@ function ibloxlist(ev, act) {
       it.usedhcp    = ibent.configure_for_dhcp;
     });
     */
+    // NOTE: Too early for this to reside in Uisetp ???
     d.data.forEach((item) => {
       if ((item.ipaddr_ib != item.ipaddr) || (item.macaddr_ib != item.macaddr)) { item.needsync = 1; }
       // Bug in jsgrid ? boolean false in "usedhcp" (type: "string") shows as "", but true shows as "true" (!).
@@ -712,23 +737,29 @@ function ibloxlist(ev, act) {
     });
     showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // fldinfo.iblox
     // UISETUP:
-    $('.syncbutt').click(function () {
-      var hname = this.dataset.hname;
-      // TODO: lock/disable buttons
-      $('.syncbutt').prop('disabled', true);
-      //toastr.info("Should sync "+hname+" with infoblox !");
-      axios.get("/ipamsync?hname="+hname).then((resp) => {
-        var d = resp.data;
-        if (d.status == 'err') { toastr.clear(); return toastr.error("Failed InfoBlox sync: " + d.msg); }
-        if (!d.data) { return toastr.error("No Data Found."); }
-        toastr.clear();
-        toastr.info("Sync'd "+hname+" with infoblox successfully !");
-      }).catch((ex) => { toastr.error(ex); })
-      .finally(() => { $('.syncbutt').prop('disabled', false); });
-    });
+    if (act.uisetup) { act.uisetup(act, d.data); }
+    
   }).catch (function (ex) { console.log(ex); })
   .finally( () => { spinner.stop(); });
 }
+
+function ibox_uisetup(act, dataunused) {
+  $('.syncbutt').click(function () {
+    var hname = this.dataset.hname;
+    // TODO: lock/disable buttons
+    $('.syncbutt').prop('disabled', true);
+    //toastr.info("Should sync "+hname+" with infoblox !");
+    axios.get("/ipamsync?hname="+hname).then((resp) => {
+      var d = resp.data;
+      if (d.status == 'err') { toastr.clear(); return toastr.error("Failed InfoBlox sync: " + d.msg); }
+      if (!d.data) { return toastr.error("No Data Found."); }
+      toastr.clear();
+      toastr.info("Sync'd "+hname+" with infoblox successfully !");
+    }).catch((ex) => { toastr.error(ex); })
+    .finally(() => { $('.syncbutt').prop('disabled', false); });
+  });
+}
+
 
 function eflowlist(ev, act) {
   //console.log("EFlow ...");
@@ -738,35 +769,40 @@ function eflowlist(ev, act) {
   var spinner = new Spinner(spinopts).spin(spel);
   axios.get(act.url).then(function (resp) { // "/eflowrscs"
     var d = resp.data;
-    // spinner.stop(); // See finally
     if (d.status == 'err') { toastr.clear(); return toastr.error("Failed search: " + d.msg); }
     if (!d.data) { return toastr.error("No Data Found."); }
     if (!Array.isArray(d.data)) { return toastr.error("Data Not in Array."); }
     //console.log(d.data);
-    showgrid(act.gridid, d.data, fldinfo.eflow);
-    $(".hostcell").click(on_host_click);
-    $('.efena').change(function () {
-      var uithis = this;
-      var rscname = this.dataset.rscname;
-      var hname   = this.dataset.hname;
-      $(uithis).prop('disabled', true); // Or all '.efena' ?
-      // Box: "enabled"
-      //var disa = this.checked ? 0 : 1;
-      var ena = this.checked ? 1 : 0;
-      toastr.clear();
-      toastr.warning("Rsc "+rscname+" ena: "+ena);
-      axios.get("/eflowrsctoggle/?hname="+hname+"&rscname="+rscname+"&ena="+ena).then((resp) => {
-        var d = resp.data;
-        console.log("resp.status: " + resp.status);
-        toastr.clear();
-        var darr = ["Disabled", "Enabled"];
-        toastr.info("Changed resource "+rscname+ " to "+darr[d.data.ena]); // +    enabled= " + d.data.ena
-      }).catch((ex) => { toastr.error(ex); })
-      .finally(() => {  $(uithis).prop('disabled', false); })
-    });
+    showgrid(act.gridid, d.data, fldinfo[act.fsetid]); // 
+    // UISETUP
+    if (act.uisetup) { act.uisetup(act, d.data); }
+   
   }).catch (function (ex) { console.log(ex); })
   .finally( () => { spinner.stop(); });
 }
+
+ function eflow_uisetup(act, dataunused) {
+  $(".hostcell").click(on_host_click);
+  $('.efena').change(function () {
+    var uithis = this;
+    var rscname = this.dataset.rscname;
+    var hname   = this.dataset.hname;
+    $(uithis).prop('disabled', true); // Or all '.efena' ?
+    // Box: "enabled"
+    //var disa = this.checked ? 0 : 1;
+    var ena = this.checked ? 1 : 0;
+    toastr.clear();
+    toastr.warning("Rsc "+rscname+" ena: "+ena);
+    axios.get("/eflowrsctoggle/?hname="+hname+"&rscname="+rscname+"&ena="+ena).then((resp) => {
+      var d = resp.data;
+      console.log("resp.status: " + resp.status);
+      toastr.clear();
+      var darr = ["Disabled", "Enabled"];
+      toastr.info("Changed resource "+rscname+ " to "+darr[d.data.ena]); // +    enabled= " + d.data.ena
+    }).catch((ex) => { toastr.error(ex); })
+    .finally(() => {  $(uithis).prop('disabled', false); })
+  });
+  }
 
 /** Show all guests from a VM Host.
  * TODO: Use xui to show navi list of servers ?
@@ -775,7 +811,7 @@ function esxilist(ev, act) {
   var host;
   var cfg = datasets["cfg"];
   toastr.clear();
-  rapp.templated("simplegrid", act, ev.viewtgtid);
+  rapp.templated("simplegrid", act, ev.viewtgtid); // Use act.tmpl
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
   else { $('#'+ev.viewtgtid + " " + ".xui").html("No VM hosts in this system.").show(); return; }
   // Figure out host (default to ... (first?) ?)
@@ -799,7 +835,7 @@ function esxilist(ev, act) {
     if (!d) { return toastr.error("No Data Found."); } // d.data
     if (!Array.isArray(d)) { return toastr.error("Data Not in Array."); } // d.data
     console.log(d); // d.data
-    showgrid(act.gridid, d, fldinfo.esxilist); // d.data
+    showgrid(act.gridid, d, fldinfo[act.fsetid]); // d.data, fldinfo.esxilist
     //var csv = $("#"+act.gridid).jsGrid("exportData", expcfg);
     //console.log("CSV:\n",csv);
     console.log("# Guests for "+host);
@@ -980,8 +1016,13 @@ function actinfo(ev, act) {
     // var pinfo = resp.data.data;
     //console.log("SSH Key data: ", pinfo);
     // if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // SSH Keys
+    var tabloadacts = datasets[act.dsid];
     showgrid(act.gridid, tabloadacts, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
     // uisetup ?
-    //if (act.uisetup) { act.uisetup(act, pinfo); } // pinfo
+    if (act.uisetup) { act.uisetup(act, tabloadacts); }
   
+}
+
+function actinfo_uisetup(act, data) {
+  //alert("Hello");
 }

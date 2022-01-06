@@ -160,7 +160,7 @@ function on_rmgmt_click(ev) {
 
 /** Hook Process listing items to detail view.
  * Must have el by id "pkill" with data-hname 
- * @param pino - Process dataset.
+ * @param pinfo - Process dataset.
  */
 function procinfo_uisetup(pinfo) {
       
@@ -537,16 +537,16 @@ function tabsetview(ev, act) {
 var tabloadacts = [
   {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
   // Tabs (NOTE: dataid unused, See: dsid (used by simplegrid_cd)
-  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", fsetid: "", uisetup: osview_guisetup}, // url: "/list" (All 3)
-  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  gridid: "jsGrid_hw",  fsetid: "", uisetup: osview_guisetup},
-  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", fsetid: "", uisetup: osview_guisetup}, // Last could have hdlr ?
+  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", fsetid: "net", uisetup: osview_guisetup}, // url: "/list" (All 3)
+  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  gridid: "jsGrid_hw",  fsetid: "hw", uisetup: osview_guisetup},
+  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", fsetid: "dist", uisetup: osview_guisetup}, // Last could have hdlr ?
   //NONEED: {"name": "Reports", "path":"XXXXXXXX", tabs: ["tabs-X","tabs-Y","tabs-Z"], hdlr: tabsetview},
   {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
-  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: hostgroups, "url": "/groups", gridid: null, path: "groups", "fsid": "hw", colla: "hosts"},
+  {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: multigridview, "url": "/groups", gridid: null, path: "groups", "fsetid": "hw", colla: "hosts"},
   {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
-  {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt", fsetid: "",},
-  {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe", fsetid: "",},
-  {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", fsetid: "",
+  {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt", fsetid: "rmgmt",},
+  {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe", fsetid: "netprobe",},
+  {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", fsetid: "proc",
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
   {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", fsetid: "sshkeys", path: "hostkeys", uisetup: sshkeys_uisetup}, // DUAL
@@ -555,12 +555,13 @@ var tabloadacts = [
   {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   // Disabled from here (groups): "tabs-5",
   {"name": "Dev/Admin",   tabs: ["tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
-  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", fsetid: "dockercat", gdmem: "catalog", path: "dockerenv"},
+  {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", fsetid: "dockercat", gdmem: "catalog",
+     path: "dockerenv", uisetup: uisetup_dockercat },
   {"name": "Boot/Install", tabs: ["tabs-11","tabs-12","tabs-13", "tabs-14", "tabs-iprof", "tabs-bos"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "bootinst"}, // NEW(tabset)
   // Sub Tabs (for Boot/Install, non-routable)
   {"name": "Boot/OS Install",   "elsel": "tabs-11", "tmpl":"bootreq",    hdlr: bootgui, url: "", path: ""},
   {"name": "TFTP Boot Hosts",   "elsel": "tabs-12", "tmpl":"simplegrid", hdlr: tftplist,  url: "/tftplist",  gridid: "jsGrid_pxelinux",  fsetid: "pxelinux", path: "", uisetup: function () { $(".defboot").click(defboot_reset); }},
-  {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist", gridid: "jsGrid_bootmedia", fsetid: "bootmedia", path: ""},
+  {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist", gridid: "jsGrid_bootmedia", fsetid: "bootmedia", path: "", uisetup: medialist_uisetup },
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes,   url: "/recipes",   gridid: "jsGrid_recipes",   fsetid: "DYNAMIC", path: ""},
   {"name": "Install Profiles",  "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fsetid: "iprofs", path: ""},
   {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: null, path: "loginform"},
@@ -570,25 +571,13 @@ var tabloadacts = [
   {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid",     "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
   // Iblox
-  {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibloxlist"},
-  {"name": "EFlow", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": eflowlist,    url: "/eflowrscs", gridid: "jsGrid_eflow", path: "eflowlist"},
+  {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibloxlist", uisetup: ibox_uisetup},
+  {"name": "EFlow", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": eflowlist,    url: "/eflowrscs", gridid: "jsGrid_eflow", fsetid: "eflow", path: "eflowlist", uisetup: eflow_uisetup},
   // esxi
-  {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", path: "esxiguests"},
+  {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", fsetid: "esxilist", path: "esxiguests"},
   
-  {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url":"/listdc", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", path:"dcomposer",
-    uisetup: (an) => { // dcomposer_uisetup
-      var fs = datasets.cfg.docker.files;
-      var cont = "";
-      // toastr.info(fs);
-      fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
-      $(".xui").html(cont);
-      $(".xui").show();
-      // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
-      $(".vmglink").click(function (jev) {
-        // toastr.info("Click on "+Object.keys(jev));
-        simplegrid_url(jev, an);
-      });
-    }, // uisetup
+  {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url": "/listdc", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", path:"dcomposer",
+    uisetup: dcomposer_uisetup,
     urlpara:  (ev, an) => {
       var dcfn;var ds = ev.target.dataset;
       if (ds && ds.dcfn) { dcfn = ds.dcfn; }
@@ -597,17 +586,18 @@ var tabloadacts = [
     },
   },
   // See: Groups
-  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,      hdlr: hostgroups, "url": "/staleproc/", gridid: null, path: "staleproc",
-      nattr: "hname", "colla":"procs", "fsid": "proclist", "skipe":1, longload: 1,
+  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,      hdlr: multigridview, "url": "/staleproc/", gridid: null, path: "staleproc",
+      nattr: "hname", "colla":"procs", "fsetid": "proclist", "skipe":1, longload: 1,
       ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
-      uisetup: (arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
+      uisetup: (act, arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
       dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
   },
   {"name": "ApiDocs", "elsel": "tabs-api", "url": "/apidoc", "tmpl": "", hdlr: apidoc, path: "apidoc"},
   // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appacts"},
   // Ansible
   {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"},
-  {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", fsetid: "bootables", path: "bootables"},
+  {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", fsetid: "bootables",
+    path: "bootables", uisetup: uisetup_bootables },
   // shell
   {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", gridid: "", path: "shell"},
   // Cov (for now only manually routable)
@@ -615,12 +605,15 @@ var tabloadacts = [
   {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"},
   {name: "Release Build Defects (Chart)", elsel: "cov-1", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
     setupui: null, canid: "canvas_blds", chtype: "bar", limit: 120},
-  {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid:"covstr", url_old: "/cov_proj_data.json", url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", },
+  // 
+  {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
+     url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
   // 
   {name: "Deploy Project",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
   // "uisetupXX": deploy_uisetup,
   {name: "Deployable Projects",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
-  {name: "Application Actions",  hdlr: actinfo, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo"},
+  // TODO: Place actions to global datacache: datasets["actions"] = tabloadacts; ...
+  {name: "Application Actions",  hdlr: actinfo, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo", dsid: "actions", uisetup: actinfo_uisetup },
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -806,6 +799,7 @@ window.onload = function () {
   var tabs = tabloadacts.filter((ti) => { return ti.elsel; });
   //acts_uidisable(tabs);
   let ccfg = datasets["cfg"]; // Why cfg vs. ccfg ???
+  datasets["actions"] = tabloadacts;
   // Disabled menu items
   if (ccfg && Array.isArray(ccfg.disabled)) {
     ccfg.disabled.forEach((p) => { $("nav a[href='#"+p+"']").parent().hide(); });
