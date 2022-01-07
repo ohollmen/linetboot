@@ -1,0 +1,32 @@
+# # Change Coverity server concurrency limits
+# 
+# Limits are related to result commits from client (CLI tools) env to
+# Coverity connect server.
+# Notes:
+# - Normally coverity (year.month) version is part of coverity connect installation path
+# - You can pass vars from CLI to override coverity connect install path completely
+# - Use CLI become-override for root-owned installation
+- name: Change Coverity Connect Server Limits
+  hosts: "{{ host }}"
+  # Assume installation is done as normal (non-root) user
+  # become: yes
+  vars:
+    cov_serv_ver: '2020.09'
+    # Default path layout recommended by Coverity
+    cov_serv_inst_path: '/opt/coverity/{{ cov_serv_ver }}/coverity-connect/config/cim.properties'
+    # Even higher (150,25) may be needed based on results commit throughput,
+    # commit executors running (System => Diagnostics => Graph => Commit Executor Usage)
+    cov_wq_capa: 120
+    cov_pt_cnt: 20
+  tasks:
+    - name: Change cim.properties
+      lineinfile:
+        path: '{{ cov_serv_inst_path }}'
+        state: present
+        create: yes
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+      with_items:
+        - {regexp: '^commitWorkQueueCapacity=', line: 'commitWorkQueueCapacity={{ cov_wq_capa }}'}
+        - {regexp: '^commitPoolThread=', line: 'commitPoolThread={{ cov_pt_cnt }}'}
+
