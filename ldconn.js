@@ -12,6 +12,9 @@ var ldconn;
 var ldbound;
 var inited = 0;
 var clist; var clistq;
+// Temp for array-only clist
+var clistnames = {};
+var clists = {};
 function init(_ldcfg, _ldconn) {
   if (inited) { return; }
   ldcfg = _ldcfg;
@@ -20,13 +23,20 @@ function init(_ldcfg, _ldconn) {
   //console.log(ldcfg);
   //console.log("CONTPB: '"+ldcfg.contpb+"'");
   if (ldcfg.contpb) {
-    clist = pb_parse(ldcfg.contpb);
-    if (!clist) { inited++; return; }
+    clists = pb_parse(ldcfg.contpb);
+    if (!clists) { clists = {}; inited++; return; }
     // console.log("Got clist: ", clist);
     var ida = ldcfg.unattr || "sAMAccountname";
-    clistq = pb_filter(clist, ida);
+    // Add filters (to be ready to go)
+    Object.keys(clists).forEach((clk) => {
+      var clitem = clists[clk];
+      clitem.clistq = pb_sfilter(clitem.clist, ida); // Old clistq = ...
+    });
   }
   // else { console.log("No contpb ("+ldcfg.contbp+")\n"); }
+  // console.log(clistnames);
+  console.log(clists);
+  module.exports.clistnames = clists ? Object.keys(clists) : [];
   inited++;
 }
 function setbound(_ldbound) {
@@ -39,18 +49,32 @@ function pb_parse(fname) {
   var fok = fs.existsSync(fname);
   var clist = null;
   if (!fok) { return null; }
+  var path = require("path");
+  var bn;
+  var clistname = bn = path.basename(fname); // Default / Current
+  var clists = {};
   try {
     clist = fs.readFileSync(fname, 'utf8').split(/\n/).filter((it) => {
+      var m;
+      // Special for contact list name
+      if (m = it.match(/^#\s*name:\s*(.+)$/)) {
+        clistname = m[1];
+        if (!clists[clistname]) { clists[clistname] = { clist: [], clistq: "" }; }
+        return 0;
+      }
       if (it.match(/^#/)) { return 0; }
       if (it.match(/^\s*$/)) { return 0; }
       // Trim ?
       it = it.trim();
+      clists[clistname].clist.push(it);
       return it;
     });
   } catch (ex) { console.log("Error loading: "+fname+" : "+ex); return null; }
-  return clist;
+  // if (clistname) { clistnames[bn] = clistname; }
+  //return clist;
+  return clists;
 }
-function pb_filter(clist, ida) {
+function pb_sfilter(clist, ida) {
   var clisq = null;
   if (clist) {
     clistq = clist.map((it) => { return "("+ida+"="+it+")"; }).join('');
@@ -117,7 +141,8 @@ function ldconn_bind_cb(ldc, ldconn, cb) {
  * Init: check (ldc.host !ldc.disa), do client inst and async bind.
  * Request: in app.use MW check if (ldbound and !sess) { block...}
  * On client. In onpageload check session. Take router into use. Check router middleware
-
+ * curl http://localhost:3000/ldaptest?uname=aj*
+ * curl "http://localhost:3000/ldaptest?pblbl=Board+Wiring+Mgrs"
  */
 function ldaptest(req, res) {
   //var ldap = require('ldapjs');
@@ -135,7 +160,14 @@ function ldaptest(req, res) {
     var lds = {base: ldc.userbase, scope: ldc.scope, filter: filter_gen(ldc, q)}; // "("+ldc.unattr+"="+q.uname+")"
     lds.filter = "(|("+ldc.unattr+"="+q.uname+")(givenName="+q.uname+")(sn="+q.uname+")(displayName="+q.uname+"))";
     // Custom query. TODO: q.pblbl
-    if ((q.uname == process.env["USER"]+"_pb") && clistq) { lds.filter = clistq; }
+    // OLD: if ((q.uname == process.env["USER"]+"_pb") && clistq) {
+    if (q.pblbl && clists && clists[q.pblbl]) {
+      var clistent = clists[q.pblbl];
+      lds.filter = clistent.clistq;
+      // lds.filter = clistq;
+    }
+    
+
     console.log(d1.toISOString()+" Search: ", lds);
     ldconn.search(lds.base, lds, function (err, ldres) {
       var d2 = new Date();

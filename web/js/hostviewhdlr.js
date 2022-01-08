@@ -695,6 +695,20 @@ function showpeople(ev, act) {
     .finally( () => { spinner.stop(); });
   } // search (on top)
   // UISETUP
+  var clistnames = datasets.cfg.clistnames;
+  if (clistnames && Array.isArray(clistnames)) {
+    var cont = "<style>.clistname { padding: 0px 5px; display: inline-block; border-radius: 5px; border: 1px solid #BBBBBB; } #clists { display: inline-block; padding: 10px; }</style>";
+    clistnames.forEach((cls) => {
+      // encodeURIComponent(cls)
+      cont += " <span class=\"clistname\" data-name=\""+cls+"\">"+cls+"</span> ";
+     });
+     $("#clists").html(cont);
+     $(".clistname").click(function (jev) {
+       //alert(this.dataset.name);
+       var p = { pblbl: this.dataset.name };
+       search(p);
+     });
+  }
   $('#sbutt').click(function () {
     var p = { uname: $("#uname").val() };
     toastr.info("Search by: "+p.uname);

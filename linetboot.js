@@ -1922,6 +1922,9 @@ function config_send(req, res) {
   if (web && web.xflds) { cfg.xflds = web.xflds; }
   // 
   if (esxi && esxi.vmhosts) { cfg.vmhosts = esxi.vmhosts; }
+  // 
+  if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
+  else { cfg.clistnames = []; }
   res.json(cfg);
 }
 
