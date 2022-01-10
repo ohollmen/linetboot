@@ -107,7 +107,7 @@ function showgrid_opts(divid, griddata, fields) {
   gridopts.data   = griddata;
   gridopts.fields = fields;
   // NOTE: Use a unique thing for datakey: ... (e.g. divid OR append name props of fields ...
-  var mydb = {datakey: divid, filterdebug: 1, loadData: js_grid_filter}; // rapp.dclone(db);
+  var mydb = {datakey: divid, filterdebug: 1, loadData: js_grid_filter, uisruncnt: 0}; // rapp.dclone(db);
   //mydb.loadData = js_grid_filter;
   mydb[divid] = griddata;
   gridopts.controller = mydb;
@@ -305,10 +305,12 @@ function on_host_click(ev, barinfo) {
   // console.log("Ev:", ev, " Val:"); //  // , "td"
   // var tmplsel = "#singlehost";
   var hname; // Get some other way than just html (data-hname="+e.hname+") ... ev.target.dataset.hname;
-  hname = $(ev.target).html(); // Can we get the whole entry (by one of custom field callbacks ?)
+  if (!ev && barinfo && !Array.isArray(barinfo)) { hname = barinfo.hname; }
+  if (ev && ev.target) { hname = $(ev.target).html(); } // Can we get the whole entry (by one of custom field callbacks ?)
   // Try treating this as Chart.js event (w. barinfo Array)
   if (!hname && barinfo && Array.isArray(barinfo)) { hname = barinfo[0]._model.label; }
-  if (!hname) { alert("No hostname !"); return; }
+  // Final check
+  if (!hname) { alert("No hostname available !"); return; }
   // Lookup host. Form global cache / datasets
   //var ent = db.hosts.filter(function (it) { return it.hname == hname; })[0];
   var ent = datasets.hostlist.filter(function (it) { return it.hname == hname; })[0];
@@ -534,25 +536,25 @@ function tabsetview(ev, act) {
 // Note: template/tamplating might be of early (at tab creation) or late (at data load) type.
 // For now late templated should have tmpl: .. to false val and do templating themselves (because early templating is automatic by tmpl).
 // Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
+// subnavi: 1 ... in esxiguests(esxilist), dcomposer(see: dcomposer_uisetup), peopledir(showpeople) (potentially: covbuilds) . esxihostmenu(act, items) is a close example
 var tabloadacts = [
   {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
   // Tabs (NOTE: dataid unused, See: dsid (used by simplegrid_cd)
-  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", gridid: "jsGrid_net", fsetid: "net", uisetup: osview_guisetup}, // url: "/list" (All 3)
-  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  gridid: "jsGrid_hw",  fsetid: "hw", uisetup: osview_guisetup},
-  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", gridid: "jsGrid_dist", fsetid: "dist", uisetup: osview_guisetup}, // Last could have hdlr ?
+  {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", mtx:0, dsid: "hostlist", gridid: "jsGrid_net", fsetid: "net", uisetup: osview_guisetup}, // url: "/list" (All 3)
+  {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  dsid: "hostlist", gridid: "jsGrid_hw",  fsetid: "hw", uisetup: osview_guisetup},
+  {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", dsid: "hostlist", gridid: "jsGrid_dist", fsetid: "dist", uisetup: osview_guisetup}, // Last could have hdlr ?
   //NONEED: {"name": "Reports", "path":"XXXXXXXX", tabs: ["tabs-X","tabs-Y","tabs-Z"], hdlr: tabsetview},
   {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
   {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: multigridview, "url": "/groups", gridid: null, path: "groups", "fsetid": "hw", colla: "hosts"},
   {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt", fsetid: "rmgmt",},
-  {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",  hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe", fsetid: "netprobe",},
+  {"name": "Net Probe",   "elsel": "tabs-63", "tmpl":"netprobe",   hdlr: probeinfo, "url": "/nettest", gridid: "jsGrid_probe", fsetid: "netprobe",},
   {"name": "Load Probe",  "elsel": "tabs-64", "tmpl":"simplegrid", hdlr: loadprobeinfo, "url": "/proctest", gridid: "jsGrid_loadprobe", fsetid: "proc",
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
-  {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,         hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
+  {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,    hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", fsetid: "sshkeys", path: "hostkeys", uisetup: sshkeys_uisetup}, // DUAL
   {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", fsetid: "DYNAMIC", path: "pkgstats", "help": "x.md"}, //DUAL
-  //{"name": "About ...",   "elsel": "tabs-7",  "tmpl":"about",    hdlr: function () {}, "url": "", gridid: null}, // DEPRECATED
-  {"name": "Docs",        "elsel": "tabs-8", "tmpl":"docs",      hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
+  {"name": "Docs/About",   "elsel": "tabs-8", "tmpl":"docs",       hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   // Disabled from here (groups): "tabs-5",
   {"name": "Dev/Admin",   tabs: ["tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
   {"name": "Docker Env",  "elsel": "tabs-9", "tmpl": "dockercat", hdlr: dockercat_show, url: "/dockerenv", gridid: "jsGrid_dockercat", fsetid: "dockercat", gdmem: "catalog",
@@ -564,17 +566,17 @@ var tabloadacts = [
   {"name": "ISO Boot Media",    "elsel": "tabs-13", "tmpl":"simplegrid", hdlr: medialist, url: "/medialist", gridid: "jsGrid_bootmedia", fsetid: "bootmedia", path: "", uisetup: medialist_uisetup },
   {"name": "Recipes Preview",   "elsel": "tabs-14", "tmpl":"simplegrid", hdlr: recipes,   url: "/recipes",   gridid: "jsGrid_recipes",   fsetid: "DYNAMIC", path: ""},
   {"name": "Install Profiles",  "elsel": "tabs-iprof", "tmpl":"simplegrid", hdlr: instprofiles, url: "/instprofiles",  gridid: "jsGrid_instprofiles", fsetid: "iprofs", path: ""},
-  {"name": "Login",   "elselXX": "", "tmpl":"loginform", hdlr: loginform, url: "",  gridid: null, path: "loginform"},
+  {"name": "Login",  "tmpl":"loginform", hdlr: loginform, url: "",  path: "loginform"},
   // logout (todo: literal template)
-  {"name": "Logout",   "elselXX": "", "tmpl":"", hdlr: logout, url: "/logout",  gridid: null, path: "logout"},
+  {"name": "Logout",   "tmpl":"", hdlr: logout, url: "/logout",  path: "logout"}, // TODO: Add tmpl for ack ?
   // Directory  (TODO: composite templating)
-  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid",     "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad", path: "peopledir"},
-  {"name": "People Entry", tmpl: "lduser",     "hdlr": gendialog,    url: "", gridid: null, path: "uent", dialogid: "userdialog"},
+  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad", path: "peopledir"},
+  {"name": "People Entry", tmpl: "lduser", "hdlr": gendialog, url: "", path: "uent", dialogid: "userdialog"},
   // Iblox
-  {"name": "InfoBlox", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": ibloxlist,    url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibloxlist", uisetup: ibox_uisetup},
-  {"name": "EFlow", "elselXX": "tabs-15", tmpl: "simplegrid",     "hdlr": eflowlist,    url: "/eflowrscs", gridid: "jsGrid_eflow", fsetid: "eflow", path: "eflowlist", uisetup: eflow_uisetup},
+  {"name": "InfoBlox",   "elselXX": "tabs-15", tmpl: "simplegrid", "hdlr": ibloxlist,  url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibloxlist", uisetup: ibox_uisetup},
+  {"name": "EFlow",      "elselXX": "tabs-15", tmpl: "simplegrid",  "hdlr": eflowlist, url: "/eflowrscs", gridid: "jsGrid_eflow", fsetid: "eflow", path: "eflowlist", uisetup: eflow_uisetup},
   // esxi
-  {"name": "ESXi Guests",    "elselXX": "", "tmpl":"simplegrid", hdlr: esxilist, "url": "/esxi/", gridid: "jsGrid_esxi", fsetid: "esxilist", path: "esxiguests"},
+  {"name": "ESXi Guests","elselXX": "",        tmpl:"simplegrid", "hdlr": esxilist,      "url": "/esxi/", gridid: "jsGrid_esxi", fsetid: "esxilist", path: "esxiguests"},
   
   {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url": "/listdc", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", path:"dcomposer",
     uisetup: dcomposer_uisetup,
@@ -586,18 +588,18 @@ var tabloadacts = [
     },
   },
   // See: Groups
-  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,      hdlr: multigridview, "url": "/staleproc/", gridid: null, path: "staleproc",
+  {"name": "Bad Procs",      "elsel": "tabs-bprocs",  "tmpl": null,  hdlr: multigridview, "url": "/staleproc/", path: "staleproc",
       nattr: "hname", "colla":"procs", "fsetid": "proclist", "skipe":1, longload: 1,
       ida:   (hpent) => { var arr = hpent.hname.split(/\./); return arr[0]; },
       uisetup: (act, arr) => { procinfo_uisetup(arr); }, // $('.psact').click((jev) => { alert("Proc ..."); });
       dataprep: (g) => { g.procs.forEach((p) => { p.hname = g.hname; }); }
   },
   {"name": "ApiDocs", "elsel": "tabs-api", "url": "/apidoc", "tmpl": "", hdlr: apidoc, path: "apidoc"},
-  // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appacts"},
+  
   // Ansible
   {"name": "AnsiRun", elsel: "ansitab", tmpl: "ansrun", hdlr: ansishow, path: "ansirun"},
   {"name": "Bootables",  "elsel": "tabs-bos", "tmpl": "bootables", hdlr: dockercat_show, url: "/bs_list", gridid: "jsGrid_bootables", fsetid: "bootables",
-    path: "bootables", uisetup: uisetup_bootables },
+    path: "bootables", uisetup: uisetup_bootables, noresetup: 1},
   // shell
   {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", path: "shell"},
   // Cov (for now only manually routable)
@@ -612,8 +614,12 @@ var tabloadacts = [
   {name: "Deploy Project",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
   // "uisetupXX": deploy_uisetup,
   {name: "Deployable Projects",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
-  // TODO: Place actions to global datacache: datasets["actions"] = tabloadacts; ...
-  {name: "Application Actions",  hdlr: actinfo, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo", dsid: "actions", uisetup: actinfo_uisetup },
+  // TODO: Place actions to global datacache (at init): datasets["actions"] = tabloadacts; ...
+  // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appact"}, // NOTE: hdlr: simplegrid_cd
+  // hdlr: actinfo
+  {name: "Application Actions",  "elsel": "tabs-acts", hdlr: simplegrid_cd, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo", dsid: "actions",
+      uisetup: actinfo_uisetup },
+  {name: "Host Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -701,7 +707,7 @@ function ontabactivate( event, ui ) {
   //if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
   // Pre-handler ("like-routing-handler") templating. Handler may need to re-template.
   if (an.tmpl) { rapp.templated(an.tmpl, an, an.elsel); }
-  console.log("abactivate - Action node:", an);
+  console.log("tabactivate - Action node:", an);
   //console.log(event);
   event.viewtgtid = an.elsel; // Target View ID (Uses more specific/nested containing element than the top-level / main containing element)
   // TODO: Dispatch like a route handler
@@ -715,7 +721,9 @@ function inittabcontent(tabs) {
     if (!titem.tsel) { return; }
     // rapp.templated(); // document.getElementById ?
     console.log("Setting template for:"+titem.tsel);
-    document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem); // .tmpl rapp.templated(titem.tsel, titem, titem.elsel);
+    // .tmpl
+    document.getElementById(titem.elsel).innerHTML = contbytemplate(titem.tsel, titem);
+    //rapp.templated(titem.tsel, titem, titem.elsel); // Replacement for contbytemplate (line before)
   });
 }
 function tabui_setup(tabs) {
@@ -955,7 +963,7 @@ function pkg_stats(ev, act) {
     // Note: When changing to "pie" will keep the grid. TODO: Have config opts to eliminate grid (for "pie")
     { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
   ];
-  if (ev.routepath) { rapp.contbytemplate("reports", null, "routerdiv"); }
+  if (ev.routepath) { rapp.templated("reports", null, "routerdiv"); } // OLD: contbytemplate
   async.map(chdefs, fetchchart, (err, ress) => { console.log("Done with charts"); });
   return;
   axios.get('/hostpkgcounts').then(function (resp) {
@@ -1159,21 +1167,24 @@ function procinfo(hname, dialogsel, cb) {
   if (!hname) { toastr.error("No hostname (from ui) for proc info"); return; } // proc
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling procps ...");
-  axios.get('http://'+hname+':'+port+'/proclist').then(function (resp) { // /proclist
+  var url = 'http://'+hname+':'+port+'/proclist'; // Dynamic
+  axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Proc data: "+ JSON.stringify(pinfo, null, 2));
     if (!pinfo ) { toastr.error("No data from " + hname); return; }
     if (!pinfo.length) { toastr.warning("No procs found", "... on " + hname); return; } // procs
     //console.log("procinfo: Creating grid to: '" + dialogsel + "' with data " + pinfo + ""); // gridsel
-    // Could this roll back V8 object optimizations
-    pinfo.forEach((it) => { it.hname = hname; });
+    // Could this roll back V8 object optimizations ?
+    pinfo.forEach((it) => { it.hname = hname; }); // Data-preproc
     cb(pinfo, dialogsel);
     // OLD: showgrid(gridsel, pinfo, fldinfo.dockerimg); // TODO: Revive ?
   }).catch(function (error) { console.log(error); toastr.error("No Process info:", error); });
 }
 
 // $("#jsGrid").jsGrid("sort", field);
-function showgrid (divid, griddata, fields) {
+// NOTE: The new showgrid_opts() makes the controller short-lifetime, per grid instance (no global interference)
+// http://js-grid.com/docs/#callbacks
+function showgrid (divid, griddata, fields, act) {
   // toastr.error
   if (!divid || typeof divid != 'string') { return toastr.error("showgrid: Div id not passed !"); }
   if (!Array.isArray(griddata)) { toastr.error("No Grid data " + divid); return; }
@@ -1183,14 +1194,57 @@ function showgrid (divid, griddata, fields) {
   // var gridopts = rapp.dclone(gridopts_std); // Not only this
   // Generate Grid specific opts
   var gridopts = showgrid_opts(divid, griddata, fields);
+  // First arg (obj) has: pageIndex:1, grid: ... Complemented dridopts w. extra. Has controller !!!
+  // NOTE: Data has been changed (e.g. filtered), but NOT sure if page has been re-rendered to hook callbacks
+  // So while callback triggers fine, the timing of hook seems not right. See onRefreshed
+  /*
+  gridopts.onPageChangedXX = (gridev) => { // No second arg console.log("Grid changed 2nd: ", foo);
+    console.log("Grid-changed: ", gridev);
+    var grid = gridev.grid; // Has e.g. _sortOrder, onPageChanged (itself), _validation, paging: false
+    var ctrl = gridev.grid.controller;
+    console.log("Grid-changed controller: ", ctrl);
+    // Test with .hostcell
+    
+  };
+  */
+  // Notes on onRefreshed callback: Triggers *after* grid rendered, does not have the pageIndex
+  if (act && act.uisetup) { // MUST have uisetp (to be of any use)
+    console.log("showgrid(): Setup onRefreshed");
+    gridopts.controller.act = act; // Allows act to follow where ever contoller is available !!!
+    gridopts.onRefreshed = onRefreshed;
+  }
   $("#" + divid).jsGrid(gridopts);
   // Emit (done divid) !
-  ee.emit("on_"+divid+"_done", {msg: "Hello!", divid: divid});
+  //ee.emit("on_"+divid+"_done", { msg: "Hello!", divid: divid }); // New: Disabled
+  // Re-run uisetup on refreshed grid
+  function onRefreshed(gridev) {
+    //console.log("Grid-refreshed: ", gridev);
+    var grid = gridev.grid; // Has e.g. _sortOrder, onPageChanged (itself), _validation, paging: false
+    var ctrl = grid.controller;
+    var data = grid.data;
+    //console.log("Grid-refreshed controller: ", ctrl);
+    //$(".hostcell").click(() => { alert("Re-hooked"); }); // Test: Works !
+    // Note: can use 1) closure act coming to showgrid() IFF onRefreshed() is inside it ... OR 2) attach act to controller
+    let act = ctrl.act; // Controller stored act
+    if (!act) { console.log("No act present, even if pre-validated !!!"); return; }
+    if (!act.uisetup) { console.log("No act.uisetup present, even if pre-validated !!!"); return; }
+    //if (ctrl.uisruncnt) {
+    console.log("UI Setup has been run by grid N times: "+ctrl.uisruncnt); // }
+    if (ctrl.uisruncnt && act.noresetup) { console.log("Prevent uisetup rerun");return; }
+    act.uisetup(act, data);
+    ctrl.uisruncnt++;
+  };
 }
 
 /** Setup help for an routed app action with help markdown.
- * https://stackoverflow.com/questions/18838964/add-bootstrap-glyphicon-to-input-box
- * https://stackoverflow.com/questions/18567098/css-bootstrap-add-icon-to-h1
+ * 
+ * Refs:
+ * 
+ * - https://stackoverflow.com/questions/18838964/add-bootstrap-glyphicon-to-input-box
+ * - https://stackoverflow.com/questions/18567098/css-bootstrap-add-icon-to-h1
+ * 
+ * @param act {object} - Action Object for the help action/topic
+ * @param sel {string} - Selector for element (e.g. heading to which clickable help sybol/icon should be appended)
  */
 function setuphelp(act, sel) {
   var hp = act.help; // Help page
