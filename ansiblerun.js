@@ -406,15 +406,25 @@ function Runner(cfg, acfg) {
   this.runid = new Date().getTime(); // ms
 }
 
-/** List Ansible playbooks in pbpath (sync).
-* The items will have: basename, relname, playname.
-* Playbooks will be parsed as YAML on-the-fly to validate their YAML syntax (a minimun
-* requirement to be able to run them as playbooks).
+/** List Ansible playbooks (*.yaml or *.yml) in pbpath (sync).
+* Playbooks will be listed from directories indicated by ansible.pbpath and
+* parsed as YAML on-the-fly to validate their YAML syntax (a minimun
+* requirement to even try to run them as playbooks).
+* 
+* The set of playbook objects (returned) will contain:
+* 
+* - basename (str)- Basename of playbook
+* - relname (str)- relative name of playbook (relative to paths given in ansible.pbpath)
+* - playname (str)- Playbook name (Taken from "name" of top level)
+* - taskcnt (int)- Number of tasks (in `tasks: ...` list)
+* - vars (object) - A key-value object with variables of playbook
 * @param acfg {object} - Ansible Config Object
 * @param pbpath {string} - Playbook Path (of ':' - delimited path items)
 * @return Playbook objects in an array ( with basename, relname, playname)
+* @todo Thow errors as activity is fully synchronous
 */
-function ansible_play_list(acfg, pbpath) { // dirname
+function ansible_play_list(acfg, pbpath, opts) { // dirname
+  opts = opts || {};
   // List dir(s)
   var arr = [];
   if (!pbpath) { console.error("NO pbpath");return;}
