@@ -22,7 +22,7 @@ rapp.showchart_cov = function (ev, act) {
     console.log("Place content to: "+tgtid);
     // Orig loc for setting template. Late for many things. Try earlier
     //document.getElementById('content').innerHTML =
-    contbytemplate(act.tmpl, act, tgtid);
+    rapp.templated(act.tmpl, act, tgtid);
     if (act.setupui && 1) { act.setupui(act); } // && isfunc // //makechartsui(act);
     var chid = act.canid || "";
     try { ctx = document.getElementById(chid).getContext('2d'); }
@@ -65,7 +65,7 @@ rapp.fetchgrid_cov = function (ev, act) {
     if (!arr || !Array.isArray(arr)) { return alert("No data"); }
     // showgrid("content", arr, fi.builds); // fi.change
     //document.getElementById('content').innerHTML =
-    contbytemplate(act.tmpl, act, tgtid);
+    rapp.templated(act.tmpl, act, tgtid);
     showgrid(act.gridid, arr,  fldinfo[act.fsetid]); // Last: act.gridid
     if (0) {
       var cfg = rapp.dclone(rapp.gridcfg);
