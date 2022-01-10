@@ -314,6 +314,7 @@ function app_init() { // global
   //app.get("/initdeploy", deployer.initdeploy);
   //app.post("/initdeploy", deployer.initdeploy);
   app.get("/deploy_config", deployer.config);
+  app.get("/hosthier", hosthier);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2868,6 +2869,7 @@ function bootables_status(req, res) {
       if (hdrs && hdrs["content-length"]) { img2.size = parseInt(hdrs["content-length"]); img2.status += " "+img2.size + " B.";}
       return cb(null, img2);
     }).catch((ex) => {
+      if (!ex.response) { ex.response = {}; }
       img2.status = "FAIL ("+ex.response.status+")";
       img2.code = ex.response.status;
       return cb(null, img2);
@@ -2892,4 +2894,51 @@ function jenkins_jobs(req, res) {
     jr.msg += "Jenkins request failed: "+ ex;
     return res.json(jr);
   });
+}
+/** Create Host Hierarchy.
+ * https://visjs.github.io/vis-network/examples/
+ * https://ww3.arb.ca.gov/ei/tools/lib/vis/examples/network/06_groups.html
+ * https://unpkg.com/vis@0.5.1/index.html
+ * https://www.bsimard.com/2018/04/25/graph-viz-with-sigmajs.html
+ * Sigma: Edges use source, target (not from, to)
+ */
+function hosthier(req, res) {
+  var nodes = []; // Must have id,title (group, kind)
+  var edges = []; // Based on id
+  var gns = hlr.groupnames();
+  var gmm = hlr.groupmemmap();
+  console.log("Groups: ", gns);
+  var allname = global.core.appname || "All Hosts";
+  var edgeid = 1;
+  var colors = {root: "#FFFFFF", group: "#CCCCCC", host: "#EEEEEE", }; // size: 24
+  var root = {id: "root", label: allname, kind: "root", color: colors.root};
+  root.font = {size: 18, color: '#777777'};
+  nodes.push(root);
+  cfg_groups = {
+    // fontColor, fontSize dont' see effective (border,color are !!!)
+    // fontColor: 'white', fontSize: 10, fontFace: 'courier'
+    host: { border: 'black', color: '#777777', font: { color: 'white', size: 12}}, //  // #EEEEEE
+    "group": { font: {size: 10}}
+  };
+  var grps = gns.map((gn) => {
+    edges.push({from: gn, to: root.id, source: gn, target: root.id, id: "edge"+edgeid});
+    edgeid++;
+    return {id: gn, label: "Group "+gn, kind: "group", group: "group", color: colors.group}; // group: "group",
+  });
+  nodes = nodes.concat(grps);
+  var font = {background: "white"}; 
+  Object.keys(gmm).forEach((gkey) => {
+    var hnames = gmm[gkey];
+    hnames.forEach((hn) => {
+      var hps = hlr.hostparams(hn); // f_or_fqdn
+      nodes.push({id: hn, label: hn, kind: "host", group: "host", color: colors.host}); // // "Host "+ ... group: "host" font: font
+      edges.push({from: hn, to: gkey, source: hn, target: gkey, id: "edge"+edgeid});
+      edgeid++;
+    });
+  });
+  // 
+  //hostarr.forEach((it) => { edges.push({from: it.pid, to: it.ppid}); });// C => P
+  var data = {nodes: nodes, edges: edges, groups: cfg_groups}; // gns: gns, .... gmm: gmm
+  //data.gmm = gmm;
+  res.json({status: "ok", data: data});
 }

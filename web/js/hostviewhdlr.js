@@ -14,32 +14,37 @@ function osview_guisetup() {
 /** Create Simple grid from pre-loaded (cached) data (syncronously).
  * Uses action node ..:
  * - dsid - Cached Dataset id - data set **must** be found from cache by this id.
+ * - fsetid
+ * The cached data must be in array (of objects, AoO).
  */
-function simplegrid_cd(ev, an) {
-  //document.getElementById(an.elsel).innerHTML =
-  contbytemplate(an.tmpl, an, an.elsel);
-  // rapp.templated(an.tmpl, an, an.elsel);
-  // Extract fldinfo label from gridid (... or alternative way ?)
-  if (0) {
-    var m = an.gridid.match(/^jsGrid_(\w+)/);
-    if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
-  }
-  var dsid = "hostlist";
-  // var fsid = m[1];
-  if (an.dsid) { dsid = an.dsid; }
-  var d = datasets[dsid];
-  if (!d) { return alert("No (cached) dataset found"); }
+function simplegrid_cd(ev, act) {
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  rapp.templated(act.tmpl, act, tgtid); // act.elsel
+  if (!act.dsid) { return alert("No dataset id for cached data !"); } // dsid = an.dsid;
+  var d = datasets[act.dsid];
+  if (!d) { return alert("No (cached) dataset found (by: "+act.dsid+")"); }
   if (!Array.isArray(d)) { return alert("dataset not in an array"); }
-  showgrid(an.gridid,  d, fldinfo[an.fsetid]); // fldinfo[m[1]]
-  if (an.uisetup) { an.uisetup(an, d); } // TODO: Params ? (see rapp)
+  if (act.mtx) {
+    var cellcb = (e) => { return e.hname; }; opts = {};
+    let c = webview.matrix(d, cellcb, opts); $("#"+act.gridid).html(c); return; }
+  showgrid(act.gridid,  d, fldinfo[act.fsetid], act); 
+  if (act.uisetup) { act.uisetup(act, d); } // TODO: Params ? (see rapp)
 }
+// Extract fldinfo label from gridid (... or alternative way ?)
+  //if (0) {
+  //  var m = act.gridid.match(/^jsGrid_(\w+)/);
+  //  if (!m || !m[1]) { return alert("simplegrid_cd: Not a valid grid !"); }
+  //}
+  // var fsid = m[1];
+  // var dsid = "hostlist"; // TODO: Discard
+  // showgrid() - pass fldinfo[m[1]]
 /** Simple grid from URL.
  */
 function simplegrid_url(ev, an) {
   console.log("simplegrid_url URL:", an.url);
   //$('#vtitle').html(act.name);
   var url = an.genurl ? an.genurl(act) : an.url;
-  var ttgt = ev.viewtgtid || an.selsel;
+  var ttgt = ev.viewtgtid || an.elsel; // was: selsel ????
   var para = "";
   if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
   axios.get(url).then( function (resp) {
@@ -47,18 +52,15 @@ function simplegrid_url(ev, an) {
     var arr = (data && data.data) ? data.data : data; // AoO
     // TODO: Refine logic
     if (data.status == 'err') { return toastr.error(data.msg); }
-    if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data (as array)"); }
+    if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data found in response (as array)"); }
     //var an2 = rapp.dclone(an);
-    contbytemplate(an.tmpl, an, ttgt); //document.getElementById('content').innerHTML =
-
-    // NEW: Look for extended ui generator (was: an.xuigen)
-    // Must be late, after templating !!
-    // Can this be *after* showgrid() ?
-    if (an.uisetup && (typeof an.uisetup == 'function')) {
-      console.log("Calling UI-Setup for "+an.name);
-      an.uisetup(an, arr); // Added data param (even if unused by uisetp)!!!
-    }
-    showgrid(an.gridid, arr, fldinfo[an.fsetid]); // 
+    // contbytemplate(an.tmpl, an, ttgt);
+    rapp.templated(an.tmpl, an, ttgt); // Initial templating
+    showgrid(an.gridid, arr, fldinfo[an.fsetid]); // No need for act as uisetup is not within Grid
+    // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
+    // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
+    // NOTE: If we pass act to showgrid(..., act); must disable this
+    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr); }
   }).catch(function (error) { console.log(error); });
 }
 /////////////////////////////////////////////////////////
@@ -67,20 +69,23 @@ function simplegrid_url(ev, an) {
     //cfg.data = arr; cfg.fields = fi[act.gridid];
     //$("#" + act.gridid).jsGrid(cfg);
     //console.log(JSON.stringify(arr, null, 2));
-
-    function dcomposer_uisetup(an) { // 
-      var fs = datasets.cfg.docker.files;
-      var cont = "";
-      // toastr.info(fs);
-      fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
-      $(".xui").html(cont);
-      $(".xui").show();
-      // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
-      $(".vmglink").click(function (jev) {
-        // toastr.info("Click on "+Object.keys(jev));
-        simplegrid_url(jev, an);
-      });
-    } // uisetup
+/** Add navigation to the .xui section of template.
+ * 
+ */
+function dcomposer_uisetup(act) { // 
+  var fs = datasets.cfg.docker.files;
+  var cont = "";
+  // toastr.info(fs);
+  fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
+  $(".xui").html(cont);
+  $(".xui").show();
+  // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
+  $(".vmglink").click(function (jev) {
+    // toastr.info("Click on "+Object.keys(jev));
+    // TODO: Grab this from original act ? act.hdlr
+    simplegrid_url(jev, act);
+  });
+} // uisetup
 
 /** Display Entities in Grid contained Groups (in multiple grids).
  * Reusable for almost any entities
@@ -203,12 +208,11 @@ function loadprobeinfo(event, act) {
   // target.appendChild(spinner.el); // When invoked w/o target: .spin()
   axios.get(act.url).then(function (resp) {
     var pinfo = resp.data.data;
-    // spinner.stop();
     // console.log("Probe data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // Load Probe
     showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); // "jsGrid_loadprobe"
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
-    if (act.uisetup) { act.uisetup(act, pinfo); console.log("CALLED UISETUP"); } // act, pinfo unused
+    if (act.uisetup) { act.uisetup(act, pinfo); } // act, pinfo unused
   })
   .catch(function (error) { console.log(error); })
   .finally(() => { spinner.stop(); });
@@ -223,8 +227,6 @@ function sshkeys(ev, act) {
     //console.log("SSH Key data: ", pinfo);
     if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // SSH Keys
     showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
-    // uisetup ?
-    //sshkeys_uisetup(act, pinfo);
     if (act.uisetup) { act.uisetup(act, pinfo); } // pinfo
   }).catch(function (error) { console.log(error); });
 }
@@ -240,18 +242,29 @@ function sshkeys_uisetup(act, pinfo) {
     var p = this.dataset;
     console.log(p);
     var hname = p.hname; // See: onrecipeclick this.dataset
+    var op = p.op;
     toastr.info("Note: If copy hangs with SSH interactivity, you need to do further SSH setup (See README.sshsetup.md in documentation)", "Load keys for "+hname);
     // trigger ansible
-    var p = { hostnames: [hname], playbooks: ["sshkeyarch.yaml"], playprofile: "" }; // See: ansishow
+    var pname = ""; // Todo: Have dispatch table w. Op Name, playbook ...
+    var ops = {"fetch": {pp: "sshkeyarch.yaml", name: "Store/Retrieve Keys"}, "restore": { pp: "", name: "Restore Keys"}};
+    if (op == 'fetch') { pname = "sshkeyarch.yaml"; }
+    else if (op == 'restore') { pname = ""; }
+    //if (!ops[op]) { return toastr.error("No op: "+op+" available"); }
+    var pp = { hostnames: [hname], playbooks: ["sshkeyarch.yaml"], playprofile: "" }; // See: ansishow
     //return;
-    axios.post("/ansrun", p).then((resp) => {
-      console.log("Key archive launched ok (on server)");
+    axios.post("/ansrun", pp).then((resp) => {
+      console.log("Key archive launched ok (on server)"); // TODO: Use ops[op].name
      // Reload data and grid ? showgrid("jsGrid_sshkeys", pinfo, fldinfo.sshkeys); sshkeys(ev, act) ???
      
-    }).catch((ex) => { console.log("Failed key arch launch: "+ex); return; })
+    }).catch((ex) => { console.log("Failed key archive launch: "+ex); return; })
     .finally(() => { console.log("Finally there"); });
     //zzzzz();
   }); // Reload. TODO: Wait ...
+  // 
+  $(".sshkeyrestore").click(function () {
+    var p = this.dataset;
+    var hname = p.hname;
+  });
 }
 /** Display a package comparison view.
  * Note: dot (".") i field name (here: package name, jsgrid: "name") causes a problem in grid
@@ -308,7 +321,7 @@ function outfmts(ev, act) {
   })
   .catch(function (error) { console.log(error); });
 }
-/** Show Info on catalogued Docker images.
+/** Show Info on catalogued Docker images or Bootables.
  * - Pass top-level Object that came in response data as data to templating
  * - Pass auto-discovered or explicitly defined array set (by member name) to grid generator
  */
@@ -316,40 +329,40 @@ function dockercat_show(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   var url = act.url;
   console.log("GET: "+url);
-  axios.get(url).then(function (resp) { // "/dockerenv"
+  axios.get(url).then(function (resp) {
     var d = resp.data;
     if (!d) { return toastr.error("No data in HTTP request (resp.data) !"); }
     d = d.data || d; // Try to pick "data"
     // || !d.data
-    if (!d ) { return $('#denvinfo').html("No "+act.name+" Info"); } // Docker Env.
-    console.log("DATA:", d);
+    if (!d ) { return $('#denvinfo').html("No "+act.name+" Info"); }
+    //console.log("DATA:", d);
     console.log("Place data to id: "+tgtid);
     var el = document.getElementById(tgtid);
     if (!el) { toastr.error(tgtid + " - No such element !"); }
     // Late-Templating (after we have data). Pass top-level data here
-    var cont = rapp.templated(act.tmpl, d); // '#'+tgtid // "dockercat"
-    if (!cont) { console.log("No templated content\n"); }
+    var cont = rapp.templated(act.tmpl, d, tgtid); // '#'+tgtid // "dockercat". NEW: Added tgtid
+    // if (!cont) { console.log("No templated content\n"); }
     // act.elsel
     
-    $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
+    // $('#'+tgtid).html(cont); // Redo with results of late-templating (w. d.data)
     // TODO: Where to get 1) grid-array member (gdatamem, gdmem) ? 2) fldinfo key (same as tmpl name ?) ?
-    var fiid = act.fsetid; //  || act.tmpl; (old: act.fsid)
+    //var fiid = act.fsetid; //  || act.tmpl; (old: act.fsid)
     
     var garrmem = act.gdmem || autoarray(d);
-    console.log("FIID: "+fiid+", gdmem:"+garrmem);
-    showgrid (act.gridid, d[garrmem], fldinfo[fiid]); // "jsGrid_dockercat", d.data.catalog, .dockercat
+    console.log("FSETID: "+act.fsetid+", gdmem:"+garrmem);
+    showgrid (act.gridid, d[garrmem], fldinfo[act.fsetid], act); // "jsGrid_dockercat", d.data.catalog, .dockercat
     // TODO: Style w. padding, etc.
     // var dgopts = {}; // style for table ?
     //OLD: $("#jsGrid_dockercat").html(webview.listview_jsg(d.data.catalog, fldinfo.dockercat, dgopts));
     
     //if (act.path == 'dockerenv') { uisetup_dockercat(act); }
     //if (act.path == "bootables") { uisetup_bootables(act); }
-    // TODO:
-    if (act.uisetup) { act.uisetup(act, []); }
+    // NOTE: Grid showgrid() already runs uisetup (when available) !!!
+    //if (act.uisetup) { act.uisetup(act, []); }
  
 
   }).catch(function (err) { return toastr.error(err, "Error getting "+act.name+" from "+act.url); });
-  // ...
+  // ... TODO: rapp.
   function autoarray(data) {
     var ks = Object.keys(data);
     var arrks = [];
@@ -361,24 +374,34 @@ function dockercat_show(ev, act) {
   }
 }
 
-function uisetup_bootables(act) {
+function uisetup_bootables(act, arr) {
+  if (!arr || !Array.isArray(arr)) { return alert("No data passed"); }
+  console.log("BOOTABLES-UISETUP");
   axios.get("/bs_statuses").then((resp) => {
-      
-      var d = resp.data.data;
-      if (!Array.isArray(d)) { return toastr.error("Not in array"); }
-      toastr.info("ISO statuses from "+d.length+" sources retrieved !");
-      d.forEach((img) => {
-        var id = "bsstatus_"+img.lbl;
-        console.log("Try set: "+id);
-        $("#"+id).html(img.status ); // + "("+img.code+")"
-        $("#"+id).attr('style', 'color: '+code2color(img.code)); // Color ...
-      });
-    }).catch((ex) => {  alert("Bootables Error !"); });
-    function code2color(code) {
-      if ((code >= 200) && (code < 300)) { return "#33FF33"; }
-      return "#AA0000";
-    }
+    var d = resp.data.data;
+    if (!Array.isArray(d)) { return toastr.error("Not in array"); }
+    toastr.info("ISO statuses from "+d.length+" sources retrieved !");
+    // TODO/NEW: Map status vals to orig. *data* not just HTML(view)
+    d.forEach((img) => {
+      var id = "bsstatus_"+img.lbl; // ID in HTML
+      var e = arr.find((e) => { return e.lbl == img.lbl; });
+      e.code = img.code;
+      e.status = img.status;
+      //return; // NEW
+      console.log("Try set: "+id);
+      $("#"+id).html(img.status ); // + "("+img.code+")"
+      $("#"+id).attr('style', 'color: '+httpcode2color(img.code)); // Color ...
+    });
+    
+  }).catch((ex) => {  alert("Bootables Error !"); });
+  
 }
+
+function httpcode2color(code) {
+  if ((code >= 200) && (code < 300)) { return "#6AB423"; } // OK #33FF33
+  return "#AA0000";
+}
+  
 // UI Setup: Docker sync ops
 function uisetup_dockercat(act) {
   $(".docksync").click(function (jev) {
@@ -698,9 +721,9 @@ function showpeople(ev, act) {
   var clistnames = datasets.cfg.clistnames;
   if (clistnames && Array.isArray(clistnames)) {
     var cont = "<style>.clistname { padding: 0px 5px; display: inline-block; border-radius: 5px; border: 1px solid #BBBBBB; } #clists { display: inline-block; padding: 10px; }</style>";
-    clistnames.forEach((cls) => {
-      // encodeURIComponent(cls)
-      cont += " <span class=\"clistname\" data-name=\""+cls+"\">"+cls+"</span> ";
+    clistnames.forEach((name) => { // OLD: cls contact list string => name
+      // encodeURIComponent(name)
+      cont += " <span class=\"clistname\" data-name=\""+name+"\">"+name+"</span> ";
      });
      $("#clists").html(cont);
      $(".clistname").click(function (jev) {
@@ -872,7 +895,7 @@ function esxilist(ev, act) {
   //  
   //}
 }
-
+// CSV
 function gridexp(flds_g, data, opts) {
   opts = opts || {};
   //var flds_g = fldinfo.esxilist;
@@ -899,6 +922,7 @@ function esxihostmenu(act, vmhosts) {
   cont += " (<span id=\"esxicache\" class=\"mpointer\">Re-cache ESXi Info</span>)";
   $(".xui").html(cont);
   $(".xui").show();
+  // On Click ...
   $(".vmglink").click(function (jev) { esxilist(jev, act); });
   
   $("#esxicache").click(function (jev) {
@@ -919,7 +943,7 @@ function apidoc(ev, act) {
 
   toastr.info("Load API Docs");
   // act.url ... JSON struct
-  act.url = "/apidoc?doc=1"; // FORCE (HTML)
+  act.url = "/apidoc?doc=1"; // FORCE (HTML) // TODO: urlgen
   axios.get(act.url).then(function (resp) {
     var info = resp.data;
     // console.log(info);
@@ -971,11 +995,12 @@ function proj_deploy(ev, act) {
     var d = resp.data.data;
     if (!Array.isArray(d)) { return toastr.error(act.name + " config is not an array!"); }
     if (act.uisetup) { act.uisetup(act, d); } // deploy_uisetup(d);
+    // Overloaded for grid
     if (act.tmpl && act.tmpl.match(/grid/)) {
       showgrid(act.gridid, d, fldinfo[act.fsetid]);
     }
   }).catch((ex) => {
-    alert("Bad: "+ex);
+    //alert("Bad: "+ex);
     toastr.error("Problems loading deployment info: "+ex);
   });
 }
@@ -1022,19 +1047,15 @@ function deploy_uisetup(act, dpconf) {
   });
 }
 
-
+// Redundant, See: simplegrid_cd
 function actinfo(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   rapp.templated(act.tmpl, act, tgtid);
-  // rapp.dclone();
-    // var pinfo = resp.data.data;
-    //console.log("SSH Key data: ", pinfo);
-    // if (!pinfo || !pinfo.length) { toastr.error("No "+act.name+" data"); return; } // SSH Keys
-    var tabloadacts = datasets[act.dsid];
-    showgrid(act.gridid, tabloadacts, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
-    // uisetup ?
-    if (act.uisetup) { act.uisetup(act, tabloadacts); }
-  
+  var d = datasets[act.dsid]; // MUST pre-pop into cache (tabloadacts)
+  if (!d) { return; }
+  showgrid(act.gridid, d, fldinfo[act.fsetid]); // "jsGrid_sshkeys", .., fldinfo.sshkeys
+  // uisetup ?
+  if (act.uisetup) { act.uisetup(act, d); }
 }
 
 function actinfo_uisetup(act, data) {
@@ -1044,4 +1065,84 @@ function actinfo_uisetup(act, data) {
     // TODO: See recipes review dialog invocation: recipes / onrecipeclick
     //alert(evel.dataset.url);
   });
+}
+/**
+ * Constraints: none of the id:s given to hierarchical elems may overlap.
+ * fontawesome: 5.4.2 components-font-awesome "git://github.com/components/font-awesome.git
+ * npm install graphology sigma
+ */
+function visnethier(ev, act) {
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  console.log("get: "+act.url);
+  rapp.templated(act.tmpl, act, tgtid);
+  axios.get(act.url).then((resp) => {
+    var d = resp.data.data;
+    // DEBUG: $("#"+tgtid).html("<pre>"+JSON.stringify(d, null, 2)+"</pre>");
+    var netdata = d;
+    var idx = {};
+    netdata.nodes.forEach((it) => { idx[it.id] = it; });
+    // <div id="hh" style="height: 800px"></div> / <div id='sigma-container'></div>
+    var container = document.getElementById(act.helemid); // 'hosthier'
+    if (!container) { return alert("No Vis hierarchy elem ("+act.helemid+")"); }
+    var netoptions = {
+      // hierarchicalLayout: { direction: ...}
+      nodes: {shape: "box"}, // OLD: "box" ("image", "dot"). borderWidth: 2, size: ... fontFace: "times"
+      edges: {
+        color: 'lightgray'
+      },
+      groups: {}, // key: {opacity: }
+      // physics: {barnesHut:{springLength: 200}}
+      //stabilize: false,
+      //configurePhysics:true
+    };
+    // Note: container: ... 1.X: elem, 2.x ... here is not the elem, but id (w/o #)
+    var sigmacfg = {renderer: { container: container, type: "canvas" }, settings: { minArrowSize: 10 }};
+    if (d.groups) { Object.keys(d.groups).forEach((k) => { netoptions.groups[k] = d.groups[k]; }); }
+    
+    //// Instantiate Net. Not slight diff. in order of params
+    var network = new vis.Network(container, netdata, netoptions);
+    network.on("click", onnetclick); // on_node_click
+    // NOTE: New version, as of late 2021/early 2022 needs the 3 param construction, not OLD: new sigma(sigmacfg);
+    // Also new version does not take "raw" data structures, they must be
+    if (act.sigma) {
+    //console.log(Graph);
+    //console.log(Graph.Graph);
+    //var g = new Graph(); //  NOT: 4525 graphology.umd.js  Graph. cjs: Graph is not a constructor
+    
+    // makesigmagraph(netdata, g);
+    //g.import(netdata); // 2.X "nodes" should have "key", "edges" source, target. "attributes": {name: "My Graph"} optional (also "options")?
+    //var s = Sigma.Sigma(netdata, container, sigmacfg);
+    var s = new sigma(sigmacfg); // v1.X.Y
+    // load the graph
+    delete(netdata.groups);
+    // 
+    netdata.nodes.forEach((n) => {
+      n.x = Math.random(500); n.y = Math.random(500);
+      //n.x = 250; n.y = 250;
+      n.size = 3; n.color = "#000000";
+    });
+    console.log(JSON.stringify(netdata, null, 2)); // The edge must have a string or number id.
+    try { s.graph.read(netdata); } catch (ex) { console.log("sigma read Error: "+ex); }
+    // draw the graph
+    s.refresh();
+    }
+    function onnetclick (o) {
+      console.log("Params ", o);
+      if (!o.nodes.length) { console.log("Not a click on node"); return; }
+      var id = o.nodes[0];
+      var n = idx[id];
+      //toastr.info("VIS Click on "+id);
+      console.log(n);
+      if (n.kind == 'host') { on_host_click(null, {hname: n.id}); }
+      else if (n.kind == 'group') { var l = netdata.edges.filter((it) => { return it.to == n.id; }).length;  } // alert(l);
+    }
+    // https://graphology.github.io ("Quick Start")
+    function makesigmagraph(data, graph) {
+      data.nodes.forEach((n) => { graph.addNode(n.id, n); });
+      data.edges.forEach((e) => { graph.addEdge(e.from, e.to); });
+    }
+  });/*.catch((ex) => {
+    console.error("Host hier exception: "+ex);
+    toastr.error("Problems loading host hierarchy info: "+ex);
+  });*/
 }

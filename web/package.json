@@ -33,6 +33,7 @@
     "showdown": "1.2.2",
     "spin.js": "2.3.2",
     "toastr": "2.1.4",
+    "vis": "4.21.0",
     "wolfy87-eventemitter": "5.2.9"
   },
   "devDependencies": {},
@@ -40,7 +41,12 @@
     "dom-parser": "^0.1.6",
     "jquery-ui": "1.12.1",
     "yarn": "1.21.1",
-    "events": "3.1.0"
+    "events": "3.1.0",
+    "sigma": "2.1.3",
+    "sigmaOLD": "1.2.0",
+    "obliterator": "2.0.1",
+    "graphology": "0.23.2",
+    "eventsNEW": "3.3.0"
   },
   "scripts": {
     "pminfo": "echo 'Use yarn here (on web/ side)'",
