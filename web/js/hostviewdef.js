@@ -236,7 +236,7 @@
      // console.log("Got: "+ item[n.name]);
      fldinfo_sshkeys.forEach((n) => {  cnt += item[n.name] ? 1 : 0; }); // Short circuit / stop on first for ()
      if (cnt > 1) { return ""; } // return cnt;
-     // Icon
+     // Icon (TODO: Fetch/Restore). Give action name as data-op="fetch"
      return "<span class=\"sshkeyload\" data-hname=\""+item.hname+"\"><i class=\"glyphicon glyphicon-repeat\"></span>"; // -repeat -refresh
    }
    var fldinfo_sshkeys = [
@@ -249,7 +249,10 @@
      {name: "ecdsa_priv",  title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
      {name: "ed25519_pub", title: "ED25519 Pub",  type: "text", width: 50, itemTemplate: hkeycell},
      {name: "ed25519_priv",title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "actions",title: "Fetch", type: "text", width: 15, itemTemplate: sshkeysfetch_cell},
+     // TODO: Make sure right action occurs. Seems some Fetch restored ... glyphicon glyphicon-share-alt
+     // glyphicon glyphicon-circle-arrow-left glyphicon glyphicon-circle-arrow-right
+     // glyphicon glyphicon-save
+     //{name: "actions",title: "Fetch", type: "text", width: 15, itemTemplate: sshkeysfetch_cell},
      
    ];
    function dockidcell(value, item) {
@@ -625,8 +628,10 @@ function ibip_cell(val, item) {
    }
    function boo_status(val, item) {
      val = val || "";
-     
-     return "<span id=\"bsstatus_"+item.lbl+"\">"+val+"</span>";
+     var c = "#000000"; // Default / black
+     if (!item.code) { return "<span id=\"bsstatus_"+item.lbl+"\" style=\"color: "+c+"\">"+""+"</span>"; }
+     c = httpcode2color(item.code);
+     return "<span id=\"bsstatus_"+item.lbl+"\" style=\"color: "+c+"\">"+item.status+"</span>";
    }
    // TODO: Detect also mounted status
    function haslocallycell (val, item) {
@@ -707,11 +712,17 @@ function ibip_cell(val, item) {
      {"name": "url",     "title": "Data URL",    type: "text", width: 35, itemTemplate: appurl_cell},
      {"name": "gridid",  "title": "GridID",      type: "text", width: 25},
      {"name": "fsetid",  "title": "Field Defs (lbl)",  type: "text", width: 20},
+     // Handlers
      {"name": "hdlr",    "title": "Handler",     type: "text", width: 25, itemTemplate: act_hdlr_cell},
      {"name": "uisetup", "title": "UI Setup",    type: "text", width: 25, itemTemplate: act_hdlr_cell},
+     {"name": "urlpara", "title": "URLGen",      type: "text", width: 25, itemTemplate: act_hdlr_cell},
+     {"name": "dataprep","title": "DataPrep",    type: "text", width: 25, itemTemplate: act_hdlr_cell},
      //{"name": "dataid",  "title": "Data ID - ???", type: "text", width: 25},
-     //{"name": "dsid",    "title": "Cached Data(set) id",  type: "text", width: 25}, // THIS is dataset id
+     {"name": "dsid",    "title": "Cached Data(set) id",  type: "text", width: 25}, // THIS is dataset id
      {"name": "dialogid",    "title": "Dialog ID",  type: "text", width: 25},
+     //{"name": "help",    "title": "HelpDoc",  type: "text", width: 25},
+     //{"name": "gdmem",    "title": "Grid Data Mem.",  type: "text", width: 25},
+     //{"name": "",    "title": "",  type: "text", width: 25},
      //{"name": "",    "title": "",  type: "text", width: 25},
      //{"name": "",    "title": "",  type: "text", width: 25},
    ];
