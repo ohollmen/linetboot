@@ -195,7 +195,7 @@ Runner.prototype.hostselector = function () { // opts
   var sel = [];
   this.hostselstr = sel.concat(this.hostnames || []).concat(this.hostgroups || []).join(','); // or :
   return this.hostselstr;
-}
+};
 /** Run set of ansible playbooks on hosts by passed hostnames.
 * Note that runs are done based on "raw" parameters:
 * - hostnames - Raw Hostnames
@@ -209,7 +209,7 @@ Runner.prototype.hostselector = function () { // opts
 * TODO: *real* Object
 */
 Runner.prototype.ansible_run = function (xpara) { // 
-  p = this;
+  var p = this;
   p.debug && console.log("RUN: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
   if (!p.hostnames) { throw "No 'hostnames' passed (groups should be resolved to hostnames)"; }
@@ -288,7 +288,7 @@ Runner.compfname = function (runid, data) {
   var fname = "/tmp/ack_"+runid+".json";
   if (data) { fs.writeFileSync(fname, JSON.stringify(data, null, 2) , {encoding: "utf8"} ); }
   return fname;
-}
+};
 
 // Extra parameters for the -e / --extra-vars. Also consider -e @filename.json
 /** Add extra params from current run context to ansiblerunner before executing playbook.
@@ -307,7 +307,7 @@ Runner.prototype.xpara_add =  function (xpara) { // Instance method (OLD: prun)
       console.log("Add "+ k + " val: "+ xpara[k]);
       if (xpara[k]) { this.xpara[k] = xpara[k]; } // !== undefined
     }, this);
-  }
+  };
 /** Serialize Object contained params as string for --extra-vars (-e).
 * @return Serialized parameters as (JSON) string.
 */
@@ -316,7 +316,7 @@ Runner.xpara_ser = function (xps) {
   //var xparr = Object.keys(xps).map(function (k) { return k+"="+xps[k]; });
   //return xparr.join(" ");
   return JSON.stringify(xps); // JSON. Must single-quote or save to file on caller side
-}
+};
 
 /** Wrap running cproc.exec() for any ansible command.
  * Write log of stdout to a file (under /tmp)
@@ -369,7 +369,7 @@ Runner.prototype.fact_gather = function (cb) {
     //var runinfo = {"event": "anscomplete", "time_e": time_e/1000, "time_s": time_s/1000, time_d: (time_e-time_s)/1000,
     //  runstyle: execstyle, numplays: fullcmds.length, runid: p.runid };
   });
-}
+};
 
 /** Construct Ansible runner.
 * 
@@ -485,6 +485,18 @@ function ansible_prof_list(acfg) {
   //}
   //return null;
 }
+/** Check user against config authorized users access list.
+ * This is to run ansible functionality.
+ */
+function authuser_check_ok(acfg, userid) {
+  if (!acfg.authusers) { return 1; }
+  if (Array.isArray(acfg.authusers) && !acfg.authusers.length) { return 1; }
+  // Start checks 1) Has user
+  if (!userid) { return 0; }
+  if (acfg.authusers.includes(userid)) { return 1; }
+  return 0;
+}
+
 module.exports = {
   init: init,
   ansible_detect: ansible_detect,
@@ -492,5 +504,6 @@ module.exports = {
   testpara: { playbooks: ["a.yaml", "b.yaml"], hostnames: ["host1","host2"] },
   Runner: Runner,
   ansible_play_list: ansible_play_list,
-  ansible_prof_list: ansible_prof_list
+  ansible_prof_list: ansible_prof_list,
+  authuser_check_ok: authuser_check_ok
 };
