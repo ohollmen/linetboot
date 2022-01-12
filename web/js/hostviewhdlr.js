@@ -1076,6 +1076,10 @@ function visnethier(ev, act) {
   console.log("get: "+act.url);
   var tp = {name: act.name, appname: (datasets.cfg ? datasets.cfg.appname: "???")};
   rapp.templated(act.tmpl, tp, tgtid);
+  var spel = document.getElementById(ev.viewtgtid);
+  //if (act.longload) {
+    var spinner = new Spinner(spinopts).spin(spel);
+  //}
   axios.get(act.url).then((resp) => {
     var d = resp.data.data;
     // DEBUG: $("#"+tgtid).html("<pre>"+JSON.stringify(d, null, 2)+"</pre>");
@@ -1142,8 +1146,9 @@ function visnethier(ev, act) {
       data.nodes.forEach((n) => { graph.addNode(n.id, n); });
       data.edges.forEach((e) => { graph.addEdge(e.from, e.to); });
     }
-  });/*.catch((ex) => {
+  })/**/.catch((ex) => {
     console.error("Host hier exception: "+ex);
     toastr.error("Problems loading host hierarchy info: "+ex);
-  });*/
+  })/**/
+  .finally (() => { spinner && spinner.stop(); });
 }
