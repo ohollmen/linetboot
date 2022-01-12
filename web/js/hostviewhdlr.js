@@ -1074,7 +1074,8 @@ function actinfo_uisetup(act, data) {
 function visnethier(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   console.log("get: "+act.url);
-  rapp.templated(act.tmpl, act, tgtid);
+  var tp = {name: act.name, appname: (datasets.cfg ? datasets.cfg.appname: "???")};
+  rapp.templated(act.tmpl, tp, tgtid);
   axios.get(act.url).then((resp) => {
     var d = resp.data.data;
     // DEBUG: $("#"+tgtid).html("<pre>"+JSON.stringify(d, null, 2)+"</pre>");
