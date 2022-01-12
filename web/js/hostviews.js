@@ -619,7 +619,7 @@ var tabloadacts = [
   // hdlr: actinfo
   {name: "Application Actions",  "elsel": "tabs-acts", hdlr: simplegrid_cd, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo", dsid: "actions",
       uisetup: actinfo_uisetup },
-  {name: "Host Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh"},
+  {name: "Host Groups Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
