@@ -225,6 +225,7 @@
     "COMMENT" : "The inner objects need to have more info (runstyle, name)",
     "invfn": "",
     "debug": 0,
+    "authusers": [],
     "pbprofs" : [
       {
         "name": "Dymmy Play test",
