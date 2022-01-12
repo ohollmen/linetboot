@@ -43,6 +43,7 @@ var ldap    = require('ldapjs'); // Opt ?
 //var global   = require(globalconf);
 //var userconf = process.env["LINETBOOT_USER_CONF"] || global.inst.userconfig || "./initialuser.json";
 //var user     = require(userconf);
+var user;
 // Local Linetboot modules
 var hlr      = require("./hostloader.js");
 var netprobe = require("./netprobe.js");
@@ -1916,7 +1917,7 @@ function config_send(req, res) {
   // GUI
   if (web && (typeof web.tabui !== "undefined")) { cfg.tabui = web.tabui; }
   else { cfg.tabui = 1; } // Legacy default
-  // Current sess
+  // Current sess (If not expired, username should be here)
   cfg.username = req.session.user ? req.session.user.username : "";
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
   // OS/Version view columns/fields
@@ -2903,18 +2904,21 @@ function jenkins_jobs(req, res) {
  * Sigma: Edges use source, target (not from, to)
  */
 function hosthier(req, res) {
+  var jr = {status: "error", msg: "Host hierarchy could not be formed. "};
   var nodes = []; // Must have id,title (group, kind)
   var edges = []; // Based on id
   var gns = hlr.groupnames();
+  if (!gns) {}
   var gmm = hlr.groupmemmap();
-  console.log("Groups: ", gns);
+  if (!gmm) {}
+  // console.log("Groups: ", gns);
   var allname = global.core.appname || "All Hosts";
   var edgeid = 1;
   var colors = {root: "#FFFFFF", group: "#CCCCCC", host: "#EEEEEE", }; // size: 24
   var root = {id: "root", label: allname, kind: "root", color: colors.root};
   root.font = {size: 18, color: '#777777'};
   nodes.push(root);
-  cfg_groups = {
+  cfg_groups = { // vis: groups
     // fontColor, fontSize dont' see effective (border,color are !!!)
     // fontColor: 'white', fontSize: 10, fontFace: 'courier'
     host: { border: 'black', color: '#777777', font: { color: 'white', size: 12}}, //  // #EEEEEE
@@ -2936,7 +2940,7 @@ function hosthier(req, res) {
       edgeid++;
     });
   });
-  // 
+  // Spare approach, no
   //hostarr.forEach((it) => { edges.push({from: it.pid, to: it.ppid}); });// C => P
   var data = {nodes: nodes, edges: edges, groups: cfg_groups}; // gns: gns, .... gmm: gmm
   //data.gmm = gmm;
