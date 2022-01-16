@@ -34,6 +34,7 @@
     "spin.js": "2.3.2",
     "toastr": "2.1.4",
     "vis": "4.21.0",
+    "websome": "1.0.0",
     "wolfy87-eventemitter": "5.2.9"
   },
   "devDependencies": {},
