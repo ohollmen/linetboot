@@ -118,7 +118,7 @@ function app_init() { // global
   // "setHeaders": function (res,path,stat) {}
   osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
   procrpt.init(global);
-  deployer.init(global);
+  deployer.init(global); // Good, should have access to "gitroots" also.
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -312,9 +312,12 @@ function app_init() { // global
   app.get("/jenkins_jobs", jenkins_jobs);
   app.get("/deploy", deployer.deploy); // /deploy/:proj/:dlbl (This would pop. q.params)
   app.post("/deploy", deployer.deploy);
+  app.get("/createrepo", deployer.createrepo);
+  app.post("/createrepo", deployer.createrepo);
   //app.get("/initdeploy", deployer.initdeploy);
   //app.post("/initdeploy", deployer.initdeploy);
   app.get("/deploy_config", deployer.config);
+  app.get("/gitrepo_config", deployer.config);
   app.get("/hosthier", hosthier);
  } // sethandlers
   //////////////// Load Templates ////////////////

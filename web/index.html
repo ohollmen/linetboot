@@ -651,11 +651,19 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <script id="t_deploy" type="text/template" desc="Deploy Git Project">
   <h3>Deploy Git Project</h3>
   <form id="deployform">
-    <input type="checkbox" id="initial" value="1">Initial/New Deployment<br>
+  <input type="checkbox" id="initial" value="1">Initial/New Deployment<br>
   <label style="width:200px">Project</label><select id="projlbl" name="projlbl"></select><br>
-  
   <label style="width:200px">Deployment Instance</label><select id="dlbl" name="dlbl"></select><br>
   <input id="deploybut" type="button" value="Deploy">
+  </form>
+</script>
+
+<script id="t_mkrepo" type="text/template" desc="Deploy Git Project">
+  <h3>Create Git Repo/Project</h3>
+  <form id="t_mkrepoform">
+  <label style="width:200px">Multi-Repo Root</label><select id="repolbl" name="repolbl"></select><br>
+  <label style="width:200px">Repository name</label><input type="text" id="reponame" name="reponame"><br>
+  <input id="mkrepobut" type="button" value="Create">
   </form>
 </script>
 

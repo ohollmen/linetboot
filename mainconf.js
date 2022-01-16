@@ -106,7 +106,7 @@ function mainconf_process(global) {
   tilde_expand(global.ansible, ["pbpath"]);
   tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
   var deploy = global.deployer;
-  if (deploy) { tilde_expand(deploy, ["deployfn"]); }
+  if (deploy) { tilde_expand(deploy, ["deployfn", "gitreposfn"]); }
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }

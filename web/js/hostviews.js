@@ -610,8 +610,9 @@ var tabloadacts = [
   // 
   {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
      url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
-  // 
-  {name: "Deploy Project",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
+  // Share main handler
+  {name: "Deploy Project",           hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
+  {name: "Create Git Repo/Project",  hdlr: proj_deploy, url: "/gitrepo_config", tmpl: "t_mkrepo", "path": "mkrepo", "uisetup": mkrepo_uisetup},
   // "uisetupXX": deploy_uisetup,
   {name: "Deployable Projects",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
   // TODO: Place actions to global datacache (at init): datasets["actions"] = tabloadacts; ...
@@ -920,9 +921,10 @@ var cmap = {
     };
 /** Transform AoO to Chart data
  * Generate cdata.datasets[0].data and shared cdata.labels into cdata.
-* @param pkginfo {array} - Package info (AoO) for all hosts
+* @param darr {array} - Array of Objects (AoO) from where (numeric) data values will be extracted
 * @param cdata {object} - Chart Data (structure) to populate with values and colors
 * @param cmap {object} - Option color mapping object (to signify distro by "distname")
+* @param lblprop {object} - Labeling (name) property from where chart "labels" will be extracted
 * Accesses outer scope Color map (cmap)
 */
 function chartdata(darr, cdata, vprop, cmap, lblprop) {

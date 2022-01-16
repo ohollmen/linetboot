@@ -989,7 +989,7 @@ function shellview_show(ev, act) {
  */
 function proj_deploy(ev, act) {
   var tgtid = ev.viewtgtid;
-  console.log("Deploy ev.viewtgtid: "+tgtid);
+  console.log("Gi Deploy /createrepo ev.viewtgtid: "+tgtid);
   rapp.templated(act.tmpl, act, tgtid);
   axios.get(act.url).then((resp) => {
     var d = resp.data.data;
@@ -1004,7 +1004,25 @@ function proj_deploy(ev, act) {
     toastr.error("Problems loading deployment info: "+ex);
   });
 }
-
+function mkrepo_uisetup(act, data) {
+  var opt1 = document.getElementById("repolbl");
+  var inp2  = document.getElementById("reponame");
+  webview.addoptions(data, opt1, {aname: "name", aid: "lbl"});
+  $('#mkrepobut').on('click', function(jev) {
+    var p = {repolbl: $(opt1).val(), reponame: $(inp2).val(),  }; //$(el3).val() initial: $(el3).is(':checked')
+    console.log("Send: "+JSON.stringify(p));
+    var spel = document.getElementById("routerdiv"); // ev.viewtgtid
+    var spinner = new Spinner(spinopts).spin(spel);
+    // GET:{ params: p}
+    axios.post("/createrepo", p).then((resp) => {
+      var d = resp.data;
+      if (d.status == "err") { return toastr.error(act.name+" error: " + d.msg); }
+      toastr.info(act.name+" success with info: " + d.data);
+    }).catch((ex) => {
+      toastr.error("Problems with Deployment: "+ex);
+    }).finally(() => {  spinner.stop(); }); // spinner &&
+  });
+}
 function deploy_uisetup(act, dpconf) {
   console.log("Got conf:", dpconf);
   if (!Array.isArray(dpconf)) { return alert("deploy_uisetup: dpconf not in Array !"); }
@@ -1039,8 +1057,8 @@ function deploy_uisetup(act, dpconf) {
     // GET:{ params: p}
     axios.post("/deploy", p).then((resp) => {
       var d = resp.data;
-      if (d.status == "err") { return toastr.error("Deploy error: " + d.msg); }
-      toastr.info("Deploy success with info: " + d.data);
+      if (d.status == "err") { return toastr.error(act.name+" error: " + d.msg); }
+      toastr.info(act.name+" success with info: " + d.data);
     }).catch((ex) => {
       toastr.error("Problems with Deployment: "+ex);
     }).finally(() => {  spinner.stop(); }); // spinner &&
