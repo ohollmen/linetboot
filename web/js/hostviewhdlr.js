@@ -1084,6 +1084,26 @@ function actinfo_uisetup(act, data) {
     //alert(evel.dataset.url);
   });
 }
+
+
+var netopts_hosthier = {
+  // hierarchicalLayout: { direction: ...}
+  nodes: {shape: "box"}, // OLD: "box" ("image", "dot"). borderWidth: 2, size: ... fontFace: "times"
+  edges: {
+    color: 'lightgray'
+  },
+  groups: {}, // key: {opacity: }
+  // physics: {barnesHut:{springLength: 200}}
+  //stabilize: false,
+  //configurePhysics:true
+};
+
+function dprep_hosthier(null_data, netdata, netopts) {
+  if (!netopts) { return alert("No netops passed to cb"); }
+  // Merge groups from netdata to config
+  if (netdata.groups) { Object.keys(netdata.groups).forEach((k) => { netopts.groups[k] = netdata.groups[k]; }); }
+  
+}
 /**
  * Constraints: none of the id:s given to hierarchical elems may overlap.
  * fontawesome: 5.4.2 components-font-awesome "git://github.com/components/font-awesome.git
@@ -1092,42 +1112,66 @@ function actinfo_uisetup(act, data) {
 function visnethier(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   console.log("get: "+act.url);
-  var tp = {name: act.name, appname: (datasets.cfg ? datasets.cfg.appname: "???")};
+  var tp = { name: act.name, appname: (datasets.cfg ? datasets.cfg.appname: "???") };
   rapp.templated(act.tmpl, tp, tgtid);
   var spel = document.getElementById(ev.viewtgtid);
   //if (act.longload) {
     var spinner = new Spinner(spinopts).spin(spel);
   //}
+  // Validate netopts early (for now mandatory per act). Possible to have global fallaback defaults ?
+  if (!act.netopts) { return toastr.error("No netopts config for "+act.name); }
+  var netopts = rapp.dclone(act.netopts); // Make copy because of possible config mods.
   axios.get(act.url).then((resp) => {
-    var d = resp.data.data;
+    //var d = resp.data.data;
     // DEBUG: $("#"+tgtid).html("<pre>"+JSON.stringify(d, null, 2)+"</pre>");
-    var netdata = d;
-    var idx = {};
-    netdata.nodes.forEach((it) => { idx[it.id] = it; });
-    // <div id="hh" style="height: 800px"></div> / <div id='sigma-container'></div>
-    var container = document.getElementById(act.helemid); // 'hosthier'
-    if (!container) { return alert("No Vis hierarchy elem ("+act.helemid+")"); }
-    var netoptions = {
-      // hierarchicalLayout: { direction: ...}
-      nodes: {shape: "box"}, // OLD: "box" ("image", "dot"). borderWidth: 2, size: ... fontFace: "times"
-      edges: {
-        color: 'lightgray'
-      },
-      groups: {}, // key: {opacity: }
-      // physics: {barnesHut:{springLength: 200}}
-      //stabilize: false,
-      //configurePhysics:true
-    };
-    // Note: container: ... 1.X: elem, 2.x ... here is not the elem, but id (w/o #)
-    var sigmacfg = {renderer: { container: container, type: "canvas" }, settings: { minArrowSize: 10 }};
-    if (d.groups) { Object.keys(d.groups).forEach((k) => { netoptions.groups[k] = d.groups[k]; }); }
+    var data = null;
+    var netdata = resp.data.data; // d;
+    //var netdata = rapp.respdata(resp);
+    // FOr the "other" use-case: Must create netdata by dprep
+    // var netdata = { nodes: [], edges: [] };
+    //var idx = {};
+    //netdata.nodes.forEach((it) => { idx[it.id] = it; });
+    // <div id="hh" style="height: 800px"></div> / 
+    // Note: How to deal with ready-to-go graph netdata. For now set data null
+    if (act.dprep) { data = act.dprep(null, netdata, netopts); } // NOT: act.netopts, but use local clone
     
-    //// Instantiate Net. Not slight diff. in order of params
-    var network = new vis.Network(container, netdata, netoptions);
-    network.on("click", onnetclick); // on_node_click
-    // NOTE: New version, as of late 2021/early 2022 needs the 3 param construction, not OLD: new sigma(sigmacfg);
-    // Also new version does not take "raw" data structures, they must be
-    if (act.sigma) {
+    // Note: container: ... 1.X: elem, 2.x ... here is not the elem, but id (w/o #)
+    // Merge groups from netdata to config
+    //if (netdata.groups) { Object.keys(netdata.groups).forEach((k) => { netopts.groups[k] = netdata.groups[k]; }); }
+    
+    var container = document.getElementById(act.helemid); // 'hosthier'
+    if (!container) { return alert("No Vis Graph DOM element present ("+act.helemid+")"); }
+    //// Instantiate Net. 
+    var network = new vis.Network(container, netdata, netopts);
+    //network.on("click", onhostnetclick ); // on_node_click
+    if (act.nclick) { network.on("click",  function (o) { act.nclick(o, netdata); } ); }
+  })/**/.catch((ex) => {
+    console.error(act.name+" exception: "+ex);
+    toastr.error("Problems loading "+act.name+" info: "+ex);
+  })/**/
+  .finally (() => { spinner && spinner.stop(); });
+}
+
+function onhostnetclick (o, netdata) { // , netdata
+  console.log("Params ", o);
+  if (!o.nodes.length) { console.log("Not a click on node"); return; }
+  console.log("o keys: "+Object.keys(o)); // pointer,event,nodes,edges,items
+  console.log(o);
+  var id = o.nodes[0];
+  //var n = idx[id]; // Lookup from index
+  var n = netdata.nodes.find((n) => { return n.id == id; });
+  //toastr.info("VIS Click on "+id);
+  console.log(n);
+  if (n.kind == 'host') { on_host_click(null, {hname: n.id}); }
+  else if (n.kind == 'group') { var l = netdata.edges.filter((it) => { return it.to == n.id; }).length;  } // alert(l);
+}
+/*
+// NOTE: New version, as of late 2021/early 2022 needs the 3 param construction, not OLD: new sigma(sigmacfg);
+// Also new version does not take "raw" data structures, they must be graphology instances
+// Note slight diff. in order of params (cmp to Vis.js)
+// <div id='sigma-container'></div>
+var sigmacfg = {renderer: { container: container, type: "canvas" }, settings: { minArrowSize: 10 }};
+if (act.sigma) {
     //console.log(Graph);
     //console.log(Graph.Graph);
     //var g = new Graph(); //  NOT: 4525 graphology.umd.js  Graph. cjs: Graph is not a constructor
@@ -1148,25 +1192,10 @@ function visnethier(ev, act) {
     try { s.graph.read(netdata); } catch (ex) { console.log("sigma read Error: "+ex); }
     // draw the graph
     s.refresh();
-    }
-    function onnetclick (o) {
-      console.log("Params ", o);
-      if (!o.nodes.length) { console.log("Not a click on node"); return; }
-      var id = o.nodes[0];
-      var n = idx[id];
-      //toastr.info("VIS Click on "+id);
-      console.log(n);
-      if (n.kind == 'host') { on_host_click(null, {hname: n.id}); }
-      else if (n.kind == 'group') { var l = netdata.edges.filter((it) => { return it.to == n.id; }).length;  } // alert(l);
-    }
+}
     // https://graphology.github.io ("Quick Start")
     function makesigmagraph(data, graph) {
       data.nodes.forEach((n) => { graph.addNode(n.id, n); });
       data.edges.forEach((e) => { graph.addEdge(e.from, e.to); });
     }
-  })/**/.catch((ex) => {
-    console.error("Host hier exception: "+ex);
-    toastr.error("Problems loading host hierarchy info: "+ex);
-  })/**/
-  .finally (() => { spinner && spinner.stop(); });
-}
+*/
