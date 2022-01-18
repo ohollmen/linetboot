@@ -53,6 +53,7 @@ function simplegrid_url(ev, an) {
     // TODO: Refine logic
     if (data.status == 'err') { return toastr.error(data.msg); }
     if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data found in response (as array)"); }
+    if (an.dprep) { an.dprep(an, arr); }
     //var an2 = rapp.dclone(an);
     // contbytemplate(an.tmpl, an, ttgt);
     rapp.templated(an.tmpl, an, ttgt); // Initial templating
@@ -1199,3 +1200,14 @@ if (act.sigma) {
       data.edges.forEach((e) => { graph.addEdge(e.from, e.to); });
     }
 */
+
+function dprep_syspods(act, arr) {
+  console.log("RUNNING DPREP !!!");
+  arr.forEach((pod) => {
+    if (!pod.spec || !pod.spec.containers || !Array.isArray(pod.spec.containers)) { return; }
+    var conts = pod.spec.containers;
+    if (conts.length > 1) { console.error("Warning: More than 1 container for ... !!!"); }
+    pod.container = pod.spec.containers[0]; // Singular, Also Move up
+    if (typeof pod.container != 'object') { console.error("Warning: container is not an object"); }
+  });
+}

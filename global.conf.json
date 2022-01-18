@@ -201,6 +201,13 @@
     "deployfn_EXAMPLE": "~/linetboot/deploy.conf.example.json",
     "gitreposfn": "~/.linetboot/gitrepos.conf.json"
   },
+  "k8s": {
+    "desc": "K8S Config of API Server w. JWT",
+    "hostXX": "192.168.153:8080",
+    "ssl": 1,
+    "jwtfn": "",
+    "cacertfn": ""
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],

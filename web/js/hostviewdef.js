@@ -14,7 +14,7 @@
    }
    function tscell(value, item) {
      //return value + "(ISO?)";
-     return new Date(value * 1000).toISOString(); 
+     return new Date(value * 1000).toISOString();
    }
    function servtagcell(value, item) {
      var dsurl = "https://www.dell.com/support/home/us/en/04/product-support/servicetag/";
@@ -364,8 +364,8 @@
    }
    // 
    var fldinfo_dockercat = [
-     {name: "dockerlbl",     title: "Label",  type: "text", width: 80, }, // itemTemplate: docktags
-     {name: "dockerimg",     title: "Image",  type: "text", width: 200, }, // itemTemplate: dockver
+     {name: "dockerlbl",title: "Label",  type: "text", width: 80, }, // itemTemplate: docktags
+     {name: "dockerimg",title: "Image",  type: "text", width: 200, }, // itemTemplate: dockver
      {name: "vols",     title: "Required mounts",  type: "text", width: 100, itemTemplate: docker_mnts},
      {name: "title",     title: "Description",  type: "text", width: 180, },
      {name: "sync",     title: "Actions",  type: "text", width: 30, itemTemplate: docker_sync, visible: true},
@@ -726,6 +726,61 @@ function ibip_cell(val, item) {
      //{"name": "",    "title": "",  type: "text", width: 25},
      //{"name": "",    "title": "",  type: "text", width: 25},
    ];
+   // https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
+   // https://nieldw.medium.com/curling-the-kubernetes-api-server-d7675cfc398c
+   // "kind": "APIResourceList", "resources": [...]
+   var fldinfo_kub_apis = [
+     {"name": "name",    "title": "API Name",  type: "text", width: 20},
+     {"name": "namespaced","title": "Has Namespace",  type: "text", width: 20, itemTemplate: null}, // See how true/false works
+     {"name": "kind",    "title": "Kind/Type",  type: "text", width: 20},
+     {"name": "verbs",    "title": "Verbs",  type: "text", width: 20, itemTemplate: null}, // Array of HTTP methods
+     {"name": "shortNames",    "title": "Short names",  type: "text", width: 20},
+     {"name": "storageVersionHash",    "title": "Stor. Ver. Hash",  type: "text", width: 20},
+   ];
+   // This is ~2000 l. 7 comps list (namespaces/kube-system/pods).
+   // Even if this needs to go through server side, try keep attrs the same. Under "items" ...
+   // "namespace": "kube-system", repeating here
+   function podcont_cell(val, item) {
+     if (!val || !Array.isArray(val)) { return ""; }
+     return val.length;
+   }
+   // See dockver
+   function podcont_kv_cell(val, item) {
+     if (!val) { return ""; }
+     return Object.keys(val).map((k) => { return k + "="+ val[k]; }).join("<br>");
+     //return "";
+   }
+   var fldinfo_kub_systempods = [
+     {"name": "metadata.name",    "title": "Pod Name",  type: "text", width: 40},
+     {"name": "metadata.uid",    "title": "UID",  type: "text", width: 20, itemTemplate: null}, // substr()
+     // "creationTimestamp": "2022-01-16T03:40:48Z",
+     {"name": "metadata.creationTimestamp",    "title": "Time",  type: "text", width: 20, itemTemplate: null},
+     // 
+     {"name": "metadata.labels",    "title": "Labels",  type: "text", width: 20, itemTemplate: podcont_kv_cell},
+     // Note: metadata.managedFields.manager (e.g. kube-controller-manager)... parent in Hierarchy (oabels.component = kube ... OR containes.name = kube ...)
+     // spec
+     {"name": "spec.volumes",    "title": "Volumes",  type: "text", width: 20, itemTemplate: podcont_cell},
+     // spec.containers - AoO - usually 1 esp. for system (w. O: name, image, livenessProbe (Obj), startupProbe
+     // Note: spec.containers[0] gets to container (note singular)
+     {"name": "container.name", "title": "Container Name", type: "text", width: 20, itemTemplateXXX: podcont_cell},
+     {"name": "container.volumeMounts", "title": "Volume Mounts", type: "text", width: 20, itemTemplate: podcont_cell}, // Some rep. of volumes (aggregate ?)
+     // ???
+     {"name": "container.env", "title": "Env", type: "text", width: 20, itemTemplate: podcont_kv_cell},
+     {"name": "spec.serviceAccount", "title": "Svc Account", type: "text", width: 20, itemTemplateXX: null},
+     {"name": "spec.nodeName",    "title": "Node Name",  type: "text", width: 20}, // e.g. minikube
+     // 
+     {"name": "spec.priorityClassName",    "title": "Prior. Class",  type: "text", width: 20},
+     // {"name": "spec.preemptionPolicy",    "title": "Prior. Class",  type: "text", width: 20}, // PreemptLowerPriority
+     // status
+     {"name": "status.phase",     "title": "Phase",  type: "text", width: 20}, // Running
+     {"name": "status.conditions","title": "Conditions",  type: "text", width: 20, itemTemplate: podcont_cell}, // AoO (always 4?) w type: Initialize, Ready,
+     {"name": "status.hostIP",    "title": "Host IP",  type: "text", width: 20}, // Also (sib) podIP, podIPs
+     {"name": "status.startTime", "title": "Start Time",  type: "text", width: 20},
+     {"name": "status.qosClass",  "title": "qos Class",  type: "text", width: 20},
+     // 
+     //{"name": "status.containerStatuses[0].name",  "title": "Cont Stat Name",  type: "text", width: 20},
+     
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -733,6 +788,7 @@ function ibip_cell(val, item) {
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
-      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo
+      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
+      "syspods": fldinfo_kub_systempods,
    };
    

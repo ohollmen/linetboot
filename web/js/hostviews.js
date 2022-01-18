@@ -611,16 +611,20 @@ var tabloadacts = [
   {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
      url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
   // Share main handler
-  {name: "Deploy Project",           hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
-  {name: "Create Git Repo/Project",  hdlr: proj_deploy, url: "/gitrepo_config", tmpl: "t_mkrepo", "path": "mkrepo", "uisetup": mkrepo_uisetup},
+  {"name": "Git Projects", tabs: ["gitdeploy","gitmkrepo", "showgitproj"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "gitproj"},
+  {name: "Deploy Git Project",      elsel: "gitdeploy", hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
+  {name: "Create Git Repo/Project", elsel: "gitmkrepo", hdlr: proj_deploy, url: "/gitrepo_config", tmpl: "t_mkrepo", "path": "mkrepo", "uisetup": mkrepo_uisetup},
   // "uisetupXX": deploy_uisetup,
-  {name: "Deployable Projects",  hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
+  {name: "Deployable Projects",  elsel: "showgitproj", hdlr: proj_deploy, url: "/deploy_config", tmpl: "simplegrid", "path": "deployprojs",  gridid: "jsGrid_dproj", fsetid: "dproj"},
   // TODO: Place actions to global datacache (at init): datasets["actions"] = tabloadacts; ...
   // {"name": "AppActs", "elsel": "tabs-acts", "url": "", "tmpl": "", hdlr: simplegrid_cd, gridid: "jsGrid_appact", path: "appact"}, // NOTE: hdlr: simplegrid_cd
   // hdlr: actinfo
   {name: "Application Actions",  "elsel": "tabs-acts", hdlr: simplegrid_cd, url: null, tmpl: "simplegrid", "path": "appact",  gridid: "jsGrid_appact", fsetid: "actinfo", dsid: "actions",
       uisetup: actinfo_uisetup },
-  {name: "Host Groups Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh"},
+  {name: "Host Groups Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh", dprep: dprep_hosthier,
+      netopts: netopts_hosthier, nclick: onhostnetclick, },
+  //  ibloxlist
+  {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/podinfo", gridid: "jsGrid_syspods", fsetid: "syspods", path: "syspods", uisetup: null, dprep: dprep_syspods},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

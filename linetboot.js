@@ -319,6 +319,7 @@ function app_init() { // global
   app.get("/deploy_config", deployer.config);
   app.get("/gitrepo_config", deployer.config);
   app.get("/hosthier", hosthier);
+  app.get("/podinfo", pods_info);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2948,4 +2949,28 @@ function hosthier(req, res) {
   var data = {nodes: nodes, edges: edges, groups: cfg_groups}; // gns: gns, .... gmm: gmm
   //data.gmm = gmm;
   res.json({status: "ok", data: data});
+}
+
+function pods_info(req, res) {
+  var jr = {status: "err", "msg": "Could not list Pods"};
+  var testfn = "./pods.json";
+  // TODO: Add attr or cb to get to AoO (to be listed)
+  var urlmap = {
+    "sys": "/api/v1/namespaces/kube-system/pods",
+    "dash": "/api/v1/namespaces/kubernetes-dashboard/services/" // Note: services. Some fields compat.
+  };
+  var cfg = global.k8s;
+  if (!cfg) { jr.msg += "No k8s config"; return res.json(jr); }
+  if (!cfg.host) {
+    if (!fs.existsSync(testfn)) { jr.msg += "No host config or test file"; return res.json(jr); }
+    var pods = require(testfn);
+    if (!pods) { jr.msg += "Loading of test file failed"; return res.json(jr); }
+    return res.json({status: "ok", data: pods.items});
+  }
+  var url = (cfg.ssl ? "https" : "http") + "//" + cfg.host + "/api/v1/namespaces/kube-system/pods";
+  axios.get(url).then((resp) => {
+    var pods = resp.data;
+    res.json({status: "ok", data: pods.items});
+  })
+  .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call"; res.json(jr); });
 }
