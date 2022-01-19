@@ -677,10 +677,16 @@ function ibip_cell(val, item) {
      //{"name": "url", "title": "Job URL",  type: "text", width: 80}, // url
      // color
    ];
+   function deplydest_cell(val, item) {
+     if (!val) { return ""; }
+     if (!Array.isArray(val)) { return "???"; }
+     return val.map((dd) => { return dd.dlbl + " ("+dd.userhost+")"; }).join(", "); // + " ("+dd.userhost+")"
+   }
    var fldinfo_dproj = [
      {"name": "name",    "title": "Project Name",  type: "text", width: 40},
-     {"name": "projlbl", "title": "Label",  type: "text", width: 20},
+     {"name": "projlbl", "title": "Label",        type: "text", width: 20},
      {"name": "srcrepo", "title": "Repository",  type: "text", width: 60},
+     {"name": "deploydest", "title": "Deploy Destinations",  type: "text", width: 60, itemTemplate: deplydest_cell},
    ];
    function subtabs_cell(val, item){
      if (!val){return "";}

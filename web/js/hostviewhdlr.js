@@ -1031,6 +1031,8 @@ function deploy_uisetup(act, dpconf) {
   var opt2 = document.getElementById("dlbl");
   var el3  = document.getElementById("initial");
   webview.addoptions(dpconf, opt1, {aname: "name", aid: "projlbl"}); // 
+  // Fetch tags / branches (all refs ? possible on ssh repo only ? Use git or ssh+git) ?
+  //axios.get("/gittags?projlbl=" + $(opt1).val()).then((resp) => {}).catch((ex) => {});
   //opt1.
   $('#projlbl').on('change', function(jev) { // selectmenuchange
     console.log("projlbl Changed: ", this);

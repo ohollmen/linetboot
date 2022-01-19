@@ -203,7 +203,7 @@
   },
   "k8s": {
     "desc": "K8S Config of API Server w. JWT",
-    "hostXX": "192.168.153:8080",
+    "hostXX": "localhost:8080",
     "ssl": 1,
     "jwtfn": "",
     "cacertfn": ""

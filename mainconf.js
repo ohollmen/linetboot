@@ -213,7 +213,7 @@ function disabled_detect(global) {
   var jenk = global.jenkins;
   if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
   var dr = global.deployer;
-  if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn)) { dis.push("deploy"); }
+  if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
   return dis;
 } // diabled_detect
 
