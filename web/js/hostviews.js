@@ -580,11 +580,12 @@ var tabloadacts = [
   
   {"name": "DockerCompose",  "elsel": "tabs-dc", "tmpl":"simplegrid", hdlr: simplegrid_url, "url": "/listdc", gridid: "jsGrid_dcomposer", fsetid: "dcomposer", path:"dcomposer",
     uisetup: dcomposer_uisetup,
-    urlpara:  (ev, an) => {
+    urlpara:  (ev, an) => { // See: simplegrid_url
       var dcfn;var ds = ev.target.dataset;
       if (ds && ds.dcfn) { dcfn = ds.dcfn; }
       if (!dcfn && datasets.cfg.docker.files) { dcfn = datasets.cfg.docker.files[0]; }
-      return "fn="+dcfn;
+      //return "fn="+dcfn; // OLD: params only
+      return an.url + "?fn="+dcfn; // NEW: Resp. for whole URL
     },
   },
   // See: Groups
@@ -604,12 +605,14 @@ var tabloadacts = [
   {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", path: "shell"},
   // Cov (for now only manually routable)
   // NEW: Cov Top level tabbed
-  {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"},
-  {name: "Release Build Defects (Chart)", elsel: "cov-1", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
+  {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"}, // cov-3","cov-4"
+  {name: "Release Baseline Defects (Chart)", elsel: "cov-1", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
     setupui: null, canid: "canvas_blds", chtype: "bar", limit: 120},
   // 
-  {name: "Release Build Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
+  {name: "Coverity Baseline Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
      url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
+  {name: "Coverity Defects - All (Grid)", elsel: "cov-3", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_coviss", fsetid: "coviss", url: "/coviss", hdlr: simplegrid_cd},
+  {name: "Coverity Components (Grid)", elsel: "cov-4", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covcomp", fsetid: "covcomp", url: "/covcomp", hdlr: simplegrid_cd},
   // Share main handler
   {"name": "Git Projects", tabs: ["gitdeploy","gitmkrepo", "showgitproj"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "gitproj"},
   {name: "Deploy Git Project",      elsel: "gitdeploy", hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
@@ -1239,7 +1242,7 @@ function showgrid (divid, griddata, fields, act) {
     if (ctrl.uisruncnt && act.noresetup) { console.log("Prevent uisetup rerun");return; }
     act.uisetup(act, data);
     ctrl.uisruncnt++;
-  };
+  }
 }
 
 /** Setup help for an routed app action with help markdown.
@@ -1254,7 +1257,7 @@ function showgrid (divid, griddata, fields, act) {
  */
 function setuphelp(act, sel) {
   var hp = act.help; // Help page
-  if (!hp) { return; }
+  if (!hp) { console.log("No help for action, cancelling help-setup"); return; }
   // Nest-Select from router div ? What about dialog ?
   // First heading within router element
   var usel = sel || '';
@@ -1268,7 +1271,7 @@ function setuphelp(act, sel) {
     console.log("Fetch help: "+url);
     axios.get(url).then((resp) => {
       var cont = resp.data;
-      if (!cont) { return toastr.error("Empty doc !"); }
+      if (!cont) { return toastr.error("Empty help-doc for "+act.name+"!"); }
       // Wrapping Template ?: rapp.templated("");
       var c = new showdown.Converter();
       cont = c.makeHtml(cont);

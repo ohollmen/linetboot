@@ -1,4 +1,9 @@
 var spinopts = {lengthX: 37, widthX: 10, scale: 5, color: '#555', top: '80%'}; // TODO: Global (consistent)
+var rapp;
+var datasets;
+var Spinner;
+var fldinfo;
+var webview;
 
 //import {Spinner} from 'spin.js';
 // OS/Version view ?
@@ -43,10 +48,12 @@ function simplegrid_cd(ev, act) {
 function simplegrid_url(ev, an) {
   console.log("simplegrid_url URL:", an.url);
   //$('#vtitle').html(act.name);
-  var url = an.genurl ? an.genurl(act) : an.url;
+  var url = an.url; // an.genurl ? an.genurl(act) : an.url; // DEFAULT
   var ttgt = ev.viewtgtid || an.elsel; // was: selsel ????
   var para = "";
-  if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
+  var urlgen = an.urlpara || an.genurl;
+  //if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
+  if (urlgen) { url = urlgen(ev, an); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
     var arr = (data && data.data) ? data.data : data; // AoO
@@ -557,7 +564,7 @@ function medialist_uisetup() {
     }).catch(function (ex) { toastr.error(ex.toString()); });
     return false;
   });
-}; // medialist_uisetup
+} // medialist_uisetup
 
 /** Present a Preview grid on various supported recipes.
  * Should also include other templated content (e.g. boot menu).
@@ -838,7 +845,7 @@ function eflowlist(ev, act) {
       var darr = ["Disabled", "Enabled"];
       toastr.info("Changed resource "+rscname+ " to "+darr[d.data.ena]); // +    enabled= " + d.data.ena
     }).catch((ex) => { toastr.error(ex); })
-    .finally(() => {  $(uithis).prop('disabled', false); })
+    .finally(() => {  $(uithis).prop('disabled', false); });
   });
   }
 
@@ -932,7 +939,7 @@ function esxihostmenu(act, vmhosts) {
       var d = resp.data;
       if (d.status == "ok") { return toastr.info("Cached OK"); }
       return toastr.error("Caching Failed: "+d.msg);
-    }).catch((ex) => { return toastr.error("Caching failed (exception) "+ex); })
+    }).catch((ex) => { return toastr.error("Caching failed (exception) "+ex); });
   });
   //return cont;
 }
