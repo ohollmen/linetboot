@@ -379,7 +379,9 @@ function issues_report(req, res) {
   //else if (req.url == "/covcomp") {
     
   //}
+  if (!axopt || !axopt.headers || !axopt.headers.Authorization) { jr.msg += "No axopts to make url call"; return res.json(jr); }
   // Local url, global axopt
+  console.log("Cov-url: '"+url+"' w-auth: "+axopt.headers.Authorization);
   axios.get(url, axopt).then((resp) => {
     var d = resp.data;
     if (!d) { jr.msg += "Problems fetching JSON from Coverity: "+ex; return res.json(jr); }
