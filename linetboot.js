@@ -304,6 +304,10 @@ function app_init() { // global
     covconn.init(global);
     app.get("/covtgtchart",  covconn.express_report);
     app.get("/covtgtgrid",  covconn.express_report);
+    // Iss / Def
+    app.get("/coviss",  covconn.issues_report);
+    app.get("/covcomp",  covconn.issues_report);
+    app.get("/covpview", covconn.issues_report);
   }
   app.get("/bs_list", bootables_list);
   app.get("/bs_statuses", bootables_status);

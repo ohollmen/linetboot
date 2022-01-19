@@ -2,6 +2,11 @@
 /**
 * @file
 * Linetboot add-on script/module to query coverity projects.
+* This file works for the Linetboot webapp plus has functionality to use as command-line utility.
+* Either case uses a config file format matching Linetboot "cov" section.
+* 
+* ## Use as a script
+* 
 * Example of use (as script):
 * ```
 * node cov_proj_query.js list > ./rep/cov_proj_data.json
@@ -68,6 +73,7 @@ function init(_cfg) {
   // || 
   if (!cfg.url  || !cfg.user || !cfg.pass) { throw "Check Cov. Config: url, viewid, projid, user, pass !"; }
   apiurl = cfg.url+"api/viewContents/snapshots/v1/"+cfg.viewid+"?projectId="+cfg.projid+"&rowCount=3000";
+  console.log("use cov-apiurl: "+apiurl);
   creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
   axopt.headers.Authorization += creds_b64;
   inited++;
@@ -219,8 +225,8 @@ function report_chart(data, rep) {
   // Filter and Sort project snapshot data
   var pdata = pd_trans(data.viewContentsV1.rows);
   var cdata = null;
-  if      (rep == 'rel') cdata = report_rel(pdata); // Aggregated to snapshotVersion
-  else if (rep == 'build') cdata = report_build(pdata); //
+  if      (rep == 'rel') { cdata = report_rel(pdata); } // Aggregated to snapshotVersion
+  else if (rep == 'build') { cdata = report_build(pdata); } //
   else { }
   return cdata; // For API usage
 }
@@ -353,6 +359,39 @@ function express_report(req, res) {
     res.json(cdata);
   });
 }
+
+function issues_report(req, res) {
+  var jr = {status: "err", msg: "Cannot create Coverity issues report. "};
+  var url;
+  var urlmap = {
+    "/coviss": "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=100",
+    "/covcomp": "api/viewContents/components/v1/All%20In%20Project?projectId="+cfg.projid+"&rowCount=100",
+    // Special API:s. Do not enable yet as structure will be different from viewContents
+    //"/covallview": "api/view/v1/views", // All - Huge
+    //"/covpview": "api/views/v1/", // Pers views
+    
+  };
+  if (!urlmap[req.url]) { jr.msg += "Not a known coverity URL: "+req.url; return res.json(jr); }
+  
+  //if (req.url == "/coviss") {
+    url = cfg.url+urlmap[req.url];
+  //}
+  //else if (req.url == "/covcomp") {
+    
+  //}
+  // Local url, global axopt
+  axios.get(url, axopt).then((resp) => {
+    var d = resp.data;
+    if (!d) { jr.msg += "Problems fetching JSON from Coverity: "+ex; return res.json(jr); }
+    // Ignore viewContentsV1.* (e.g. viewContentsV1.columns (AoO)
+    var vc = d.viewContentsV1;
+    if (!vc) { jr.msg += "No viewContentsV1 sign. in JSON from Coverity: "+ex; return res.json(jr); }
+    res.json({status: "ok", data: vc.rows, totalcnt: vc.totalRows});
+  }).catch((ex) => {
+    jr.msg += "Problems fetching data from Coverity: "+ex; return res.json(jr);
+  });
+}
+
 ///////////// CLI Utils /////////////////
 function usage(msg) {
   if (msg) { console.log(msg); }
@@ -372,4 +411,5 @@ module.exports = {
   // report_build: report_build,
   report_chart: report_chart,
   express_report: express_report,
+  issues_report: issues_report
 };

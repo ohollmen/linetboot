@@ -1,3 +1,5 @@
+var Intl;
+
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
    function distrocell(value, item) {
      var img = "iconfinder_logo_brand_brands_logos_linux_3215592.svg"; // Default
@@ -630,7 +632,7 @@ function ibip_cell(val, item) {
      val = val || "";
      var c = "#000000"; // Default / black
      if (!item.code) { return "<span id=\"bsstatus_"+item.lbl+"\" style=\"color: "+c+"\">"+""+"</span>"; }
-     c = httpcode2color(item.code);
+     c = httpcode2color(item.code); // in js/hostviewhdlr.js
      return "<span id=\"bsstatus_"+item.lbl+"\" style=\"color: "+c+"\">"+item.status+"</span>";
    }
    // TODO: Detect also mounted status
@@ -670,6 +672,35 @@ function ibip_cell(val, item) {
     {"name": "totalDetected","title": "Total Detected",  type: "number", width: 15,},
     {"name": "newlyDetectedDefectCount","title": "Newly Detected",  type: "number", width: 15},
     {"name": "newlyEliminatedDefectCount","title": "Newly Eliminated",  type: "number", width: 15},
+   ];
+   var fldinfo_coviss = [
+    {"name": "cid",         "title": "CID", type: "number", width: 10, }, // itemTemplate: snapid_cell
+    {"name": "displayType", "title": "Name", width: 50},
+    {"name": "displayImpact", "title": "Impact",  type: "text", width: 15},
+    {"name": "status",      "title": "Status", type: "text", width: 10}, // Color ! itemTemplate: snapid_cell
+    {"name": "firstDetected","title": "First Det.", type: "text", width: 40}, // US Date itemTemplate: snapid_cell
+    {"name": "owner",       "title": "Owner", type: "text", width: 25}, // LDAP trans itemTemplate: snapid_cell. Note: "Unassigned"
+    {"name": "classification","title": "Classif.",  type: "number", width: 20}, // "Unclassified"
+    {"name": "severity",    "title": "Severity", type: "text", width: 20}, // "Unspecified"
+    {"name": "action",      "title": "Action", type: "text", width: 20},
+    
+    {"name": "displayComponent","title": "Component", type: "text", width: 25},
+    
+    {"name": "displayCategory","title": "Category",  type: "number", width: 30,},
+    {"name": "displayFile",    "title": "File",  type: "number", width: 50},
+    {"name": "checker",        "title": "Checker",  type: "number", width: 15},
+   ];
+   var fldinfo_covcomp = [
+     //
+     {"name": "component",         "title": "Component", type: "text", width: 20, },
+     {"name": "newCount",          "title": "New", type: "number", width: 15, },
+     {"name": "outstandingCount",  "title": "Outstanding", type: "number", width: 15, },
+     {"name": "totalCount",        "title": "Total", type: "number", width: 15, },
+     {"name": "fixedCount",        "title": "Fixed", type: "number", width: 15, },
+     {"name": "triagedCount",      "title": "Triaged", type: "number", width: 15, },
+     //{"name": "component",         "title": "Component", type: "number", width: 20, },
+     //{"name": "component",         "title": "Component", type: "number", width: 20, },
+     //{"name": "component",         "title": "Component", type: "number", width: 20, },
    ];
    // Jenkins Jobs
    var fldinfo_jjobs = [
@@ -794,7 +825,8 @@ function ibip_cell(val, item) {
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
-      "covstr": fldinfo_covstr, "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
+      "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
+      "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "syspods": fldinfo_kub_systempods,
    };
    
