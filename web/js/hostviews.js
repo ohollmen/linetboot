@@ -611,8 +611,9 @@ var tabloadacts = [
   // 
   {name: "Coverity Baseline Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
      url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
-  {name: "Coverity Defects - All (Grid)", elsel: "cov-3", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_coviss", fsetid: "coviss", url: "/coviss", hdlr: simplegrid_cd},
-  {name: "Coverity Components (Grid)", elsel: "cov-4", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covcomp", fsetid: "covcomp", url: "/covcomp", hdlr: simplegrid_cd},
+  // Cov. iss / comp
+  {name: "Coverity Defects - All (Grid)", elsel: "cov-3", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_coviss", fsetid: "coviss", url: "/coviss", hdlr: simplegrid_url, path: "coviss"},
+  {name: "Coverity Components (Grid)",    elsel: "cov-4", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covcomp", fsetid: "covcomp", url: "/covcomp", hdlr: simplegrid_url, path: "covcomp"},
   // Share main handler
   {"name": "Git Projects", tabs: ["gitdeploy","gitmkrepo", "showgitproj"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "gitproj"},
   {name: "Deploy Git Project",      elsel: "gitdeploy", hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
