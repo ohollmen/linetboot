@@ -14,22 +14,35 @@ rapp.showchart_cov = function (ev, act) {
   var url = act.genurl ? act.genurl(act) : act.url;
   console.log("showchart url: "+url);
   console.log(act);
+  var spel = document.getElementById(ev.viewtgtid);
+  //if (act.longload) {
+    var spinner = new Spinner(spinopts).spin(spel);
+  //}
   // act.dataurl+"?proj="+v
   axios.get(url).then( function (resp) {
     var data = resp.data;
     if (!data) { toastr.error("No data"); return; }
-    console.log("Got data !", data);
+    console.log("Got data (obj or even array)!", data);
+    if (act.dataisarr) {
+      data = rapp.respdata(resp);
+      if (act.arrconv) { data = act.arrconv(act, data); } // Same sign as cmod
+      console.log("After conv: ", data);
+    }
+    
     console.log("Place content to: "+tgtid);
     // Orig loc for setting template. Late for many things. Try earlier
     //document.getElementById('content').innerHTML =
     rapp.templated(act.tmpl, act, tgtid);
-    if (act.setupui && 1) { act.setupui(act); } // && isfunc // //makechartsui(act);
+    // Ui Setup should be much later!
+    // if (act.uisetup) { act.uisetup(act, data); } // && isfunc // 
     var chid = act.canid || "";
     try { ctx = document.getElementById(chid).getContext('2d'); }
     catch (ex) { console.log("Exception during canavas search ("+chid+")"); }
     if (!ctx) { console.log("Could not get canvas id");return;  }
-    if (data.title) { $('#vtitle').html(data.title); } // Overr
-    // Crop ?
+    // Chart mod. here ?
+    
+    // if (data.title) { $('#vtitle').html(data.title); } // Overr
+    // Crop ? TODO: See how to do this with websome ?
     if (act.limit && data.labels.length > act.limit) {
       //function chartdatacrop(data, act) {
       var cnt = act.limit;
@@ -37,17 +50,21 @@ rapp.showchart_cov = function (ev, act) {
       data.datasets.forEach((ds) => { ds.data.splice(cnt, data.labels.length); });
       //}
     }
-    var csid = act.canid || "chart1"; // Chart store id
+    var csid = act.canid || "chart1"; // Chart *store* id
     if (charts_cov[csid]) { charts_cov[csid].destroy(); }
     var chtype = act.chtype || data.typehint || 'line';
     var copts2 = rapp.dclone(rapp.chartcfg); // copts
     if (act.ns) { copts2.scales.yAxes = []; } // yAxes delete(copts2.scales);
     copts2.scales.xAxes = [{ticks: { autoSkip: 0 } }] // HARD-WIRE
-    if (act.cmod) { copts2 = act.cmod(data, copts2); } // Chart opts mod
+    if (act.cmod) { copts2 = act.cmod(data, copts2); } // Chart data and opts mod
     
     console.log("Chart type: "+chtype);
+    console.log("Chart opts: ", copts2);
     charts_cov[csid] = new Chart(ctx, { type: chtype, data: data, options: copts2 });
-  }).catch((ex) => { console.log("Charting error: "+ex); });
+    // NEW Location for call (orig. just after templating)
+    if (act.uisetup) { act.uisetup(act, data); }
+  }).catch((ex) => { console.log("Charting error: "+ex); })
+  .finally(() => { spinner && spinner.stop(); });
 };
 
 // TODO: Gridview: Allow 1) heuristic data finding (array or resp.data.data) 2) Explicit cb (datafindcb) to lookup AoO for grid
