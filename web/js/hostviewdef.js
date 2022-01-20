@@ -673,22 +673,31 @@ function ibip_cell(val, item) {
     {"name": "newlyDetectedDefectCount","title": "Newly Detected",  type: "number", width: 15},
     {"name": "newlyEliminatedDefectCount","title": "Newly Eliminated",  type: "number", width: 15},
    ];
+   function covfile_cell(val, item) {
+     if (!val) { return ""; }
+     var m;
+     //var oval = val;
+     var nval;
+     if (m = val.match(/\/(\S+)$/)) { nval = m[1]; }
+     else { nval = val.substr(-15); }
+     return "<span title=\""+val+"\">"+nval+"</span>";
+   }
    var fldinfo_coviss = [
-    {"name": "cid",         "title": "CID", type: "number", width: 10, }, // itemTemplate: snapid_cell
-    {"name": "displayType", "title": "Name", width: 50},
-    {"name": "displayImpact", "title": "Impact",  type: "text", width: 15},
-    {"name": "status",      "title": "Status", type: "text", width: 10}, // Color ! itemTemplate: snapid_cell
-    {"name": "firstDetected","title": "First Det.", type: "text", width: 40}, // US Date itemTemplate: snapid_cell
-    {"name": "owner",       "title": "Owner", type: "text", width: 25}, // LDAP trans itemTemplate: snapid_cell. Note: "Unassigned"
-    {"name": "classification","title": "Classif.",  type: "number", width: 20}, // "Unclassified"
-    {"name": "severity",    "title": "Severity", type: "text", width: 20}, // "Unspecified"
-    {"name": "action",      "title": "Action", type: "text", width: 20},
+    {"name": "cid",          "title": "CID",     type: "number", width: 10, }, // itemTemplate: snapid_cell
+    {"name": "displayType",  "title": "Name",    type: "text", width: 45},
+    {"name": "displayImpact","title": "Impact",  type: "text", width: 13},
+    {"name": "status",       "title": "Status",  type: "text", width: 10}, // Color ! itemTemplate: snapid_cell
+    {"name": "firstDetected","title": "First Det.", type: "text", width: 20}, // US Date itemTemplate: snapid_cell
+    {"name": "owner",        "title": "Owner",      type: "text", width: 18}, // LDAP trans itemTemplate: snapid_cell. Note: "Unassigned"
+    {"name": "classification","title": "Classif.",  type: "text", width: 20}, // "Unclassified"
+    {"name": "severity",     "title": "Severity",    type: "text", width: 20}, // "Unspecified"
+    {"name": "action",       "title": "Action",      type: "text", width: 20},
     
     {"name": "displayComponent","title": "Component", type: "text", width: 25},
     
-    {"name": "displayCategory","title": "Category",  type: "number", width: 30,},
-    {"name": "displayFile",    "title": "File",  type: "number", width: 50},
-    {"name": "checker",        "title": "Checker",  type: "number", width: 15},
+    {"name": "displayCategory","title": "Category",  type: "text", width: 30,},
+    {"name": "displayFile",    "title": "File",      type: "text", width: 30, itemTemplate: covfile_cell},
+    {"name": "checker",        "title": "Checker",  type: "text", width: 20},
    ];
    var fldinfo_covcomp = [
      //
