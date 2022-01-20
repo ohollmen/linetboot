@@ -605,15 +605,18 @@ var tabloadacts = [
   {"name": "Shell",  "elsel": "", "tmpl": "t_shell", hdlr: shellview_show, url: "", path: "shell"},
   // Cov (for now only manually routable)
   // NEW: Cov Top level tabbed
-  {name: "Coverity", tabs: ["cov-1","cov-2"], hdlr: tabsetview, tmpl: "", "path": "coverity"}, // cov-3","cov-4"
+  {name: "Coverity", tabs: ["cov-1","cov-2", "cov-3","cov-4", "cov-5"], hdlr: tabsetview, tmpl: "", "path": "coverity"}, // 
   {name: "Release Baseline Defects (Chart)", elsel: "cov-1", tmpl: "t_chart", url: "/covtgtchart?rep=build", hdlr: rapp.showchart_cov, path: "covbuilds",
-    setupui: null, canid: "canvas_blds", chtype: "bar", limit: 120},
+    //setupui: null, // Check tag
+    canid: "canvas_blds", chtype: "bar", limit: 120},
   // 
   {name: "Coverity Baseline Defects (Grid)", elsel: "cov-2", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covstr", fsetid: "covstr",
-     url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup},
+     url: "/covtgtgrid", hdlr: rapp.fetchgrid_cov, path: "covgrid", uisetup: covgrid_uisetup, longload: 1},
   // Cov. iss / comp
-  {name: "Coverity Defects - All (Grid)", elsel: "cov-3", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_coviss", fsetid: "coviss", url: "/coviss", hdlr: simplegrid_url, path: "coviss"},
-  {name: "Coverity Components (Grid)",    elsel: "cov-4", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covcomp", fsetid: "covcomp", url: "/covcomp", hdlr: simplegrid_url, path: "covcomp"},
+  {name: "Coverity Defects - All (Grid)", elsel: "cov-3", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_coviss", fsetid: "coviss", url: "/coviss", hdlr: simplegrid_url, path: "coviss", longload: 1},
+  {name: "Coverity Components (Grid)",    elsel: "cov-4", tmpl: "simplegrid", tmplid: "simplegrid", gridid: "jsGrid_covcomp", fsetid: "covcomp", url: "/covcomp", hdlr: simplegrid_url, path: "covcomp", longload: 1},
+  {name: "Component Defects (Chart)", elsel: "cov-5", tmpl: "t_chart", url: "/covcomp", hdlr: rapp.showchart_cov, path: "covcompchart", canid: "canvas_comps", chtype: "bar", // "horizontalBar"
+     dataisarr: 1, arrconv: dprep_covcomp,  cmod: cmod_covcomp, limit: null},
   // Share main handler
   {"name": "Git Projects", tabs: ["gitdeploy","gitmkrepo", "showgitproj"], "tmplXXX":"bootreq", hdlr: tabsetview, url: "", path: "gitproj"},
   {name: "Deploy Git Project",      elsel: "gitdeploy", hdlr: proj_deploy, url: "/deploy_config", tmpl: "t_deploy", "path": "deploy", "uisetup": deploy_uisetup},
@@ -976,6 +979,7 @@ function pkg_stats(ev, act) {
   if (ev.routepath) { rapp.templated("reports", null, "routerdiv"); } // OLD: contbytemplate
   async.map(chdefs, fetchchart, (err, ress) => { console.log("Done with charts"); });
   return;
+  /*
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
     if (d.status == "err") { alert("Package stats error: " + d.msg); return; }
@@ -1008,6 +1012,7 @@ function pkg_stats(ev, act) {
     var chdef = chdefs[3];
     createchart(data, chdef);
   }).catch(function (ex) { console.log(ex); });
+  */
   // TODO: /cpuarchstats
   // Fetch and create/display chart
   function fetchchart(chdef, cb) {

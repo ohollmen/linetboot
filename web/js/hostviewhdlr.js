@@ -4,7 +4,9 @@ var datasets;
 var Spinner;
 var fldinfo;
 var webview;
-
+var rmgmt_data;
+var on_host_click;
+var docIndex;
 //import {Spinner} from 'spin.js';
 // OS/Version view ?
 function osview_guisetup() {
@@ -30,7 +32,7 @@ function simplegrid_cd(ev, act) {
   if (!d) { return alert("No (cached) dataset found (by: "+act.dsid+")"); }
   if (!Array.isArray(d)) { return alert("dataset not in an array"); }
   if (act.mtx) {
-    var cellcb = (e) => { return e.hname; }; opts = {};
+    var cellcb = (e) => { return e.hname; }; let opts = {};
     let c = webview.matrix(d, cellcb, opts); $("#"+act.gridid).html(c); return; }
   showgrid(act.gridid,  d, fldinfo[act.fsetid], act); 
   if (act.uisetup) { act.uisetup(act, d); } // TODO: Params ? (see rapp)
@@ -53,6 +55,10 @@ function simplegrid_url(ev, an) {
   var para = "";
   var urlgen = an.urlpara || an.genurl;
   //if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
+  var spinner;
+  var spel = document.getElementById(ev.viewtgtid);
+  if (an.longload) { spinner = new Spinner(spinopts).spin(spel); }
+  
   if (urlgen) { url = urlgen(ev, an); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
@@ -69,7 +75,8 @@ function simplegrid_url(ev, an) {
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
     // NOTE: If we pass act to showgrid(..., act); must disable this
     if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr); }
-  }).catch(function (error) { console.log(error); });
+  }).catch(function (error) { console.log(error); })
+  .finally(() => { spinner && spinner.stop(); });
 }
 /////////////////////////////////////////////////////////
     //var cfg = rapp.dclone(rapp.gridcfg);
@@ -202,7 +209,7 @@ function probeinfo(ev, act) {
     showgrid(act.gridid, pinfo, fldinfo[act.fsetid]); //  "jsGrid_probe" ...  fldinfo.netprobe
     //$("#proberun").click(function () { probeinfo(); }); // Reload. TODO: Wait ...
   }).catch(function (error) {  console.log(error); }) // spinner.stop();
-  .finally(() => { spinner.stop(); });
+  .finally(() => { spinner && spinner.stop(); });
 }
 /** Load Process and Uptime Information.
  */
@@ -1219,4 +1226,53 @@ function dprep_syspods(act, arr) {
     pod.container = pod.spec.containers[0]; // Singular, Also Move up
     if (typeof pod.container != 'object') { console.error("Warning: container is not an object"); }
   });
+}
+// Note: Not a Trend
+function dprep_covcomp(act, data) {
+  if (!Array.isArray(data)) { toastr.error("Data not in array for conversion"); return; }
+  var arr = data; // ???
+  // Transform array of Component stats to chart / datasets
+  // Original / Out of Box grid has (only): New, OutSt.., Total
+  // Sample from record by iterating these, chking value typeof "number"
+  var attrs = ["newCount", "outstandingCount", "totalCount", "fixedCount", "triagedCount"];
+  var stnames = ["New",    "Outstanding",       "Total",     "Fixed",      "Triaged"];
+  var colors = ["#68C434", "#DD5014", "#E8E600", "#A9C1EE", "#C60C30"]; // Outstanding: #88580F => #DD5014, Total: #DFEED6 => #F7F500 => #E8E600
+  var exc = ["Other"];
+  var c = { labels: [], datasets: [] };
+  /**/
+  arr.forEach((it) => {
+    attrs.forEach((k) => { it[k] = parseInt(it[k]); });
+    //var ds = {label: "Stats for "+it.component, data: []}; // fill: false
+    //attrs.forEach((k) => { ds.data.push(it[k]); });
+    var ev = "not match";
+    var tot = (it.outstandingCount + it.fixedCount);
+    //if ( == it.totalCount) { ev = 'ok'; }
+    console.log(it.component+" total "+it.totalCount+" counted tot ", tot, " delta ", (tot-it.totalCount)); // 
+    if (exc.includes(it.component)) { return; }
+    c.labels.push(it.component);
+    //c.datasets.push(ds);
+  });
+  /**/
+  var i = 0;
+  attrs.forEach((k) => {
+    var ds = {label: stnames[i], data: []}; // fill: false
+    ds.backgroundColor = colors[i];
+    // Iterate all comps
+    arr.forEach((cit) => {
+      if (exc.includes(cit.component)) { return; }
+      ds.data.push(cit[k]);
+    });
+    c.datasets.push(ds);
+    i++;
+  });
+  return c;
+}
+
+function cmod_covcomp(data, copts) {
+  console.log("CUSTOM-CHART...");
+  copts.grouped = true;
+  // Eliminate stacking
+  copts.scales.xAxes = [];
+  copts.scales.yAxes = [];
+  return copts;
 }

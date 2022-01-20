@@ -351,34 +351,41 @@ function express_report(req, res) {
     if (req.url && !req.url.match(/chart/)) {
       // Should start: {\n"viewContentsV1": { ...
       //console.log(d);
-      return res.json(d);
+      return res.json(d); // {status: "ok", data: d}
     }
     // var rep = 'build';
     var cdata = report_chart(d, rep);
     if (!cdata) { jr.msg += "Could not create Streams (snapshotTarget) chart"; return res.json(jr); }
-    res.json(cdata);
+    res.json(cdata); // {status: "ok", data: cdata}
   });
 }
-
+/**
+ * Note: "Error: Request failed with status code 400" will result with insufficient credentials (Ok authen, but no authoriz. to view data)
+ */
 function issues_report(req, res) {
-  var jr = {status: "err", msg: "Cannot create Coverity issues report. "};
-  var url;
+  var jr = {status: "err", msg: "Cannot create Coverity view report. "};
+  //var url;
+  // TODO: Possibly embed templating notation and run through templating (with cfg ctx)
   var urlmap = {
-    "/coviss": "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=100",
-    "/covcomp": "api/viewContents/components/v1/All%20In%20Project?projectId="+cfg.projid+"&rowCount=100",
+    "/coviss": {
+      apiurl: "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=100",
+      
+    },
+    "/covcomp": {
+      apiurl: "api/viewContents/components/v1/All%20In%20Project?projectId="+cfg.projid+"&rowCount=100",
+      trans: null, // (arr) => {},
+    },
     // Special API:s. Do not enable yet as structure will be different from viewContents
-    //"/covallview": "api/view/v1/views", // All - Huge
-    //"/covpview": "api/views/v1/", // Pers views
-    
+    "/covallview": {
+      apiurl: "api/view/v1/views", // All - Huge
+    },
+    "/covpview": {
+      apiurl: "api/views/v1/", // Pers views
+    }
   };
   if (!urlmap[req.url]) { jr.msg += "Not a known coverity URL: "+req.url; return res.json(jr); }
-  
-  //if (req.url == "/coviss") {
-    url = cfg.url+urlmap[req.url];
-  //}
-  //else if (req.url == "/covcomp") {
-    
-  //}
+  // Set url
+  var url = cfg.url+urlmap[req.url].apiurl;
   if (!axopt || !axopt.headers || !axopt.headers.Authorization) { jr.msg += "No axopts to make url call"; return res.json(jr); }
   // Local url, global axopt
   console.log("Cov-url: '"+url+"' w-auth: "+axopt.headers.Authorization);
@@ -392,8 +399,16 @@ function issues_report(req, res) {
   }).catch((ex) => {
     jr.msg += "Problems fetching data from Coverity: "+ex; return res.json(jr);
   });
+  // Getdata for viewContentsV1
+  function data_vcont1(d) {
+    var vc = d.viewContentsV1;
+    if (!vc) { throw "No viewContentsV1 sign. in JSON from Coverity"; }
+    if (1) {}
+  }
 }
-
+function issues_report2(req, res) {
+  return res.json(require("./cov_comps.json"));
+}
 ///////////// CLI Utils /////////////////
 function usage(msg) {
   if (msg) { console.log(msg); }
@@ -413,5 +428,6 @@ module.exports = {
   // report_build: report_build,
   report_chart: report_chart,
   express_report: express_report,
-  issues_report: issues_report
+  issues_report: issues_report,
+  issues_report2: issues_report2, // Dev/Debug
 };
