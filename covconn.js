@@ -368,7 +368,7 @@ function issues_report(req, res) {
   // TODO: Possibly embed templating notation and run through templating (with cfg ctx)
   var urlmap = {
     "/coviss": {
-      apiurl: "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=100",
+      apiurl: "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=300",
       
     },
     "/covcomp": {
