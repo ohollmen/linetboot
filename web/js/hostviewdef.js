@@ -678,7 +678,7 @@ function ibip_cell(val, item) {
      var m;
      //var oval = val;
      var nval;
-     if (m = val.match(/\/(\S+)$/)) { nval = m[1]; }
+     if (m = val.match(/\/([^\/]+)$/)) { nval = m[1]; }
      else { nval = val.substr(-15); }
      return "<span title=\""+val+"\">"+nval+"</span>";
    }
