@@ -359,7 +359,7 @@ function express_report(req, res) {
     res.json(cdata); // {status: "ok", data: cdata}
   });
 }
-/**
+/** Pass various Coverity API results through to Frontend.
  * Note: "Error: Request failed with status code 400" will result with insufficient credentials (Ok authen, but no authoriz. to view data)
  */
 function issues_report(req, res) {
@@ -369,23 +369,26 @@ function issues_report(req, res) {
   var urlmap = {
     "/coviss": {
       apiurl: "api/viewContents/issues/v1/Outstanding%20Issues?projectId="+cfg.projid+"&rowCount=300",
-      
+      //data: data_vcont1,
     },
     "/covcomp": {
       apiurl: "api/viewContents/components/v1/All%20In%20Project?projectId="+cfg.projid+"&rowCount=100",
       trans: null, // (arr) => {},
+      //data: data_vcont1,
     },
     // Special API:s. Do not enable yet as structure will be different from viewContents
     "/covallview": {
       apiurl: "api/view/v1/views", // All - Huge
+      // data: () => {},
     },
     "/covpview": {
       apiurl: "api/views/v1/", // Pers views
     }
   };
   if (!urlmap[req.url]) { jr.msg += "Not a known coverity URL: "+req.url; return res.json(jr); }
+  var apicfg = urlmap[req.url];
   // Set url
-  var url = cfg.url+urlmap[req.url].apiurl;
+  var url = cfg.url + apicfg.apiurl;  // urlmap[req.url]
   if (!axopt || !axopt.headers || !axopt.headers.Authorization) { jr.msg += "No axopts to make url call"; return res.json(jr); }
   // Local url, global axopt
   console.log("Cov-url: '"+url+"' w-auth: "+axopt.headers.Authorization);
@@ -395,15 +398,21 @@ function issues_report(req, res) {
     // Ignore viewContentsV1.* (e.g. viewContentsV1.columns (AoO)
     var vc = d.viewContentsV1;
     if (!vc) { jr.msg += "No viewContentsV1 sign. in JSON from Coverity: "+ex; return res.json(jr); }
+    // var okr = {status: "ok", data: null };
+    // if (apicfg.data) { apicfg.data(d, apicfg, okr); }
     res.json({status: "ok", data: vc.rows, totalcnt: vc.totalRows});
   }).catch((ex) => {
     jr.msg += "Problems fetching data from Coverity: "+ex; return res.json(jr);
   });
   // Getdata for viewContentsV1
-  function data_vcont1(d) {
+  // Create final response data
+  // apicfg allows to do context specific transformations (e.g. string => number in components response)
+  function data_vcont1(d, apicfg, rdata) {
     var vc = d.viewContentsV1;
     if (!vc) { throw "No viewContentsV1 sign. in JSON from Coverity"; }
-    if (1) {}
+    // offset, totalRows, columns, rows
+    if (vc.columns && vc.rows) { rdata.data = vc.rows; rdata.totalcnt = vc.totalRows; return rdata; }
+    return null;
   }
 }
 function issues_report2(req, res) {

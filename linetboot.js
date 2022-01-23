@@ -61,6 +61,7 @@ var procrpt  = require("./procreport.js");
 var covconn  = require("./covconn.js");
 var ldconnx  = require("./ldconn.js");
 var deployer = require("./deployer.js");
+// var gerrit = require("./gerrit.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -306,9 +307,11 @@ function app_init() { // global
     app.get("/covtgtgrid",  covconn.express_report);
     // Iss / Def
     app.get("/coviss",  covconn.issues_report);
-    app.get("/covcomp",  covconn.issues_report);
+    app.get("/covcomp",  covconn.issues_report); // ...2 for dev
     app.get("/covpview", covconn.issues_report);
   }
+  // app.get("/covcomp",  covconn.issues_report2); // DEV / DEBUG
+  
   app.get("/bs_list", bootables_list);
   app.get("/bs_statuses", bootables_status);
   app.get("/recipes_dump", osinst.recipes_view);
@@ -2896,6 +2899,7 @@ function jenkins_jobs(req, res) {
   var jcfg = global.jenkins;
   var jr = {status: "err", msg: "Failed to get Jenkins jobs. "};
   if (!jcfg) { jr.msg += "No Jenkins config."; return res.json(jr); }
+  // TODO: https !!!
   var url = "http://"+jcfg.user+":"+jcfg.pass+"@"+jcfg.host+"/api/json?pretty=true";
   console.log("Concluded URL: "+ url);
   axios.get(url).then((resp) => {
