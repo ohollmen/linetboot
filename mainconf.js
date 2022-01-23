@@ -107,6 +107,8 @@ function mainconf_process(global) {
   tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
   var deploy = global.deployer;
   if (deploy) { tilde_expand(deploy, ["deployfn", "gitreposfn"]); }
+  var gerrit = global.gerrit;
+  if (gerrit) { tilde_expand(gerrit, ["pkey"]); }
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -221,6 +223,18 @@ function disabled_detect(global) {
   // No Transfer: LINETBOOT_GLOBAL_CONF, LINETBOOT_URL (linet.js)
   // LINETBOOT_USER_CONF  LINETBOOT_ANSIBLE_DEBUG
   // LINETBOOT_SSHKEY_PATH LINETBOOT_DEBUG LINETBOOT_IPTRANS_MAP LINETBOOT_SCRIPT_PATH
+/** Transfer and merge environment variables directly into runtime main config.
+ * This avoids later if-elsing for environment versus main config.
+ * This mering shoudl eb doen for example **before**:
+ * - Tilde expansion - only finale merged values should be expanded (only once)
+ * - Feature disablement detection.
+ * For most of the sections affected, a non-existing section will be "stubbed" in place by creating
+ * an empty config object for it.
+ * 
+ * @param global {object} - main config
+ * @return nothing
+ * @todo Do (most?) env merges in a data driven way (env var => ds-node name, e.g. "core.maindocroot")
+ */
 function env_merge(global) {
   if (!global) { error("env_merge: No handle to main config !"); }
   // TOP
@@ -235,7 +249,7 @@ function env_merge(global) {
   if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = process.env["LINETBOOT_SCRIPT_PATH"]; }
   if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path   = process.env["LINETBOOT_TMPL_PATH"]; }
   // RMGMT_PATH
-  if (process.env["RMGMT_PATH"])            { global.ipmi.path = process.env["RMGMT_PATH"]; }
+  if (process.env["RMGMT_PATH"])            { stub("ipmi"); global.ipmi.path = process.env["RMGMT_PATH"]; }
   // 
   if (process.env["LINETBOOT_PKGLIST_PATH"]) { global.pkglist_path = process.env["LINETBOOT_PKGLIST_PATH"]; }
   
@@ -264,21 +278,22 @@ function env_merge(global) {
     if (!global.jenkins) {}
     else { global.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
   }
-
+  if (process.env["LINETBOOT_GERRIT_PKEY"])   { stub("gerrit"); global.gerrit.pkey = process.env["LINETBOOT_GERRIT_PKEY"]; }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
 /** Replace tilde character (~) with process owners full home directory path ($HOME).
  * Replaces one or more values in object noted by keys passed.
+ * Can replace tildes on values that are either strings or array of string.
  * @param obj {object} - Object to replace values on.
  * @param keyarr {array} - keys (of object) on which to do the replacement.
  * @return None
  */
 function tilde_expand(obj, keyarr) {
   // if (typeof obj != 'object') { throw "Not an object"; }
-  // Be forgiving about particular config section (e.g. "cov") existing ...
+  // Be forgiving about particular config section (e.g. "cov") not existing ...
   if (typeof obj != 'object') { console.log("Warning: Passed config section is not an 'object' (got: '"+typeof obj+"')"); return; }
-  if (!Array.isArray(keyarr)) { throw "Not an array (of keys)"; }
+  if (!Array.isArray(keyarr)) { throw "Not an array (of property keys)"; }
   var home = process.env['HOME'];
   keyarr.forEach(function (pk) {
     if (obj[pk] && (typeof obj[pk] == 'string')) {
