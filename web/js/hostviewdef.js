@@ -597,6 +597,7 @@ function ibip_cell(val, item) {
      
      // command: array or string
    ];
+   /*
    var fldinfo_appact = [
      {name: "name", title: "Action Name", type: "text", width: 50},
      {name: "path", title: "Route Lbl/Path", type: "text", width: 40},
@@ -605,6 +606,7 @@ function ibip_cell(val, item) {
      {name: "tabs", title: "Sub-Tabs", type: "text", width: 70},
      {name: "tmpl", title: "Template", type: "text", width: 70},
    ];
+   */
    function iprof_mulval(val, item) {
      if (!Array.isArray(val)) { return "???"; }
      return val.join("<br>");
@@ -735,6 +737,7 @@ function ibip_cell(val, item) {
    }
    function act_hdlr_cell(val, item) {
      if (typeof val == 'undefined') { return ""; }
+     if (val == null) { return ""; } // Cannot read property 'toString' of null
      var src = val.toString();
      var m; var funcname = "???";
      if (typeof src == 'string' && (m = src.match(/function\s+(\w+)/))) {
@@ -827,15 +830,34 @@ function ibip_cell(val, item) {
      //{"name": "status.containerStatuses[0].name",  "title": "Cont Stat Name",  type: "text", width: 20},
      
    ];
+   var fldinfo_gerr_change = [
+     {"name": "number",     "title": "Number",  type: "text", width: 20},
+     
+     {"name": "project",     "title": "Project",  type: "text", width: 20},
+     {"name": "branch",     "title": "Branch",  type: "text", width: 20},
+     //{"name": "hashtags",     "title": "Hashtags",  type: "text", width: 20},
+     {"name": "change_id",     "title": "Change ID",  type: "text", width: 20},
+     {"name": "subject",     "title": "Subject",  type: "text", width: 20},
+     {"name": "status",     "title": "Status",  type: "text", width: 20},
+     {"name": "created",     "title": "Created",  type: "text", width: 20},
+     {"name": "updated",     "title": "Updated",  type: "text", width: 20},
+     {"name": "mergeable",     "title": "Mergeable",  type: "text", width: 20},
+     {"name": "submittable",     "title": "Submittable",  type: "text", width: 20},
+     {"name": "insertions",     "title": "Added Lines",  type: "text", width: 20},
+     {"name": "deletions",     "title": "Deleted Lines",  type: "text", width: 20},
+     
+     {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 20},
+     
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
       "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
-      "dcomposer":fldinfo_dcomposer, "appact": fldinfo_appact, "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables,
+      "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
-      "syspods": fldinfo_kub_systempods,
+      "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
    };
    
