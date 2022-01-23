@@ -3,7 +3,7 @@
   "nfsserver" : "192.168.1.141",
   "smbserver" : "192.168.1.141",
   "mirrorserver": "",
-  "debug": 1,  
+  "debug": 1,
   "inst": {
     "desc": "Settings for OS Installer or scripts run during install",
     "userconfig": "~/.linetboot/initialuser.conf.json",
@@ -207,6 +207,14 @@
     "ssl": 1,
     "jwtfn": "",
     "cacertfn": ""
+  },
+  "gerrit": {
+    "host": "",
+    "hostXX": "gerrit-myorg.mycompany.com",
+    "sshport": 29418,
+    "user": "",
+    "pass": "",
+    "pkey": ""
   },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
