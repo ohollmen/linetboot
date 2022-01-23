@@ -93,22 +93,22 @@ function mainconf_process(global) {
   //  if (global[pk]) { global[pk] = global[pk].replace('~', home); }
   //});
   // Sections: tftp.menutmpl, ipmi.path, docker.config, docker.catalog, ansible.pbpath
-  //if (global.tftp.menutmpl) { global.tftp.menutmpl = global.tftp.menutmpl.replace('~', home); }
-  //if (global.ipmi.path)     { global.ipmi.path     = global.ipmi.path.replace('~', home); }
   tilde_expand(global.tftp, ["menutmpl"]);
   tilde_expand(global.ipmi, ["path"]);
   tilde_expand(global.esxi, ["cachepath"]);
   tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path", "iprofsconfig"]);
+  // var dkr = global.docker;
   if (global.docker) {
-    var dkr = global.docker;
-    tilde_expand(dkr, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
+    tilde_expand(global.docker, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
   }
   tilde_expand(global.ansible, ["pbpath"]);
   tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
-  var deploy = global.deployer;
-  if (deploy) { tilde_expand(deploy, ["deployfn", "gitreposfn"]); }
-  var gerrit = global.gerrit;
-  if (gerrit) { tilde_expand(gerrit, ["pkey"]); }
+  //var deploy = global.deployer;
+  //if (deploy) {
+  tilde_expand(global.deployer, ["deployfn", "gitreposfn"]); // }
+  //var gerrit = global.gerrit;
+  //if (gerrit) {
+  tilde_expand(global.gerrit, ["pkey"]); // }
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -278,6 +278,8 @@ function env_merge(global) {
     if (!global.jenkins) {}
     else { global.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
   }
+  if (process.env["LINETBOOT_GERRIT_USER"])   { stub("gerrit"); global.gerrit.user = process.env["LINETBOOT_GERRIT_USER"]; }
+  if (process.env["LINETBOOT_GERRIT_PASS"])   { stub("gerrit"); global.gerrit.pass = process.env["LINETBOOT_GERRIT_PASS"]; }
   if (process.env["LINETBOOT_GERRIT_PKEY"])   { stub("gerrit"); global.gerrit.pkey = process.env["LINETBOOT_GERRIT_PKEY"]; }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
