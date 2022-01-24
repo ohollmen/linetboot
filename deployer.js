@@ -198,6 +198,25 @@ function createrepo (req, res) {
   console.log("COMMAND:"+cmd);
 }
 
+/**
+Google: list git refs
+Google: git list remote refs
+https://stackoverflow.com/questions/42626068/how-do-i-list-all-remote-refs
+git show-ref (local refs)
+git for-each-ref
+git ls-remote (remote refs, can use --tags) - requires clone :-(
+* Note: as most of time is spent on re-deployments (not initial), we could list the refs using deployment area (host:dir).
+* See: deploy.conf.json, deploydest items: userhost, path
+*/
+function listrefs(req, res) {
+  // Should parse URL (See:createrepo ... var gurl = url.parse(gurlstr)) and ssh onto host, dir and list local refs by show-ref ?
+  // var gurl = url.parse(gurlstr)
+  // var cmd = "";
+  //cproc.exec(cmd, (err, stdout, stderr) => {
+  //
+  //});
+}
+
 module.exports = {
   init: init,
   // initdeploy: initdeploy,
