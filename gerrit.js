@@ -69,7 +69,7 @@ function changes_recv() {
         var evinfo;
 	try { evinfo = JSON.parse(data); }
 	catch (ex) { console.log("Error parsing evinfo: ", ex); }
-	console.log("EVINFO:"+JSON.stringify(evinfo));
+	console.log("EVINFO:"+JSON.stringify(evinfo, null, 2));
       }).stderr.on('data', (data) => {
         console.log('STDERR: ' + data);
       });

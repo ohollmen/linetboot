@@ -2987,7 +2987,7 @@ function pods_info(req, res) {
     return res.json({status: "ok", data: data}); // pods.items
   }
   
-  var k8surl = (cfg.ssl ? "https" : "http") + "//" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
+  var k8surl = (cfg.ssl ? "https" : "http") + "://" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
   console.log("Consult k8S URL: "+k8surl);
   axios.get(k8surl).then((resp) => {
     var pods = resp.data;
