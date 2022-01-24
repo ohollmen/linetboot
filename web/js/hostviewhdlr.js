@@ -1219,12 +1219,15 @@ if (act.sigma) {
 
 function dprep_syspods(act, arr) {
   console.log("RUNNING DPREP !!!");
+  var cols = {"Running": "#6AB423"};
   arr.forEach((pod) => {
     if (!pod.spec || !pod.spec.containers || !Array.isArray(pod.spec.containers)) { return; }
     var conts = pod.spec.containers;
     if (conts.length > 1) { console.error("Warning: More than 1 container for ... !!!"); }
     pod.container = pod.spec.containers[0]; // Singular, Also Move up
     if (typeof pod.container != 'object') { console.error("Warning: container is not an object"); }
+    // NEW: Add cools map
+    pod._coloring = cols;
   });
 }
 // Note: Not a Trend.
@@ -1277,4 +1280,25 @@ function cmod_covcomp(data, copts) {
   copts.scales.xAxes = [];
   copts.scales.yAxes = [];
   return copts;
+}
+
+function jgrid_form(ev, act) {
+  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  var fsid = act.fsetid;
+  if (!fsid) { toastr.error("No basis to create form 1\n"); return; }
+  var cont = "";
+  var fdefs = fldinfo[fsid];
+  if (!fdefs) { toastr.error("No basis to create form 2\n"); return; }
+  var labelw = act.labelw || "120";
+  fdefs.forEach((fd) => { // map ?
+    //if (!fd.visible && cfg.onlyvis) { return; }
+    cont += "<label style=\"width: "+labelw+"px\" for=\"w_"+fd.name+"\">"+fd.title+"</label>";
+    // Choice of w.
+    cont += "<input type=\"text\" name=\"w_"+fd.name+"\" id=\"w_"+fd.name+"\">";
+    cont += "<br/>";
+    
+  });
+  datasets["testform"] = "<form>{{{ cont }}}</form>";
+  rapp.templated("testform", {cont: cont}, tgtid);
+  if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
 }

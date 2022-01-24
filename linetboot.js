@@ -2953,7 +2953,9 @@ function hosthier(req, res) {
   res.json({status: "ok", data: data});
 }
 /** Get K8S Pods (and other) info.
- * 
+ * To run API proxying:
+ * - In small scale (min stup overhead):  kubectl proxy --port=8080 --accept-hosts='^localhost$,^192.168.1.*$'
+ * - In proper scale (JWT, cacert): Setup JWT, cacert properly as pointed out by article ...
  */
 function pods_info(req, res) {
   var jr = {status: "err", "msg": "Could not list Pods"};
@@ -2971,15 +2973,18 @@ function pods_info(req, res) {
   var apicfg = urlmap.find((it) => { return it.url == req.url; });
   if (!apicfg) { jr.msg = "No match (for: "+req.url+") in API mapping!"; return res.json(jr); }
   //var apipath = apicfg ...
-  
+  // Mock-file
   if (!cfg.host) {
     let path = require("path");
     // Figure out testfn here !!!
     var testfn = "./"+path.basename(apicfg.apipath)+".json";
     if (!fs.existsSync(testfn)) { jr.msg += "No test file ("+testfn+")"; return res.json(jr); }
+    console.log("k8s: Use mock file: "+testfn);
     var pods = require(testfn);
+    let data = pods.items;
+    if (req.url.match(/kubapirsc/)) { data = pods.resources; }
     if (!pods) { jr.msg += "Loading of test file failed"; return res.json(jr); }
-    return res.json({status: "ok", data: pods.items});
+    return res.json({status: "ok", data: data}); // pods.items
   }
   
   var k8surl = (cfg.ssl ? "https" : "http") + "//" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";

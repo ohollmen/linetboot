@@ -13,6 +13,17 @@ var gridplug = {
     if (!Array.isArray(val)) { return ""; }
     return Array.length;
   },
+  // Note: Assumes color to be dark enough to have (text) color: white
+  coloring: (val, item) => {
+    if (!val || (typeof val != 'string')) { return ""; }
+    if (!item._coloring) { return val; }
+    var col = item._coloring[val];
+    return "<span style=\"background-color: "+col+"; color: white; display: block; border-radius: 3px; padding: 2px\">"+val+"</span>"; // 
+  },
+  arr_commas: (val, item) => {
+    if (!Array.isArray(val)) { return ""; }
+    return val.join(", ");
+  }
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
    function distrocell(value, item) {
@@ -791,14 +802,14 @@ function ibip_cell(val, item) {
    ];
    // https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
    // https://nieldw.medium.com/curling-the-kubernetes-api-server-d7675cfc398c
-   // "kind": "APIResourceList", "resources": [...]
+   // "kind": "APIResourceList", "resources": [...]. Apis from 
    var fldinfo_kub_apis = [
-     {"name": "name",    "title": "API Name",  type: "text", width: 20},
-     {"name": "namespaced","title": "Has Namespace",  type: "text", width: 20, itemTemplate: null}, // See how true/false works
-     {"name": "kind",    "title": "Kind/Type",  type: "text", width: 20},
-     {"name": "verbs",    "title": "Verbs",  type: "text", width: 20, itemTemplate: null}, // Array of HTTP methods
-     {"name": "shortNames",    "title": "Short names",  type: "text", width: 20},
-     {"name": "storageVersionHash",    "title": "Stor. Ver. Hash",  type: "text", width: 20},
+     {"name": "name",      "title": "API Name",     type: "text", width: 15},
+     {"name": "namespaced","title": "Has Namespace", type: "text", width: 10, itemTemplate: null}, // See how true/false works
+     {"name": "kind",      "title": "Kind/Type",    type: "text", width: 10},
+     {"name": "verbs",     "title": "Verbs",        type: "text", width: 30, itemTemplate: gridplug.arr_commas}, // Array of HTTP methods (? also has list, deletecollection !!)
+     {"name": "shortNames","title": "Short names",  type: "text", width: 10},
+     {"name": "storageVersionHash", "title": "Stor. Ver. Hash",  type: "text", width: 10},
    ];
    // This is ~2000 l. 7 comps list (namespaces/kube-system/pods).
    // Even if this needs to go through server side, try keep attrs the same. Under "items" ...
@@ -815,9 +826,9 @@ function ibip_cell(val, item) {
    }
    var fldinfo_kub_systempods = [
      {"name": "metadata.name",      "title": "Pod Name",  type: "text", width: 40},
-     {"name": "metadata.uid",       "title": "UID",  type: "text", width: 20, itemTemplate: gridplug.csum_short}, // substr()
+     {"name": "metadata.uid",       "title": "UID",  type: "text", width: 17, itemTemplate: gridplug.csum_short}, // substr()
      // "creationTimestamp": "2022-01-16T03:40:48Z",
-     {"name": "metadata.creationTimestamp",    "title": "Time",  type: "text", width: 12, itemTemplate: gridplug.isodate},
+     {"name": "metadata.creationTimestamp",    "title": "Time",  type: "text", width: 15, itemTemplate: gridplug.isodate},
      // 
      {"name": "metadata.labels",    "title": "Labels",  type: "text", width: 20, itemTemplate: podcont_kv_cell},
      // Note: metadata.managedFields.manager (e.g. kube-controller-manager)... parent in Hierarchy (oabels.component = kube ... OR containes.name = kube ...)
@@ -835,10 +846,10 @@ function ibip_cell(val, item) {
      {"name": "spec.priorityClassName",    "title": "Priority Class",  type: "text", width: 25},
      // {"name": "spec.preemptionPolicy",    "title": "Prior. Class",  type: "text", width: 20}, // PreemptLowerPriority
      // status
-     {"name": "status.phase",       "title": "Phase",  type: "text", width: 15}, // Running
+     {"name": "status.phase",       "title": "Phase",  type: "text", width: 15, itemTemplate: gridplug.coloring}, // Running 
      {"name": "status.conditions",  "title": "Conditions",  type: "text", width: 20, itemTemplate: gridplug.arrcnt}, // AoO (always 4?) w type: Initialize, Ready,
      {"name": "status.hostIP",      "title": "Host IP",  type: "text", width: 20}, // Also (sib) podIP, podIPs
-     {"name": "status.startTime",   "title": "Start Time",  type: "text", width: 12, itemTemplate: gridplug.isodate},
+     {"name": "status.startTime",   "title": "Start Time",  type: "text", width: 15, itemTemplate: gridplug.isodate},
      {"name": "status.qosClass",    "title": "qos Class",  type: "text", width: 20},
      // 
      //{"name": "status.containerStatuses[0].name",  "title": "Cont Stat Name",  type: "text", width: 20},
@@ -872,6 +883,6 @@ function ibip_cell(val, item) {
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
-      "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
+      "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
    };
    
