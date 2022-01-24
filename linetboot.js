@@ -61,7 +61,7 @@ var procrpt  = require("./procreport.js");
 var covconn  = require("./covconn.js");
 var ldconnx  = require("./ldconn.js");
 var deployer = require("./deployer.js");
-// var gerrit = require("./gerrit.js");
+var gerrit   = require("./gerrit.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -125,6 +125,7 @@ function app_init() { // global
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
     // console.log(stat); // Stat Object
   };
+  if (global.gerrit) { gerrit.init(global); }
   var staticconf_0 = {"setHeaders": logger };
   // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
   // app.set('trust proxy', true); // relates to req.header('x-forwarded-for') ?
@@ -182,18 +183,7 @@ function app_init() { // global
   // preseed_gen - Generated preseed and kickstart shared handler
   // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   osinst.url_hdlr_set(app); // NEW (driven by recipe selections)
-  /*
-  app.get('/preseed.cfg', osinst.preseed_gen); // OK
-  app.get('/ks.cfg', osinst.preseed_gen); // OK
-  app.get('/preseed.desktop.cfg', osinst.preseed_gen); // OK
-  app.get('/preseed_mini.cfg', osinst.preseed_gen); // OK
-  // BSD (by doc '/boot/pc-autoinstall.conf' will be looked up from "install medium")
-  app.get('/boot/pc-autoinstall.conf', osinst.preseed_gen); // ??
-  app.get('/cust-install.cfg', osinst.preseed_gen); // ??
-  // Network configs (still same handler)
-  app.get('/sysconfig_network', osinst.preseed_gen); // OK
-  app.get('/interfaces', osinst.preseed_gen); // OK
-  */
+  
   // Autounattend.xml
   ////////////////////
   // Install event logger (evtype is start/done)
@@ -330,6 +320,7 @@ function app_init() { // global
   app.get("/podinfo", pods_info);
   app.get("/kubdash", pods_info);
   app.get("/kubapirsc", pods_info);
+  app.get("/gerr/mychanges", gerrit.gerrapi);
  } // sethandlers
   //////////////// Load Templates ////////////////
   

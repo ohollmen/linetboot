@@ -1,5 +1,19 @@
 var Intl;
 
+var gridplug = {
+  isodate: (val, item) => {
+    if (!val || (typeof val != 'string')) { return ""; }
+    return "<span title=\""+val+"\">"+val.substr(0, 10)+"<span>";
+  },
+  csum_short: (val, item) => {
+    if (!val || (typeof val != 'string')) { return ""; }
+    return "<span title=\""+val+"\">"+val.substr(0, 4)+"..."+val.substr(-4, 4)+"<span>";
+  },
+  arrcnt: (val, item) => {
+    if (!Array.isArray(val)) { return ""; }
+    return Array.length;
+  },
+};
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
    function distrocell(value, item) {
      var img = "iconfinder_logo_brand_brands_logos_linux_3215592.svg"; // Default
@@ -800,53 +814,53 @@ function ibip_cell(val, item) {
      //return "";
    }
    var fldinfo_kub_systempods = [
-     {"name": "metadata.name",    "title": "Pod Name",  type: "text", width: 40},
-     {"name": "metadata.uid",    "title": "UID",  type: "text", width: 20, itemTemplate: null}, // substr()
+     {"name": "metadata.name",      "title": "Pod Name",  type: "text", width: 40},
+     {"name": "metadata.uid",       "title": "UID",  type: "text", width: 20, itemTemplate: gridplug.csum_short}, // substr()
      // "creationTimestamp": "2022-01-16T03:40:48Z",
-     {"name": "metadata.creationTimestamp",    "title": "Time",  type: "text", width: 20, itemTemplate: null},
+     {"name": "metadata.creationTimestamp",    "title": "Time",  type: "text", width: 12, itemTemplate: gridplug.isodate},
      // 
      {"name": "metadata.labels",    "title": "Labels",  type: "text", width: 20, itemTemplate: podcont_kv_cell},
      // Note: metadata.managedFields.manager (e.g. kube-controller-manager)... parent in Hierarchy (oabels.component = kube ... OR containes.name = kube ...)
      // spec
-     {"name": "spec.volumes",    "title": "Volumes",  type: "text", width: 20, itemTemplate: podcont_cell},
+     {"name": "spec.volumes",        "title": "Vols",  type: "text", width: 20, itemTemplate: gridplug.arrcnt}, // podcont_cell -> gridplug.arrcnt
      // spec.containers - AoO - usually 1 esp. for system (w. O: name, image, livenessProbe (Obj), startupProbe
      // Note: spec.containers[0] gets to container (note singular)
-     {"name": "container.name", "title": "Container Name", type: "text", width: 20, itemTemplateXXX: podcont_cell},
-     {"name": "container.volumeMounts", "title": "Volume Mounts", type: "text", width: 20, itemTemplate: podcont_cell}, // Some rep. of volumes (aggregate ?)
+     {"name": "container.name",      "title": "Container Name", type: "text", width: 20, itemTemplateXXX: podcont_cell},
+     {"name": "container.volumeMounts", "title": "Volume Mounts", type: "text", width: 12, itemTemplate: gridplug.arrcnt}, // Some rep. of volumes (aggregate ?)
      // ???
-     {"name": "container.env", "title": "Env", type: "text", width: 20, itemTemplate: podcont_kv_cell},
+     {"name": "container.env",       "title": "Env", type: "text", width: 20, itemTemplate: podcont_kv_cell},
      {"name": "spec.serviceAccount", "title": "Svc Account", type: "text", width: 20, itemTemplateXX: null},
-     {"name": "spec.nodeName",    "title": "Node Name",  type: "text", width: 20}, // e.g. minikube
+     {"name": "spec.nodeName",       "title": "Node Name",  type: "text", width: 20}, // e.g. minikube
      // 
-     {"name": "spec.priorityClassName",    "title": "Prior. Class",  type: "text", width: 20},
+     {"name": "spec.priorityClassName",    "title": "Priority Class",  type: "text", width: 25},
      // {"name": "spec.preemptionPolicy",    "title": "Prior. Class",  type: "text", width: 20}, // PreemptLowerPriority
      // status
-     {"name": "status.phase",     "title": "Phase",  type: "text", width: 20}, // Running
-     {"name": "status.conditions","title": "Conditions",  type: "text", width: 20, itemTemplate: podcont_cell}, // AoO (always 4?) w type: Initialize, Ready,
-     {"name": "status.hostIP",    "title": "Host IP",  type: "text", width: 20}, // Also (sib) podIP, podIPs
-     {"name": "status.startTime", "title": "Start Time",  type: "text", width: 20},
-     {"name": "status.qosClass",  "title": "qos Class",  type: "text", width: 20},
+     {"name": "status.phase",       "title": "Phase",  type: "text", width: 15}, // Running
+     {"name": "status.conditions",  "title": "Conditions",  type: "text", width: 20, itemTemplate: gridplug.arrcnt}, // AoO (always 4?) w type: Initialize, Ready,
+     {"name": "status.hostIP",      "title": "Host IP",  type: "text", width: 20}, // Also (sib) podIP, podIPs
+     {"name": "status.startTime",   "title": "Start Time",  type: "text", width: 12, itemTemplate: gridplug.isodate},
+     {"name": "status.qosClass",    "title": "qos Class",  type: "text", width: 20},
      // 
      //{"name": "status.containerStatuses[0].name",  "title": "Cont Stat Name",  type: "text", width: 20},
      
    ];
    var fldinfo_gerr_change = [
-     {"name": "number",     "title": "Number",  type: "text", width: 20},
+     {"name": "_number",     "title": "Number",    type: "number", width: 8},
      
-     {"name": "project",     "title": "Project",  type: "text", width: 20},
-     {"name": "branch",     "title": "Branch",  type: "text", width: 20},
+     {"name": "project",     "title": "Project",   type: "text", width: 20},
+     {"name": "branch",      "title": "Branch",    type: "text", width: 15},
      //{"name": "hashtags",     "title": "Hashtags",  type: "text", width: 20},
-     {"name": "change_id",     "title": "Change ID",  type: "text", width: 20},
-     {"name": "subject",     "title": "Subject",  type: "text", width: 20},
-     {"name": "status",     "title": "Status",  type: "text", width: 20},
-     {"name": "created",     "title": "Created",  type: "text", width: 20},
-     {"name": "updated",     "title": "Updated",  type: "text", width: 20},
-     {"name": "mergeable",     "title": "Mergeable",  type: "text", width: 20},
-     {"name": "submittable",     "title": "Submittable",  type: "text", width: 20},
-     {"name": "insertions",     "title": "Added Lines",  type: "text", width: 20},
-     {"name": "deletions",     "title": "Deleted Lines",  type: "text", width: 20},
+     {"name": "change_id",   "title": "Change ID",  type: "text", width: 12,  itemTemplate: gridplug.csum_short},
+     {"name": "subject",     "title": "Subject",   type: "text", width: 50},
+     {"name": "status",      "title": "Status",    type: "text", width: 10},
+     {"name": "created",     "title": "Created",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // Trunc
+     {"name": "updated",     "title": "Updated",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // trunc
+     {"name": "mergeable",   "title": "MergeOK",   type: "text", width: 6}, // 
+     {"name": "submittable", "title": "SubmitOK",  type: "text", width: 6},
+     {"name": "insertions",  "title": "Added Lines", type: "text", width: 12},
+     {"name": "deletions",   "title": "Deleted Lines",  type: "text", width: 12},
      
-     {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 20},
+     {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 10},
      
    ];
    // TODO: Send sets as AoO, index by id
