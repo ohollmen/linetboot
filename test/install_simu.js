@@ -35,23 +35,37 @@ var totsize = 0;
 // Note binary data in resp may jam terminal
 // NOTE: resp.request Member agent (type Agent) agent.options
 function respint(resp) {
-  console.log("###### Resp has ("+resp.path+") hdrs ",resp.headers);
-  console.log("resp.request.agent.options: ",resp.request.agent.options);
+  // Notes:
+  // - There is no resp.path. Use either resp.config.url or resp.request.path
+  // - Body info is in .. request.res request.parser
+  // Unparseed resp line + headers in: request._header
+  // DEBUG:
+  //  console.log("### INTERCEPT:", resp); process.exit(1);
+  //console.log("### INTERCEPT-parser:", resp.request.res.parser);
+  console.log("###### INTERCEPT: Resp has (path: "+resp.request.path+") hdrs: ",resp.headers);
+  console.log("### INTERCEPT(resp): resp.request.agent.options: ",resp.request.agent.options);
+  console.log("### INTERCEPT-DATA(type):", typeof resp.data);
   if (resp.headers['set-cookie'] && Array.isArray(resp.headers['set-cookie'])) {
     resp.request.agent.options.headers = {}; // if not ...
+    // Likely one cookie available, take it
     var foo = resp.request.agent.options.headers["foo"] = resp.headers['set-cookie'][0];
     if (foo) { console.log("COOKIE:", foo); }
+    // Push more cookies ??
+    
   }
-  resp.headers["Access-Control-Allow-Origin"] = "*";
+  // Note: Case must be *lowercase* to override internal headers
+  // resp.headers["Access-Control-Allow-Origin"] = "HELLO";
+  resp.headers["access-control-allow-origin"] = "*"; // "HELLO";
   return resp; }
 
 function reqint(config) {
   // .method is avail here !
   config.withCredentials = true; // Set here to mimick coming from server
-  console.log("#### REQ-CONFIG: ", config);
+  console.log("#### INTERCEPT: REQ-CONFIG: ", config);
   
   return config;
 }
+// These become transformRequest / transformResponse
 axios.interceptors.request.use(reqint);
 axios.interceptors.response.use(respint);
 var cfg = {
@@ -62,7 +76,8 @@ var cfg = {
 'set-cookie': [ 'connect.sid=s%3A1y33obn0Y33fO1BaN4nHNQqPeL_VzrKw.kRh997i87W2ILFne2Sx3U6W1ZQ0nCFz%2FjY6BAAonlkw; Path=/; Expires=Thu, 30 Sep 2021 06:04:07 GMT; HttpOnly; SameSite=Strict' ],
  */
 axios.post("http://localhost:3000/login", {username: "ohollmen", password: "hi"}, cfg).then((resp) => {
-  console.log("RESP:", resp);
+  console.log("LOGIN-RESP:", resp);
+  
 }).catch((ex) => {
   console.log("FAIL: ", ex.response.status, ex);
 });
@@ -87,7 +102,7 @@ function download(url, cb) {
     var size = d.length; // Or content-length ?
     
     totsize += size;
-    console.log("Got "+url+", "+size+" B.");
+    console.log("DOWNLOAD: Got "+url+", "+size+" B.");
     cb(null, url);
   })
   .catch((ex) => {
