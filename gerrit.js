@@ -12,34 +12,50 @@ var fs = require("fs");
 var fetch = require("node-fetch");
 var DigestFetch = require('digest-fetch');
 var ssh2 = require("ssh2");
-var mc = require("./mainconf.js");
 
 // var upath = "a/accounts/$USER";
 var upath2 = "a/changes/?q=owner:"; // Olli+Hollmen";
 
-/*
-gaxios.get(serv+upath).then((resp) => {
-  var d = resp.data;
-  console.log("Data:"+d);
-}).catch((ex) => { console.log(ex); });
-*/
 let cfg = {};
 var client;
-var streamcmd;
+var streamcmd = "gerrit stream-events";
+var sshconf;
+var debug = 0;
+
 // var conn; // SSH
 function init(_cfg) {
   if (!cfg) { return; }
   cfg = _cfg;
   if (cfg.gerrit) { cfg = cfg.gerrit; }
-  console.log("G-CONF: ", cfg);
+  debug && console.log("G-CONF: ", cfg);
   client = new DigestFetch(cfg.user, cfg.pass, { basic: false })
   // Can work with password ?
-  var pkey   = fs.readFileSync(cfg.pkey, 'utf8'); // process.env['HOME']+'/.ssh/id_rsa'
-  var sshconf = {host: cfg.host, port: cfg.port, username: cfg.user, privateKey: pkey};
-  // streamcmd = "ssh -p 29418 " + cfg.host +
-  streamcmd = "gerrit stream-events";
-  // https://www.npmjs.com/package/ssh2
+  var pkey;
+  if (cfg.pkey) { pkey= fs.readFileSync(cfg.pkey, 'utf8'); }
+  sshconf = { host: cfg.host, port: cfg.sshport, username: cfg.user, privateKey: pkey };
+  // streamcmdbase = "ssh -p 29418 " + cfg.host +
+  // streamcmd = "gerrit stream-events";
   return;
+}
+
+/* Receive events
+* Event has
+* - type - event type (ref-updated, comment-added, change-abandoned, change-merged)
+* - submitter, patchSet, newRev, uploader, author (2 can be same), change - person (in change-merged)
+* - uploader (in comment-added)
+* - author (in comment-added)
+* - abandoner, reason, patchSet (in change-abandoned)
+* - refUpdate - with oldRev, newRev, refName, project (in ref-updated) ... this does not have number at all
+* - approvals ([])
+* - eventCreatedOn (e.g. 1642998276 always)
+* - comment (in type comment-added)
+
+* change has: project,branch,id (chidhash), number, subject,
+* Info on ssh2: https://www.npmjs.com/package/ssh2
+*/
+
+function changes_recv() {
+  debug && console.log(sshconf);
   var conn = ssh2.Client();
   conn.on('ready', () => {
     conn.exec(streamcmd, (err, stream) => {
@@ -49,23 +65,18 @@ function init(_cfg) {
         console.log("Stream close");
         
       }).on('data', (data) => {
-        console.log('STDOUT: ' + data);
+        // console.log('STDOUT: ' + data);
+        var evinfo;
+	try { evinfo = JSON.parse(data); }
+	catch (ex) { console.log("Error parsing evinfo: ", ex); }
+	console.log("EVINFO:"+JSON.stringify(evinfo));
       }).stderr.on('data', (data) => {
         console.log('STDERR: ' + data);
       });
     });  
   }).connect(sshconf);
 }
-// const response = await
-/*
-var global = require(process.env["HOME"]+"/.linetboot/global.conf.json");
-// global = mc.mainconf_load(globalconf);
-mc.env_merge(global);
-mc.mainconf_process(global);
-init(global); // require(process.env["HOME"]+"/.linetboot/global.conf.json"));
-*/
 
-// 'https://github.com/'
 function gerrapi(req, res) {
 
   var owner = cfg.user; // Get from req... (session)
@@ -79,9 +90,10 @@ function gerrapi(req, res) {
     return resp.text();
   }).then((data) => {
     data = data.replace(/\)\]\}'/, '');
+    // 
     data = JSON.parse(data);
-    res.json({status: "ok", data: data});
-    console.log(data);
+    if (res) { res.json({status: "ok", data: data}); }
+    console.log(data, null, 2);
   });
 
 } // gerrapi
@@ -93,3 +105,14 @@ module.exports = {
   init: init,
   gerrapi: gerrapi,
 };
+
+if (process.argv[1].match("gerrit.js")) {
+  var mc = require("./mainconf.js");
+  var global = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  // global = mc.mainconf_load(globalconf);
+  mc.env_merge(global);
+  mc.mainconf_process(global);
+  init(global); // require(process.env["HOME"]+"/.linetboot/global.conf.json"));
+  // gerrapi();
+  changes_recv();
+}
