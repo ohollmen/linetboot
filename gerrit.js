@@ -14,9 +14,9 @@ var DigestFetch = require('digest-fetch');
 var ssh2 = require("ssh2");
 var mc = require("./mainconf.js");
 
-// var serv = "https://gerrit-ccxsw.broadcom.net/";
-var upath = "a/accounts/oh890557";
-var upath2 = "a/changes/?q=owner:oh890557"; // Olli+Hollmen";
+// var upath = "a/accounts/$USER";
+var upath2 = "a/changes/?q=owner:"; // Olli+Hollmen";
+
 /*
 gaxios.get(serv+upath).then((resp) => {
   var d = resp.data;
@@ -32,7 +32,6 @@ function init(_cfg) {
   cfg = _cfg;
   if (cfg.gerrit) { cfg = cfg.gerrit; }
   console.log("G-CONF: ", cfg);
-  //client = new DigestFetch('oh890557', 'NnthKEpoRZI59pzAK/PmrfQ12qkigYClekbEOaJGtA', { basic: false })
   client = new DigestFetch(cfg.user, cfg.pass, { basic: false })
   // Can work with password ?
   var pkey   = fs.readFileSync(cfg.pkey, 'utf8'); // process.env['HOME']+'/.ssh/id_rsa'
@@ -58,16 +57,19 @@ function init(_cfg) {
   }).connect(sshconf);
 }
 // const response = await
-
+/*
 var global = require(process.env["HOME"]+"/.linetboot/global.conf.json");
 // global = mc.mainconf_load(globalconf);
 mc.env_merge(global);
 mc.mainconf_process(global);
 init(global); // require(process.env["HOME"]+"/.linetboot/global.conf.json"));
+*/
 
 // 'https://github.com/'
 function gerrapi(req, res) {
-  client.fetch("https://"+cfg.host+"/"+upath2).then((resp) => {
+
+  var owner = cfg.user; // Get from req... (session)
+  client.fetch("https://"+cfg.host+"/"+upath2+owner).then((resp) => {
     // console.log("Got to resp: ", resp);
     // resp.json();
     console.log("=========================================");
