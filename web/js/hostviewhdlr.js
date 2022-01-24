@@ -1227,7 +1227,9 @@ function dprep_syspods(act, arr) {
     if (typeof pod.container != 'object') { console.error("Warning: container is not an object"); }
   });
 }
-// Note: Not a Trend
+// Note: Not a Trend.
+// If all count fields do not appear in chart, log in as cov user and add to that users fields.
+// For other users reports that prevent access to them, 
 function dprep_covcomp(act, data) {
   if (!Array.isArray(data)) { toastr.error("Data not in array for conversion"); return; }
   var arr = data; // ???
