@@ -2981,9 +2981,9 @@ function pods_info(req, res) {
     if (!fs.existsSync(testfn)) { jr.msg += "No test file ("+testfn+")"; return res.json(jr); }
     console.log("k8s: Use mock file: "+testfn);
     var pods = require(testfn);
-    let data = pods.items;
-    if (req.url.match(/kubapirsc/)) { data = pods.resources; }
+    
     if (!pods) { jr.msg += "Loading of test file failed"; return res.json(jr); }
+    let data = api2data(pods);
     return res.json({status: "ok", data: data}); // pods.items
   }
   
@@ -2991,7 +2991,13 @@ function pods_info(req, res) {
   console.log("Consult k8S URL: "+k8surl);
   axios.get(k8surl).then((resp) => {
     var pods = resp.data;
-    res.json({status: "ok", data: pods.items});
+    let data = api2data(pods);
+    res.json({status: "ok", data: data}); // pods.items
   })
   .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call"; res.json(jr); });
+  function api2data(rdata) {
+    let data = rdata.items;
+    if (req.url.match(/kubapirsc/)) { data = rdata.resources; }
+    return data;
+  }
 }
