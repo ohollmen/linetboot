@@ -35,8 +35,32 @@ function mainconf_load(globalconf) {
   if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
   var global   = require(globalconf);
   if (!global) { error("Main conf JSON ("+globalconf+") could not be loaded !"); }
-  
+  // Add overlay detection. For now ONLY available via env variable.
+  // TODO: Allow secondary overlay point/refer to inherited / super maincfg that should be loaded FIRST.
+  // Because we do this EARLY, the whole config is subject to tilde expansion.
+  var ofn = process.env['LINETBOOT_OVERLAY_CONFIG'];
+  if (ofn && fs.existsSync(ofn)) {
+    var olay = require(ofn);
+    console.log("Merging overlay config: ofn: "+ofn+", data: "+ typeof olay);
+    olay_merge(global, olay);
+  }
   return global;
+  // Merge overlay config with overrides to main config. Assume same layout (spec) as main config.
+  // Any violations in overlay will corrupt main config.
+  // Note: (for now) The target section must exist in the main config to be accepted from overlay
+  function olay_merge(mcfg, olay) {
+    var oks = Object.keys(olay);
+    if (!oks || !Array.isArray(oks)) { return; }
+    oks.forEach((ok) => {
+      if (!mcfg[ok]) { console.log("No target section '"+ok+"' in mcfg");return; }
+      // TODO: Create as empty mcfg[ok] = {};
+      if (typeof olay[ok] != 'object') { console.log("Overlay file top-section '"+ok+"' is not an object");return; }
+      var subkeys = Object.keys(olay[ok]);
+      subkeys.forEach((k) => {
+        mcfg[ok][k] = olay[ok][k]; // Merge / override
+      });
+    });
+  }
 }
 /** Load Initial User (for OS Installation).
  * Note: this should take place after tilde expansion (in mainconf_process()) has taken place.
