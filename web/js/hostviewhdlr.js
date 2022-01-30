@@ -417,7 +417,7 @@ function httpcode2color(code) {
   return "#AA0000";
 }
   
-// UI Setup: Docker sync ops
+// UI Setup: Docker sync ops (Hook onto cell data-image created by grid fld plugin)
 function uisetup_dockercat(act) {
   $(".docksync").click(function (jev) {
     var img = this.getAttribute("data-image"); // .dataset.image;
