@@ -445,18 +445,18 @@ var gridplug = {
     // itemTemplate: ...
     {name: "givenName", title: "First Name", type: "text", width: 40, visible: false},
     {name: "sn", title: "Last Name", type: "text", width: 40, visible: false},
-    {name: "displayName", title: "Name", type: "text", width: 100, itemTemplate: uname_cell},
+    {name: "displayName", title: "Name", type: "text", width: 80, itemTemplate: uname_cell},
     {name: "sAMAccountName", title: "Username", type: "text", width: 40},
     //{name: "uid", title: "Username (UNIX)", type: "text", width: 40, visible: false},
-    {name: "mail", title: "Email Address", type: "text", width: 100},
+    {name: "mail", title: "Email Address", type: "text", width: 70},
     //{name: "title", title: "title", type: "text", width: 60},
     {name: "employeeNumber", title: "Emp #", type: "text", width: 40, visible: false},
-    {name: "division", title: "Division", type: "text", width: 40},
+    {name: "division", title: "Division", type: "text", width: 20},
     //{name: "telephoneNumber", title: "Phone", type: "text", width: 100, visible: false},
     // Locality
     {name: "streetAddress", title: "Street Address", type: "text", width: 40, visible: false},
-    {name: "l", title: "City/Town", type: "text", width: 40, visible: false},
-    {name: "st", title: "State/County", type: "text", width: 40, visible: false},
+    {name: "l", title: "City/Town", type: "text", width: 40, visible: true},
+    {name: "st", title: "State/County", type: "text", width: 40, visible: true},
     {name: "co", title: "Country", type: "text", width: 40},
     // Needs parsing (;)
     //{name: "postalAddress", title: "Complete Post Address", type: "text", width: 40, visible: false},
