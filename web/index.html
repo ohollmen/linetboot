@@ -377,9 +377,12 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <h3>Docker System settings and Images</h3>
 <div id="denvinfo">
 <ul>
-<li>Run containers as: {{ asuser }}</li>
+<li>Run containers as user: {{ asuser }}</li>
+<li>Run containers as group: {{ asgroup }}</li>
 <li>Add new user: {{ mergeuser }}</li>
+<li>Add new group: {{ mergegroup }}</li>
 <li>Globally mounted volumes: {{{ vols }}}</li>
+<li>Debug: {{{ debug }}}</li>
 </ul>
 </div>
 <div id="jsGrid_dockercat"></div>
