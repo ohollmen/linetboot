@@ -212,7 +212,8 @@ Runner.prototype.ansible_run = function (xpara) { //
   var p = this;
   p.debug && console.log("RUN: instance params: " + JSON.stringify(p, null, 2));
   // Validate hostnames against which ones we know through facts (hostcache).
-  if (!p.hostnames) { throw "No 'hostnames' passed (groups should be resolved to hostnames)"; }
+  // OLD: ... (groups should be resolved to hostnames)
+  if (!p.hostnames && !p.hostgroups) { throw "Neither 'hostnames' or 'hostgroups' passed !"; }
   if (!p.playbooks) { throw "No 'playbooks' passed / resolved (from profiles)"; }
   if (!p.invfn)     { throw "No inventory file ('invfn') given";}
   if (!fs.existsSync(p.invfn)) { throw "inventory file does not exist !"; }
