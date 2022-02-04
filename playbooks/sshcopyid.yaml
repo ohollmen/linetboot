@@ -2,6 +2,7 @@
   # Important to *only* be current user
   become: no
   hosts: '{{ host }}'
+  # Not fit for authorized_key module?
   connection: local
   #gather_facts: false
   #NOT:serial: 1
@@ -17,3 +18,13 @@
       #when: inventory_hostname != "local"
       #when:  inventory_hostname  != 'myhost.somewhere.com'
       #when: 0
+    - name: SSH Copy id (Easy way)
+      authorized_key:
+        user: '{{ remoteuser }}'
+        state: present
+        # Does ~ expand here ?
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+      when: 0
+      # Could use (note indent):
+      #  key: '{{ item }}'
+      # with_file:\n- ~/.ssh/id_rsa.pub
