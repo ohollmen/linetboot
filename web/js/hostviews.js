@@ -446,15 +446,18 @@ function ansirun(jev) {
   var act2url = {anssend: "/ansrun", anssend3: "/ansfacts"};
   if (this.id == 'anssend' && is_not_given(para.playbooks) && is_not_given(para.playprofile)) { toastr.error("Neither playbooks or playprofile given !"); $(but).removeAttr("disabled"); return; }
   var url = act2url[this.id];
+  /////////////////// Call ansible /////////////////
+  // TODO: Come up with hooks (e.g.): onresp, onresperr
   console.log("ansirun Call URL:" + url);
   axios.post(url, para).then(function (resp) { // "/ansrun"
     var rp = resp.data;
+    // TODO: throw
     if (!resp.headers["content-type"].match(/json/)) { return alert("ansrun: Non-JSON response"); }
     if (!rp) { return alert("No ansible response !"); }
     $(but).removeAttr("disabled");
     // TODO: Toaster
     if (rp.status == 'err') { return toastr.error(rp.msg); }
-    var id = rp.data ? rp.data.runid : 0;
+    var id = rp.data ? rp.data.runid : 0; // Grab "runid" (to poll by)
     if (!id) { return toastr.error("No runid in response !"); }
     toastr.info("<li>Request ID: "+id+ "<li>"+ rp.msg, "Gather and Copy were run.");
     console.log("Got Ansible run server resp ("+id+"): ", rp);
@@ -471,6 +474,7 @@ function ansirun(jev) {
     if (but.id == 'anssend') { compl_ack_poll(id, opts); } // this.id does not work here (in axios ctx)
     // NO NEED: Unlock element
     //$(but).click(ansirun); // handler Assignment does not change
+    // Initially rely on "this" / current ctx info (e.g. iid, opts, ...) be avail via local ctx vars
     function compl_ack_poll(id, opts) {
       var cnt = 0;
       // cb = cb || opts.cb || function () { console.log("Completed polling for "+id); }
@@ -481,7 +485,7 @@ function ansirun(jev) {
         var url = opts.baseurl + id; // "/ansackpoll?runid="+id;
         console.log("Inquire: "+url);
         axios.get(url).then((resp) => {
-          var d = resp.data;
+          var d = resp.data; // TODO More heuristics in finding "d" / "d.data".
           if (d.status == "err")  { console.log("Error at ..."+cnt+" - "+d.msg); clearInterval(iid); } // Error - Cancel poll
           if (d.status == "wait") { console.log("Continue polling ..."+cnt); } // Continue wait
           if (d.status == "ok")   {
@@ -494,7 +498,7 @@ function ansirun(jev) {
         }).catch((ex) => { console.log("Exception at "+cnt); clearInterval(iid); }); // Error - Cancel poll
       }, opts.pollint);
       // return this;
-    }
+    } // compl_ack_poll
   }).catch((ex) => {
     var resp = ex.response;
     toastr.error(ex);

@@ -431,6 +431,7 @@ function uisetup_dockercat(act) {
     var p = { hostgroups: syncgrps, "playbooks": ["./playbooks/docker_pull.yaml"], xpara: {image: img}}; // See: ansirun OLD: [hgrp]
     console.log("Docker run para:", p);
     // Run ansible w. params /ansrun. TODO: Add request para ?
+    // TODO: Use higher level approach with polling (See: 
     axios.post("/ansrun", p).then(function (resp) {
       var r = resp.data;
       if (r.status == 'err') { toastr.error(r.msg); }
@@ -1286,18 +1287,19 @@ function jgrid_form(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   var fsid = act.fsetid;
   if (!fsid) { toastr.error("No basis to create form 1\n"); return; }
-  var cont = "";
   var fdefs = fldinfo[fsid];
   if (!fdefs) { toastr.error("No basis to create form 2\n"); return; }
   var labelw = act.labelw || "120";
+  var cont = "";
   fdefs.forEach((fd) => { // map ?
     //if (!fd.visible && cfg.onlyvis) { return; }
     cont += "<label style=\"width: "+labelw+"px\" for=\"w_"+fd.name+"\">"+fd.title+"</label>";
-    // Choice of w.
+    // TODO: Choice of w. (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     cont += "<input type=\"text\" name=\"w_"+fd.name+"\" id=\"w_"+fd.name+"\">";
     cont += "<br/>";
     
   });
+  // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   datasets["testform"] = "<form>{{{ cont }}}</form>";
   rapp.templated("testform", {cont: cont}, tgtid);
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
