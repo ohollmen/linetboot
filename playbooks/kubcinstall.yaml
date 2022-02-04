@@ -1,0 +1,86 @@
+# ## Install K8S On Ubuntu
+# The initial chores before this involve:
+# - Create service account (e.g. with "user" module)
+# - Adding service account to sudo group
+# - Copying local ansible user public key to service acct
+#   (e.g. using authorized_key module)
+# 
+# ## Host inventory vars
+# 
+# - On master set `k8smaster=1`
+# - No need to set anything on Nodes/Workers
+- name: Install Kubernetes Cluster
+  hosts: '{{ host }}'
+  vars:
+    k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    # Distro: xenial=
+    k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    k8s_ver: 1.14.0-00
+    # Flannel Default
+    k8s_cluster_cidr: '10.244.0.0/16'
+    k8s_user: ubuntu
+    # TODO: use in tasks !
+    k8s_user_home: /home/ubuntu
+    k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+  tasks:
+    # Add K8S install pkg repos
+    - name: Add K8S apt-key
+      apt_key:
+        url: '{{ k8s_apt_key_url }}'
+        state: present
+    - name: Add Kubernetes APT Repository
+      apt_repository:
+        repo: '{{ k8s_apt_repo_line }}'
+        state: present
+        filename: 'kubernetes'
+    - name: Master/WorkerNode Common installs
+      apt:
+        update_cache: yes
+        state: present
+        force_apt_get: yes
+        install_recommends: no
+        name: ["docker.io", "apt-transport-https", "kubelet=1.14.0-00", "kubeadm=1.14.0-00"]
+    - name: Install kubectl on Master
+      apt:
+        name: kubectl=1.14.0-00
+        state: present
+        force: yes
+      when: k8smaster
+    - name: initialize the Cluster (on master)
+      shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
+      args:
+        chdir: $HOME
+        creates: cluster_initialized.txt
+      when: k8smaster
+    # Can we not impersonate, but say user: ... (like in copy) here. YES, BUT...
+    # become/become_user is better at detecting users (possibly custom) homedir
+    # Also: {{ ansible_env.HOME }} on https://docs.ansible.com/ansible/latest/reference_appendices/faq.html
+    - name: Create .kube directory
+      become: yes
+      become_user: '{{ k8s_user }}'
+      file:
+        path: $HOME/.kube
+        #path: '/home/{{ k8s_user }}/.kube'
+        state: directory
+        mode: 0755
+        #owner: '{{ k8s_user }}'
+      when: k8smaster
+    - name: copy admin.conf to user's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        # NOTE: This will not work for custom homedirs
+        dest: /home/{{ k8s_user }}/.kube/config
+        remote_src: yes
+        owner: '{{ k8s_user }}'
+      when: k8smaster
+    # Gets Multi-doc with kind(s): ClusterRole,ClusterRoleBinding,ServiceAccount,
+    # DaemonSet(amd64),DaemonSet(arm64),DaemonSet(arm),DaemonSet(ppc),DaemonSet(s390x)
+    # DaemonSet:s installed by (e.g.) nodeSelector: beta.kubernetes.io/arch: amd64
+    - name: install Pod (flannel) network (by k8s YAML apply)
+      become: yes
+      become_user: '{{ k8s_user }}'
+      shell: kubectl apply -f {{ k8s_flannel_yaml }} >> pod_network_setup.txt
+      args:
+        chdir: $HOME
+        creates: pod_network_setup.txt
+      when: k8smaster
