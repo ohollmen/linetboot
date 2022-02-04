@@ -10,7 +10,8 @@ LABEL maintainer="Olli Hollmen" description="Linetboot App Server"
 # Prevent "Configuring tzdata" during pkg install
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Los_Angeles
-RUN apt-get update && apt-get install -y --no-install-recommends wget locales 
+# TODO: tftpd-hpa
+RUN apt-get update && apt-get install -y --no-install-recommends wget openssh-client locales
 # ENV MYUTIL_VER=1.0
 # External / Third party raw packages ?
 # file://./
@@ -18,10 +19,12 @@ COPY ./ /linetboot
 
 
 # Create Dirs (RUN mkdir ...) ?
-RUN mkdir -p  /linetboot
+RUN mkdir -p  /linetboot && mkdir -p /isomnt
 
 # Create symlinks (RUN ln -s ...) ?
 RUN ln -s /linetboot/ /root/linetboot
+WORKDIR /root
+RUN mkdir -p /root/hostinfo /root/hostrmgmt /root/hostpkginfo
 
 # Env. Additions ?
 ENV LC_ALL=en_US.UTF-8 LANGUAGE=en_US
@@ -37,14 +40,15 @@ RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 # Run Commands
 #USER :
 # Cwd for RUN, CMD, ENTRYPOINT, COPY and ADD (to follow)
-#WORKDIR /foo
+WORKDIR /linetboot
 # Expose ports (See also mapping by: docker run -p Psrc:Pdest)
 #EXPOSE 8
-#EXPOSE 300
+EXPOSE 3000
 
 # apt-get clean
 
 # Default Main command (when no command is passed with docker run)
 # Note if ENTRYPOINT is in exec form, CMD (in exec form) becomes
 # (add'l) params to ENTRYPOINT command.
-CMD bash
+# CMD bash
+CMD node linetboot

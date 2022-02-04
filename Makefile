@@ -156,3 +156,9 @@ mkmediadir:
 	#if 
 	cd /isomnt; sudo mkdir centos6 centos7 ubuntu18 ubuntu18dt ubuntu20 arch2019 \
 	   clzilla freebsd12 freedos1 gparted opensuse_tw_64
+dockerimg:
+	docker build --rm=true -t 'linetboot:0.0.1' -f docker/Dockerfile.linetboot .
+# sudo lsof -i -P -n | grep 3005
+# Error: Invalid username
+dockerrun:
+	docker run --rm=true -p 3005:3000 -e "A=B" -v /isomnt:/isomnt -v ~/.linetboot:/root/.linetboot -v ~/.ssh/:/root/.ssh -v ~/hostrmgmt:/root/hostrmgmt -v ~/hostinfo:/root/hostinfo -v ~/hostpkginfo:/root/hostpkginfo -t 'linetboot:0.0.1' node /linetboot/linetboot.js
