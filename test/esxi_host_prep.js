@@ -117,7 +117,7 @@ function json_merge() {
   });
   if (process.argv.includes("--save")) {
     console.log("Save !");
-    // fs.writeFileSync( fname, JSON.stringify(j, null, 2), {encoding: "utf8"} );
+    fs.writeFileSync( fname, JSON.stringify(j, null, 2), {encoding: "utf8"} );
   }
 
   // Patch / merge
