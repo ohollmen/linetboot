@@ -23,9 +23,9 @@ var atmap = {
 };
 
 
-var cont = fs.readFileSync("./esxi_net_sample.txt", 'utf8');
-var net = parse_net(cont); // console.log(net); // process.exit(0);
-
+//var cont = fs.readFileSync("./esxi_net_sample.txt", 'utf8');
+//var net = parse_net(cont); // console.log(net); // process.exit(0);
+var net = {};
 
 
 function make_netinfo() {
@@ -38,7 +38,7 @@ function make_netinfo() {
   cproc.exec(cmd, (err, stdout, stderr) => {
     //if (err) { usage("No network info from "+hname+": "+ err); }
     //console.log(stdout);
-    //var net = parse_net(stdout);
+    net = parse_net(stdout);
     var dnsopts = {};
     dns.resolveAny(hname, dnsopts, function (err, addrs) {
       if (err) { usage("Could not resolve "+hname+": "+err); }
