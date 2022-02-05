@@ -30,6 +30,17 @@ summary.quickStats .. uptimeSeconds
 * - https://code.vmware.com/docs/1682/vsphere-web-services-sdk-programming-guide/doc/PG_PropertyCollector.7.5.html
 * - https://vdc-download.vmware.com/vmwb-repository/dcr-public/d4fd4125-8683-4388-9bf0-7b73c0e5cc34/e5b8ce6d-969f-4e48-af05-d572c08e7b47/vsphere-web-services-sdk-70-ga.pdf
 *   - See e.g. p. 60-80
+* # Note on ESXi Host Machines and Facts
+* When extracing facts from ESXi VM Host machines, they have following shorcomings or characteristics (as logged by linetboot at startup) and
+* are not accepted as valid facts:
+* - SELinux turned on ? "ansible_selinux": { status": "Missing selinux Python library" },
+* - Interpreter: /usr/bin/python, version 3.5.3
+* - From linetboot:
+*   - "WARNING: Host 'vi-06.mycomp.com' not matching fqdn and/or hostname: fqdn" - "ansible_fqdn": "vi-06", Must be appended with e.g.
+*   - "No Net Interface info in facts for vi-06" facts.ansible_default_ipv4 (object) missing, should have: address, alias, broadcast, gateway, interface(==alias),
+*      macaddress, mtu, netmask, network, type(=ether)
+* - Problems: ip or ifconfig not found. https://www.tunnelsup.com/networking-commands-for-the-vmware-esxi-host-command-line/
+* - esxcli network ip interface list
 */
 
 var xjs  = require('xml2js');
@@ -311,7 +322,7 @@ function gethost(esh) {
   h.name = nv ? nv._ : null;
   // summary.runtime is under (upper) runtime
   var rtv;
-  var rt = getPropSetprop(esh, "runtime", ); // "val"
+  var rt = getPropSetprop(esh, "runtime"); // "val" . Had "runtime", )
   if ( ! (rtv = validate_node_ok(g, "guest")) ) { return null; }
   //console.log("RT: ", rtv); // WIP ...: screen, guestKernelCrashed, appState, 
   var qs = getPropSetprop(esh, "summary.quickStats", "valself"); // .. uptimeSeconds
