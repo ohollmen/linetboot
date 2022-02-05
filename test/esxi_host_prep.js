@@ -34,10 +34,10 @@ function make_netinfo() {
 
   // Check host in DNS ?
   // Other cmds: esxcfg-route, esxcli network ip route ipv4 list
-  var cmd = "ssh root@"+hname+"XXX esxcli network ip interface list";
+  var cmd = "ssh root@"+hname+" esxcli network ip interface list";
   cproc.exec(cmd, (err, stdout, stderr) => {
-    //if (err) { usage("No network info from "+hname+": "+ err); }
-    //console.log(stdout);
+    if (err) { usage("No network info from "+hname+": "+ err); }
+    console.error("STD-SOME:"+stderr);
     net = parse_net(stdout);
     var dnsopts = {};
     dns.resolveAny(hname, dnsopts, function (err, addrs) {
