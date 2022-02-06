@@ -23,7 +23,7 @@ var ssh2  = require('ssh2'); // .Client;
 var fs    = require('fs');
 var async = require("async");
 var ipmi  = require("./ipmi.js"); // IPMI !!!!
-var hlr      = require("./hostloader.js"); // NEW (for hostparams)
+var hlr   = require("./hostloader.js"); // NEW (for hostparams)
 var servers;
 var resolver;
 //const resolver = new Resolver();
@@ -70,7 +70,10 @@ function resolve(hnode, cb) {
   var prec = {hname: hn, ip: ip_org, ipok: 0, nameok: 0, macok: 0}; // probe record
   var pingcfg = {timeout: 10};
   // TODO: Pull from module config
-  var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey};
+  var sshuser = process.env['USER'];
+  let p = hlr.hostparams(hn);
+  if (p && p.sshuser) { sshuser = p.sshuser; }
+  var sshcfg = {host: hn, username: sshuser, privateKey: pkey};
   var sshcmd = "uptime";
   if (typeof cb != 'function') { throw "resolve: cb is not a function !"; }
   // dns module: resolve4, resolveAny, resolveCname
@@ -101,7 +104,7 @@ function resolve(hnode, cb) {
           prec.ping = isok;
           if (! isok) { console.log("Ping fail: "+ipaddr); return cb(null, prec); } // No use connecting, but not error. Error: Callback was already called.
           // Host still registered in inventory, but SSH does not work (or may block)
-          var p = hlr.hostparams(hn);
+          let p = hlr.hostparams(hn);
           // sshconn = 2 => Skipped
           if (p && p.nossh) { prec.nossh = 1; prec.sshconn = 2; console.log("Skipping SSH ("+hn+") !!!"); return cb(null, prec); }
           // console.log(sshcfg);
