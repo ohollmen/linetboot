@@ -103,27 +103,32 @@ function json_merge() {
   // require('split')() // was passsed to stdin.pipe()
   var sidata = "";
   console.error("Reading STDIN (if any)\n");
+  var jin; // Declare here to have avail in --save block
+  var newcont;
   process.stdin.on('data', (l) => {sidata += l; }).on("end", () => {
-    console.log("Got: "+sidata);
-    var jin = JSON.parse(sidata);
+    console.error("Got: "+sidata);
+    jin = JSON.parse(sidata);
     if (!jin) { usage("No Proper JSON from STDIN!"); }
     console.error(JSON.stringify(jin, null, 2));
     
     // Merge
     merge(jin, j);
-    console.log(JSON.stringify(j, null, 2));
+    newcont = JSON.stringify(j, null, 2);
+    console.log(newcont);
+    if (process.argv.includes("--save")) {
+      console.error("Save to '"+fname+"'");
+      // JSON.stringify(j, null, 2)
+      fs.writeFileSync( fname, newcont, {encoding: "utf8"} );
+    }
+
   });
-  if (process.argv.includes("--save")) {
-    console.log("Save !");
-    fs.writeFileSync( fname, JSON.stringify(j, null, 2), {encoding: "utf8"} );
-  }
 
   // Patch / merge. Internally use branch j.ansible_facts
   function merge(jin, j) {
     if (j.ansible_facts) { j = j.ansible_facts; }
     Object.keys(jin).forEach((k) => {
-      if (j[k]) { usage("Key "+k+" already in target JSON."); }
-      console.log("Merging "+k);
+      // if (j[k]) { usage("Key "+k+" already in target JSON."); }
+      console.error("Merging "+k);
       j[k] = jin[k];
     });
   }
