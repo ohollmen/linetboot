@@ -1,57 +1,107 @@
 # ## Install K8S On Ubuntu
-# The initial chores before this involve:
+# The initial chores before this (playbook) involve:
+# 
 # - Create service account (e.g. with "user" module)
 # - Adding service account to sudo group
 # - Copying local ansible user public key to service acct
-#   (e.g. using authorized_key module)
+#   (e.g. using ansible `authorized_key` module)
 # 
 # ## Host inventory vars
 # 
 # - On master set `k8smaster=1`
 # - No need to set anything on Nodes/Workers
+# 
+# ## Playbook Vars
+# 
+# Choose carefully the version of k8s (k8s_ver) for e.g. network plugin compatibility.
+# 
+# ## Running
+# Typical extra vars: '{"k8s_user":"kubadm", "k8s_user_home":"/home_local/kubadm", "k8s_ver": "1.21.9-00"}'
+# Fixed: The error was: error while evaluating conditional (k8smaster): 'k8smaster' is undefined (fixed by: k8smaster is defined)
+# 
+# ## Refs
+# -  https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
 - name: Install Kubernetes Cluster
   hosts: '{{ host }}'
+  become: yes
   vars:
     k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
     # Distro: xenial=
     k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
-    k8s_ver: 1.14.0-00
+    # k8s_ver: 1.14.0-00
+    # latest for 18.04 (as of 2022-02):
+    # k8s_ver: 1.23.3-00
+    # Should use:
+    k8s_ver: 1.21.9-00
     # Flannel Default
     k8s_cluster_cidr: '10.244.0.0/16'
     k8s_user: ubuntu
     # TODO: use in tasks !
     k8s_user_home: /home/ubuntu
-    k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+    # Github repo: https://github.com/flannel-io/flannel/blob/master/Documentation/kube-flannel.yml
+    # ()
+    # k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+    # 221a83cab893a4a724aaff0bb53fbfd14a7724e4 Jul 24, 2020
+    k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/221a83cab893a4a724aaff0bb53fbfd14a7724e4/Documentation/kube-flannel.yml
   tasks:
     # Add K8S install pkg repos
-    - name: Add K8S apt-key
+    # curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add
+    - name: Add Google K8S apt-key
       apt_key:
         url: '{{ k8s_apt_key_url }}'
         state: present
+    # sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
     - name: Add Kubernetes APT Repository
       apt_repository:
         repo: '{{ k8s_apt_repo_line }}'
         state: present
         filename: 'kubernetes'
+    # Must do on docker configs (will this sustain over docker.io install ?)
+    # The cgroupdriver must match between docker and k8s (See: misconfiguration: kubelet cgroup driver: ...)
+    # Set as *exclusive content of /etc/docker/daemon.json
+    # NOTE: /var/lib/kubelet/config.yaml is supposed to have "cgroupDriver" (at least in some versions, e.g. around 1.11.0)
+    # See: https://github.com/kubernetes/kubernetes/issues/65863
+    - name: Set cgroupdriver to match (docker vs. k8s)
+      copy:
+        content: '{ "exec-opts": ["native.cgroupdriver=cgroupfs"] }\n'
+        dest: /etc/docker/daemon.json
+        backup: yes
+        mode: '644'
+    # Possible errors:
+    # - misconfiguration: kubelet cgroup driver: ...x
+    # - failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/
     - name: Master/WorkerNode Common installs
       apt:
         update_cache: yes
         state: present
         force_apt_get: yes
         install_recommends: no
-        name: ["docker.io", "apt-transport-https", "kubelet=1.14.0-00", "kubeadm=1.14.0-00"]
+        name: ["docker.io", "apt-transport-https", "kubelet={{ k8s_ver }}", "kubeadm={{ k8s_ver }}"]
     - name: Install kubectl on Master
       apt:
-        name: kubectl=1.14.0-00
+        name: "kubectl={{ k8s_ver }}"
         state: present
         force: yes
-      when: k8smaster
+        install_recommends: no
+      when: k8smaster is defined
+    #  "stderr": "swapoff: –a: swapoff failed: No such file or directory",
+    #- name: Disable swap for K8S Initialization
+    #  shell: /sbin/swapoff –a
+    # Suggested by error msgs: -v=5  --ignore-preflight-errors=all
+    # "The connection to the server 10.75....:6443 was refused - did you specify the right host or port?"
+    # Host tried (from master) was master
+    # kube-apiserver uses port 6443
+    # failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet con...
+    # misconfiguration: kubelet cgroup driver: \"systemd\" is different from docker cgroup driver: \"cgroupfs\"
+    # https://stackoverflow.com/questions/45708175/kubelet-failed-with-kubelet-cgroup-driver-cgroupfs-is-different-from-docker-c
+    #  journalctl -u kubelet
+    # Suggested in  /etc/docker/daemon.json   "exec-opts": ["native.cgroupdriver=cgroupfs"],
     - name: initialize the Cluster (on master)
       shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
       args:
         chdir: $HOME
         creates: cluster_initialized.txt
-      when: k8smaster
+      when: k8smaster is defined
     # Can we not impersonate, but say user: ... (like in copy) here. YES, BUT...
     # become/become_user is better at detecting users (possibly custom) homedir
     # Also: {{ ansible_env.HOME }} on https://docs.ansible.com/ansible/latest/reference_appendices/faq.html
@@ -64,18 +114,21 @@
         state: directory
         mode: 0755
         #owner: '{{ k8s_user }}'
-      when: k8smaster
-    - name: copy admin.conf to user's kube config
+      when: k8smaster is defined
+    - name: Copy admin.conf to user's kube config
       copy:
         src: /etc/kubernetes/admin.conf
         # NOTE: This will not work for custom homedirs
-        dest: /home/{{ k8s_user }}/.kube/config
+        # dest: '/home/{{ k8s_user }}/.kube/config'
+        dest: '{{ k8s_user_home }}/.kube/config'
         remote_src: yes
         owner: '{{ k8s_user }}'
-      when: k8smaster
+      when: k8smaster is defined
     # Gets Multi-doc with kind(s): ClusterRole,ClusterRoleBinding,ServiceAccount,
     # DaemonSet(amd64),DaemonSet(arm64),DaemonSet(arm),DaemonSet(ppc),DaemonSet(s390x)
-    # DaemonSet:s installed by (e.g.) nodeSelector: beta.kubernetes.io/arch: amd64
+    # DaemonSet:s (should be) installed by (e.g.) nodeSelector: beta.kubernetes.io/arch: amd64
+    # Complaints (Kub. 1.23.3-00) about kinds: ClusterRole, ClusterRoleBinding (and
+    # DaemonSet in later YAML manifest). Have these kinds been deprecated with very recent 1.23 k8s ?
     - name: install Pod (flannel) network (by k8s YAML apply)
       become: yes
       become_user: '{{ k8s_user }}'
@@ -83,4 +136,6 @@
       args:
         chdir: $HOME
         creates: pod_network_setup.txt
-      when: k8smaster
+      when: k8smaster is defined
+    #  Must run join on workers
+    # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
