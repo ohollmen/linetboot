@@ -1,0 +1,46 @@
+# ## Remove K8S Installation On Ubuntu
+# 
+# This does the opposite of kubcinstall.yaml in a fairly terse manner.
+# - Does NOT remove k8s repo key and repo defs because re-install of
+#   another version may follow this removal
+# - Does not remove docker.io or apt-transport-https
+# - Does not remove k8s_user files (under it's $HOME)
+# 
+# ## Host inventory vars
+# 
+# - On master set `k8smaster=1`
+# - No need to set anything on Nodes/Workers
+# 
+# ## Playbook vars
+# - Set exec_rm to true value (e.g. yes) to execute
+- name: Install Kubernetes Cluster
+  hosts: '{{ host }}'
+  vars:
+    # TODO: use in tasks !
+    k8s_user: ubuntu
+    k8s_user_home: /home/ubuntu
+    exec_rm: no
+  tasks:
+    # Do *not* remove:
+    # - the commonly installed-by-default "apt-transport-https" !
+    # - "docker.io" - as it may have lot of other uses
+    - name: Remove Master/WorkerNode Common installs
+      apt:
+        update_cache: yes
+        state: absent
+        force_apt_get: yes
+        install_recommends: no
+        name: [ "kubelet", "kubeadm" ]
+    - name: Install kubectl on Master
+      apt:
+        name: kubectl
+        state: absent
+        force: yes
+      when: k8smaster is defined
+    # TODO: Is there an opposite of kubeadm init ?
+    #- name: initialize the Cluster (on master)
+    #  shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
+    #  args:
+    #    chdir: $HOME
+    #    creates: cluster_initialized.txt
+    #  when: k8smaster is defined
