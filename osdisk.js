@@ -47,8 +47,8 @@ var yaml  = require('js-yaml'); // subiquity
 // NOTE: Loading osinstall.js here on top shows it's
 // module.exports (== osinst) as empty (object) !!!
 // See console.log() below. Must load during init() ... osinst shows ok.
-var osinst; // = require("./osinstall.js");
-var hostcache;
+var osinst; // DONOT: = require("./osinstall.js");
+var hostcache; // diskinfo() handler / Ansible  only (?)
 
 
 // Set lbl == WINRE with typeid = ...
@@ -77,8 +77,9 @@ var linparts = [
 ];
 /** Derive from partitions what kind of partition table is in use.
  * The need for this may go away if we store partitions in wrapping object where ptable type is already
- * indicates.
+ * indicated.
  * @param parr - Array of paritions.
+ * @retrun Either "mbr" or "gpt" based on discoveries made.
  */
 function ptable_derive(parr) {
   var m = parr.filter((p) => { return (p.type == 'MSR') || (p.fmt == 'biosboot') || (p.lbl == 'biosboot'); });
@@ -98,7 +99,7 @@ function lindisk_layout_create(btype, ostype) {
   var debug = 0;
   debug && console.log("Before clone: "+linparts.length + " for "+btype+"/"+ostype);
   var parts = dclone(linparts);
-  // Debian/Ubuntu - delete boot
+  // Debian/Ubuntu - delete boot partition
   if (ostype && ostype.match(/^(ubu|deb)/)) { parts.splice(0, 1); }
   // MBR => Delete EFI
   if (btype == 'mbr') {
@@ -158,7 +159,7 @@ function windisk_layout_create(btype) {
 }
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 //console.log("osdisk-OSINTALL", osinst);
-// Created for the sole purpose of late-loading osinstall
+// Created for the sole purpose of late-loading osinstall.js
 function init(mcfg, hdls) {
   osinst = require("./osinstall.js");
   //console.log("osdisk-OSINTALL", osinst);
@@ -253,10 +254,10 @@ function diskinfo(req, res) {
   }
 /** Compute size of a disk from its partitions (within facts)
  * Facts member "partitions" (has "sda1", "sda2", ...) is looked into here.
-* Lower level task called by disk_params()
-* @param sda {object} - Disk Object (containing partitions ...)
-* @return size of the disk.
-*/
+ * Lower level task called by disk_params()
+ * @param sda {object} - Disk Object (containing partitions ...)
+ * @return size of the disk.
+ */
 /*
 function disk_calc_size_OLD(sda) { // Internal
   
@@ -347,7 +348,6 @@ function partsize(part) {
   var tmpls = {};
   // To take partials into use {{{ cpart }}} => {{#parr}}{{> cpart }}{{/parr}}
   // {{{ cpart }}}   {{{ mpart }}}
-  //var dconf =
   tmpls.dconf = `            <DiskConfiguration>
                 <Disk wcm:action="add">
                   <CreatePartitions>
@@ -364,7 +364,6 @@ function partsize(part) {
                 <WillShowUI>OnError</WillShowUI>
             </DiskConfiguration>
   `;
-  //var cpart =
   tmpls.cpart = `            <CreatePartition wcm:action="add">
                             <Order>{{ seq }}</Order>
                             <Type>{{ type }}</Type>
@@ -372,7 +371,6 @@ function partsize(part) {
                             {{#extend}}<Extend>{{ extend }}</Extend>{{/extend}}
             </CreatePartition>
   `;
-  //var mpart =
   tmpls.mpart = `            <ModifyPartition wcm:action="add">
                             {{#fmt}}<Format>{{ fmt }}</Format>{{/fmt}}
                             {{#lbl}}<Label>{{ lbl }}</Label>{{/lbl}}
@@ -440,7 +438,7 @@ function disk_out_winxml(parr) {
   });
   var cont = Mustache.render(tmpls.dconf, xconts);
   */
-  // Partials
+  // Partials (3rd)
   var cont = Mustache.render(tmpls.dconf, xconts, tmpls);
   //console.log(cont);
   return cont;
@@ -456,7 +454,7 @@ function disk_out_yast(parr) {
  */
 function disk_out_ks(parr) {
   var comps = ["# Parts should have --asprimary --fstype --label --size (size unit: MiB)"];
-  var drive = "sda";
+  var drive = "sda"; // var basedisk = path.basename(d.lindisk); // <= Need d / disk info
   comps.push("bootloader --location=mbr");
   comps.push("zerombr");
   comps.push("clearpart --drives="+drive+" --all --initlabel");
@@ -586,6 +584,7 @@ function disk_out_subiquity(parr) {
   var parttypes = {"mbr": "msdos", "gpt":"gpt"}; // subiquity uses msdos (dos), not "mbr"
   var type = ptable_derive(parr);
   var mytype = parttypes[type];
+  // var basedisk = path.basename(d.lindisk);
   // parted uses gpt/msdos.So does ubiquity
   var comps = [{ type: "disk", id: "disk-sda", ptable: mytype, path: "/dev/sda", preserve: false, name: '', grub_device: false, // true ?
      wipe: "superblock"

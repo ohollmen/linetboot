@@ -481,6 +481,12 @@ function params_verify(d) {
   if (!d.user) { throw "No initial user"; } // Initial user
   if (!d.mirror) { throw "No package mirror info"; }
   // NOTE: Some disks only have "partials" (No diskinfo)
+  // Eliminated diskinfo and partials validation even if currently (See: recipe_params_disk()):
+  // - ONLY suse and Win should have d.partials (but do NOT have d.diskinfo).
+  // - Others (not suse or Win) have d.diskinfo (but not partials)
+  // So either one should be present.
+  // NOT: Seems custom items in recipes (see top) with special "ctype" can throw this expectation off
+  // One of osid:s have to match !
   if (!d.diskinfo && !d.partials) { throw "No disk recipe content (both diskinfo and partials missing)"; } // Disk recipe content
   if (d.disk) { throw "Legacy ansible 'disk' info is remaining"; }
   if (!d.hps) { throw "No host iventory (k-v) params"; }
@@ -735,7 +741,7 @@ function recipe_params_net_f(d, f, ip) { // , global, ip,  osid, ctype
  * Adds (to templating params d):
  * - diskinfo stucture in members(s): parr, parts.
  * - Possible/optional partials for more complex (XML) based recipes
- * - recipe disk "formula" content to diskinfo whenever recipe can be fully expmnded here
+ * - recipe disk "formula" content to diskinfo whenever recipe can be fully expanded here
  *   (for many/most install types).
  */
 function recipe_params_disk(d, osid, ctype) {
@@ -748,26 +754,22 @@ function recipe_params_disk(d, osid, ctype) {
   
   ////////////////////// DISK ////////////////////////////////
   // TODO: Make into object, overlay later
-  // var di = {parts: null, partials: null, instpartid: 0}
+  // var di = {parts: null, partials: null, instpartid: 0} // also lindisk: "sda"
   var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
   // TODO: Merge these, figure out lin/win (different signature !)
   if (osid.match(/^win/)) {
-    
     parts = osdisk.windisk_layout_create(ptt);
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
-    //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
-    d.instpartid = instpartid = parts.length; // Because of 1-based numbering length will be correct
+    d.instpartid = instpartid = parts.length; // Windows only ... Because of 1-based numbering length will be correct
   }
   if (osid.match(/^suse/)) {
-    //MOVED: var ptt = hps["ptt"] || 'mbr';
     parts = osdisk.lindisk_layout_create(ptt, 'suse');
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
-    //d.parts = parts;
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
-  // This produces content, not params for partials
+  // This and the rest produce content, not params for partials
   if (osid.match(/ubu/) || osid.match(/deb/)) { // /(ubu|deb)/
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_partman(parts);
@@ -784,20 +786,19 @@ function recipe_params_disk(d, osid, ctype) {
     console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
-  if (osid.match(/(centos|redhat)/)) {
+  if (osid.match(/(centos|redhat|rocky)/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'centos');
     let out = osdisk.disk_out_ks(parts);
     console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
     d.diskinfo = out;
   }
-  // d.net = net; // redundant w. new clone scheme
   // ALREADY: d.user = user; // global (as-is). TODO: Create password_hashed
   // DEPRECATED: d.disk = disk; // Ansible diskinfo gets put to data structure here, but template decides to use or not.
-  // Win
   d.parr = d.parts = parts; // TODO: Fix to singular naming (also on tmpls)
   d.partials = partials; // Suse or Win (XML)
-  //d.instpartid = instpartid; // Win ONLY (MOVED UP)
-
+  // TODO Change: tmpl/alis.conf.mustache, tmpl/ks.cfg.mustache (Uses only "sda" format), tmpl/preseed.cfg.mustache, tmpl/preseed_mini.cfg.mustache
+  // osdisk.js: tmpls.yastdrive (<device>/dev/sda</device>), disk_out_ks(parr) var drive = "sda"; disk_out_subiquity() path: "/dev/sda"
+  d.lindisk = hps.lindisk || "/dev/sda"; // d.inst.lindisk ?
   return 0; // Disk info ?
 }
 
