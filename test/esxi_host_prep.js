@@ -1,17 +1,21 @@
 #!/usr/bin/node
-// Grab ESXi Host network information after having extracted
-// the facts for it.
-// # Examples
-// ## netinfo (read-only / dryrun)
-// esxi_host_prep.js netinfo myhost
-// ## netinfo + merge
-// ```
-// # In first myhost means hostname
-// # Dry-run, review JSON output
-// esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost
-// # Overwrite a file
-// esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost > ~/hostinfo/myhost.new
-// ```
+/** Grab ESXi Host network information after having extracted
+* the facts for it.
+* 
+* # Examples
+* ```
+* ## netinfo (read-only / dryrun)
+* esxi_host_prep.js netinfo myhost
+* ## netinfo + merge (using piping)
+* # In first myhost means hostname
+* # Dry-run, review JSON output
+* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost
+* # Overwrite a file
+* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost > ~/hostinfo/myhost.new
+* ```
+* References
+* - Dealing with stdin in Node.js: https://stackoverflow.com/questions/20086849/how-to-read-from-stdin-line-by-line-in-node
+*/
 var cproc = require("child_process");
 var fs = require("fs");
 var dns = require("dns");
