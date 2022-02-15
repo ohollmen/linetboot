@@ -5,6 +5,8 @@
 * - Examples: https://github.com/googleapis/nodejs-compute/tree/main/samples
 * - https://www.npmjs.com/package/@google-cloud/compute
 * - https://github.com/googleapis/gax-nodejs/blob/main/client-libraries.md#creating-the-client-instance
+* - Instance template (named tmpl) https://cloud.google.com/compute/docs/instance-templates/create-instance-templates#api
+*   - Has machineType with zone +
 
 * ## InstanceClient
 * - /blob/main/src/v1/instances_client.ts (~l. 2000 ?)
@@ -21,6 +23,9 @@ const compute = require('@google-cloud/compute');
 
 var vmcfg = {
   project: "compute-29058235482", // Note: this is longer id, not just name of project
+  // gcloud config set compute/region REGION or export CLOUDSDK_COMPUTE_REGION=REGION
+  // gcloud config set compute/zone ZONE or export CLOUDSDK_COMPUTE_ZONE=ZONE
+  // ... or --zone or --region on CL
   zone: "us-west4", // Geographical (...4 = LV) 'europe-central2-b'
   name: "build_65", // "instance" ?
   // 1) Top class: n1, n2, e2, n2d, t2d
@@ -36,22 +41,24 @@ var vmcfg = {
 };
 // Describe the size and source image of the boot disk to attach to the instance.
 // google.cloud.compute.v1.Instance
+// NOTE: "name" at top would be the name of "Instance Template" (to create). Structure seems to be the same.
 var vmmsgtmpl = {
   instanceResource: {
     name: null,
     disks: [
       {
-	initializeParams: { diskSizeGb: null, sourceImage: null, },
-	autoDelete: true,
-	boot: true,
-	//type: computeProtos.AttachedDisk.Type.PERSISTENT,
+        initializeParams: { diskSizeGb: null, sourceImage: null, },
+        autoDelete: true,
+        boot: true,
+        //type: computeProtos.AttachedDisk.Type.PERSISTENT, // Seesm tmpl has (str) "PERSISTENT"
+        // mode: "READ_WRITE" // from tmpl
       },
     ],
     machineType: null, // `zones/${zone}/machineTypes/${machineType}`,
     networkInterfaces: [
       {
-	// Use the network interface provided in the networkName argument.
-	name: null,
+        // Use the network interface provided in the networkName argument.
+        name: null, // "global/networks/default".
       },
     ],
   },
