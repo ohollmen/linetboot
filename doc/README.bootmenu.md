@@ -67,6 +67,29 @@ other apps running during install in the OS). Linux kernel is known to not be "p
 After adding your new boot item to menu template, run templating on it (See "Menu Template Fill-in" above for example,
 also the command "node hostsetup.js tftpsetup" does this for you using default menu file).
 
+### Preparing menu item for Linetboot auto-installation
+
+For any linux distro auto-installation there is a recipe parameter (URL) on the
+kernel command line that is a HTTP URL from which recipe is fetched.
+I case of Linetboot, this URL is directly served by Liteboot itself and
+kicks of an intricate parametrized templating process to tailor the recipe
+for particular host. To express which OS is to be installed by the menu item,
+an important URL parameter (Note: *not* kernel parameter) `osid=...` is used
+to advice linetboot in many choices that need to made to install particular
+flavor of OS distro. osid URL parameter is typically in format: `OS Distro label` + `version number`, e.g. `ubuntu` + `1804` = `ubuntu1804`.
+
+Somtimes version number (extracted from osid) is (inside Linetboot) further
+used to affect the install choices / decisions. The osid OS distro labels suppported currently are (possibly followed by number (As regexp: \d+):
+
+- debian
+- ubuntu
+- centos
+- redhat
+- rocky
+
+If the menuitem is purely meant to boot with *no* installation (e.g. ea tool ISO like gparted), the `osid=...` parameter does not (usually) have any use and
+is absent on the boot item.
+
 ## Custom Menu for Your Environment
 
 The default menu may have unneeded items that are a mere distraction for your boot/OS Install environment.
