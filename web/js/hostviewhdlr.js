@@ -1317,7 +1317,8 @@ function ghprojs_uisetup(act, data) {
   $(".xui").show();
   // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
   $(".vmglink").click(function (jev) {
-    toastr.info("Click on "+Object.keys(jev));
+    //toastr.info("Click on "+Object.keys(jev));
+    toastr.info("Show projects of Org/User "+this.dataset.dcfn);
     // TODO: Grab this from original act ? act.hdlr
     simplegrid_url(jev, act);
   });
