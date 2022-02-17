@@ -21,6 +21,9 @@
 # 
 # ## Refs
 # -  https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
+# ## Verifying
+# - Log on to master: ssh ubuntu@master_ip
+# - Execute: kubectl get nodes
 - name: Install Kubernetes Cluster
   hosts: '{{ host }}'
   become: yes
@@ -111,14 +114,17 @@
       file:
         path: $HOME/.kube
         #path: '/home/{{ k8s_user }}/.kube'
+        #path: '{{ k8s_user_home }}/.kube'
         state: directory
         mode: 0755
         #owner: '{{ k8s_user }}'
       when: k8smaster is defined
+    # Is the file heavily protected, can we symlink ?
     - name: Copy admin.conf to user's kube config
       copy:
         src: /etc/kubernetes/admin.conf
         # NOTE: This will not work for custom homedirs
+
         # dest: '/home/{{ k8s_user }}/.kube/config'
         dest: '{{ k8s_user_home }}/.kube/config'
         remote_src: yes
@@ -132,10 +138,29 @@
     - name: install Pod (flannel) network (by k8s YAML apply)
       become: yes
       become_user: '{{ k8s_user }}'
-      shell: kubectl apply -f {{ k8s_flannel_yaml }} >> pod_network_setup.txt
+      shell: 'kubectl apply -f {{ k8s_flannel_yaml }} >> pod_network_setup.txt'
       args:
         chdir: $HOME
         creates: pod_network_setup.txt
       when: k8smaster is defined
     #  Must run join on workers
     # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
+      when: k8smaster
+    # This MAY need to be a play in itself
+    # gather_facts: false
+    - name: get join command
+      shell: 'kubeadm token create --print-join-command'
+      register: join_command_raw
+      when: k8smaster
+    # set_fact Sets *on the host* being executed, then avail. in (e.g.) hostvars[inventory_hostname][varname]
+    - name: Set join command
+      set_fact:
+        join_command: "{{ join_command_raw.stdout_lines[0] }}"
+      when: k8smaster
+    # Continue by executing join_command on Workers.
+    # Note 'master' here is the inventory_hostname for master (first token on hosts line)
+    #- name: join cluster
+    #  shell: "{{ hostvars['master'].join_command }} >> node_joined.txt"
+    #  args:
+    #    chdir: $HOME
+    #    creates: node_joined.txt
