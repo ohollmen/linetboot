@@ -620,7 +620,7 @@ function oninstallevent(req,res) {
   var q = req.query;
   if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
-  // lookup facts
+  // lookup facts. TODO: possibly be more abstract. But would work in osinstall.
   var f = hostcache[ip];
   if (!f) { jr.msg += "Could not lookup facts for " + ip; osinst.ilog(ip, "installevent", p.evtype); return res.json(jr); }
   var now = new Date();
@@ -1904,6 +1904,7 @@ function config_send(req, res) {
   var web  = global.web;
   var proc  = global.procster;
   var esxi  = global.esxi;
+  var gh    = global.github;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
@@ -1933,6 +1934,7 @@ function config_send(req, res) {
   // 
   if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
   else { cfg.clistnames = []; }
+  if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
   res.json(cfg);
 }
 
@@ -3029,6 +3031,7 @@ function gh_projs(req, res) {
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
+    if (Array.isArray(d)) { console.log("Got "+d.length+" repos"); }
     res.json({status: "ok", data: d});
   })
   .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });

@@ -1304,3 +1304,30 @@ function jgrid_form(ev, act) {
   rapp.templated("testform", {cont: cont}, tgtid);
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
 }
+
+// See handler simplegrid_url
+function ghprojs_uisetup(act, data) {
+  var fs = datasets.cfg.ghorgs; // datasets.cfg.docker.files;
+  console.log("ghprojs_uisetup ..."+ fs);
+  var cont = "";
+  // toastr.info(fs);
+  fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
+  $(".xui").html(cont);
+  // $(".xui").html("Hello !"); // OK
+  $(".xui").show();
+  // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
+  $(".vmglink").click(function (jev) {
+    toastr.info("Click on "+Object.keys(jev));
+    // TODO: Grab this from original act ? act.hdlr
+    simplegrid_url(jev, act);
+  });
+}
+// Like docker / dcomposer_uisetup
+function ghprojs_urlpara(ev, act) {
+  var val; // dcfn
+  var ds = ev.target.dataset;
+  if (ds && ds.dcfn) { val = ds.dcfn; }
+  if (!val && datasets.cfg.ghorgs) { val = datasets.cfg.ghorgs[0]; }
+  //return "fn="+dcfn; // OLD: params only
+  return act.url + "?org="+val; // NEW: Resp. for whole URL
+}
