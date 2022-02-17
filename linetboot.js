@@ -3013,7 +3013,13 @@ function gh_projs(req, res) {
   var ghcfg = global.github;
   if (!ghcfg) { jr.msg += "No GH Config"; return res.json(jr); }
   if (!ghcfg.url) { jr.msg += "No GH URL"; return res.json(jr); }
-  if (!ghcfg.org) { jr.msg += "No GH Org (or User) given."; return res.json(jr); }
+  if (!ghcfg.org) { jr.msg += "No GH Orgs (or Users) available."; return res.json(jr); }
+  if (!Array.isArray(ghcfg.org)) { jr.msg += "No GH Orgs (or Users) in array."; return res.json(jr); }
+  var q = req.query;
+  var org = '';
+  if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
+  else { org = ghcfg.org[0]; }
+  if (!org) { jr.msg += "No GH Org resolved."; return res.json(jr); }
   var url = "https://"+ghcfg.url+"/";
   if (ghcfg.ent) { url += "api/v3/"; }
   url += "users/"+ghcfg.org+"/repos"; // "users" On public repo only ?

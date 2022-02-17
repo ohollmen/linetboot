@@ -241,7 +241,7 @@ function disabled_detect(global) {
   var dr = global.deployer;
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
   var gh = global.github;
-  if (!gh || (gh && !gh.org)) { dis.push("ghprojs"); }
+  if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("ghprojs"); }
   return dis;
 } // diabled_detect
 
@@ -310,7 +310,10 @@ function env_merge(global) {
   
   if (process.env["LINETBOOT_GITHUB_TOKEN"])  { stub("github"); global.github.token = process.env["LINETBOOT_GITHUB_TOKEN"]; }
   if (process.env["LINETBOOT_GITHUB_ENT"])    { stub("github"); global.github.ent = process.env["LINETBOOT_GITHUB_ENT"]; }
-  if (process.env["LINETBOOT_GITHUB_ORG"])    { stub("github"); global.github.org = process.env["LINETBOOT_GITHUB_ORG"]; }
+  if (process.env["LINETBOOT_GITHUB_ORG"])    {
+    stub("github"); var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
+    global.github.org = orgstr ? orgstr.split(/,/) : [];
+  }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
