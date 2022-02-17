@@ -3020,9 +3020,10 @@ function gh_projs(req, res) {
   if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
   else { org = ghcfg.org[0]; }
   if (!org) { jr.msg += "No GH Org resolved."; return res.json(jr); }
+  console.log("Show org: "+org);
   var url = "https://"+ghcfg.url+"/";
   if (ghcfg.ent) { url += "api/v3/"; }
-  url += "users/"+ghcfg.org+"/repos"; // "users" On public repo only ?
+  url += "users/"+org+"/repos"; // "users" On public repo only ?
   console.log("Final URL: "+url);
   var opts = {};
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
