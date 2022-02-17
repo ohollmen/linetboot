@@ -220,6 +220,7 @@
     "url":  "api.github.com",
     "url_ent":"mycomp.github.com",
     "ent": 0,
+    "pgsize": 100,
     "org": [],
     "token":""
   },

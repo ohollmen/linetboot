@@ -3009,6 +3009,7 @@ function pods_info(req, res) {
   }
 }
 /** Allow viewing GH projects for single org.
+ * https://docs.github.com/en/rest/overview/resources-in-the-rest-api
  */
 function gh_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GH Projects."};
@@ -3029,6 +3030,10 @@ function gh_projs(req, res) {
   console.log("Final URL: "+url);
   var opts = {};
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
+  // page=2&per_page=100
+  //if (ghcfg.pgsize) { // Not: ghcfg.ent
+    opts.params = { per_page: 100 };
+  //}
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
     if (Array.isArray(d)) { console.log("Got "+d.length+" repos"); }
