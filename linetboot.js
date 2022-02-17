@@ -321,6 +321,7 @@ function app_init() { // global
   app.get("/kubdash", pods_info);
   app.get("/kubapirsc", pods_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
+  app.get("/gh_projs",gh_projs);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2908,6 +2909,9 @@ function jenkins_jobs(req, res) {
  * https://unpkg.com/vis@0.5.1/index.html
  * https://www.bsimard.com/2018/04/25/graph-viz-with-sigmajs.html
  * Sigma: Edges use source, target (not from, to)
+ * ## Notes
+ * - This drives host looping by inventory only (not by facts), some hosts may be missing for detail view.
+ *   - TODO: Drive by overlap of inventory AND facts
  */
 function hosthier(req, res) {
   var jr = {status: "error", msg: "Host hierarchy could not be formed. "};
@@ -2956,6 +2960,7 @@ function hosthier(req, res) {
  * To run API proxying:
  * - In small scale (min stup overhead):  kubectl proxy --port=8080 --accept-hosts='^localhost$,^192.168.1.*$'
  * - In proper scale (JWT, cacert): Setup JWT, cacert properly as pointed out by article ...
+ * Note: This servers more than pods (almost any K8S API). TODO: rename.
  */
 function pods_info(req, res) {
   var jr = {status: "err", "msg": "Could not list Pods"};
@@ -3000,4 +3005,24 @@ function pods_info(req, res) {
     if (req.url.match(/kubapirsc/)) { data = rdata.resources; }
     return data;
   }
+}
+/** Allow viewing GH projects for single org.
+ */
+function gh_projs(req, res) {
+  var jr = {status: "err", "msg": "Could not list GH Projects."};
+  var ghcfg = global.github;
+  if (!ghcfg) { jr.msg += "No GH Config"; return res.json(jr); }
+  if (!ghcfg.url) { jr.msg += "No GH URL"; return res.json(jr); }
+  // ghcfg.org
+  var url = "https://"+ghcfg.url+"/";
+  if (ghcfg.ent) { url += "api/v3/"; }
+  url += "users/"+ghcfg.org+"/repos"; // "users" On public repo only ?
+  console.log("Final URL: "+url);
+  var opts = {};
+  if (ghcfg.token) { opts.Authorization = "Bearer "+ghcfg.token; }
+  axios.get(url).then((resp) => {
+    var d = resp.data;
+    res.json({status: "ok", data: d});
+  })
+  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
 }

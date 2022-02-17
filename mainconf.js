@@ -240,6 +240,8 @@ function disabled_detect(global) {
   if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
   var dr = global.deployer;
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
+  var gh = global.github;
+  if (!gh || (gh && !gh.org)) { dis.push("ghprojs"); }
   return dis;
 } // diabled_detect
 
@@ -305,6 +307,10 @@ function env_merge(global) {
   if (process.env["LINETBOOT_GERRIT_USER"])   { stub("gerrit"); global.gerrit.user = process.env["LINETBOOT_GERRIT_USER"]; }
   if (process.env["LINETBOOT_GERRIT_PASS"])   { stub("gerrit"); global.gerrit.pass = process.env["LINETBOOT_GERRIT_PASS"]; }
   if (process.env["LINETBOOT_GERRIT_PKEY"])   { stub("gerrit"); global.gerrit.pkey = process.env["LINETBOOT_GERRIT_PKEY"]; }
+  
+  if (process.env["LINETBOOT_GITHUB_TOKEN"])  { stub("github"); global.github.token = process.env["LINETBOOT_GITHUB_TOKEN"]; }
+  if (process.env["LINETBOOT_GITHUB_ENT"])    { stub("github"); global.github.ent = process.env["LINETBOOT_GITHUB_ENT"]; }
+  if (process.env["LINETBOOT_GITHUB_ORG"])    { stub("github"); global.github.org = process.env["LINETBOOT_GITHUB_ORG"]; }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

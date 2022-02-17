@@ -639,6 +639,8 @@ var tabloadacts = [
   {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubapirsc", gridid: "jsGrid_kubapis", fsetid: "kubapis", path: "kubapis",},
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
+  // 
+  {"name": "Github Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs", path: "ghprojs", uisetup: null, dprep: null},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

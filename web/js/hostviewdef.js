@@ -874,6 +874,29 @@ function ibip_cell(val, item) {
      {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 10},
      
    ];
+   // User/Organization site, Project sites
+   // https://pages.github.com/
+   function gh_pages_url_cell(val, item) {
+     if (!val) { return ""; }
+     // Username from item
+     var un = item.owner ? item.owner.login : "";
+     if (!un) { return "???"; }
+     return "https://"+un+".github.io/"+item.name;
+   }
+   var fldinfo_gh_projs = [
+     {"name": "id",          "title": "Repo ID",   type: "number", width: 7},
+     {"name": "name",        "title": "Repo Name", type: "text",   width: 15}, // name or full_name
+     // 
+     {"name": "description", "title": "Description", type: "text", width: 45},
+     {"name": "language",    "title": "Language",    type: "text", width: 7},
+     {"name": "html_url",    "title": "URL",        type: "text", width: 30},
+     {"name": "fork",        "title": "Is Fork ?",  type: "text", width: 5}, // bool
+     {"name": "created_at",  "title": "Created",    type: "text", width: 10, itemTemplate: gridplug.isodate},
+     {"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},
+     {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12},
+     //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
+     
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -884,5 +907,6 @@ function ibip_cell(val, item) {
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
+      "ghprojs": fldinfo_gh_projs,
    };
    
