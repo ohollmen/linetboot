@@ -216,6 +216,13 @@
     "pass": "",
     "pkey": ""
   },
+  "github": {
+    "url":  "api.github.com",
+    "url_ent":"mycomp.github.com",
+    "ent": 0,
+    "org": "",
+    "token":""
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
