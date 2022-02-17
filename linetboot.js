@@ -3013,14 +3013,14 @@ function gh_projs(req, res) {
   var ghcfg = global.github;
   if (!ghcfg) { jr.msg += "No GH Config"; return res.json(jr); }
   if (!ghcfg.url) { jr.msg += "No GH URL"; return res.json(jr); }
-  // ghcfg.org
+  if (!ghcfg.org) { jr.msg += "No GH Org (or User) given."; return res.json(jr); }
   var url = "https://"+ghcfg.url+"/";
   if (ghcfg.ent) { url += "api/v3/"; }
   url += "users/"+ghcfg.org+"/repos"; // "users" On public repo only ?
   console.log("Final URL: "+url);
   var opts = {};
-  if (ghcfg.token) { opts.Authorization = "Bearer "+ghcfg.token; }
-  axios.get(url).then((resp) => {
+  if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
+  axios.get(url, opts).then((resp) => {
     var d = resp.data;
     res.json({status: "ok", data: d});
   })
