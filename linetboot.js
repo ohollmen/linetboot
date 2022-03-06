@@ -1904,9 +1904,10 @@ function config_send(req, res) {
   var core = global.core;
   var tftp = global.tftp;
   var web  = global.web;
-  var proc  = global.procster;
-  var esxi  = global.esxi;
-  var gh    = global.github;
+  var proc = global.procster;
+  var esxi = global.esxi;
+  var gh   = global.github;
+  var cfl  = global.confluence;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
@@ -1937,6 +1938,7 @@ function config_send(req, res) {
   if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
   else { cfg.clistnames = []; }
   if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
+  if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
   res.json(cfg);
 }
 

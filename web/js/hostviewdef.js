@@ -902,23 +902,28 @@ function ibip_cell(val, item) {
    ];
    // For a full-page URL to document (need login ?)
    function cfl_url_gen(val, item) {
-     // Extract server from a member ...
      //var url = "pages/viewpage.action?pageId=204146572"; // pageId in "pages/"-url seems to be diff from "id" (from API)
      if (!val) { return ""; }
+     // Extract server from an adjacent member ...
+     
      var furl = item._links.self; // Full
+     console.log("item for _links.webui: ", item);
      console.log("Got initial furl: "+ furl);
      var m;
      if (!(m = furl.match(/(https?:\/\/[^\/]+?\/)/) ) ) { console.log("Extracted: "+m[1]); furl = m[1]; }
      else { console.log("No extraction from: "+ furl); }
+     // Override (by a global config lookup)
+     furl = "https://"+datasets["cfg"].cflhost;
+     console.log("Final furl: "+ furl);
      //if (!val.match(/^http/)) { return ""; } // Is relative
      // .. add: nw.focus(); ( nw.close(); )
-     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=640,height=640');\">"+val+"</span>";
+     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=640,height=640');\">"+item.title+"</span>";
    }
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
-     {"name": "type",      "title": "Doc Type",   type: "text", width: 7},
-     {"name": "title",     "title": "Title", type: "text",   width: 25}, // name or full_name
-     {"name": "status",    "title": "Status",    type: "text", width: 7},
+     {"name": "type",      "title": "Doc Type", type: "text", width: 7},
+     {"name": "title",     "title": "Title",    type: "text",   width: 25}, // name or full_name
+     {"name": "status",    "title": "Status",   type: "text", width: 7},
      // 
      {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: cfl_url_gen}, // gridplug.foo open_as_page
      //{"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
