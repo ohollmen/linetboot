@@ -900,14 +900,23 @@ function ibip_cell(val, item) {
      //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
      
    ];
+   // For a full-page URL to document (need login ?)
+   function cfl_url_gen(val, item) {
+     // Extract server from a member ...
+     //var url = "pages/viewpage.action?pageId=204146572"; // pageId seems to be diff from
+     if (!val) { return ""; }
+     if (!val.match(/^http/)) { return ""; }
+     // .. add: nw.focus(); ( nw.close(); )
+     return "<span onclick=\"var nw = window.open('"+val+"', 'cflwindow', 'width=640,height=640');\">"+val+"</span>";
+   }
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
      {"name": "type",      "title": "Doc Type",   type: "text", width: 7},
      {"name": "title",     "title": "Title", type: "text",   width: 25}, // name or full_name
      {"name": "status",    "title": "Status",    type: "text", width: 7},
      // 
-     {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: gridplug.foo}, // open_as_page
-     {"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
+     {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: cfl_url_gen}, // gridplug.foo open_as_page
+     //{"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
      // {"name": "_expandable.history",    "title": "History",        type: "text", width: 30, itemTemplate: gridplug.foo}, // Icon, ...
      /*
      
