@@ -19,24 +19,39 @@
 # Typical extra vars: '{"k8s_user":"kubadm", "k8s_user_home":"/home_local/kubadm", "k8s_ver": "1.21.9-00"}'
 # Fixed: The error was: error while evaluating conditional (k8smaster): 'k8smaster' is undefined (fixed by: k8smaster is defined)
 # 
-# ## Refs
-# -  https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
+# 
 # ## Verifying
 # - Log on to master: ssh ubuntu@master_ip
 # - Execute: kubectl get nodes
+# 
+# ## Refs
+# -  https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
+# - https://zhuanlan.zhihu.com/p/40931670 (Chinese, use Translate)
+#  - /etc/default/kubelet: KUBELET_KUBEADM_EXTRA_ARGS=--cgroup-driver=<value>
+#  - Lots of other relevant points
+# - Ubu 20.04, Nvidia and Calico: https://zhuanlan.zhihu.com/p/138554103
+# 
 - name: Install Kubernetes Cluster
   hosts: '{{ host }}'
   become: yes
   vars:
+    # Built in ... ansible_distribution_release or ansible_lsb.codename
+    # Distros: xenial=16.04, bionic=18.04, focal=20.04 jammy=22.04
+    k8s_distro: 'bionic'
+    # In case new docker will be needed (?)
+    dkr_apt_key_url: https://download.docker.com/linux/ubuntu/gpg
+    # distro name: $(lsb_release -cs)
+    dkr_apt_repo_line: "deb https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+    # 
     k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-    # Distro: xenial=
-    k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    # Orig: kubernetes-xenial main
+    k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-{{ ansible_lsb.codename }} main"
     # k8s_ver: 1.14.0-00
     # latest for 18.04 (as of 2022-02):
     # k8s_ver: 1.23.3-00
-    # Should use:
+    # Should use (for 18.04, as of 22-02)
     k8s_ver: 1.21.9-00
-    # Flannel Default
+    # Flannel Default 10.244.0.0/16. 
     k8s_cluster_cidr: '10.244.0.0/16'
     k8s_user: ubuntu
     # TODO: use in tasks !
@@ -48,12 +63,12 @@
     k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/221a83cab893a4a724aaff0bb53fbfd14a7724e4/Documentation/kube-flannel.yml
   tasks:
     # Add K8S install pkg repos
-    # curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add
+    # curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
     - name: Add Google K8S apt-key
       apt_key:
         url: '{{ k8s_apt_key_url }}'
         state: present
-    # sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    # sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-... main"
     - name: Add Kubernetes APT Repository
       apt_repository:
         repo: '{{ k8s_apt_repo_line }}'
@@ -69,6 +84,7 @@
         content: '{ "exec-opts": ["native.cgroupdriver=cgroupfs"] }\n'
         dest: /etc/docker/daemon.json
         backup: yes
+	force: yes
         mode: '644'
     # Possible errors:
     # - misconfiguration: kubelet cgroup driver: ...x
@@ -99,12 +115,14 @@
     # https://stackoverflow.com/questions/45708175/kubelet-failed-with-kubelet-cgroup-driver-cgroupfs-is-different-from-docker-c
     #  journalctl -u kubelet
     # Suggested in  /etc/docker/daemon.json   "exec-opts": ["native.cgroupdriver=cgroupfs"],
-    - name: initialize the Cluster (on master)
+    - name: Initialize the Cluster (on master)
+      # --image-repository
       shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
       args:
         chdir: $HOME
         creates: cluster_initialized.txt
       when: k8smaster is defined
+    # kubeadm init On nodes (to e.g. create /var/lib/kubelet/config.yaml) ?
     # Can we not impersonate, but say user: ... (like in copy) here. YES, BUT...
     # become/become_user is better at detecting users (possibly custom) homedir
     # Also: {{ ansible_env.HOME }} on https://docs.ansible.com/ansible/latest/reference_appendices/faq.html
@@ -128,6 +146,7 @@
         # dest: '/home/{{ k8s_user }}/.kube/config'
         dest: '{{ k8s_user_home }}/.kube/config'
         remote_src: yes
+	force: yes
         owner: '{{ k8s_user }}'
       when: k8smaster is defined
     # Gets Multi-doc with kind(s): ClusterRole,ClusterRoleBinding,ServiceAccount,
@@ -143,6 +162,21 @@
         chdir: $HOME
         creates: pod_network_setup.txt
       when: k8smaster is defined
+    ###### Worker Nodes ########################
+    - name: Generate join-token on master
+      shell: kubeadm token create --print-join-command
+        register: join_command
+      when: k8smaster is defined
+    - name: Run kubeadm init on Workers
+      shell: kubeadm init
+      when: k8smaster is not defined
+    # Seems must set_fact as intermediate step.
+    # Seems: This would need to be in a single host play (e.g. host: master)
+    # Needs to be in a multi-play playbook YAML
+    # Needs to be recalled (in second, worker play) by: shell: "{{ hostvars['master'].join_command }}
+    #- name: Set Join command fact
+    #  set_fact:
+    #    join_command: "{{ join_command_raw.stdout_lines[0] }}"
     #  Must run join on workers
     # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
       when: k8smaster
@@ -164,3 +198,12 @@
     #  args:
     #    chdir: $HOME
     #    creates: node_joined.txt
+    - name: Run kubeadm join ... on workers
+      # Example (In newer (already at least in 1.18): --token, not --discovery-token)
+      #shell: kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
+      shell: '{{ join_command.stdout_lines[0] }}'
+    # Need to restart worker kubelet ?
+    - name: Worker Kubelet restart
+      # shell: echo Hello
+      shell: systemctl daemon-reload ; systemctl restart kubelet
+      when: k8smaster is not defined
