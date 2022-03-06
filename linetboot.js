@@ -3072,6 +3072,7 @@ function certchecks(req, res) {
 }
 // Confluence (?): https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
 // Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
+// https://confluence.mycomp.com/rest/api/content?type=blogpost&start=0 # Example of no "/confluence" api prefix
 function confluence_index(req, res) {
   var jr = {status: "err", "msg": "Could not list Confluence Index."};
   var cfg = global.confluence;
@@ -3081,22 +3082,22 @@ function confluence_index(req, res) {
   } catch (ex) { jr.msg += "Error(early): "+ex; return res.json(jr); }
   // At module init() ?
   var opts = {};
-  // TODO: STD wrapper to inject B64 creds to opts ?
-  // function add_basic_creds(cfg, opts) {
-  //if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
-  var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
-  // if (!creds_b64) { throw "Basic 64 creds empty !"; }
-  
-  opts.headers = { Authorization : "Basic "+creds_b64};
-  //} // add_basic_creds
+  try { add_basic_creds(cfg, opts); } catch (ex) { jr.msg += "Error using creds: "+ex; return res.json(jr); }
   // On many servers the path from top-level is just (w/o '/confluence' part): /rest/api/content
   // example params: ?type=page ?type=blog  &start=0
-  var apiprefix = cfg.apiprefix || "/confluence/rest/api/content"
-  var url = "https://" + cfg.host + "/confluence/rest/api/content"; // Common part, must be configurable
+  var apiprefix = (typeof cfg.apiprefix != "undefined") ? cfg.apiprefix : "/confluence"; // /rest/api/content
+  var url = "https://" + cfg.host + apiprefix + "/rest/api/content"; // Common part, must be configurable
+  console.log("using Confluence URL: "+url);
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
     //if (!Array.isArray(d)) { jr.msg = "Conflunce native result not in array"; return res.json(jr); }
     res.json({status: "ok", data: d});
   }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call"+ex; res.json(jr); });
-  
+  // TODO: STD wrapper to inject B64 creds to opts ?
+  function add_basic_creds(cfg, opts) {
+    if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
+    var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
+    if (!creds_b64) { throw "Basic 64 creds empty !"; }
+    opts.headers = { Authorization : "Basic "+creds_b64};
+  } // add_basic_creds
 }
