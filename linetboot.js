@@ -3070,9 +3070,12 @@ function certchecks(req, res) {
     //});
   }
 }
-// Confluence (?): https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
-// Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
-// https://confluence.mycomp.com/rest/api/content?type=blogpost&start=0 # Example of no "/confluence" api prefix
+/** Show list of Confluence pages.
+ * Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
+ * https://confluence.mycomp.com/rest/api/content?type=blogpost&start=0 # Example of no "/confluence" api prefix
+ * 
+ * https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
+ */
 function confluence_index(req, res) {
   var jr = {status: "err", "msg": "Could not list Confluence Index."};
   var cfg = global.confluence;
@@ -3080,13 +3083,15 @@ function confluence_index(req, res) {
     if (!cfg) { throw "No config"; }
     if (!cfg.host || !cfg.user || !cfg.pass) { throw "Config props missing ..."; }
   } catch (ex) { jr.msg += "Error(early): "+ex; return res.json(jr); }
-  // At module init() ?
+  // At module init() (add creds) ?
   var opts = {};
   try { add_basic_creds(cfg, opts); } catch (ex) { jr.msg += "Error using creds: "+ex; return res.json(jr); }
   // On many servers the path from top-level is just (w/o '/confluence' part): /rest/api/content
   // example params: ?type=page ?type=blog  &start=0
   var apiprefix = (typeof cfg.apiprefix != "undefined") ? cfg.apiprefix : "/confluence"; // /rest/api/content
-  var url = "https://" + cfg.host + apiprefix + "/rest/api/content"; // Common part, must be configurable
+  var url = "https://" + cfg.host + apiprefix + "/rest/api/content?"; // Common part, must be configurable
+  url += "start=0"; // type=page limit=100&
+  if (cfg.pgsize) { url += "&limit=" + cfg.pgsize; }
   console.log("using Confluence URL: "+url);
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
