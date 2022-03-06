@@ -13,30 +13,53 @@
 # 
 # ## Playbook vars
 # - Set exec_rm to true value (e.g. yes) to execute
-- name: Install Kubernetes Cluster
+# 
+# ## References / Notes
+# - https://www.ibm.com/docs/en/fci/1.0.2?topic=SSCKRH_1.0.2/platform/t_start_stop_kube_cluster.html
+# - kubectl get pods - checking if pods exist
+# - IBM Article mentions NFS server on master or dedicated host
+# - https://www.suse.com/support/kb/doc/?id=000020031
+# - More sophisticated sequ4ence would start with: kubectl drain node <node-name>
+# - ALt way(?): systemctl restart kubelet
+- name: Stop Kubernetes Cluster (SW Only)
   hosts: '{{ host }}'
   vars:
     # TODO: use in tasks !
     k8s_user: ubuntu
     k8s_user_home: /home/ubuntu
     exec_rm: no
+  become: yes
   tasks:
+    # Possible pre-tasks for prod-level cluster
+    #kubectl drain ml --delete-local-data --force --ignore-daemonsets
+    # kubectl delete node ml; sudo kubeadm reset
+    # Note all these keywords seem to be the first part/token in COMMAND column of "docker ps" output
+    # DO we need to stop: kube-scheduler kube-controller-manager
+    - name: Stop K8S servers (dockers, All nodes)
+      shell: docker stop kubelet kube-proxy
+    - name: Stop Master specific comps (etcd)
+      shell: docker stop kube-scheduler kube-controller-manager
+    - name: Stop Master ...
+      #shell: docker stop kube-apiserver etcd
+      
     # Do *not* remove:
     # - the commonly installed-by-default "apt-transport-https" !
     # - "docker.io" - as it may have lot of other uses
+    # sudo apt-get remove --purge "kubelet" "kubeadm" "kubectl" "kubernetes-cni"
     - name: Remove Master/WorkerNode Common installs
       apt:
-        update_cache: yes
+        # update_cache: yes
         state: absent
         force_apt_get: yes
-        install_recommends: no
-        name: [ "kubelet", "kubeadm" ]
-    - name: Install kubectl on Master
-      apt:
-        name: kubectl
-        state: absent
-        force: yes
-      when: k8smaster is defined
+        # install_recommends: no
+	purge: yes
+        name: [ "kubelet", "kubeadm", "kubectl", "kubernetes-cni"]
+    #- name: Remove kubectl on Master
+    #  apt:
+    #    name: kubectl
+    #    state: absent
+    #    force: yes
+    #  when: k8smaster is defined
     # TODO: Is there an opposite of kubeadm init ?
     #- name: initialize the Cluster (on master)
     #  shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
