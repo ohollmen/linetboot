@@ -322,6 +322,7 @@ function app_init() { // global
   app.get("/kubapirsc", pods_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
   app.get("/gh_projs",gh_projs);
+  app.get("/confluence",confluence_index);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -528,6 +529,7 @@ function linet_mw(req, res, next) {
       // console.log("NO qs, resetting.");
     req.session.qs = [];
   }
+  // Debug for session, cookie ...
   if (0) {
   console.log("sess: ", req.session);
   //console.log("hdrs: ", req.headers); // rawHeaders:
@@ -776,7 +778,7 @@ function gen_allhost_output(req, res) {
 *      sudo wget -O 01-netcfg.yaml http://linetboot.myorg.org:3000/netplan.yaml?mac=02:07:07:00:c7:9c
 *      sudo netplan apply
 * 
-* @todo Convert netmask to CIDR notation.
+* @todo Convert netmask to CIDR notation (DONE).
 * @todo Make Reusable and http/express request agnostic to use part of ubuntu 20
 * @todo Generate all values first (osinstall.js / netconfig() ?) then produce yaml, not as-you-go.
 * See also: https://netplan.io/examples
@@ -949,7 +951,7 @@ function ubu20_meta_data(req, res) {
   res.end("instance-id: "+hn+"\n"); // focal-autoinstall
 }
 
-/** generate API doc out of swagger API doc YAM file.
+/** generate API doc out of swagger API doc YAML file.
  * Swagger apidoc structure has several weaknesses for logic-less templating (e.g Mustache, google ctemplate)
  * and has to be transformed to less quirky formats in many parts of the (original YAML) structure.
  * Respond with 
@@ -2216,7 +2218,7 @@ function media_listing (req, res) {
     // return e; // map
     list2.push(e);
   });
-  // Fails on MAc/BSD because of field layout, but does not crash.
+  // Fails on Mac/BSD because of field layout, but does not crash.
   losetup_assocs((err, csv) => {
     if (err) { console.log("losetup_assocs faile: "+err); }
     console.log("LO_ASSOCS:", csv);
@@ -2355,13 +2357,22 @@ function login(req, res) {
   if (!q.username) { jr.msg += "No username"; return res.json(jr); }
   if (!q.password) { jr.msg += "No password"; return res.json(jr); }
   if (!ldc)        { jr.msg += "No LD Config"; return res.json(jr); }
-  if (ldc.simu) { req.session.user = {username: "nobody"}; return res.json({status: "ok", data: {username: "nobody"}});}
+  
   // Authorization
   if (!cc || !cc.authusers) { jr.msg += "No 'core' Config for authorization"; return res.json(jr); }
   if (!Array.isArray(cc.authusers)) { jr.msg += "Authorized users (core.authusers) not in array"; return res.json(jr);  }
   if (!cc.authusers.includes(q.username)) {
     console.log("user '"+q.username +"' not in list", cc.authusers);
     jr.msg += "user "+q.username+" not Authorized !"; return res.json(jr);
+  }
+  // Now depends on LINETBOOT_LDAP_SIMU or .ldap.simu. TODO: If LDAP not enabled / connected.
+  // Call at end: user_bind_ok(ldconn=null, uent), where uent should mimick LDAP ent.
+  // TODO: Small user DB (passwd ? csv ?)
+  if (ldc.simu) {
+    var un = "nobody"; // OLD
+    un = q.username;
+    req.session.user = {username: un}; // TODO: LDAP-like: displayName: ..., givenName: John, sn: Smith, username: ...
+    return res.json({status: "ok", data: {username: un}});
   }
   // OLD: Gets now created here.
   // if (!ldconn)     { jr.msg += "No LD connection"; return res.json(jr); }
@@ -2448,7 +2459,7 @@ function login(req, res) {
         req.session.user = uent;
         uent.username = uent[ldc.unattr];
         console.log("Closing auth-bind-only connection");
-        ldconn.destroy(); // Should call ldconn.unbind()
+        if (ldconn) { ldconn.destroy(); }// Should call ldconn.unbind()
         return res.json({status: "ok", data: uent});
         // client.unbind(function(err) {})
   }
@@ -3040,4 +3051,52 @@ function gh_projs(req, res) {
     res.json({status: "ok", data: d});
   })
   .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
+}
+/**
+ * How to "getting certifate info by http"
+ */
+function certchecks(req, res) {
+  var jr = {status: "err", "msg": "Could not inquire certs."};
+  var fn = process.env.HOME+"/.linetboot/certs.conf.json";
+  if (!fs.existsSync(fn)) { return res.json(jr); }
+  var cfgarr = require(fn);
+  // Run trough cfgarr
+  // async.map(cfgarr, getcert, () => {});
+  function getcert(it, cb) {
+    var cmd = "";
+    //cproc.exec(cmd, (err, stdout, stderr) => {
+    // 
+    //cb(null, );
+    //});
+  }
+}
+// Confluence (?): https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
+// Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
+function confluence_index(req, res) {
+  var jr = {status: "err", "msg": "Could not list Confluence Index."};
+  var cfg = global.confluence;
+  try {
+    if (!cfg) { throw "No config"; }
+    if (!cfg.host || !cfg.user || !cfg.pass) { throw "Config props missing ..."; }
+  } catch (ex) { jr.msg += "Error(early): "+ex; return res.json(jr); }
+  // At module init() ?
+  var opts = {};
+  // TODO: STD wrapper to inject B64 creds to opts ?
+  // function add_basic_creds(cfg, opts) {
+  //if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
+  var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
+  // if (!creds_b64) { throw "Basic 64 creds empty !"; }
+  
+  opts.headers = { Authorization : "Basic "+creds_b64};
+  //} // add_basic_creds
+  // On many servers the path from top-level is just (w/o '/confluence' part): /rest/api/content
+  // example params: ?type=page ?type=blog  &start=0
+  var apiprefix = cfg.apiprefix || "/confluence/rest/api/content"
+  var url = "https://" + cfg.host + "/confluence/rest/api/content"; // Common part, must be configurable
+  axios.get(url, opts).then((resp) => {
+    var d = resp.data;
+    //if (!Array.isArray(d)) { jr.msg = "Conflunce native result not in array"; return res.json(jr); }
+    res.json({status: "ok", data: d});
+  }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call"+ex; res.json(jr); });
+  
 }
