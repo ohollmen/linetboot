@@ -534,6 +534,43 @@ Same with memdisk based FreeBSD12 Boot. Seems crash is timed at the completion o
 
 SSH client reports (with -v turned on) `no hostkey alg`. The host keys are likely corrupt or have wrong perms.
 
+## Checking DHCP / DNS Info in MacOS
+
+Run `ipconfig getpacket $(IFNAME)` (e.g.):
+```
+mrsmith$ ipconfig getpacket en8
+op = BOOTREPLY
+htype = 1
+flags = 0
+hlen = 6
+hops = 0
+xid = 0xbe2f61d3
+secs = 0
+ciaddr = 0.0.0.0
+yiaddr = 192.168.1.156
+siaddr = 192.168.1.111
+giaddr = 0.0.0.0
+chaddr = 58:ef:68:e6:9f:2f
+sname = banana2
+file = lpxelinux.0
+options:
+Options count is 10
+dhcp_message_type (uint8): ACK 0x5
+server_identifier (ip): 192.168.1.105
+lease_time (uint32): 0x15180
+renewal_t1_time_value (uint32): 0xa8c0
+rebinding_t2_time_value (uint32): 0x12750
+subnet_mask (ip): 255.255.255.0
+broadcast_address (ip): 192.168.1.255
+domain_name_server (ip_mult): {192.168.1.105}
+router (ip_mult): {192.168.1.1}
+end (none): 
+```
+For DNS resolution (servers) info, issue:
+```
+scutil --dns
+```
+
 ## References
 - https://stackoverflow.com/questions/8504065/ubuntu-preseed-file-installation-hanging
 - https://stackoverflow.com/questions/27201419/automate-ubuntu-install-via-packer-stuck-at-welcome-screen

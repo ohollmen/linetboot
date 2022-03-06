@@ -35,8 +35,11 @@ While Linetboot documentation cannot be a full SSH documentation (do `man ssh`,
 
 - **public/private key presence** (Typical: RSA: ~/.ssh/id_rsa and ~/.ssh/id_rsa.pub, use `ssh-keygen` to create these. Do not use passphrase as
 this would trigger blocking interacticity)
-- **`known_hosts` authorization** - The remote hosts must be in Linetboot (running account) `~/.ssh/known_hosts`
+- **`known_hosts` authorization** - The remote hosts' hostkeys must be in Linetboot (running) account `~/.ssh/known_hosts`
 - **`authorized_keys` authorization** - For any non-interactive SSH connectivity Linetboot should copy its public key to remote hosts / remote account by `ssh-copy-id` (Effectively adding it to remote `~/.ssh/authorized_keys`).
+  - This has to be done for each host where `~/.ssh/known_hosts` in not on a shared network drive
+  - Shared network drive (sunc as NFS, CIFS) is a handy way to copy key only once and have it effective for all hosts (that use
+    the shared network drive for this account)
 - **File permissions for all `~/.ssh/*` files** - SSH is very picky (for a good reason) about `~/.ssh` file and dir permissions, these must be set to "standard SSH config file permissions" (Learn / Google these)
 
 ## 2-way operations between linetboot and remote host

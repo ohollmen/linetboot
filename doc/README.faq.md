@@ -85,3 +85,8 @@ Whatever can be set in recipe (KS/Preseed) but needs to be set before loading it
 ... netcfg/link_wait_timeout=30 netcfg/dhcp_timeout=60 ...
 
 ```
+#### Q: My PC Is lacking PXE - can I get it to PXE Boot with additional HW ?
+
+For USB-C There's an interesting Dell brandend ethernet dongle that claims to make
+a non-PXE capable device to be able to PXE Boot (sold on Amazon): Dell Adaptor USB-C To Ethernet, DBQBCBC064 (PXE Boot). This device has mixed reviews for its
+function for PXE boot.
