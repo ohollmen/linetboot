@@ -903,11 +903,14 @@ function ibip_cell(val, item) {
    // For a full-page URL to document (need login ?)
    function cfl_url_gen(val, item) {
      // Extract server from a member ...
-     //var url = "pages/viewpage.action?pageId=204146572"; // pageId seems to be diff from
+     //var url = "pages/viewpage.action?pageId=204146572"; // pageId in "pages/"-url seems to be diff from "id" (from API)
      if (!val) { return ""; }
-     if (!val.match(/^http/)) { return ""; }
+     var furl = item._links.self; // Full
+     var m;
+     if (!(m = furl.match(/(https?:\/\/[^\/]+?\/)/) ) ) { furl = m[1]; }
+     //if (!val.match(/^http/)) { return ""; } // Is relative
      // .. add: nw.focus(); ( nw.close(); )
-     return "<span onclick=\"var nw = window.open('"+val+"', 'cflwindow', 'width=640,height=640');\">"+val+"</span>";
+     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=640,height=640');\">"+val+"</span>";
    }
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
