@@ -641,7 +641,7 @@ var tabloadacts = [
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // 
   {"name": "Github Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
-      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null}, // TODO ?: genurl ?
+      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1}, // TODO ?: genurl ?
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -851,6 +851,9 @@ window.onload = function () {
     // Page Branding (title, image)
     if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
+    if (datasets.cfg.username) {
+      console.log("Got cfg username: '"+datasets.cfg.username+"'");
+    }
     // db.hosts = datasets["hostlist"]; // Legacy ...Can't do this globally. now handled by each showgrid()
     // Immediate grids
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
@@ -890,12 +893,12 @@ window.onload = function () {
     // $(".hostname").click(function (ev) {
     //$(".hostcell").click(on_host_click); // NEW: Moved to specific UI setup
     // Activate Router
-    if (!tabui) {
+    //if (!tabui) {
       // TEST selector 'nav ...' 
       //$('nav a[href=\'#eflowlist\']').parent().hide(); // css('display', 'none');
       router.start();
       location.hash = "basicinfo"; // ~defpath
-    }
+    //}
     // Enable extra fields in OS/Version tab (cfg.xflds)
     if (cfg && cfg.xflds) {
       if (!Array.isArray(cfg.xflds)) { return; }
