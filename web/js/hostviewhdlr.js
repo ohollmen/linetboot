@@ -56,9 +56,10 @@ function simplegrid_url(ev, an) {
   var urlgen = an.urlpara || an.genurl;
   //if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
   var spinner;
-  var spel = document.getElementById(ev.viewtgtid);
-  if (an.longload) { spinner = new Spinner(spinopts).spin(spel); }
-  
+  var spel = document.getElementById(ev.viewtgtid); // ttgt
+  // Note: When view calls itself, this block *IS* visited, but Spinner does not show (ev.viewtgtid/spel not there).
+  if (an.longload) { console.log("LONGLOAD !"+ev.viewtgtid); spinner = new Spinner(spinopts).spin(spel); }
+  else { console.log("No 'longload' (no spinner)"); }
   if (urlgen) { url = urlgen(ev, an); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
@@ -76,7 +77,7 @@ function simplegrid_url(ev, an) {
     // NOTE: If we pass act to showgrid(..., act); must disable this
     if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr); }
   }).catch(function (error) { console.log(error); })
-  .finally(() => { spinner && spinner.stop(); });
+  .finally(() => { spinner && spinner.stop(); spinner = null; });
 }
 /////////////////////////////////////////////////////////
     //var cfg = rapp.dclone(rapp.gridcfg);
@@ -649,6 +650,7 @@ function loginform(ev, act) {
   if (!ev.viewtgtid) { console.log("Routing Failed to set target view"); return; }
   rapp.templated(act.tmpl, act, ev.viewtgtid);
   $("#nav").hide();
+  // UISetup
   $("#loginbut").click(function () {
     // TODO: ["username","password"].forEach((k) => { p[k] = document.getElementById(k); }
     var p = { username: $("#username").val(), password: $("#password").val() };
@@ -662,13 +664,16 @@ function loginform(ev, act) {
       toastr.info("Login Success");
       // or call whole init/initapp ?
       //var u = datasets.cfg.user = {};
-      datasets.cfg.username = d.data.username;
+      datasets.cfg.username = d.data.username; // Over-writes the session provided value ?
+      $("#userinfo").html(d.data.username);
       location.hash = "basicinfo";
       $("#nav").show();
-    }).catch(function (ex) { console.log("Error in login: "+ex.toString()); } );
+    }).catch(function (ex) { var emsg = "Error in login: "+ex.toString(); console.log(emsg); toastr.error(emsg); return;} );
     return false;
   });
 }
+/** Log user out of the application.
+ */
 function logout(ev, act) {
   $("#"+ev.viewtgtid).html('');
   
@@ -677,17 +682,15 @@ function logout(ev, act) {
     var d = resp.data;
     // NO: return; 
     if (d.status == "err") { toastr.error("Logout Failed: " + d.msg); }
-    else {
-      //$("#"+ev.viewtgtid).html()
-      toastr.info('Logged out Successfully');
-    }
+    //$("#"+ev.viewtgtid).html()
+    else { toastr.info('Logged out Successfully'); }
     $("#nav").hide();
     // Only the form is no going to help
-    //rapp.templated("loginform", act, ev.viewtgtid);
+    //NOT-LOW-LEVEL: rapp.templated("loginform", act, ev.viewtgtid);
     var a2 = tabloadacts.filter((an) => { return an.path == "loginform"; })[0];
     loginform(ev, a2);
     
-  }).catch(function (ex) { console.log("Error in logout: "+ex.toString()); } );
+  }).catch(function (ex) { var emsg ="Error in logout: "+ex.toString(); console.log(emsg); toastr.error("Logout Failed w. Ex.: " + emsg);} );
   
 }
 
@@ -1309,6 +1312,7 @@ function jgrid_form(ev, act) {
 function ghprojs_uisetup(act, data) {
   var fs = datasets.cfg.ghorgs; // datasets.cfg.docker.files;
   console.log("ghprojs_uisetup ..."+ fs);
+  console.log("Got Action: ", act);
   var cont = "";
   // toastr.info(fs);
   fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
@@ -1320,10 +1324,14 @@ function ghprojs_uisetup(act, data) {
     //toastr.info("Click on "+Object.keys(jev));
     toastr.info("Show projects of Org/User "+this.dataset.dcfn);
     // TODO: Grab this from original act ? act.hdlr
+    // Because this does no go through router pre-handler, we must set viewtgtid manually
+    // TODO: High level imperative routing that consults pre-handler. Existing method ?
+    jev.viewtgtid = "routerdiv";
     simplegrid_url(jev, act);
   });
 }
 // Like docker / dcomposer_uisetup
+// dsattr, cfgattr (array in datasets.cfg[...] or getter cb), (url)parakey
 function ghprojs_urlpara(ev, act) {
   var val; // dcfn
   var ds = ev.target.dataset;
