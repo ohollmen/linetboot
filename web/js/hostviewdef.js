@@ -906,8 +906,10 @@ function ibip_cell(val, item) {
      //var url = "pages/viewpage.action?pageId=204146572"; // pageId in "pages/"-url seems to be diff from "id" (from API)
      if (!val) { return ""; }
      var furl = item._links.self; // Full
+     console.log("Got initial furl: "+ furl);
      var m;
-     if (!(m = furl.match(/(https?:\/\/[^\/]+?\/)/) ) ) { furl = m[1]; }
+     if (!(m = furl.match(/(https?:\/\/[^\/]+?\/)/) ) ) { console.log("Extracted: "+m[1]); furl = m[1]; }
+     else { console.log("No extraction from: "+ furl); }
      //if (!val.match(/^http/)) { return ""; } // Is relative
      // .. add: nw.focus(); ( nw.close(); )
      return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=640,height=640');\">"+val+"</span>";
