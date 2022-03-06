@@ -908,9 +908,9 @@ function ibip_cell(val, item) {
      // 
      {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: gridplug.foo}, // open_as_page
      {"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
-     
+     // {"name": "_expandable.history",    "title": "History",        type: "text", width: 30, itemTemplate: gridplug.foo}, // Icon, ...
      /*
-     {"name": "html_url",    "title": "URL",        type: "text", width: 30},
+     
      {"name": "fork",        "title": "Is Fork ?",  type: "text", width: 5}, // bool
      {"name": "created_at",  "title": "Created",    type: "text", width: 10, itemTemplate: gridplug.isodate},
      {"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},

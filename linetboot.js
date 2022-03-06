@@ -3095,6 +3095,7 @@ function confluence_index(req, res) {
   console.log("using Confluence URL: "+url);
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
+    d = d.results; // Confluence specific. Still start,limit,size, _links on top. leave (all) in response ?
     //if (!Array.isArray(d)) { jr.msg = "Conflunce native result not in array"; return res.json(jr); }
     res.json({status: "ok", data: d});
   }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call"+ex; res.json(jr); });
