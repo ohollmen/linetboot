@@ -23,6 +23,9 @@ var gridplug = {
   arr_commas: (val, item) => {
     if (!Array.isArray(val)) { return ""; }
     return val.join(", ");
+  },
+  open_as_page: (val, item) => {
+    
   }
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
@@ -897,6 +900,24 @@ function ibip_cell(val, item) {
      //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
      
    ];
+   var fldinfo_cflpages = [
+     {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
+     {"name": "type",      "title": "Doc Type",   type: "text", width: 7},
+     {"name": "title",     "title": "Title", type: "text",   width: 25}, // name or full_name
+     {"name": "status",    "title": "Status",    type: "text", width: 7},
+     // 
+     {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: gridplug.foo}, // open_as_page
+     {"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
+     
+     /*
+     {"name": "html_url",    "title": "URL",        type: "text", width: 30},
+     {"name": "fork",        "title": "Is Fork ?",  type: "text", width: 5}, // bool
+     {"name": "created_at",  "title": "Created",    type: "text", width: 10, itemTemplate: gridplug.isodate},
+     {"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},
+     {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12},
+     //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
+     */
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -907,6 +928,7 @@ function ibip_cell(val, item) {
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
-      "ghprojs": fldinfo_gh_projs,
+      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages,
+      
    };
    

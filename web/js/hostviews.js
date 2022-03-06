@@ -642,6 +642,8 @@ var tabloadacts = [
   // 
   {"name": "Github Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
       path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1}, // TODO ?: genurl ?
+  {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",
+      path: "cflpages", uisetup: null, urlpara: null, dprep: null, longload: 1},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
