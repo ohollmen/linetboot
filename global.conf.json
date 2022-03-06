@@ -226,6 +226,13 @@
     "org": [],
     "token":""
   },
+  "confluence": {
+    "host": "confluence.mycomp.com",
+    "user": "",
+    "pass": "",
+    "pgsize": 100,
+    "apiprefix": ""
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
