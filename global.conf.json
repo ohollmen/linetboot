@@ -140,7 +140,7 @@
     "nonsec": 1
   },
   "web": {
-    "desc": "Web GUI Related config",
+    "desc": "Linetboot Web GUI Related config",
     "reports": 1,
     "tabui": 0,
     "xflds" : ["use","loc"]
@@ -164,6 +164,7 @@
     "resetdesc": ""
   },
   "procster": {
+    "desc": "Web based (REST/JSON) Process Lister",
     "port": 8181,
     "user": "ohollmen",
     "nrestr": "^nuc",
@@ -180,16 +181,17 @@
     "debug": 1
   },
   "cov": {
-       "url":  "https://coverity-server.mycompany.com/",
-       "user": "",
-       "pass": "",
-       "projid": "0",
-       "viewid": "0",
-       "refilter": "^rel_xxx$",
-       "sby": "snapshotTarget",
-       "bgcolor": "#1456DD",
-       "pollinterval": 3000,
-       "polltestact": "./alarm.js"
+    "desc": "Coverity Connect Server Reports",
+    "url":  "https://coverity-server.mycompany.com/",
+    "user": "",
+    "pass": "",
+    "projid": "0",
+    "viewid": "0",
+    "refilter": "^rel_xxx$",
+    "sby": "snapshotTarget",
+    "bgcolor": "#1456DD",
+    "pollinterval": 3000,
+    "polltestact": "./alarm.js"
   },
   "jenkins": {
     "host": "192.168.1.127:8080",
@@ -243,6 +245,7 @@
     { "hostname":"192.168.1.141:3000", "directory": "/gparted" }
   ],
   "ansible" : {
+    "desc":"Ansible Web Runner",
     "pbpath":"./playbooks:~/ansible-test",
     "user": "",
     "pass": "overrdide_w_env_ANSIBLE_PASS",
