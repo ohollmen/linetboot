@@ -1,6 +1,15 @@
+/** @file
+ * Load Confluence document listings and doc pages from Confluence server.
+ * ## References
+ * 
+ * - REST API Examples: https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
+ * - Pagination: https://developer.atlassian.com/server/confluence/pagination-in-the-rest-api/
+ */
+var axios = require("axios");
 var cfg;
 var inited = 0;
 var apiprefix;
+
 
 function init(_cfg) {
   if (inited) { return; }
@@ -19,8 +28,7 @@ function init(_cfg) {
  * Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
  * - Add docs (of type): https://confluence.mycomp.com/rest/api/content?type=blogpost&start=0 # Example of no "/confluence" api prefix
  * - Content (included): /rest/api/content/3965072?expand=body.storage
- * https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
- * https://developer.atlassian.com/server/confluence/pagination-in-the-rest-api/
+ 
  */
 function confluence_index(req, res) {
   var jr = {status: "err", "msg": "Could not list Confluence Index."};
