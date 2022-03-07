@@ -86,15 +86,16 @@ function confluence_page(req, res) {
   
   //var apiprefix = (typeof cfg.apiprefix != "undefined") ? cfg.apiprefix : "/confluence"; // /rest/api/content
   var url = "https://" + cfg.host + apiprefix + "/rest/api/content"; // Common part, must be configurable
-  if (!req.query.id) { return res.end("No Document/Page ID available"); }
+  var q = req.query;
+  if (!q.id) { return res.end("No Document/Page ID available"); }
   
   url += "/"+req.query.id+"?expand=body.storage";
   
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
-    console.log("Got Doc Data: ", d);
-    
-    res.json({status: "ok", data: d});
+    console.log("Got Doc Data: "+ JSON.stringify(d, null, 2) );
+    if (q.html) { res.end(d.body.storage.value); }
+    else { res.json({status: "ok", data: d}); }
   }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call "+ex; res.json(jr); });
 }
 
