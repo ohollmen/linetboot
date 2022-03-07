@@ -62,6 +62,7 @@ var covconn  = require("./covconn.js");
 var ldconnx  = require("./ldconn.js");
 var deployer = require("./deployer.js");
 var gerrit   = require("./gerrit.js");
+var cfl      = require("./confluence.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -120,6 +121,7 @@ function app_init() { // global
   osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
   procrpt.init(global);
   deployer.init(global); // Good, should have access to "gitroots" also.
+  cfl.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -321,8 +323,10 @@ function app_init() { // global
   app.get("/kubdash", pods_info);
   app.get("/kubapirsc", pods_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
-  app.get("/gh_projs",gh_projs);
-  app.get("/confluence",confluence_index);
+  app.get("/gh_projs", gh_projs);
+  // 
+  app.get("/cflpage",    cfl.confluence_page);
+  app.get("/confluence", cfl.confluence_index);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -3071,41 +3075,4 @@ function certchecks(req, res) {
     //cb(null, );
     //});
   }
-}
-/** Show list of Confluence pages.
- * Config: "confluence": { host: "", user: "", pass: "", "apiprefix": "", } // docids: [] ?
- * https://confluence.mycomp.com/rest/api/content?type=blogpost&start=0 # Example of no "/confluence" api prefix
- * 
- * https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
- */
-function confluence_index(req, res) {
-  var jr = {status: "err", "msg": "Could not list Confluence Index."};
-  var cfg = global.confluence;
-  try {
-    if (!cfg) { throw "No config"; }
-    if (!cfg.host || !cfg.user || !cfg.pass) { throw "Config props missing ..."; }
-  } catch (ex) { jr.msg += "Error(early): "+ex; return res.json(jr); }
-  // At module init() (add creds) ?
-  var opts = {};
-  try { add_basic_creds(cfg, opts); } catch (ex) { jr.msg += "Error using creds: "+ex; return res.json(jr); }
-  // On many servers the path from top-level is just (w/o '/confluence' part): /rest/api/content
-  // example params: ?type=page ?type=blog  &start=0
-  var apiprefix = (typeof cfg.apiprefix != "undefined") ? cfg.apiprefix : "/confluence"; // /rest/api/content
-  var url = "https://" + cfg.host + apiprefix + "/rest/api/content?"; // Common part, must be configurable
-  url += "start=0"; // type=page limit=100&
-  if (cfg.pgsize) { url += "&limit=" + cfg.pgsize; }
-  console.log("using Confluence URL: "+url);
-  axios.get(url, opts).then((resp) => {
-    var d = resp.data;
-    d = d.results; // Confluence specific. Still start,limit,size, _links on top. leave (all) in response ?
-    //if (!Array.isArray(d)) { jr.msg = "Conflunce native result not in array"; return res.json(jr); }
-    res.json({status: "ok", data: d});
-  }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call"+ex; res.json(jr); });
-  // TODO: STD wrapper to inject B64 creds to opts ?
-  function add_basic_creds(cfg, opts) {
-    if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
-    var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
-    if (!creds_b64) { throw "Basic 64 creds empty !"; }
-    opts.headers = { Authorization : "Basic "+creds_b64};
-  } // add_basic_creds
 }

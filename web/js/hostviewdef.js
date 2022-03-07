@@ -917,7 +917,7 @@ function ibip_cell(val, item) {
      console.log("Final furl: "+ furl);
      //if (!val.match(/^http/)) { return ""; } // Is relative
      // .. add: nw.focus(); ( nw.close(); )
-     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=640,height=640');\">"+item.title+"</span>";
+     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=800,height=800');\">"+item.title+"</span>";
    }
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
@@ -926,7 +926,7 @@ function ibip_cell(val, item) {
      {"name": "status",    "title": "Status",   type: "text", width: 7},
      // 
      {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: cfl_url_gen}, // gridplug.foo open_as_page
-     //{"name": "_links.self",  "title": "Content Link", type: "text", width: 30, itemTemplate: gridplug.foo},
+     {"name": "_links.self",  "title": "Content URL", type: "text", width: 30, itemTemplate: gridplug.foo},
      // {"name": "_expandable.history",    "title": "History",        type: "text", width: 30, itemTemplate: gridplug.foo}, // Icon, ...
      /*
      
