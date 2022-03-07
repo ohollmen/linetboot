@@ -94,7 +94,7 @@ function confluence_page(req, res) {
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
     console.log("Got Doc Data: "+ JSON.stringify(d, null, 2) );
-    if (q.html) { res.end(d.body.storage.value); }
+    if (q.html) { console.log("HTML:\n"+d.body.storage.value); res.end(d.body.storage.value); }
     else { res.json({status: "ok", data: d}); }
   }).catch((ex) => { jr.msg += "Failed Confluence Api Server HTTP Call "+ex; res.json(jr); });
 }
