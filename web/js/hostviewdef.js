@@ -917,7 +917,8 @@ function ibip_cell(val, item) {
      console.log("Final furl: "+ furl);
      //if (!val.match(/^http/)) { return ""; } // Is relative
      // .. add: nw.focus(); ( nw.close(); )
-     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=800,height=800');\">"+item.title+"</span>";
+     return "<span onclick=\"var nw = window.open('"+furl + val+"', 'cflwindow', 'width=800,height=800');\">"+item.title+"</span> "
+        +" ( <a href=\"/cflpage?id="+item.id+"&htnl=1\"> RAW </a> )";
    }
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
