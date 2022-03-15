@@ -419,6 +419,7 @@ function Runner(cfg, acfg) {
 * - playname (str)- Playbook name (Taken from "name" of top level)
 * - taskcnt (int)- Number of tasks (in `tasks: ...` list)
 * - vars (object) - A key-value object with variables of playbook
+* 
 * @param acfg {object} - Ansible Config Object
 * @param pbpath {string} - Playbook Path (of ':' - delimited path items)
 * @return Playbook objects in an array ( with basename, relname, playname)
@@ -445,29 +446,58 @@ function ansible_play_list(acfg, pbpath, opts) { // dirname
     arr.forEach(function (fname) { // filter ?
       
       var suff = fname.slice((Math.max(0, fname.lastIndexOf(".")) || Infinity) + 1);
-      console.log("Encountered: "+fname+ " suff:" + suff);
+      console.log("Encountered: "+fname+ " suffix:" + suff);
       if ((suff != "yml") && (suff != "yaml")) { return 0; }
-      console.log("- Got valid suffix:" + suff);
+      //console.log("- Got valid suffix:" + suff);
       //path.basename(); // Already basenames
       var relname = dirname + "/" + fname;
       var node = { basename: fname, relname: relname };
       // TODO: Catch exception an bypass faulty yaml
-      var yf;
-      try { yf = yaml.safeLoad(fs.readFileSync(relname, 'utf8')); }
+      var yf; var cont;
+      try {
+        cont = fs.readFileSync(relname, 'utf8');
+        node.doc = doc_extract(cont, {maxXX: 10});
+        // TODO: Extract MD on top (detect heading '#' after stripping comment '#' ?)
+        yf = yaml.safeLoad(cont);
+      }
       catch (ex) { console.log("Failed to parse: "+relname+" .. "+ex); }
       if (!yf) { console.log("Failed to load(relfn): "+relname); return; }
       //console.log(JSON.stringify(yf, null, 2));
       // TODO: Checks here !
       // Lookup Playbook name ?
-      node.playname = yf[0].name; // title ?
+      node.playname = yf[0].name; // Play(book) title ?
       if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
       node.taskcnt = yf[0].tasks.length;
-      node.vars = yf[0].vars || {};
+      // Task names ?
+      node.tasknames = yf[0].tasks.filter((t) => { return (t.name); }).map((t) => { return t.name; });
+      node.vars = yf[0].vars || {}; // Play(-level) Vars
       // Store tasks ?
       fnodes.push(node);
     });
   }); // dirnames.forEach
   return fnodes;
+}
+function doc_extract(cont, opts) {
+  if (!cont) { throw "No content"; }
+  if (typeof cont != 'string') { throw "content not passed as string"; }
+  var lines = cont.split('\n');
+  var inmd = 0; // Inside MD
+  var max = 20;
+  var mdlines = [];
+  for (var ln in lines) {
+    ln = lines[ln];
+    //console.log("SOME-LINE: "+ln);
+    if (ln.match(/^# /)) {
+      inmd++;
+      mdlines.push(ln);
+      //console.log("MD-LINE: "+ln);
+      if (inmd > max) { break; }
+    } // i++ ? OLD: in=1
+    else if (inmd) { mdlines.push("# \n"); inmd = 0; }
+    //else {}
+  }
+  mdlines = mdlines.map((ln) => { return ln.substring(2); }); // substr(2)
+  return mdlines.join("\n");
 }
 /** List profiles in simple AoO format (for the Web gui select).
  * @param acfg {object} - Ansible config
