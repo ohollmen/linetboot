@@ -12,7 +12,7 @@
 * - /blob/main/src/v1/instances_client.ts (~l. 2000 ?)
 * - Calls this.innerApiCalls.insert ?
 */
-const compute = require('@google-cloud/compute');
+var compute; // = require('@google-cloud/compute'); // For const:  Missing initializer in const declaration
 
 // var compute = new Compute(); // Older version
 // var axios = require("axios");
@@ -70,10 +70,14 @@ var cfg;
 function init(_cfg) {
   cfg = _cfg.gcp || _cfg;
   if (!cfg) { throw "No gcp config !"; }
-  if (!compute) { throw "Compute module not loaded !"; }
+  if (cfg.apikey && cfg.usemodule) {
+    compute = require('@google-cloud/compute');
+    if (!compute) { throw "Compute module not loaded !"; }
+  }
   // Check cfg mems ?
   //Object.keys(vmcfg)
   vmcfg = cfg;
+  console.log("GCP: Using module: "+ compute ? "yes" : "no");
   return module.exports;
 }
 
