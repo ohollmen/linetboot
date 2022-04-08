@@ -8,3 +8,4 @@ In retrospect I found out icons are not searchable by their (downloaded) filenam
 
 If you see any problems using any of the images, please let me know.
 
+Linux penguin icon (for favorite icon) found from Icons8 website (https://icons8.com) by search "linux".
