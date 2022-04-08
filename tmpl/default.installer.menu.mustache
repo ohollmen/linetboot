@@ -838,8 +838,12 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 #   ip addr add 192.168.1.15/24 dev eno1
 #   ip route add default via 192.168.1.1 dev eno1
 # See tools in /usr/sbin/coreos-*
-# https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
-# Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
+# - https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
+# - Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
+# - PXE Live https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/
+#   - coreos.live.rootfs_url=...
+# - Live Booting:
+https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/ (See "Using persistent state" for YAML example)
 label fcos
 menu label Fedora CoreOS 34
 # fedora-coreos-32.20200726.3.1-live-kernel-x86_64
@@ -848,7 +852,11 @@ kernel http://{{ httpserver }}/fcos/images/pxeboot/vmlinuz
 # APPEND
 initrd http://{{ httpserver }}/fcos/images/pxeboot/initrd.img,http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img
 # Live PXE:
+# As of 2022-04
+# - Add: coreos.live.rootfs_url=http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img AND
+# - Remove rootfs URL from initrd line (latter URL)
 append rd.neednet=1 ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
 # Install ???
 # append coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://{{ httpserver }}/config.ign
+# Advised in /live-booting/
 ipappend 2
