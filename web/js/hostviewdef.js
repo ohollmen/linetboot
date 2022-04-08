@@ -901,7 +901,8 @@ function ibip_cell(val, item) {
      
    ];
    // For a full-page URL to document (need login ?)
-   function cfl_url_gen(val, item) {
+   function cfl_url_gen(valXX, item) {
+     var val = item._links.webui;
      //var url = "pages/viewpage.action?pageId=204146572"; // pageId in "pages/"-url seems to be diff from "id" (from API)
      if (!val) { return ""; }
      // Extract server from an adjacent member ...
@@ -923,7 +924,7 @@ function ibip_cell(val, item) {
    var fldinfo_cflpages = [
      {"name": "id",        "title": "Doc ID",   type: "number", width: 7},
      {"name": "type",      "title": "Doc Type", type: "text", width: 7},
-     {"name": "title",     "title": "Title",    type: "text",   width: 25}, // name or full_name
+     {"name": "title",     "title": "Title",    type: "text",   width: 25, itemTemplate: cfl_url_gen}, // name or full_name
      {"name": "status",    "title": "Status",   type: "text", width: 7},
      // 
      {"name": "_links.webui", "title": "URL", type: "text", width: 45, itemTemplate: cfl_url_gen}, // gridplug.foo open_as_page
@@ -938,6 +939,29 @@ function ibip_cell(val, item) {
      //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
      */
    ];
+   function zone_cell(val, item) {
+     if (!val) { return ""; }
+     var col = "#0000BB"; tcol = "#FFFFFF";
+     if (val.match(/east/)) { col = "#BB0000"; tcol = "#FFFFFF"; }
+     return "<span style=\" background-color: "+col+"; color: "+tcol+"; display: inline-block; width: 100%\">"+val+"</span>";
+   }
+   function netif_cell(val, item) {
+     var ni; try { ni = item.networkInterfaces[0]; } catch (ex) { return ""; }
+     return ni.name + ": " + ni.networkIP + " (Subnet: "+ni.subnetwork.name+")";
+   }
+   // GCP Dynamic Inv.
+   var fldinfo_gcpdi = [
+     {"name": "name",        "title": "Name",   type: "text", width: 14, css: "hostcell"},
+     {"name": "project",     "title": "Project",   type: "text", width: 12},
+     {"name": "zone",        "title": "Zone",   type: "text", width: 8, itemTemplate: zone_cell},
+     {"name": "machineType", "title": "Mach. Type",   type: "text", width: 7},
+     {"name": "status",      "title": "Status",   type: "text", width: 7},
+     {"name": "tags.items",  "title": "Tags",   type: "text", width: 15, itemTemplate: null}, // Array
+     // networkInterfaces[0].networkIP
+     {"name": "networkInterfaces", "title": "Net-If",   type: "text", width: 15, itemTemplate: netif_cell},
+     //{"name": "disks",      "title": "NumDisks",   type: "number", width: 10, itemTemplate: null},
+     //{"name": "deletionProtection", "title": "Protected",   type: "text", width: 7},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -948,7 +972,7 @@ function ibip_cell(val, item) {
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
-      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages,
+      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi
       
    };
    
