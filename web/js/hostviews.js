@@ -644,6 +644,11 @@ var tabloadacts = [
       path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1}, // TODO ?: genurl ?
   {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",
       path: "cflpages", uisetup: null, urlpara: null, dprep: null, longload: 1},
+  {"name":"GCP Dynamic Inventory", "elselXX": "gcpdi", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gcpdi", gridid: "jsGrid_gcpdi", fsetid: "gcpdi",
+    path: "gcpdi", uisetup: null, urlpara: null, dprep: null, longload: 0},
+    {name: "GCP Hosts Hierarchy", hdlr: visnethier, url: "/gcpdi_hier", tmpl: "t_hosthier", "path": "gcpdi_hier", helemid: "hh", dprep: dprep_hosthier,
+    netopts: netopts_hosthier, nclick: null, // onhostnetclick,
+  },
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}

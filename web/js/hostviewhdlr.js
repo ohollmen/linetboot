@@ -1121,7 +1121,7 @@ var netopts_hosthier = {
 
 function dprep_hosthier(null_data, netdata, netopts) {
   if (!netopts) { return alert("No netops passed to cb"); }
-  // Merge groups from netdata to config
+  // Merge groups (if any) from netdata to config
   if (netdata.groups) { Object.keys(netdata.groups).forEach((k) => { netopts.groups[k] = netdata.groups[k]; }); }
   
 }
@@ -1133,6 +1133,7 @@ function dprep_hosthier(null_data, netdata, netopts) {
 function visnethier(ev, act) {
   var tgtid = ev.routepath ? "routerdiv" : act.elsel;
   console.log("get: "+act.url);
+  // TODO: Allow to come from action
   var tp = { name: act.name, appname: (datasets.cfg ? datasets.cfg.appname: "???") };
   rapp.templated(act.tmpl, tp, tgtid);
   var spel = document.getElementById(ev.viewtgtid);
