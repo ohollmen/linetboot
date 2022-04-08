@@ -3,6 +3,7 @@
  * ## References
  * 
  * - REST API Examples: https://developer.atlassian.com/server/confluence/confluence-rest-api-examples/
+ * - Storage Format: https://confluence.atlassian.com/doc/confluence-storage-format-790796544.html
  * - Pagination: https://developer.atlassian.com/server/confluence/pagination-in-the-rest-api/
  */
 var axios = require("axios");
