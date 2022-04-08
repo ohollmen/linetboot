@@ -327,6 +327,10 @@ function app_init() { // global
   // 
   app.get("/cflpage",    cfl.confluence_page);
   app.get("/confluence", cfl.confluence_index);
+  //app.get("/certchecks", certchecks);
+  app.get("/gcpdi", gcpdi_show);
+  app.get("/gcpdi_hier", gcpdi_show);
+  app.get("/certchecks", certchecks);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -369,11 +373,12 @@ function app_init() { // global
     var gok = hlr.group_mems_setup(groups, hostarr);
     if (!gok) { console.error("Problems in resolving dynamic group members"); }
   }
-  if (global.gcp && !global.gcp.disa) {
-    gcp = require("./gcpops.js").init(global.gcp);
+  //if (global.gcp && !global.gcp.disa) {
+    gcp = require("./gcpops.js");
+    if (gcp && global.gcp) { gcp.init(global.gcp); }
     // gcp.
 
-  }
+  //}
   
   // console.log(groups); // DEBUG
   
@@ -2954,7 +2959,8 @@ function hosthier(req, res) {
     "group": { font: {size: 10}}
   };
   var grps = gns.map((gn) => {
-    edges.push({from: gn, to: root.id, source: gn, target: root.id, id: "edge"+edgeid});
+    // source: gn, target: root.id,
+    edges.push({from: gn, to: root.id,  id: "edge"+edgeid});
     edgeid++;
     return {id: gn, label: "Group "+gn, kind: "group", group: "group", color: colors.group}; // group: "group",
   });
@@ -3060,19 +3066,85 @@ function gh_projs(req, res) {
 }
 /**
  * How to "getting certifate info by http"
+ * openssl s_client -connect $HNAME:443
+ * - Seesm could use -host and -port instead of -connect host:port, but latter recommended
+ * - -showcerts
+ * - -status -debug 
  */
 function certchecks(req, res) {
   var jr = {status: "err", "msg": "Could not inquire certs."};
   var fn = process.env.HOME+"/.linetboot/certs.conf.json";
-  if (!fs.existsSync(fn)) { return res.json(jr); }
+  if (!fs.existsSync(fn)) { jr.msg += "No json conf."; return res.json(jr); }
   var cfgarr = require(fn);
+  if (!cfgarr) { jr.msg += "No cert config loaded" ; return res.json(jr); }
+  var port  = req.query.port || 443;
+  var hname = req.query.hname || "google.com";
   // Run trough cfgarr
   // async.map(cfgarr, getcert, () => {});
   function getcert(it, cb) {
-    var cmd = "";
-    //cproc.exec(cmd, (err, stdout, stderr) => {
-    // 
-    //cb(null, );
-    //});
+    var cmd = "openssl s_client -connect "+hname+":"+port;
+    cproc.exec(cmd, (err, stdout, stderr) => {
+      if (err) { jr.msg += "Error inquiring Cert info"; return res.json(jr); }
+      re.json({status: "ok", data: stdout}); // cb(null, );
+    });
   }
 }
+/**
+ */
+function gcpdi_show(req, res) {
+  var jr = {status: "err", "msg": "Could not show dynamic invertory."};
+  // TODO: gcp section ? Ansible section ?
+  if (!global.gcp || !global.gcp.dyninvfn) { jr.msg += "No gcp conf of no dyninvfn";return res.json(jr); }
+  var ifn = global.gcp.dyninvfn; // "/Users/oh890557/src_saas/postops/inventory_all.json";
+  var inv = require(ifn);
+  if (!inv) { jr.msg += "Inv not loaded"; return res.json(jr); }
+  if (!inv._meta || !inv._meta.hostvars) { jr.msg += "Inv structure messed up"; return res.json(jr); }
+  inv = inv._meta.hostvars;
+  inv = Object.keys(inv).map((k) => { return inv[k]; });
+  if (req.url.match(/gcpdi$/)) { // AoO as-is
+    res.json({status: "ok", data: inv});
+  }
+  else { gcp_hier(inv); }
+  // Create Hier. Graph out of AoO
+  function gcp_hier (inv) {
+    // See hosthier (~ ...)
+    var lbl = global.gcp.cloudname || "GCP Cloud";
+    var root = {"id": "root", "label": lbl, color: "#FFFFFF"}; // 
+    cfg_groups = { // vis: groups
+      // fontColor, fontSize dont' see effective (border,color are !!!)
+      // fontColor: 'white', fontSize: 10, fontFace: 'courier'
+      host: { border: 'black', color: '#777777', font: { color: 'white', size: 12}}, //  // #EEEEEE
+      "group": { font: {size: 10}}
+    };
+    var nodes = [root];
+    var edges = [];
+    var projs = {}; // Idx: projname to arr of vm:s
+    inv.map((e) => {
+       var proj = e.project;
+       projs[proj] = projs[proj] || [] ;
+       projs[proj].push(e);
+    });
+    var ie = 0;
+    Object.keys(projs).forEach((pk) => {
+      nodes.push({"id": pk, label: pk, color: "#CCCCCC"});
+      edges.push( { from: root.id, to: pk, id: "edge"+ie,  } ); // Same as BG ?
+      ie++;
+      if (!Array.isArray(projs[pk])) { return; }
+      // Hosts
+      projs[pk].forEach((e) => {
+        nodes.push( { "id": e.name, label: e.name, group: "host", colorXX: "#EEEEEE" } );
+        edges.push( { from: pk, to: e.name, id: "edge"+ie } );
+        ie++;
+      });
+      
+    });
+    var hier = { nodes: nodes, edges: edges, groups: cfg_groups };
+    res.json( { status: "ok", data: hier } );
+  }
+}
+
+/**
+ */
+//function gcpdi_graph(req, res) {
+  
+//}
