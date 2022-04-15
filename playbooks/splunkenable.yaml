@@ -1,0 +1,43 @@
+# # Enable Splunk via systemd
+# 
+# See vars section for default assumptions. Override any vars from command line by -e.
+# Note: Wnen rund second time, the stop as sp_user will fail, but in
+# the spirit of idempotency playbook will run to completion and cause no damage.
+# 
+# ## Example of running
+# ansible-playbook splunkenable.yaml -l splunk-001,splunk-002 -e 'host=splunk* sp_user=splunkmaster sp_homebase=/home'
+# ansible-playbook splunkenable.yaml -e 'host=splk*'
+#
+# # Refs
+# 
+# - https://serverfault.com/questions/962040/sharing-ansible-variable-between-plays
+---
+- name: Enable Splunk in systemd
+  #hosts: 'splunk-*'
+  hosts: '{{ host }}'
+  become: yes
+  vars:
+    sp_user: splunk
+    sp_homebase: /opt
+    sp_homedir: '{{ sp_homebase }}/{{ sp_user }}'
+    sp_exe: '{{ sp_homedir }}/bin/splunk'
+  tasks:
+    - name: Stop Splunk
+      become: true
+      become_user: '{{ sp_user }}'
+      shell: '{{ sp_exe }} stop'
+      #shell: id
+      register: stopout
+    - debug: msg="{{ stopout.stdout }}"
+    - name: Let Splunk Create a systemd Unit
+      shell:
+        cmd: '{{ sp_exe }} enable boot-start -user splunk -systemd-managed 1'
+        creates: /etc/systemd/system/Splunkd.service
+      #when: 0
+    - name: Reload Units
+      shell: systemctl daemon-reload
+    - name: Enable, Start
+      #shell: 'echo Hello; echo World'
+      shell: 'systemctl enable Splunkd; systemctl start Splunkd'
+      register: hout
+    #- debug: msg="{{ hout.stdout }}"
