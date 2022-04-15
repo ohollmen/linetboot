@@ -949,6 +949,12 @@ function ibip_cell(val, item) {
      var ni; try { ni = item.networkInterfaces[0]; } catch (ex) { return ""; }
      return ni.name + ": " + ni.networkIP + " (Subnet: "+ni.subnetwork.name+")";
    }
+   function array_cell(val,item) { // item.tags.items
+     if (!val) { return ""; }
+     if (!Array.isArray(val)) { return ""; }
+     return val.join(", ");
+
+   }
    // GCP Dynamic Inv.
    var fldinfo_gcpdi = [
      {"name": "name",        "title": "Name",   type: "text", width: 14, css: "hostcell"},
@@ -956,7 +962,7 @@ function ibip_cell(val, item) {
      {"name": "zone",        "title": "Zone",   type: "text", width: 8, itemTemplate: zone_cell},
      {"name": "machineType", "title": "Mach. Type",   type: "text", width: 7},
      {"name": "status",      "title": "Status",   type: "text", width: 7},
-     {"name": "tags.items",  "title": "Tags",   type: "text", width: 15, itemTemplate: null}, // Array
+     {"name": "tags.items",  "title": "Tags",   type: "text", width: 15, itemTemplate: array_cell}, // Array
      // networkInterfaces[0].networkIP
      {"name": "networkInterfaces", "title": "Net-If",   type: "text", width: 15, itemTemplate: netif_cell},
      //{"name": "disks",      "title": "NumDisks",   type: "number", width: 10, itemTemplate: null},
