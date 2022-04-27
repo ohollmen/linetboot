@@ -54,6 +54,7 @@
   <script type="text/javascript" src="node_modules/docindex/docindex.js"></script>
   <!-- vis/dist/app-bundle.min.js -->
   <script type="text/javascript" src="node_modules/vis/dist/vis.js"></script>
+  <script type="text/javascript" src="node_modules/js-yaml/dist/js-yaml.js"></script>
   <!-- 2.X TODO: sigma.min.js    graphology.*.js : umd,esm,cjs. cjs: Graph is not a constructor -->
   
   <!--<script type="text/javascript" src="node_modules/graphology/dist/graphology.cjs.js"></script>-->
@@ -287,6 +288,8 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <!-- Dialogs. See also generic/simple grid template: id="simplegrid" (with {{name}} class="xui" {{ gridid }})-->
 <div id="dialog" class="infodia" title="Host Details" style="display: none;"></div>
 <div id="dialog_ans" title="Ansible PlayBook Runner" style="display: none;"></div>
+<div id="dialog_pbdoc" title="Ansible PlayBook Documentation" style="display: none;"></div>
+
 <!-- <div id="jsGrid_dockerimg_d" class="fwgrid" comm="Unused"></div> -->
 <div id="dockerimg" title="Docker Images" nametmpl="Images for {{ hname }}" data-info="Docker Images Dialog"></div>
 <div id="dockercont" title="Docker Containers" nametmpl="Containers for {{ hname }}" data-info="Docker Containers Dialog"></div>
@@ -469,6 +472,20 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <h3>{{{ name }}}</h3>
 <div class="xui" style="display:none"></div>
 <div id="{{{ gridid }}}"></div>
+</script>
+
+<script id="anspbdoc"  type="text/template" title="Ansible Playbook Doc">
+<div>{{{ doc }}}</div>
+<h1>Tasks</h1>
+<p>High-level outline of (commented) tasks:</p>
+<ul>
+{{#tasknames}}
+<li>{{{ . }}}</li>
+{{/tasknames}}
+</ul>
+<h1>Vars</h1>
+<p>Default variables:</p>
+<pre>{{{ vars }}}</pre>
 </script>
 
 <!-- TODO: simplecanvas (Similar to simplegrid) ciid = canvas info id -->

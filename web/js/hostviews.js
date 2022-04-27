@@ -383,11 +383,29 @@ function ansishow(ev, an) {
     $( "#" + tgtid ).html(output);
   }
   // Hook select-reset listeners
-  function ansui_setup() {
+  function ansui_setup(act, dataX) { // act, data ?
     $('#playbooks').change(function () {  $("#playprofile").val([""]); }); // alert("PB");
     $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
     $('#anssend').click(ansirun);
     $('#anssend3').click(ansirun);
+    // Doc ?
+    $('#playbooks option').dblclick(function(jev) {
+      //$('#selectedOption').val(this.outerHTML);
+      //alert("Hi "+ $('#selectedOption').val() ); // this.outerHTML
+      var dopts = {modal: true, width: 650, height: 600}; // See also min,max versions
+      console.log("Dblclick on "+this);
+      console.log("Value "+this.value);
+      var e = datasets["aplays"].find((e) => { return e.relname == this.value; });
+      var c = new showdown.Converter();
+      // TODO: Vars as yaml (See: js-yaml) !
+      var docpara = {doc: c.makeHtml(e.doc), tasknames: e.tasknames, vars: JSON.stringify(e.vars, null, 2)};
+      // docpara.vars = yaml.dump(e.vars, {'styles': { '!!null': 'canonical' }, sortKeys: false}) // dump null as ~
+      rapp.templated('anspbdoc', docpara, 'dialog_pbdoc');
+      
+      //$( "#dialog_pbdoc" ).html( c.makeHtml(e.doc) );
+      //$( "#dialog_pbdoc" ).html( "<pre>"+e.doc+"</pre>" );
+      $( "#dialog_pbdoc" ).dialog(dopts);
+    });
     var time = Date.now();
     var atmpls = {
       pb : "ansible-playbook -i ~/.linetboot/hosts {{{ pb }}} -l {{ hns }} -b -e '{{{ ejson }}}'",
