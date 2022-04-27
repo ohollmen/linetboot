@@ -54,6 +54,14 @@ Notes on fields
 * Siblings of instances:
 * - "mode" (sibling of "instances") can be "managed" or "data"
 * - "name" (-II-) may be same for all items of same rsc type
+* Single instance object:
+* - index_key: 0 (typical)
+* - schema_version: 1
+* - attributes: ... misc attrs of particular type
+*   - attributes.labels : key-value pairs
+* - private: long hash
+* - dependencies: Array of Module names, etc.
+* - "sensitive_attributes": []
 */
 var fs = require("fs");
 
@@ -68,17 +76,17 @@ var tf = {};
 function init(_cfg) {
   _cfg = _cfg || {};
   //var
-  tfpath = process.env.LINETBOOT_TF_MODELPATH || _cfg.;
+  tfpath = process.env.LINETBOOT_TF_MODELPATH || _cfg.modelpath;
   // console.error(process.argv);
   
   // console.error("OP: '"+op+"'");
   //var
   fnarr = fnames_load(tfpath);
-  if (!fnarr) { console.log("No terraform files from "+tfpath); return; }
+  if (!fnarr) { console.log("No Terraform files from "+tfpath); return; }
   console.error(fnarr.length + " Files to parse");
   //var
   tf = tfmodel_create(fnarr);
-  if (!tf) { console.log("No Teraform mode\n"); tf = {}; return; }
+  if (!tf) { console.log("No Terraform model"); tf = {}; return; }
 }
 
 // Because of missing.json suffix :-(
@@ -178,12 +186,13 @@ if (process.argv[1].match("terraform.js")) {
   //console.log("EXIT");
 }
 function rsctype_show(req, res) {
-  var jr = {status: "err", msg: "Failed to show resource type"};
+  var jr = {status: "err", msg: "Failed to show resource type. "};
+  if (!tf) { jr.msg += "No Terrform model"; return res.json(jr); }
   var type = "google_project"; // ???
   if (req.query.type) { type = eq.query.type; }
-
-  var d = tf.rscindex[type];
-  if (!d) { jr.msg += "Type "+type+ " not presnt in data"; res.json(jr); }
+  if (!tf.rscidx) { jr.msg += "No resource index in (global) tf model: "+JSON.stringify(tf); return res.json(jr); }
+  var d = tf.rscidx[type];
+  if (!d) { jr.msg += "Type "+type+ " not present in data"; return res.json(jr); }
   res.json({status: "ok", data: d});
 }
 module.exports = {
