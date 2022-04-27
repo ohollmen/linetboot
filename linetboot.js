@@ -63,6 +63,7 @@ var ldconnx  = require("./ldconn.js");
 var deployer = require("./deployer.js");
 var gerrit   = require("./gerrit.js");
 var cfl      = require("./confluence.js");
+var tform    = require("./terraform.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -122,6 +123,7 @@ function app_init() { // global
   procrpt.init(global);
   deployer.init(global); // Good, should have access to "gitroots" also.
   cfl.init(global);
+  tform.init();
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -331,6 +333,7 @@ function app_init() { // global
   app.get("/gcpdi", gcpdi_show);
   app.get("/gcpdi_hier", gcpdi_show);
   app.get("/certchecks", certchecks);
+  app.get("/tftypeinst", tform.rsctype_show);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -2985,6 +2988,8 @@ function hosthier(req, res) {
  * To run API proxying:
  * - In small scale (min stup overhead):  kubectl proxy --port=8080 --accept-hosts='^localhost$,^192.168.1.*$'
  * - In proper scale (JWT, cacert): Setup JWT, cacert properly as pointed out by article ...
+ *   - Use: Authorization: Bearer $TOKEN
+ *   - https://nieldw.medium.com/curling-the-kubernetes-api-server-d7675cfc398c
  * Note: This servers more than pods (almost any K8S API). TODO: rename.
  */
 function pods_info(req, res) {
@@ -3019,6 +3024,7 @@ function pods_info(req, res) {
   
   var k8surl = (cfg.ssl ? "https" : "http") + "://" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
   console.log("Consult k8S URL: "+k8surl);
+  var rpara = { headers: {"Authorization":"Bearer "} }; // TODO: ..
   axios.get(k8surl).then((resp) => {
     var pods = resp.data;
     let data = api2data(pods);
