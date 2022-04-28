@@ -240,6 +240,12 @@ kernel http://{{ httpserver }}/ubuntu20dt/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu20dt/casper/initrd
 append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
 
+label ubuntu22dt
+menu label Ubuntu MATE 22 Desktop (64bit, Live)
+kernel http://{{ httpserver }}/ubuntu22dt/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu22dt/casper/initrd
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu22dt/ debug ip=dhcp toram
+
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
 # menu label Installer Boot - Kickstart (First Disk ignored)
