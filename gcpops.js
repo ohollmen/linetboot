@@ -170,14 +170,15 @@ async function listInstancesOfProject(vmcfg) {
   var arr = [];
   var debug = 1;
   // await after for !!!??? Related to auto-iteration ?
-  for await (const [zone, instancesObject] of aggListRequest) {
+  // Keep await out for now to allow Ubuntu 18.04 node (v8.10.0) run linetboot
+  for /*await*/ (const [zone, instancesObject] of aggListRequest) {
     const instances = instancesObject.instances;
 
     if (instances && instances.length > 0) {
       debug && console.log(` ${zone}`);
       for (const instance of instances) {
-	debug && console.log(` - ${instance.name} (${instance.machineType})`);
-	app.push(instance);
+        debug && console.log(` - ${instance.name} (${instance.machineType})`);
+        app.push(instance);
       }
     }
   }
