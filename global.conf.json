@@ -233,6 +233,10 @@
     "pgsize": 100,
     "apiprefix": ""
   },
+  "terraform": {
+    "statepath": "~/tf/terraform_state_model",
+    "indexfn": "tf.list.txt"
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
