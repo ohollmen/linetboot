@@ -3,7 +3,11 @@
 * 
 * Infoblox provides a REST API to inquire and modify IP Address management related DHCP/DNS Info.
 * @todo CSV Merge w.macaddr (possibly next-server/boot-server, bootfile). See "CSV Import" in GUI.
-* Creating a stub of (Infobox-proprietary) CSV, See:  "Infoblox CSV Import Format"
+* Creating a stub of (Infobox-proprietary) CSV, See:  "Infoblox CSV Import Format".
+*
+* ## Infobox and PXE Boot info
+* Source: https://community.infoblox.com/t5/api-integration-devops-netops/api-to-get-ipv4-network-bootp-pxe-information/m-p/18789
+* curl -k -u admin:infoblox -X GET 'https://192.168.1.2/wapi/v2.3/network' -d 'network=192.168.1.0/24' -d '_return_fields=options,bootfile,bootserver,nextserver'
 */
 var ibconf;
 var hostarr;
@@ -14,17 +18,18 @@ var url_h;
 var async   = require("async");
 var axios   = require("axios");
 
-var redfish  = require("./redfish.js");
+var redfish  = require("./redfish.js"); // For basic auth
 var hlr      = require("./hostloader.js");
 
-function init(global, hdls) {
-  if (global && global.iblox) { ibconf = global.iblox; }
+function init(_conf, hdls) {
+  if (_conf && _conf.iblox) { ibconf = _conf.iblox; }
+  else if (_conf) { ibconf = _conf; }
   else { return module.exports; }
   hostarr = hdls.hostarr;
   hostcache = hdls.hostcache;
   // Prepare get parameters that stay constant
   var bauth = redfish.basicauth(ibconf);
-  getpara = {headers: {Authorization: "Basic "+bauth}};
+  getpara = { headers: { Authorization: "Basic "+bauth }};
   url_h = ibconf.url + "/record:host?";
   return module.exports;
 }
@@ -36,7 +41,6 @@ function init(global, hdls) {
  */
 function ib_set_addr(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
-  // var ibconf = global.iblox;
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
 
   console.log("Query: "+url_h);
@@ -79,7 +83,6 @@ var tset = [
  */
 function ib_show_hosts(req, res) {
   var jr = {status: "err", msg: "Could not query IB."};
-  // var ibconf = global.iblox;
   if (!ibconf) { jr.msg += "No IB config";return res.json(jr); }
   if (ibconf.test) { return res.json({status: "ok", data: tset}); } // TEST Mode
   if (!ibconf.user || !ibconf.pass) { jr.msg += "Not Connected to IBlox system";return res.json(jr); }
