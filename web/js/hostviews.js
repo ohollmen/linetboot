@@ -595,7 +595,12 @@ var tabloadacts = [
   {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser", "hdlr": gendialog, url: "", path: "uent", dialogid: "userdialog"},
   // Iblox
-  {"name": "InfoBlox",   "elselXX": "tabs-15", tmpl: "simplegrid", "hdlr": ibloxlist,  url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibloxlist", uisetup: ibox_uisetup},
+  {"name": "InfoBlox", tabs: ["tabs-ibnet", "tabs-ibhost"], hdlr: tabsetview, "path": "ibloxlist"},
+  {"name":"InfoBlox Networks", "elsel": "tabs-ibnet", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/ipamnets", gridid: "jsGrid_ibnets", fsetid: "ibnets",
+    path: "ibnets", uisetup: null, urlpara: null, dprep: null, longload: 0},
+  {"name": "InfoBlox Hosts",   "elsel": "tabs-ibhost", tmpl: "simplegrid", "hdlr": ibloxlist,  url: "/ibshowhost", gridid: "jsGrid_iblox", fsetid: "iblox", path: "ibhosts", uisetup: ibox_uisetup},
+  
+  // Eflow
   {"name": "EFlow",      "elselXX": "tabs-15", tmpl: "simplegrid",  "hdlr": eflowlist, url: "/eflowrscs", gridid: "jsGrid_eflow", fsetid: "eflow", path: "eflowlist", uisetup: eflow_uisetup},
   // esxi
   {"name": "ESXi Guests","elselXX": "",        tmpl:"simplegrid", "hdlr": esxilist,      "url": "/esxi/", gridid: "jsGrid_esxi", fsetid: "esxilist", path: "esxiguests"},
@@ -652,9 +657,9 @@ var tabloadacts = [
       uisetup: actinfo_uisetup },
   {name: "Host Groups Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh", dprep: dprep_hosthier,
       netopts: netopts_hosthier, nclick: onhostnetclick, },
-  //  ibloxlist
+  //  K8S
   {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/podinfo", gridid: "jsGrid_syspods", fsetid: "syspods", path: "syspods", uisetup: null, dprep: dprep_syspods},
-  {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubapirsc", gridid: "jsGrid_kubapis", fsetid: "kubapis", path: "kubapis",},
+  {"name": "K8S System APIs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubapirsc", gridid: "jsGrid_kubapis", fsetid: "kubapis", path: "kubapis",},
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // 
@@ -664,9 +669,15 @@ var tabloadacts = [
       path: "cflpages", uisetup: null, urlpara: null, dprep: null, longload: 1},
   {"name":"GCP Dynamic Inventory", "elselXX": "gcpdi", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gcpdi", gridid: "jsGrid_gcpdi", fsetid: "gcpdi",
     path: "gcpdi", uisetup: null, urlpara: null, dprep: null, longload: 0},
-    {name: "GCP Hosts Hierarchy", hdlr: visnethier, url: "/gcpdi_hier", tmpl: "t_hosthier", "path": "gcpdi_hier", helemid: "hh", dprep: dprep_hosthier,
+  {name: "GCP Hosts Hierarchy", hdlr: visnethier, url: "/gcpdi_hier", tmpl: "t_hosthier", "path": "gcpdi_hier", helemid: "hh", dprep: dprep_hosthier,
     netopts: netopts_hosthier, nclick: null, // onhostnetclick,
   },
+  // TF: TODO: Use xpara, set fsetid to func, use urlpara ()
+  {"name":"Terraform ...", "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/tftypeinst", gridid: "jsGrid_tfinst", fsetid: "tfinst",
+    path: "tfinst", uisetup: null, urlpara: null, dprep: null, longload: 0},
+  {"name":"Services", "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/hostserv", gridid: "jsGrid_hostserv", fsetid: "hostserv",
+    path: "hostserv", uisetup: null, urlpara: null, dprep: null, longload: 0},
+    
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
