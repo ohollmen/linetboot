@@ -50,10 +50,18 @@ Notes on fields
     // - google_essential_contacts_contact
     // - ... ?
     // - google_service_account_key
-* # Other
-* Siblings of instances:
+* # Notes on hierarchy
+* File level top (Always Object)
+* - verion (format), terraform_version (sw), serial: serial number of file e.g. 2...54 (?)
+* - outputs: {...} - Nested, multi-level k-v tree, keys (and structure) go by resource type (e.g.):
+*   - google_compute_network: host_project_id, network_name, .., service_project, service_project_num, subnetworks
+*   - google_compute_zones: instance_ids, private_ips, public_ips
+* Siblings of instances (see op "stats" output) :
 * - "mode" (sibling of "instances") can be "managed" or "data"
+* - type: THE type
 * - "name" (-II-) may be same for all items of same rsc type
+* - provider (e.g.): 
+* - outputs - Object of key-val pairs ... NOTE: Is this even on more upper level ?
 * Single instance object:
 * - index_key: 0 (typical)
 * - schema_version: 1
@@ -83,23 +91,28 @@ function init(_cfg) {
   //var
   fnarr = fnames_load(tfpath);
   if (!fnarr) { console.log("No Terraform files from "+tfpath); return; }
-  console.error(fnarr.length + " Files to parse");
+  console.error(fnarr.length + " Files to parse (from "+ tfpath+")");
   //var
   tf = tfmodel_create(fnarr);
-  if (!tf) { console.log("No Terraform model"); tf = {}; return; }
+  if (!tf) { console.log("No Terraform model created"); tf = {}; return; }
+  var keys = null; // Triggers all
+  insts_all_merge(tf, keys);
 }
 
-// Because of missing.json suffix :-(
+// require()  not used because of missing.json suffix :-(
 function json_load(fn) {
   var jcont = fs.readFileSync(fn, 'utf8');
   if (!jcont) { return null; }
-  var j = JSON.parse(jcont);;
+  var j = JSON.parse(jcont);
+  if (!j) { return null; }
   // Inject origin (Also into resources ?)
   j._fname = fn;
   if (j.resources) {
     // Add _fname
     // j.resources.forEach((fn) => { r._fname = fn; })
   }
+  // Assume non-array
+  if (Array.isArray(j)) { return null; }
   return j;
 }
 /** */
@@ -108,7 +121,7 @@ function rsc_add(rscidx, rsc) {
   rscidx[rsc.type].push(rsc);
 }
 /** Load filename index file
-@return Filenames in an array
+* @return Filenames in an array
 */
 function fnames_load(tfpath) {
 
@@ -121,29 +134,64 @@ function fnames_load(tfpath) {
   // console.log(fnarr); // Files list
   return fnarr;
 }
-/** Merge instances from arr[1] onwards to node in arr[0].
+/** Merge instances of one type from multiple "instances" to single array.
+ * Option1: arr[1] onwards to node in arr[0].
+ * Option2: Create new array altogether
  * TODO: What to do with "outputs" from different nodes
+ * @param arr {array} - Array of resource nodes (of same type) that have instances attribute
  */
 function insts_merge(arr, name) {
   console.log("Staring with: "+name);
+  var newarr = [];
+  var verbose = 1;
   arr.forEach((inode) => {
     var ocnt = 0;
     if (inode.outputs) { ocnt = Object.keys(inode.outputs).length; }
+    // Verbose
+    if (verbose) {
     console.log("- Num instances: "+inode.instances.length);
     console.log("- Outputs: "+ocnt);
     console.log(inode);
+    }
+    // Merge to common array
+    newarr = newarr.concat(inode.instances);
   });
+  return newarr;
 }
+
+function insts_all_merge(tf, keys) {
+  if (!tf) { console.log("No tf model to merge all isntances"); return null; }
+  if (!Array.isArray(keys)) { keys = Object.keys(tf.rscidx); }
+  var instidx = {};
+  var debug = 0;
+  keys.forEach((k) => {
+    var iarr = tf.rscidx[k];
+    //OLD:iarr.forEach(() => {});
+    // wrap info (merged) {..., instances: iarr} to retain important upper keys
+    var iarr = insts_merge(iarr, k);
+    debug && console.log("Merged("+iarr.length+", "+k+"):", iarr);
+    // Revamp existing or create new instidx (latter)
+    instidx[k] = iarr;
+  });
+  tf.instidx = instidx;
+  return instidx;
+} // inst ...
 
 function tfmodel_create(fnarr) {
   var rscidx = {};
   var farr = [];
+  var debug = 0;
+  if (!tfpath) { console.log("No tfpath passed\n");  return null; }
+  if (!fs.existsSync(tfpath)) { console.log("tfpath does not exist\n");  return null; }
+  debug && console.log("Load model from path: "+tfpath+"");
+  // Per-File array-of-objects
   fnarr.forEach( (fnrel) => {
     var fn = tfpath + "/"+ fnrel;
-    //console.log(fn);
+    debug && console.log("Loading JSON: "+fn);
     var sm = json_load(fn); // Sub-model
     //console.log(JSON.stringify(sm, null, 2));
     // Grab resources from sub-model
+    if (!sm) { console.log("Resources file ("+fn+") JSON not loaded (null ?)!"); return; }
     if (!Array.isArray(sm.resources)) { console.log("Resources not in an array ("+fnrel+") !"); return; }
     farr.push(sm);
   });
@@ -160,40 +208,95 @@ function tfmodel_create(fnarr) {
   return { rscidx: rscidx, farr: farr};
 };
 
+/// CLI. Perform same (datamodel) init as webapp
 if (process.argv[1].match("terraform.js")) {
-  var ops = {idx:1, farr: 1, types: 1};
+  var ops = {idx: idx, farr: farr, types: types, stats: stats};
   
-  // process.exit(1);
-  init();
   var op = process.argv.splice(2, 1)[0];
   // console.log(op);
   if (!op) { console.log("No op given. Use one of: "+Object.keys(ops).join(', ')); process.exit(1); }
-  if (op == 'farr')   { console.log( JSON.stringify(tf.farr, null, 2) ); }
-  if (op == 'idx')   { console.log( JSON.stringify(tf.rscidx, null, 2) ); }
-  if (op == 'types') { console.log( JSON.stringify(Object.keys(tf.rscidx), null, 2) ); }
-  if (op == 'stats') {
+  if (!ops[op]) { console.log("No op '"+op+" available"); process.exit(1); }
+  
+  function farr()  { console.log( JSON.stringify(tf.farr, null, 2) ); }
+  function idx()   { console.log( JSON.stringify(tf.rscidx, null, 2) ); }
+  function types() { console.log( JSON.stringify(Object.keys(tf.rscidx), null, 2) ); }
+  function stats() {
     var keys = Object.keys(tf.rscidx); // All
-    if (0) { keys = []; }
-    var iarr;
-    keys.forEach((k) => {
-
-      iarr = tf.rscidx[k];
-      //iarr.forEach(() => {});
-      insts_merge(iarr, k);
-
-    });
+    if (0) { keys = []; } // Or pre-defined ?
+    //var iidx = insts_all_merge(tf, keys);
+    console.log("ALL-Inst-Merged: ", tf.instidx); // iidx
   }
+  init();
+  console.log("Creating model from: "+tfpath);
+  ops[op](); // Dispatch
   //console.log("EXIT");
 }
+
+function introspect(arr) {
+  var mm = {}; // Top: attrs
+  arr.forEach((e) => {
+    var ks = Object.keys(e);
+    ks.forEach((k) => {
+      // Note also: o.hasOwnProperty('myProperty'), typeof myVariable === 'undefined'
+      if (!mm[k]) { mm[k] = {types: { "null": 0, "undefined": 0}, lens: {} }; } // Val types
+      var t = typeof e[k];
+      // Special values
+      if (e[k] === null)        { mm[k].types.null++; return; }
+      if (e[k] === undefined)   { mm[k].types.undefined++; return; }
+      if (Array.isArray(e[k]) ) { mm[k].types.array = mm[k].types.array || 0; mm[k].types.array++; return; } // ++ on non-existing sets null
+      if (isobj(e[k])) { mm[k].types.object = mm[k].types.object || 0; mm[k].types.object++; return; } // TODO: ...
+      if (!mm[k].types[t]) { mm[k].types[t] = 0; } // Init to 0
+      if (t == 'string') { mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k].length); }
+      // Same with number
+      if (t == 'number') { mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k]); }
+      mm[k].types[t] += 1;
+    });
+  });
+  function isobj(o) {
+    return typeof o === 'object' && !Array.isArray(o) && o !== null;
+  }
+  Object.keys(mm).forEach((ak) => {
+    if (mm[ak].types.null === 0)      { delete(mm[ak].types.null); }
+    if (mm[ak].types.undefined === 0) { delete(mm[ak].types.undefined); }
+    
+  });
+  // New iter - try deriving definite (unambiguous) type
+  Object.keys(mm).forEach((ak) => {
+    var ks = Object.keys(mm[ak].types);
+    if (ks.length == 1) {mm[ak].type = ks[0]; } // Else "typecandidates" = ks;
+  });
+  return mm;
+}
+/** View all instances of particular Terraform resource type.
+ * URL Parameters: "type" for the Terrform resource type (Default: "google_project")
+ */
 function rsctype_show(req, res) {
-  var jr = {status: "err", msg: "Failed to show resource type. "};
+  var jr = { status: "err", msg: "Failed to show resource type. " };
   if (!tf) { jr.msg += "No Terrform model"; return res.json(jr); }
-  var type = "google_project"; // ???
+  var type = "google_project"; // Default ???
   if (req.query.type) { type = eq.query.type; }
-  if (!tf.rscidx) { jr.msg += "No resource index in (global) tf model: "+JSON.stringify(tf); return res.json(jr); }
-  var d = tf.rscidx[type];
-  if (!d) { jr.msg += "Type "+type+ " not present in data"; return res.json(jr); }
-  res.json({status: "ok", data: d});
+  if (!tf.rscidx || !tf.instidx) { jr.msg += "resource or instance index missing in (global) tf model: "+JSON.stringify(tf); return res.json(jr); }
+  if (req.url == '/tftypeinst') {
+    var d = tf.instidx[type]; // rscidx
+    if (!d) { jr.msg += "TF Type by key="+type+ " not present in TF model"; return res.json(jr); }
+    if (!Array.isArray(d)) { jr.msg += "TF Type instances not in array"; return res.json(jr); }
+    var mm = introspect(d);
+    res.json({status: "ok", tftype: type, mm: mm, data: d}); // mm: mm,
+  }
+  else if (req.url == '/tftypelist') {
+    var rsc2cnt = {};
+    Object.keys(tf.rscidx).forEach((tk) => { var arr = tf.instidx[tk]; rsc2cnt[tk] = arr.length; });
+    //res.json({status: "ok", data: Object.keys(tf.rscidx) });
+    res.json({status: "ok", data: rsc2cnt });
+  }
+  else if (req.url == '/tfm') {
+    
+  }
+  else {res.json(jr);}
+}
+
+function rsctypes_list(req, res) {
+  
 }
 module.exports = {
   init: init,
