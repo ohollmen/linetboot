@@ -502,12 +502,30 @@ function ibip_cell(val, item) {
      {name: "macaddr", title: "Mac Addr", type: "text", width: 110, css: "macaddr"},
      {name: "ipaddr_ib",  title: "IB: IP Addr", type: "text", width: 100, itemTemplate: ibip_cell},
      {name: "macaddr_ib", title: "IB: Mac Addr", type: "text", width: 110, css: "macaddr", itemTemplate: ibmac_cell},
-     {name: "usedhcp", title: "IB: Use DHCP", type: "text", width: 20, itemTemplate: ibdhcp_cell}, // Has bool
+     {name: "usedhcp",  title: "IB: Use DHCP", type: "text", width: 20, itemTemplate: ibdhcp_cell}, // Has bool
      {name: "boothost", title: "Boot/Next Server", type: "text", width: 120, visible: false},
      {name: "nbp", title: "Boot File", type: "text", width: 80, visible: false},
      // Need rethink. Most of time host is not known in IB
      {name: "sync", title: "Sync", type: "text", width: 30, visible: false, itemTemplate: ibsync_cell},
 
+   ];
+   function netopts_cell(val, item) {
+     if (!val) { return ""; }
+     return "";
+   }
+   var fldinfo_ibnets = [ // Also: options: null, network_view: "default"
+    {name: "network",     title: "Network", type: "text", width: 30, visible: true},
+    {name: "comment",     title: "Title",   type: "text", width: 30, visible: true},
+    {name: "routers",     title: "Router",  type: "text", width: 30, visible: true},
+    {name: "domain-name", title: "Domainname", type: "text", width: 30, visible: true},
+    
+    {name: "options", title: "Options", type: "text", width: 30, itemTemplate: netopts_cell}, // What format ? Arr ? Obj ?
+    // {name: "", title: "", type: "text", width: 30, visible: true},
+
+    {name: "bootfile",    title: "Bootfile",    type: "text", width: 20},
+    {name: "bootserver",  title: "Boot Server", type: "text", width: 20},
+    {name: "nextserver",  title: "Next Server", type: "text", width: 20},
+    {name: "dhcp-lease-time",title: "Lease Time", type: "text", width: 10},
    ];
    function efena_cell(val, item) {
      var chk = item.ena ? "checked=checked" : "";
@@ -968,17 +986,49 @@ function ibip_cell(val, item) {
      //{"name": "disks",      "title": "NumDisks",   type: "number", width: 10, itemTemplate: null},
      //{"name": "deletionProtection", "title": "Protected",   type: "text", width: 7},
    ];
+   // TF Views
+   // Always attributes.labels
+   function tf_labels_cell (val, item) {
+     if (!item.attributes || !item.attributes.labels) { return ""; }
+     var lbls = item.attributes.labels;
+
+     var cc = Object.keys(lbls).map((k) => { return k+": "+lbls[k]+""; }).join("<br>\n");
+     return cc;
+   }
+   var fldinfo_tf_google_project = [
+    {"name": "attributes.name",        "title": "Name",     type: "text", width: 14, css: "hostcell"},
+    {"name": "attributes.project_id",  "title": "Project(ID)", type: "text", width: 14, css: ""},
+    {"name": "attributes.number",      "title": "Number",   type: "text", width: 14, css: ""},
+    
+    {"name": "auto_create_network",    "title": "Auto-Net", type: "text", width: 14, css: ""}, // bool
+    {"name": "attributes.labels",      "title": "Labels",   type: "text", width: 14, itemTemplate: tf_labels_cell},
+   ];
+   function procset_cell(val, item) {
+     if (!val) { return ""; }
+     if (!Array.isArray(val)) { return ""; }
+     return val.map((it) => { return it.proc+" ("+it.numproc+"x)"; }).join("<br>\n"); // TODO: User
+   }
+   var fldinfo_hostservices = [
+    {"name": "title",        "title": "Service Name",   type: "text", width: 14, css: "hostcell"},
+    {"name": "instpatt",     "title": "HostPattern",   type: "text", width: 14, },
+    {"name": "groupid",      "title": "Group ID",     type: "text", width: 14, },
+    {"name": "hatype",      "title": "HA Type",     type: "text", width: 14, },
+    {"name": "projid",       "title": "Project",      type: "text", width: 14, },
+    {"name": "procset",      "title": "Processes",    type: "text", width: 14, itemTemplate: procset_cell},
+    {"name": "unit",         "title": "Systemd Unit",  type: "text", width: 14, }, // Multiple ?
+    {"name": "notes",        "title": "Notes",         type: "text", width: 14, },
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
-      "iblox":  fldinfo_iblox, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
+      "iblox":  fldinfo_iblox, "ibnets": fldinfo_ibnets, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
-      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi
-      
+      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
+      "hostserv": fldinfo_hostservices,
    };
    
