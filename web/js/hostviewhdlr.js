@@ -71,7 +71,9 @@ function simplegrid_url(ev, an) {
     //var an2 = rapp.dclone(an);
     // contbytemplate(an.tmpl, an, ttgt);
     rapp.templated(an.tmpl, an, ttgt); // Initial templating
-    showgrid(an.gridid, arr, fldinfo[an.fsetid]); // No need for act as uisetup is not within Grid
+    var fsetid = an.fsetid;
+    // if (typeof fsetid == 'function') { fsetid = fsetid(ev, an); }
+    showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
     // NOTE: If we pass act to showgrid(..., act); must disable this
