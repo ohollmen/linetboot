@@ -334,6 +334,8 @@ function app_init() { // global
   app.get("/gcpdi_hier", gcpdi_show);
   app.get("/certchecks", certchecks);
   app.get("/tftypeinst", tform.rsctype_show);
+  app.get("/tftypelist", tform.rsctype_show);
+  app.get("/hostserv", hostservices);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -3151,6 +3153,9 @@ function gcpdi_show(req, res) {
 
 /**
  */
-//function gcpdi_graph(req, res) {
-  
-//}
+function hostservices(req, res) {
+  var jr = {status: "err", msg: "Services could not be displayed"};
+  var fname = process.env["HOME"]+"/src_saas/postops/serv_host.json";
+  var hs = require(fname);
+  res.json({status: "ok", data: hs});
+}
