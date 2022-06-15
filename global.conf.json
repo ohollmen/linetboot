@@ -237,6 +237,12 @@
     "statepath": "~/tf/terraform_state_model",
     "indexfn": "tf.list.txt"
   },
+  "artihub": {
+    "comm":"https://artifacthub.io/docs/api/#/ ... repositories/search, /packages/stats",
+    "url":"",
+    "apikey":"",
+    "types":[1,2]
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
