@@ -571,29 +571,41 @@ function disk_out_parted(parr) {
 }
 /** Create Ubuntu 20 subiquity YAML "storage.config" section (Array of Objects).
  * This is by far the most indirect, yet linearly presented format (one step beyond MS Autounattend.xml "DiskConfiguration" section).
- * - Each partition has 3 different entities associated with it (classified by "type"-attribute):
- *   - partition, format (refers to partition, aka. volume: ...), mount (refers to format)
+ * - Each partition has 4 different entities associated with it (classified by "type"-attribute):
+ *   - disk (device, 1x in a simple case)
+ *   - partition - Containing space, refers/parents to disk by `device: ...`
+ *   - format - Filesystem format (e.g. ext4, xfs) refers to `partition` by `volume: ...`,
+ *   - mount - Mounting spec, refers to format by `device: ...`(! term reused, see partition)
  * - All of above types are are presented in linear array (!)
- * - Additionalyy the disk / partition table (type: disk) is presented in the same linear array (typically as first item)
+ * - Additionally the disk / partition table (type: disk) is presented in the same linear array (typically as first item)
+ * 
  * ### References
- * https://ubuntu.com/server/docs/install/autoinstall-reference
- * https://askubuntu.com/questions/1244293/how-to-autoinstall-config-fill-disk-option-on-ubuntu-20-04-automated-server-in
- * https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py - disk schema allowed vals
+ * 
+ * - https://ubuntu.com/server/docs/install/autoinstall-reference
+ * - https://askubuntu.com/questions/1244293/how-to-autoinstall-config-fill-disk-option-on-ubuntu-20-04-automated-server-in
+ * - https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py - disk schema allowed vals
+ * - https://www.molnar-peter.hu/en/ubuntu-jammy-netinstall-pxe.html
  */
 function disk_out_subiquity(parr) {
   var parttypes = {"mbr": "msdos", "gpt":"gpt"}; // subiquity uses msdos (dos), not "mbr"
   var type = ptable_derive(parr);
   var mytype = parttypes[type];
   // var basedisk = path.basename(d.lindisk);
+  var diskname = "sda";
   // parted uses gpt/msdos.So does ubiquity
-  var comps = [{ type: "disk", id: "disk-sda", ptable: mytype, path: "/dev/sda", preserve: false, name: '', grub_device: false, // true ?
+  var disk = { type: "disk", id: "disk-"+diskname, ptable: mytype, path: "/dev/"+diskname, preserve: false, name: '', grub_device: false, // true ?
      wipe: "superblock"
-     }]; // "mklablel "+
+     };
+  var comps = [disk]; // "mklablel "+
+  var dcs = { parts: [], fmts: [], mnts: [] };
+  var parts = []; var fmts = []; var mnts = [];
+  var idx0 = 0;
   var idx1 = 1;
   parr.forEach((p) => {
     // subiquity partition (sp)
     // Should not be on part-level: wipe: "superblock", ?
-    var sp = {type: "partition", id: "partition-sda"+idx1, device: "disk-sda",  preserve: false, number: 1,
+    // NOTE: "number:..." Should be 1-based per examples, partition: ... 0-based (e.g. partition-0) or 1-based "partition-"+diskname+idx1
+    var sp = { type: "partition", id: "partition-"+diskname+idx1, device: "disk-"+diskname,  preserve: false, number: idx1,
        //size: p.size_mb*1000000,  flag: "boot",
        //grub_device: true,
     };
@@ -602,15 +614,29 @@ function disk_out_subiquity(parr) {
     // flag: bios_grub
     if (idx1 == 1) { sp.flag = "boot"; } // TODO: REVIEW p.lbl == "biosboot"
     if (idx1 == 1) { sp.grub_device = true; }
-    comps.push(sp);
-    // subiquity format
-    var sf = {type: "format", id: "format-"+idx1,  volume: "partition-sda"+idx1, fstype: p.fmt, preserve: false, };
-    comps.push(sf);
-    // subiquity mount
-    var sm = {type: "mount", device: "format-"+idx1, path: p.mpt,  id: "mount-"+idx1};
-    if (p.mpt) { comps.push(sm); } // If mountable
+    //comps.push(sp);
+    //dcs.parts.push(sp);
+    parts.push(sp);
+    // subiquity "format" (Should be 0-based (??) per examples
+    var sf = { type: "format", id: "format-"+idx0,  volume: "partition-"+diskname+idx1, fstype: p.fmt, preserve: false, };
+    //comps.push(sf);
+    //dcs.fmts.push(sf);
+    fmts.push(sf);
+    // subiquity "mount"
+    var sm = { type: "mount", device: "format-"+idx0, path: p.mpt,  id: "mount-"+idx0 };
+    // Only add if mountable (has mpt)
+    if (p.mpt) {
+      //comps.push(sm);
+      //dcs.mnts.push(sm);
+      mnts.push(sm);
+    }
     idx1++;
+    idx0++;
   });
+  
+  // Combine in type: order ... partition, format, mount
+  // ["parts","fmts","mnts"].forEach((k) => { comps = comps.concat( dcs[k] ); }); // Add each type-group
+  comps = comps.concat( parts ); comps = comps.concat( fmts ); comps = comps.concat( mnts );
   console.log(comps);
   // YAML ! //'sortKeys': true
   var ycfg = {
