@@ -112,15 +112,15 @@ function pp_subiquity(out, d) {
   var ycfg = {
     'styles': { '!!null': 'canonical' },
   };
-  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
+  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall YAML load: "+ex); }
   // Add disk (d.diskinfo), net (d.net)
   console.log("pp_subiquity(dump):"+JSON.stringify(y, null, 2));
   if (y) {
     var dy;
-    try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk yaml load: "+ex); }
-    if (!Array.isArray(dy)) { console.log("Disk Yam not parseable");}
+    try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk YAML load: "+ex); }
+    if (!Array.isArray(dy)) { console.log("Disk YAML not parseable"); }
     // Disk
-    //y.autoinstall.storage.config = dy;
+    y.autoinstall.storage.config = dy;
     // Net / Netplan
     // y.autoinstall.network.network = 
     out2 = "#cloud-config\n"+yaml.safeDump(y, ycfg);
@@ -783,7 +783,7 @@ function recipe_params_disk(d, osid, ctype) {
   if (osid.match(/ubuntu20/) && !ctype.match(/preseed/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_subiquity(parts);
-    console.log("SUBIQUITY-DISK-INITIAL:'"+out+"'");
+    console.log("SUBIQUITY-DISK-INITIAL:'\n"+out+"'");
     d.diskinfo = out;
   }
   if (osid.match(/(centos|redhat|rocky)/)) {
