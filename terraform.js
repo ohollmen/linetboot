@@ -52,14 +52,22 @@ Notes on fields
     // - google_service_account_key
 * # Notes on hierarchy
 * File level top (Always Object)
-* - verion (format), terraform_version (sw), serial: serial number of file e.g. 2...54 (?)
-* - outputs: {...} - Nested, multi-level k-v tree, keys (and structure) go by resource type (e.g.):
-*   - google_compute_network: host_project_id, network_name, .., service_project, service_project_num, subnetworks
-*   - google_compute_zones: instance_ids, private_ips, public_ips
+* - version (format), terraform_version (sw), serial: serial: number of file e.g. 2...54 (?)
+* - lineage: GUID value
+* - outputs: {...}
+*   - Nested, multi-level k-v tree, keys (and structure) go by resource type (e.g.):
+*     - google_compute_network: host_project_id, network_name, .., service_project, service_project_num, subnetworks
+*     - google_compute_zones: instance_ids, private_ips, public_ips
+*   - All keys have object value with "value" and "type" (e.g. string "list" or "string" or ["list","string"])
+* - terraform_service_account: w. value, type (string)
+* - terraform_state_bucket: ...
+* - resources: [...]
+*
 * Siblings of instances (see op "stats" output) :
+* - module: e.g. "module.keyring[0]"
 * - "mode" (sibling of "instances") can be "managed" or "data"
-* - type: THE type
-* - "name" (-II-) may be same for all items of same rsc type
+* - type: THE type (by which all ents are classified)
+* - "name" (-II-) may be same for all items of same rsc type (e.g. "keyring" for type google_kms_key_ring)
 * - provider (e.g.): 
 * - outputs - Object of key-val pairs ... NOTE: Is this even on more upper level ?
 * Single instance object:
