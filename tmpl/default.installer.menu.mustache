@@ -138,7 +138,47 @@ append boot=live username=user union=overlay config components  noswap edd=on no
 ##append raw
 ##sysappend 3
 
+# Puppy (Debian style kernel/initrd names, but in root of ISO image)
+# https://tenbaht.github.io/posts/pxe-booting-puppy-linux/
+# https://oldforum.puppylinux.com/viewtopic.php?p=488348#488348
+# https://docs.google.com/document/d/1bkMJ-2wjAAC8HVZZTZBFxBELbojoGctLMg27KazqvRw/edit?hl=en
+# Where is mknetboot.sh ? https://forum.puppylinux.com/viewtopic.php?t=5904
+# Must re-package initrd.gz (on ISO root) to include *.sfs (squash-fs, on ISO root):
+# zcat /a/path/initrd.gz | cpio -i
+# cp -av /mnt/*.sfs . ; find . | cpio -o -H newc | gzip -9 > initrd_fossapup.gz
+# cp initrd_fossapup.gz /isomnt/initrd_fossapup.gz
+label fossapup
+menu label Puppy Fossa (64 bit, Live)
+kernel http://{{ httpserver }}/fossapup/vmlinuz
+#initrd http://{{ httpserver }}/fossapup/initrd.gz
+initrd http://{{ httpserver }}/initrd_fossapup.gz
+# From (2011): https://oldforum.puppylinux.com/viewtopic.php?t=63718&start=15
+#append PDEV1=rootfs
+
+
+# TinyCore Linux - Also requires re-package of initrd (core.gz)
+# Sequence of disassebling, modding and assembling initrd back to working shape (TODO: as script):
+# `
+# zcat /isomnt/tinycore/boot/core.gz | sudo cpio -i
+# # ... Will get a lot of: cpio: dev/tty: Cannot mknod: Operation not permitted (Solution: Add sudo to cpio
+# # add cde/optional/*.tcz squashFS files to ramdisk-root relative path usr/local/share/install-base
+# sudo mkdir -p ./usr/local/share/install-base
+# sudo cp -p /isomnt/tinycore/cde/optional/*tcz /usr/local/tmp/tc/usr/local/share/install-base
+# # Tweak /etc/profile ...
+# echo -e "tce-load -i /usr/local/share/install-base/*tcz\ntce-load -w -i firefox-esr.tcz\nstartx" | sudo tee -a etc/profile
+# 
+# # chdir to new assy dir and Re-assemble:
+# find . | cpio -H newc -o | gzip -9 > /tmp/core_tinycore.gz
+# ```
+# - https://www.linux-magazine.com/Issues/2020/230/PXE-Boot-with-TinyCore
+label      tinycore13
+menu label TinyCore (32-bit, Live)
+kernel http://{{ httpserver }}/tinycore/boot/vmlinuz
+#initrd http://{{ httpserver }}/tinycore/boot/core.gz
+initrd http://{{ httpserver }}/core_tinycore.gz
+
 # Debian MATE. Boots up to installer, but installer obscesses about CD/DVD being present (!)
+# Need preseed like basic Ubuntu desktop ? e.g. boot=casper live-media-path=
 #label debian10mate
 #menu label Debian 10 MATE Live
 #kernel http://{{ httpserver }}/debian10mate/d-i/vmlinuz
@@ -152,7 +192,7 @@ append boot=live username=user union=overlay config components  noswap edd=on no
 
 # Debian 10 Buster
 # # Debian - General
-# Note: Debian calls PXE bootting "netboot" and term PXE appears practically in none of Debian documentation.
+# Note: Debian calls PXE booting "netboot" and term PXE appears practically in none of Debian documentation.
 # Like with many other distros, the kernel used has to be perfect version match to Package content as some packages
 # are (possibly) kernel modules.
 # Root for different distro versions (e.g. 8,9,10): http://ftp.us.debian.org/debian/dists/
