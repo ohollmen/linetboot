@@ -883,13 +883,30 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 # Need to issue (e.g):
 #   ip addr add 192.168.1.15/24 dev eno1
 #   ip route add default via 192.168.1.1 dev eno1
+# - Error in sos report: failed to fetch config: resource requires networking
 # See tools in /usr/sbin/coreos-*
 # - https://docs.fedoraproject.org/en-US/fedora-coreos/bare-metal/
 # - Downloads: https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64
 # - PXE Live https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/
 #   - coreos.live.rootfs_url=...
-# - Live Booting:
-https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/ (See "Using persistent state" for YAML example)
+# - Live Booting: https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/ (See "Using persistent state" for YAML example)
+# - Getting Started: https://coreos.github.io/coreos-installer/getting-started/
+# - rd.neednet needed ? https://github.com/coreos/fedora-coreos-tracker/issues/533
+# - Networking requirements for user-provisioned infrastructure https://docs.okd.io/latest/installing/installing_bare_metal/installing-restricted-networks-bare-metal.html
+# - https://www.portainer.io/blog/from-zero-to-production-with-fedora-coreos-portainer-and-wordpress-in-7-easy-steps
+#   - See: Set the FCOS IP (setup networking manually by nmcli + ip addr add)
+# - https://docs.fedoraproject.org/en-US/fedora-coreos/sysconfig-network-configuration/
+#   - Explamanation of NM keyfile(s): https://developer-old.gnome.org/NetworkManager/stable/nm-settings-keyfile.html
+#   - Configuring net if via kernel args (get processed by dracut modules)
+#   - Propagate the install env. net conf: coreos-installer install --copy-network
+#   - See: dracut.cmdline (Any RH/Centos, rd.info=1, rd.driver.pre=drvn1,drvn2, rd.driver.post=... rd.retry=...
+#     rd.timeout=30, rd.debug, ip=dhcp|on|any, rd.bootif=0,
+#  rd.net.dhcp.retry=5, rd.live.debug=1)
+#   - coreos.inst.install_dev=
+# - rd.neednet=1 https://github.com/coreos/fedora-coreos-tracker/issues/474
+#   - Ignition: Fails to connect to external server to fetch other config to replace itself
+#   - Explains: 1) install boot 2) subsequent ignition boot
+# - https://forum.proxmox.com/threads/howto-wrapper-script-to-use-fedora-coreos-ignition-with-proxmox-cloud-init-system-for-docker-workloads.86494/
 label fcos
 menu label Fedora CoreOS 34
 # fedora-coreos-32.20200726.3.1-live-kernel-x86_64
