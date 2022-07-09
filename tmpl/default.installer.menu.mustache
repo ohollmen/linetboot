@@ -879,6 +879,8 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 
 # CoreOS / Container OS / Fedora CoreOS (FCOS)
 # Can't get interfaces up to working state. Try rd.neednet = 1
+# /etc/multipath.conf does not exist. blacklisting all devices
+# rd.multipath=default|0
 # NetworkManager not starting because dbus not running (Also no config files for NM).
 # Need to issue (e.g):
 #   ip addr add 192.168.1.15/24 dev eno1
@@ -907,8 +909,9 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 #   - Ignition: Fails to connect to external server to fetch other config to replace itself
 #   - Explains: 1) install boot 2) subsequent ignition boot
 # - https://forum.proxmox.com/threads/howto-wrapper-script-to-use-fedora-coreos-ignition-with-proxmox-cloud-init-system-for-docker-workloads.86494/
+# - Kubernetes install on FCOS: https://www.matthiaspreu.com/posts/fedora-coreos-kubernetes-basic-setup/
 label fcos
-menu label Fedora CoreOS 34
+menu label Fedora CoreOS 36
 # fedora-coreos-32.20200726.3.1-live-kernel-x86_64
 kernel http://{{ httpserver }}/fcos/images/pxeboot/vmlinuz
 # initrd from example fedora-coreos-32.20200726.3.1-live-initramfs.x86_64.img, fedora-coreos-32.20200726.3.1-live-rootfs.x86_64.img
