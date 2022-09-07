@@ -747,16 +747,53 @@ initrd http://{{ httpserver }}/alpine314/boot/initramfs-lts
 append ip=dhcp  alpine_repo=http://{{ httpserver }}/alpine314/apks modloop=http://{{ httpserver }}/alpine314/boot/modloop-lts
 # apkovl=http://{{ httpserver }}/localhost.apkovl.tar.gz
 
-label alpine314net
-menu label Alpine v3.14.2 Net (?)
-# Net imgs: boot/vmlinuz-lts, initramfs-lts, boot/modloop-lts
-# (Also -virt versions avail in tar.gz)
-# Does NOT have any alpine_repo=... dir in tar.gz
-linux  http://{{ httpserver }}/alpine314net/boot/vmlinuz-lts
-initrd http://{{ httpserver }}/alpine314net/boot/initramfs-lts
-# modules=loop,squashfs,sd-mod,usb-storage
-# Also (e.g): alpine_dev=nfs:192....:/srv/pxe. Need net module (e.g.) modprobe cnic ?
-append ip=dhcp modloop=http://{{ httpserver }}/alpine314net/boot/modloop-lts
+#label alpine314net
+#menu label Alpine v3.14.2 Net (?)
+## Net imgs: boot/vmlinuz-lts, initramfs-lts, boot/modloop-lts
+## (Also -virt versions avail in tar.gz)
+## Does NOT have any alpine_repo=... dir in tar.gz
+#linux  http://{{ httpserver }}/alpine314net/boot/vmlinuz-lts
+#initrd http://{{ httpserver }}/alpine314net/boot/initramfs-lts
+## modules=loop,squashfs,sd-mod,usb-storage
+## Also (e.g): alpine_dev=nfs:192....:/srv/pxe. Need net module (e.g.) modprobe cnic ?
+#append ip=dhcp modloop=http://{{ httpserver }}/alpine314net/boot/modloop-lts
+
+# Alpine 3.16 (ISO: alpine-standard-3.14.2-x86_64.iso, ~144MB)
+# apkovl="..apkovl.tar.gz" is basically a "overlay" tar.gz file containing all system files which have been changed from the package default. 
+# https://alpine-devel.alpinelinux.narkive.com/0BslLgbI/pxe-boot-of-alpine-linux
+# Details for generating pxerd https://wiki.alpinelinux.org/wiki/Talk:PXE_boot ... for install alpine_repo=http://... mkinitfs -o pxerd ?
+# Installing Alpine Linux from pxe (pxelinux) https://www.reddit.com/r/AlpineLinux/comments/9uzz9g/installing_alpine_linux_from_pxe/
+# https://github.com/thereapsz/alpine-pxe Docker based server
+# https://techhelpnotes.com/alpine-alpinelinux-pxe-boot-specify-startup-script-as-kernel-parameter/
+# https://stackoverflow.com/questions/66998076/alpine-netboot-apks-at-boot-time
+# Intial Problems:
+# - No network device (need modloop ? Now added)
+# - no init on new root fs (after ramdisk ?) -> emergency shell
+#   - also: Alpine never gets the modloop-lts (given on kernel CL)
+#   - check/read dmesg for net-up indications
+label alpine316net
+menu label Alpine Linux 3.16 Netboot (.tgz)
+# Also the *-lts versions should work per: https://stackoverflow.com/questions/54142695/alpinelinux-pxe-boot-specify-startup-script-as-kernel-parameter
+# Note: use either *-virt (e.g. alpine-virt-3.14.2-x86_64.iso) or *-lts (alpine-standard-3.14.2-x86_64.iso)
+kernel http://{{ httpserver }}/alpine316net/boot/vmlinuz-lts
+initrd http://{{ httpserver }}/alpine316net/boot/initramfs-lts
+# apkovl="..apkovl.tar.gz" TODO: Replace with local mirror http://{{ httpserver }}/alpine314/apks/
+# Also mirror: https://dl-cdn.alpinelinux.org/alpine/latest-stable/main (Has typically x86_64 under it, which has packages).
+# Note: Local /alpine314/apks/ also has dir x86_64 under it (good). Pkg Dir has APKINDEX.tar.gz in mirror and locally.
+# https://superuser.com/questions/1290314/what-is-modloop-option-in-alpine The modloop= option specifies a SquashFS filesystem that gets mounted to /.modloop
+# it contains the full kernel module tree for the built kernel
+# modloop=https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/netboot/modloop-lts
+# modules=loop,squashfs,sd-mod,usb-storage apkovl=http://{YOUR_WEBSERVER}/{YOUR_DIR}/alpine-test-01.tar.gz
+# http://dl-cdn.alpinelinux.org/alpine/latest-stable/main/
+append ip=dhcp modules=loop,squashfs,sd-mod,usb-storage alpine_repo=http://{{ httpserver }}/alpine316/apks/ modloop=http://{{ httpserver }}/alpine316net/boot/modloop-lts
+# Modules loop devices storage: modloop=http://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/netboot/modloop-virt
+
+# Alpine 3.16 Extended w. Netboot ramfs
+label alpine316ext
+menu label Alpine Linux 3.16 Ext. (ISO loop)
+kernel http://{{ httpserver }}/alpine316ext/boot/vmlinuz-lts
+initrd http://{{ httpserver }}/alpine316net/boot/initramfs-lts
+append ip=dhcp modules=loop,squashfs,sd-mod,usb-storage alpine_repo=http://{{ httpserver }}/alpine316ext/apks/ modloop=http://{{ httpserver }}/alpine316ext/boot/modloop-lts
 
 # FreeDOS
 # http://www.ibiblio.org/pub/micro/pc-stuff/freedos/files/distributions/
@@ -921,7 +958,8 @@ initrd http://{{ httpserver }}/fcos/images/pxeboot/initrd.img,http://{{ httpserv
 # As of 2022-04
 # - Add: coreos.live.rootfs_url=http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img AND
 # - Remove rootfs URL from initrd line (latter URL)
-append rd.neednet=1 ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
+# Add rd.retry=10 rd.timeout=30 rd.multipath=0. Adding retries helps (#6/10), but unsupported config version
+append rd.neednet=1 rd.retry=10 rd.timeout=30 rd.multipath=0 ignition.firstboot ignition.platform.id=metal ignition.config.url=http://{{ httpserver }}/config.ign systemd.unified_cgroup_hierarchy=0
 # Install ???
 # append coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://{{ httpserver }}/config.ign
 # Advised in /live-booting/
