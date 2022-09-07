@@ -1,6 +1,7 @@
 # https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/
 # https://coreos.github.io/butane/specs/
 # https://coreos.github.io/butane/examples/
+# https://github.com/coreos/ignition
 # Getting butane: https://docs.openshift.com/container-platform/4.8/installing/install_config/installing-customizing.html
 #   - curl https://mirror.openshift.com/pub/openshift-v4/clients/butane/latest/butane --output butane
 # Running butane: ./butane --pretty config.bu
@@ -32,6 +33,22 @@ passwd:
         contents:
           source: http://{{ httpserver }}/preseed.cfg
         mode: 0644
+      - path: /etc/ssh/sshd_config.d/20-enable-passwords.conf
+        mode: 0644
+        contents:
+          inline: |
+            # Fedora CoreOS disables SSH password login by default.
+            # Enable it.
+            # This file must sort before 40-disable-passwords.conf.
+            PasswordAuthentication yes
+      - path: /etc/hostname
+        mode: 0644
+        contents:
+          inline: {{ net.hostname }}
+    links:
+    - path: /etc/localtime
+      target: ../usr/share/zoneinfo/{{{ time_zone }}}
+  # https://docs.fedoraproject.org/en-US/fedora-coreos/storage/
   #  disks:
   #    - device: /dev/sda
   #      wipe_table: 1
@@ -45,5 +62,6 @@ passwd:
   #    format: ext4
   #    path: /
   #    label: root
+  #    # with_mount_unit: true
   #systemd:
   #  units: ...
