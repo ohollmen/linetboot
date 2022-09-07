@@ -66,10 +66,12 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.saf
 var fs = require("fs");
 var Mustache = require("mustache");
 var yaml   = require('js-yaml'); // subiquity
-var dns  = require("dns");
+var dns    = require("dns");
+var crypto = require("crypto");
 
 var hlr    = require("./hostloader.js"); // file_path_resolve
 var osdisk = require("./osdisk.js");
+var sha512crypt = require("sha512crypt-node");
 
 // console.log("OSINTALL-osdisk", osdisk);
 
@@ -130,6 +132,7 @@ function pp_subiquity(out, d) {
 // FCOS (YAML-to-JSON)
 // Do essentially what "butane" utility does to Butane-syntax YAML. Includes Initial cut
 // on converting keys with "_([a-z])" to uppercase($1) (e.g. home_dir => homeDir)
+// https://coreos.github.io/ignition/examples/
 function pp_fcos(out, d) {
   var out2 = out;
   var y;
@@ -140,10 +143,59 @@ function pp_fcos(out, d) {
   try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
   if (y) {
     delete(y.variant);
-    y.ignition = { version: y.version };
+    // kernelArguments
+    // Note: ignition can have config.replace.source and verification.hash (replace or ...)
+    y.ignition = { version: "3.0.0" }; // Seems to be wrong for YAML, Use 3.0.0 for JSON (YAML 1.4.0)
+    //y.version = 
     delete(y.version);
     var p = y.passwd;
-    if (p && p.users && p.users[0]) { camelcase(p.users[0]); }
+    // ssh_authorized_keys=>sshAuthorizedKeys, password_hash=> passwordHash
+    // Fix homedir because: useradd: Cannot create directory /home_install
+    if (p && p.users && p.users[0]) {
+      camelcase(p.users[0]);
+      p.users[0]["homeDir"] = "/home/devops";
+      //"$6$"+
+      //var salt = "0XwRWIsO"; user.password = "";
+      //salt = "0XwRWIsO";
+      //let saltraw = new Buffer(salt, 'base64');
+      var saltraw = crypto.randomBytes(6); // 8 hex chars = 4 bytes ? org. 16
+      var salt = saltraw.toString('base64');
+      console.log("Salt Raw len: "+saltraw.length);
+      console.log("Salt:"+salt+" ("+salt.length+")");
+      // crypto.pbkdf2Sync(“password”, “salt”, “iterations”, “length”, “digest”)
+      if (!user.password) { console.log("Warning: No passwd found in pwent !"); }
+      //var hash = crypto.pbkdf2Sync(user.password, salt, 5000, 64, "sha512").toString("base64"); // rounds by crypt 3 5000 (org. 1000)
+      //hash = hash.replace(/=+$/, ""); // 88 => 86 (==$)
+      console.log("Clear "+user.password+" ("+user.password.length+")");
+      //console.log("SHA-512: "+hash + " ("+hash.length+")"); // 86
+      // https://www.geeksforgeeks.org/node-js-password-hashing-crypto-module/
+      // https://www.cyberciti.biz/faq/understanding-etcshadow-file/  $5$ is SHA-256 $6$ is SHA-512
+      // https://www.2daygeek.com/understanding-linux-etc-shadow-file-format/
+      // https://linuxconfig.org/how-to-hash-passwords-on-linux
+      // mkpasswd -m sha-512 s3cRte Fopk1YbL / mkpasswd -m sha-512 -R 5000 SSSS 0XwRWIsO  ... Illegal salt character '$'.
+      // https://serverfault.com/questions/330069/how-to-create-an-sha-512-hashed-password-for-shadow
+      // https://blog.logrocket.com/building-a-password-hasher-in-node-js/
+      // https://stackoverflow.com/questions/57109861/generate-pbkdf-sha512-hash-in-node-verifiable-by-passlib-hash-pbkdf2-sha512
+      // https://www.tabnine.com/code/javascript/functions/crypto/pbkdf2
+      // https://wiki.archlinux.org/title/SHA_password_hashes - Good linux and //etc/shadow centric into to password enc.
+      // https://security.stackexchange.com/questions/204813/what-are-sha-rounds Info about Linux not using PBKDF2
+      // https://en.wikipedia.org/wiki/PBKDF2
+      // https://security.stackexchange.com/questions/211/how-to-securely-hash-passwords - Good explanations of "salt dependent functions". Also PBKDF2,bcrypt,scrypt,crypt
+      
+      
+      // https://ciphertrick.com/salt-hash-passwords-using-nodejs-crypto/
+      // https://unix.stackexchange.com/questions/52108/how-to-create-sha512-password-hashes-on-command-line - Extensive story ...
+      // https://access.redhat.com/articles/1519843
+      // https://github.com/mvo5/sha512crypt-node - Low level lib ... Depends on http://pajhome.org.uk/crypt/md5/sha512.html by Paul Johnston
+      // http://www.akkadia.org/drepper/SHA-crypt.txt
+      // https://www.npmjs.com/package/jshashes/v/1.0.6
+      var hashedpass = sha512crypt.b64_sha512crypt(user.password, salt);
+      p.users[0]["passwordHash"] = hashedpass; // "$6$"+ salt + "$"+ hash; // "$6$0XwRWIsO$.bEcqJy1xTLMJcwLSg7kdTsOEcwIi49Lnm6//b0FwMGSHv0rGEmw4NS189j8tTNLkPnrsGlP4LIUia8Ph.8Yc.";
+      console.log("Shadow line: "+p.users[0]["passwordHash"]);
+      var pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+      if (pubkey) { p.users[0]["sshAuthorizedKeys"] = [pubkey]; }
+      if (Array.isArray(p.users[0].groups)) { p.users[0].groups.push("docker"); }
+    }
     out2 = JSON.stringify(y, null, 2);
   }
   return out2;
