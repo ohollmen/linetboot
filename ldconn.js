@@ -8,7 +8,7 @@
 //var ldap = require('ldapjs');
 var fs = require('fs');
 var ldcfg;
-var ldconn;
+var ldconn; // ldapjs conn.
 var ldbound;
 var inited = 0;
 var clist; var clistq;
@@ -42,7 +42,7 @@ function init(_ldcfg, _ldconn) {
 function setbound(_ldbound) {
   ldbound = _ldbound;
 }
-/** Parse simple pb file
+/** Parse simple pb file. Not release (yet) in mainstream linetboot => ignore.
  * Return an object that will also hold the (generated) filter (later)
 */
 function pb_parse(fname) {
@@ -85,11 +85,12 @@ function pb_sfilter(clist, ida) {
 
 /** Refine configuration sourced from main config.
  * @param ldc {object} - LDAP config section from main config.
- * @return (a separate) config object (with: "url", "strictDN", "tlsOptions", "idleTimeout")
+ * @return (a separate) config object (with: "url", "strictDN", "tlsOptions", "idleTimeout") that can be used with ldapjs.
  */
 function ldcopts_by_conf(ldc) {
   var proto = ldc.ssl ? "ldaps" : "ldap";
   var port  = ldc.ssl ? "636" : "389";
+  // This is the "final" ldapjs compatible config (derived from linetboot settings)
   var ldcopts = { url: proto+'://' + ldc.host + ":"+port, strictDN: false};
   ldcopts.reconnect = true;
   if (ldc.idletout) { ldcopts.idleTimeout = ldc.idletout; } // Documented
@@ -98,7 +99,7 @@ function ldcopts_by_conf(ldc) {
     ldcopts.tlsOptions = {'rejectUnauthorized': false};
   }
   // https://github.com/ldapjs/node-ldapjs/issues/307
-  // NOT Complete yet
+  // NOT Complete / tested out yet
   if (ldc.cert) {
     var certpath = ""; // process.env["HOME"]+"/.linetboot/cert/";
     var tls = {
