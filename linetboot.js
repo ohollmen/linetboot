@@ -183,7 +183,7 @@ function app_init() { // global
   ////////////////////// Installer ///////////////////////////////////
   
   
-  function sethandlers() {
+  function sethandlers() { // app
   // preseed_gen - Generated preseed and kickstart shared handler
   // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   osinst.url_hdlr_set(app); // NEW (driven by recipe selections)
@@ -450,7 +450,7 @@ function app_init() { // global
   sethandlers();
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
-  var ldc = global.ldap;
+  var ldc = global.ldap; // ldc - LDAP Config
   // Check LD config
   if (ldc && (ldc.host && !ldc.disa)) {
     //var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
@@ -461,6 +461,7 @@ function app_init() { // global
     var ldccc_re = {bindmsg: "Re-bind after connection error.",};
     // function ld_conn(ldc, ldccc) {
     var ldcopts = ldconnx.ldcopts_by_conf(ldc);
+    // Create LDAP Client for Authentication
     ldconn = ldap.createClient(ldcopts);
     //console.log("init LDAP");
     ldconnx.init(global.ldap, ldconn); // Must be connected, but before any activity
@@ -518,7 +519,13 @@ function app_init() { // global
     });
     // return;
   } // if ldc ...
-  else { http_start(); }
+  // Because LDAP config (ldc) options disa: 1 and simu: 1 usually go hand-in-hand, make
+  // simu=1 be turned on by disa: 1. This way we dont have to carry on badly documented, half-hidden legacy var (simu)
+  // Thanks (Github user) @sniffski for noticing this !
+  else {
+    global.ldap = {simu: 1, disa: 1};
+    http_start();
+  }
 }
 
 // https://stackoverflow.com/questions/11181546/how-to-enable-cross-origin-resource-sharing-cors-in-the-express-js-framework-o
@@ -2365,7 +2372,7 @@ function login(req, res) {
   var q = req.query; // 
   // TODO: Prefer POST, support GET in transition phase (and with optional forced config?)
   if (req.method == 'POST') { q = req.body; }
-  var ldc = global.ldap;
+  var ldc = global.ldap; // LDAP conf from main config
   var cc = global.core; // core config
   if (req.body.username) { q = req.body; } // Object.keys(req.body).length
   console.log("login: Authenticate user '"+q.username+"' (w. passwd of "+q.password.length+" B)." );
@@ -2377,6 +2384,7 @@ function login(req, res) {
   // Authorization
   if (!cc || !cc.authusers) { jr.msg += "No 'core' Config for authorization"; return res.json(jr); }
   if (!Array.isArray(cc.authusers)) { jr.msg += "Authorized users (core.authusers) not in array"; return res.json(jr);  }
+  // Early authorization check against users in core.authusers. If not autorized, do not bother authenticating.
   if (!cc.authusers.includes(q.username)) {
     console.log("user '"+q.username +"' not in list", cc.authusers);
     jr.msg += "user "+q.username+" not Authorized !"; return res.json(jr);
@@ -2399,7 +2407,7 @@ function login(req, res) {
   var ldcopts = ldconnx.ldcopts_by_conf(ldc);
   var ldconn = ldap.createClient(ldcopts); // Bind conn.
   console.log("Start Login, local ldconn: "+ ldconn ); // + " ldconn"+ ldconn
-  // Bind ldconn with main creds here (to not rely on main conn)
+  // Bind ldconn with main config bind creds here (to not rely on main conn)
   ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {
     if (err) { jr.msg += err; return res.json(jr); }
     console.log("Search "+q.username);
