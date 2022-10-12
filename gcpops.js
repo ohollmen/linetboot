@@ -65,6 +65,24 @@ var vmmsgtmpl = {
   project: null,
   zone: null,
 }
+var gcp_cmds = {
+  // Scope of 1 serv acct
+  "sa_keys_list" : "gcloud iam service-accounts keys list --iam-account {{ sacct }} --format json",
+  // Also --uri
+  "mimg_list": "gcloud beta compute machine-images list --format json",
+  // VM Instances
+  "inst_list": "gcloud beta compute instances list --format json",
+ 
+  // Index by name (no parent, name by displayName)
+  "orgs_list":"gcloud organizations list --format json",
+  // idx by name (has parent, e.g. "organizations/$ORGNUM"), name by displayName
+  "folders_list":"gcloud resource-manager folders list --organization {{ orgnum }} --format json", // --organization
+  // Index by projectNumber (type:number), has parent.id, parent.type (folder), name by name or projectId
+  // (has also projectNumber), has labels (k-v)
+  "proj_list": "gcloud projects list --format json",
+  // Accts
+  "sa_list": "gcloud iam service-accounts list --format json",
+};
 var cfg;
 
 function init(_cfg) {
