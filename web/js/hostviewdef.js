@@ -1012,11 +1012,23 @@ function ibip_cell(val, item) {
     {"name": "title",        "title": "Service Name",   type: "text", width: 14, css: "hostcell"},
     {"name": "instpatt",     "title": "HostPattern",   type: "text", width: 14, },
     {"name": "groupid",      "title": "Group ID",     type: "text", width: 14, },
-    {"name": "hatype",      "title": "HA Type",     type: "text", width: 14, },
+    {"name": "hatype",       "title": "HA Type",     type: "text", width: 14, },
     {"name": "projid",       "title": "Project",      type: "text", width: 14, },
     {"name": "procset",      "title": "Processes",    type: "text", width: 14, itemTemplate: procset_cell},
     {"name": "unit",         "title": "Systemd Unit",  type: "text", width: 14, }, // Multiple ?
     {"name": "notes",        "title": "Notes",         type: "text", width: 14, },
+   ];
+   // Select cols of nessus CSV
+   var fldinfo_nscan = [
+     {"name": "DNS Name",  "title": "DNS Name",  "type": "text", "width": 14},
+     {"name": "Port",      "title": "Port",      "type": "text", "width": 14},
+     {"name": "CVE",       "title": "CVE", "type": "text", "width": 14},
+     {"name": "Severity",  "title": "Severity",  "type": "text", "width": 14},
+     {"name": "Risk Factor", "title": "Risk Factor", "type": "text", "width": 14},
+     {"name": "Synopsis",  "title": "Synopsis",  "type": "text", "width": 30},
+     // "Exploit Ease"
+     {"name": "Check Type", "title": "Check Type", "type": "text", "width": 5},
+     {"name": "Version",    "title": "Version",  "type": "text", "width": 3},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
@@ -1029,6 +1041,6 @@ function ibip_cell(val, item) {
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
-      "hostserv": fldinfo_hostservices,
+      "hostserv": fldinfo_hostservices, "nscan": fldinfo_nscan,
    };
    
