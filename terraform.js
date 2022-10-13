@@ -78,6 +78,12 @@ Notes on fields
 * - private: long hash
 * - dependencies: Array of Module names, etc.
 * - "sensitive_attributes": []
+* 
+* # Getting state model
+* Assuming state is in GCP Bucket, copy your state to local dirs with something like:
+* ```
+* gsutil cp gs://mybucket/terrastate/ /path/to/terrastate
+* ```
 */
 var fs = require("fs");
 
@@ -87,6 +93,8 @@ var ignorekeys = ["google_client_config"];
 var tfpath = "";
 var fnarr = [];
 var tf = {};
+// TF Resource "Manual Page" format (e.g. dns_record_set)
+// var mp_fmt = "https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/{{ rsctype }}";
 /** Initialize module
  */
 function init(_cfg) {
@@ -275,7 +283,7 @@ function introspect(arr) {
   });
   return mm;
 }
-/** View all instances of particular Terraform resource type.
+/** Web handler to view all instances of particular Terraform resource type.
  * URL Parameters: "type" for the Terrform resource type (Default: "google_project")
  */
 function rsctype_show(req, res) {
