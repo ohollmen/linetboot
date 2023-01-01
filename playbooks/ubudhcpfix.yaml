@@ -1,0 +1,17 @@
+# Added (in [main] section (!!!) (https://askubuntu.com/questions/907246/how-to-disable-systemd-resolved-in-ubuntu)
+# dns=default
+# Note also: /etc/default/networking
+- name: Copy remote keys to ansible machine
+  become: yes
+  hosts: '{{ host }}'
+  #serial: 1
+  vars:
+    foo: 1
+  # TODO: Disable systemd-resolved, mod: /etc/systemd/resolved.conf 
+  tasks:
+    - name: Change DNS behavior to default
+      lineinfile:
+        path: /etc/NetworkManager/NetworkManager.conf
+        regexp: '\bdns\s*='
+	line: 'dns=default'
+        insertafter: '[main]'
