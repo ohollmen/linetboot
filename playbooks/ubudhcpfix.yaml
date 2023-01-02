@@ -6,12 +6,42 @@
   hosts: '{{ host }}'
   #serial: 1
   vars:
-    foo: 1
+    routerip: '192.168.1.1'
   # TODO: Disable systemd-resolved, mod: /etc/systemd/resolved.conf 
   tasks:
+    - name: Stop systemd-resolved
+      # ansible.builtin.systemd:
+      systemd:
+        name: systemd-resolved
+        state: stopped
+        enabled: false
+        daemon_reload: true
     - name: Change DNS behavior to default
       lineinfile:
         path: /etc/NetworkManager/NetworkManager.conf
         regexp: '\bdns\s*='
-	line: 'dns=default'
-        insertafter: '[main]'
+        line: 'dns=default'
+        insertafter: '\[main\]'
+        backup: true
+    - name: Remove file /etc/resolv.conf
+      # ansible.builtin.file:
+      file:
+        path: /etc/resolv.conf
+        state: absent
+    - name: Disable DNSStubListener
+      # ansible.builtin.lineinfile:
+      lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '#?\s*DNSStubListener\s*='
+        line: 'DNSStubListener=no'
+        insertafter: '\[Resolve\]'
+        backup: true
+        # with_items:
+        #   - {"regexp":"","line":""}
+        #   - {"regexp":"DNS\s*=","line":"DNS={{routerip}}"}
+    - name: Restart service NetworkManager
+      # ansible.builtin.systemd:
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: NetworkManager
