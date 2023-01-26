@@ -10,7 +10,7 @@
     "body-parser": "1.18.3",
     "digest-fetch": "^1.2.1",
     "dns": "0.2.2",
-    "express": "4.16.4",
+    "express": "4.17.3",
     "express-session": "1.17.1",
     "js-yaml": "^3.13.1",
     "ldapjs": "2.2.0",
