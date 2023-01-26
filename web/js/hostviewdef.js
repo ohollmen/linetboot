@@ -1008,15 +1008,33 @@ function ibip_cell(val, item) {
      if (!Array.isArray(val)) { return ""; }
      return val.map((it) => { return it.proc+" ("+it.numproc+"x)"; }).join("<br>\n"); // TODO: User
    }
+   // See: /hostserv ()
    var fldinfo_hostservices = [
     {"name": "title",        "title": "Service Name",   type: "text", width: 14, css: "hostcell"},
     {"name": "instpatt",     "title": "HostPattern",   type: "text", width: 14, },
     {"name": "groupid",      "title": "Group ID",     type: "text", width: 14, },
-    {"name": "hatype",       "title": "HA Type",     type: "text", width: 14, },
+    {"name": "hatype",       "title": "HA Type",     type: "text", width: 14, }, // Del ?
     {"name": "projid",       "title": "Project",      type: "text", width: 14, },
     {"name": "procset",      "title": "Processes",    type: "text", width: 14, itemTemplate: procset_cell},
     {"name": "unit",         "title": "Systemd Unit",  type: "text", width: 14, }, // Multiple ?
     {"name": "notes",        "title": "Notes",         type: "text", width: 14, },
+   ];
+   function lbip_cell(val, item) {
+     if (!val || !Array.isArray(val)) { return ""; }
+     return val[0] + " => " + val[1];
+   }
+   var fldinfo_dr = [
+    {"name": "title",        "title": "Service Name",   type: "text", width: 14, css: "hostcell"},
+    {"name": "hatype",       "title": "HA/DR Type",     type: "text", width: 8, },
+    {"name": "servdns",     "title": "Serv. Host",     type: "text", width: 7, },
+    {"name": "projid",   "title": "Project",   type: "text", width: 10,},
+    // {"name": "hazone",       "title": "GCP Zone",   type: "text", width: 8,}, // Not singular !
+    {"name": "domainname",   "title": "DNS Domain",   type: "text", width: 15,},
+    {"name": "halbip",       "title": "LB or Host IP Addresses (A,B)",   type: "text", width: 16, itemTemplate: lbip_cell},
+    {"name": "hasubnet",     "title": "GCP Subnet",   type: "text", width: 7,},
+    {"name": "haimgbn",      "title": "Image Name",   type: "text", width: 10,},
+    // NA: {"name": "hapair",       "title": "Prim, Sec(DR)",   type: "text", width: 14,},
+
    ];
    // Select cols of nessus CSV
    var fldinfo_nscan = [
@@ -1041,6 +1059,6 @@ function ibip_cell(val, item) {
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
-      "hostserv": fldinfo_hostservices, "nscan": fldinfo_nscan,
+      "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan,
    };
    
