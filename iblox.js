@@ -271,12 +271,13 @@ function networks(req, res) {
       //console.log("NETDATA: "+ d);
       // TODO: Transform / strip down
       // Always an array,even with 1 obj.
-      if (!Array.isArray(d)) { cb(null, "Iblox response not in array"); }
+      // 10-13 Missing 2 returns (on cb()) below: Callback was already called.
+      if (!Array.isArray(d)) { return cb(null, "Iblox response not in array"); }
       d = d.find((n) => { return n.network_view == 'default'; });
-      if (!d) { cb(null, "Iblox default net object not found"); }
+      if (!d) { return cb(null, "Iblox default net object not found"); }
       // Collect DHCP Options (name => value) to main object ? Or let be as options-children ?
       if (d.options) { d.options.forEach((opt) => { d[opt.name] = opt.value; }); d.options = null; }
-      cb(null, d);
+      return cb(null, d);
     }).catch((ex) => { cb(ex, null); }); // 
   }
 }
