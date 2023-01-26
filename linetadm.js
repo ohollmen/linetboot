@@ -760,8 +760,10 @@ function mkDirByPathSync(targetDir, { isRelativeToScript = false } = {}) {
     else { console.log("Dir "+dir+" seems to already exist."); }
     return dir;
   } // mkdir
+
 /** Copy all files from srcdir to destdir.
  * Appropriate checks are made to esure both source and destination are existing directories.
+ * Reusable in multiple contexts where bunch of files from sourc to dest (dirs) are copied.
  * @param srcdir {string} - Source directory
  * @param destdir {string} - Destination directory
  * @return 1 for errors, 0 for no errors
@@ -906,7 +908,8 @@ function newhostgen(opts) {
   //mcfg.fact_path = "/tmp/facts"; // DEBUG
   //mcfg.ipmi.path = "/tmp/facts"; // DEBUG
   var csvfn = opts.newhosts;
-  if (!csvfn) { apperror("No newhosts CSV file named, pass with --newhosts"); }
+  var needcol = "ipaddr,macaddr,hname";
+  if (!csvfn) { apperror("No newhosts CSV file (w. "+needcol+") named, pass with --newhosts"); }
   if (!fs.existsSync(csvfn)) { apperror("newhosts CSV file by name: '"+csvfn+"' does not exist"); }
   if (!mcfg.fact_path) { apperror("No fact_path"); }
   if (!mcfg.ipmi.path) { apperror("No ipmi.path"); }
@@ -926,12 +929,20 @@ ID  Name             Callin  Link Auth  IPMI Msg   Channel Priv Limit
 `;
   // Fake Facts
   if (opts.all || opts.facts) {
+  // Need: See var needcol above
   newhosts.forEach(function (h) {
     if (!h.hname) { console.log("No Host Name ('hname') !", h); return; }
     var f = hlr.host2facts(h, mcfg);
     // Write fake facts
-    if (save) { fs.writeFileSync( mcfg.fact_path + "/" + h.hname, JSON.stringify(f, null, 2), {encoding: "utf8"} ); }
-    else { console.log(JSON.stringify(f, null, 2)+"\n"); }
+    if (save) {
+      var fn = mcfg.fact_path + "/" + h.hname;
+      fs.writeFileSync(fn , JSON.stringify(f, null, 2), {encoding: "utf8"} );
+      console.error("Saved hosts to fake-facts: "+fn);
+    }
+    else {
+      console.error("Not saving hosts as fake-facts, but output to stdout (Use --save to actually save)");
+      console.log(JSON.stringify(f, null, 2)+"\n");
+    }
   });
   }
   // Fake BMI Info
@@ -1012,7 +1023,14 @@ function genrscs(opts) {
     return p;
   }
 }
-
+/** Create user specific default ("good for starters") linetboot configuration into (user's) ~/.linetboot/ directory.
+* Do this by:
+* - Creating initial ~/.linetboot/ config directory, and creating some essential sudirs under it (e.g.)
+*   - tmpl/, scripts/, hostinfo/, ...
+* - Copying files from (Git project) workarea to above directories.
+* 
+* Never allow overwriting files in destination, as these might have valuable edits / mods in them.
+*/
 function userconf(opts) {
   var cpath = process.env["HOME"]+"/.linetboot";
   //cpath = "/tmp/.linetboot"; // TEST
