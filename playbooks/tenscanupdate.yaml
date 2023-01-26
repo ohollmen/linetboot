@@ -1,0 +1,86 @@
+# # Tenable Security Scan System Update
+# Run by --tags with either target `--tags sc` or `--tags scanner`
+# Example:
+# ```
+# # 
+# ansible-playbook tenscanupdate.yaml --tags scanner -e "rpm_scan_update=Nessus-10.2.0-es8.x86_64.rpm"
+# # Only SC supports backup step
+# ansible-playbook tenscanupdate.yaml --tags sc -e "rpm_scan_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true"
+# ```
+- name: Update Tenable Scanner
+  hosts: "{{ host }}"
+  become: true
+  vars:
+    # Scanner needs single RPM
+    rpm_scan_update: 'Nessus-10.2.0-es8.x86_64.rpm'
+    rpm_sc_update: 'SecurityCenter-5.21.0-el8.x86_64.rpm'
+    # 'SC-202206.1-5.x-rh8-64.tgz'
+    tgz_sc: ''
+    # For cd $DIR. Actual dirname seems to be tgz name with '.tgz' stripped
+    tgz_dir_patt: 'SC-10*'
+    unit_scan: 'nessusd'
+    unit_sc: 'SecurityCenter'
+    backup_local: false
+  tasks:
+    - name: Copy Update to Scanners
+      copy:
+        src: '/tmp/{{ rpm_scan_update }}'
+        dest: '/tmp/{{ rpm_scan_update }}'
+      tags: scanner
+    - name: Stop Service for Update
+      ansible.builtin.systemd:
+        name: '{{ unit_scan }}'
+        state: stopped
+      tags: scanner
+    - name: Update Scanner
+      shell: 'rpm -Uvh /tmp/{{ rpm_scan_update }}'
+      tags: scanner
+    - name: (Re)start Scanner
+      # shell: service SecurityCenter start; service SecurityCenter status
+      ansible.builtin.systemd:
+        name: '{{ unit_scan }}'
+        state: started
+      tags: scanner
+    ###### SC #####
+    - name: Copy Update to SC
+      copy:
+        src: '/tmp/{{ rpm_sc_update }}'
+        dest: '/tmp/{{ rpm_sc_update }}'
+      tags: sc
+    - name: Copy TGZ to SC
+      copy:
+        src: '/tmp/{{ tgz_sc }}'
+        dest: '/tmp/{{ tgz_sc }}'
+      tags: sc
+      when '{{ tgz_sc }}'
+    - name: Stop Service for Update
+      ansible.builtin.systemd:
+        name: '{{ unit_sc }}'
+        state: stopped
+      tags: sc
+    - name: Backup (Optional, see var backup)
+      shell: 'tar -pzcf sc_backup.`date -Idate`.tar.gz /opt/sc'
+      tags: sc
+      when: 'backup_local'
+    - name: Update SC
+      shell: 'rpm -Uvh /tmp/{{ rpm_sc_update }}'
+      tags: sc
+    - name: (Re)start Security Center
+      # shell: service SecurityCenter start; service SecurityCenter status
+      ansible.builtin.service:
+        name: '{{ unit_sc }}'
+        state: started
+      tags: sc
+    #### SC TGZ ####
+    
+    # Note: Should this indeed be after startup ?
+    - name: Apply SC tgz patch
+      shell: 'tar -C /tmp -zxvf /tmp/{{ tgz_sc }}; cd /tmp/{{ tgz_dir_patt }}; ./install.sh'
+      tags: sc
+      when: '{{ tgz_sc }}'
+    - name: (Re)start Security Center
+      # shell: service SecurityCenter start; service SecurityCenter status
+      ansible.builtin.service:
+        name: '{{ unit_sc }}'
+        state: started
+      tags: sc
