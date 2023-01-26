@@ -3049,6 +3049,8 @@ function pods_info(req, res) {
 }
 /** Allow viewing GH projects for single org.
  * https://docs.github.com/en/rest/overview/resources-in-the-rest-api
+ * GitLab
+ * https://docs.gitlab.com/ee/api/
  */
 function gh_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GH Projects."};
@@ -3105,13 +3107,16 @@ function certchecks(req, res) {
     });
   }
 }
-/**
+/** Send Ansible Host Inventory based GCP VM model in either list or hierarchical form.
+ * URL pattern to use to generate list / tree
+ * - Linear list: Regexp: /gcpdi$/
+ * - Tree: Any other pattern (e.g. "/gcpdi_hier")
  */
 function gcpdi_show(req, res) {
   var jr = {status: "err", "msg": "Could not show dynamic invertory."};
   // TODO: gcp section ? Ansible section ?
   if (!global.gcp || !global.gcp.dyninvfn) { jr.msg += "No gcp conf of no dyninvfn";return res.json(jr); }
-  var ifn = global.gcp.dyninvfn; // "/Users/oh890557/src_saas/postops/inventory_all.json";
+  var ifn = global.gcp.dyninvfn;
   var inv = require(ifn);
   if (!inv) { jr.msg += "Inv not loaded"; return res.json(jr); }
   if (!inv._meta || !inv._meta.hostvars) { jr.msg += "Inv structure messed up"; return res.json(jr); }
@@ -3120,8 +3125,13 @@ function gcpdi_show(req, res) {
   if (req.url.match(/gcpdi$/)) { // AoO as-is
     res.json({status: "ok", data: inv});
   }
-  else { gcp_hier(inv); }
-  // Create Hier. Graph out of AoO
+  else {
+    var hier = gcp_hier(inv); 
+    if (!hier) { jr.msg += "Failure to create hierarchy !"; return res.json(jr); }
+    res.json( { status: "ok", data: hier } );
+  }
+  /** Create Hier. Graph out of linear AoO
+   */
   function gcp_hier (inv) {
     // See hosthier (~ ...)
     var lbl = global.gcp.cloudname || "GCP Cloud";
@@ -3155,15 +3165,25 @@ function gcpdi_show(req, res) {
       
     });
     var hier = { nodes: nodes, edges: edges, groups: cfg_groups };
-    res.json( { status: "ok", data: hier } );
+    //res.json( { status: "ok", data: hier } );
+    // TODO:
+    return hier;
   }
 }
 
 /**
+ * TODO: Aggregate with ansdi
  */
 function hostservices(req, res) {
   var jr = {status: "err", msg: "Services could not be displayed"};
-  var fname = process.env["HOME"]+"/src_saas/postops/serv_host.json";
+  var cfg = global.services;
+  var fname = cfg.conffn; // process.env["HOME"]+"/src_nnnn/postops/serv_host.json";
+  //var hconf = {"domainname": "domain.com"};
   var hs = require(fname);
+  
+  hs.forEach((h) => {
+    if (!h.domainname) { h.domainname = cfg.domainname; }
+
+  });
   res.json({status: "ok", data: hs});
 }
