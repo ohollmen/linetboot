@@ -133,7 +133,8 @@ function mainconf_process(global) {
   //var gerrit = global.gerrit;
   //if (gerrit) {
   tilde_expand(global.gerrit, ["pkey"]); // }
-  tilde_expand(global.gcp, ["dyninvfn"]);
+  tilde_expand(global.gcp, ["dyninvfn", "sakeyfn"]);
+  tilde_expand(global.services, ["conffn"]);
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
