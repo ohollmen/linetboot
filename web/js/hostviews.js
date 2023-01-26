@@ -668,8 +668,10 @@ var tabloadacts = [
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // 
-  {"name": "Github Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
+  {"name": "GitHub Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
       path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1}, // TODO ?: genurl ?
+  //{"name": "GitLab Grp. Repos",   "elselXX": "glprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gl_projs", gridid: "jsGrid_glprojs", fsetid: "glprojs",
+  //    path: "glprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",
       path: "cflpages", uisetup: null, urlpara: null, dprep: null, longload: 1},
   {"name":"GCP Dynamic Inventory", "elselXX": "gcpdi", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gcpdi", gridid: "jsGrid_gcpdi", fsetid: "gcpdi",

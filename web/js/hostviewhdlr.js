@@ -1335,11 +1335,14 @@ function ghprojs_uisetup(act, data) {
 }
 // Like docker / dcomposer_uisetup
 // dsattr, cfgattr (array in datasets.cfg[...] or getter cb), (url)parakey
+// TODO: param
 function ghprojs_urlpara(ev, act) {
   var val; // dcfn
+  var ckey = "ghorgs"; // Config key
+  // if (???) { ckey = "glorgs"; } // Detect from where ?
   var ds = ev.target.dataset;
   if (ds && ds.dcfn) { val = ds.dcfn; }
-  if (!val && datasets.cfg.ghorgs) { val = datasets.cfg.ghorgs[0]; }
+  if (!val && datasets.cfg[ckey]) { val = datasets.cfg[ckey][0]; }
   //return "fn="+dcfn; // OLD: params only
   return act.url + "?org="+val; // NEW: Resp. for whole URL
 }

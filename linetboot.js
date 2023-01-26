@@ -326,6 +326,7 @@ function app_init() { // global
   app.get("/kubapirsc", pods_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
+  app.get("/gl_projs", gl_projs);
   // 
   app.get("/cflpage",    cfl.confluence_page);
   app.get("/confluence", cfl.confluence_index);
@@ -1928,6 +1929,7 @@ function config_send(req, res) {
   var proc = global.procster;
   var esxi = global.esxi;
   var gh   = global.github;
+  var gl   = global.gitlab;
   var cfl  = global.confluence;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
@@ -1958,7 +1960,9 @@ function config_send(req, res) {
   // 
   if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
   else { cfg.clistnames = []; }
+  // Git*
   if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
+  if (gl && gl.org && Array.isArray(gl.org)) { cfg.glorgs = gl.org; }
   if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
   res.json(cfg);
 }
@@ -3082,6 +3086,36 @@ function gh_projs(req, res) {
   })
   .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
 }
+
+/** View projects for single GitLab group (~org).
+ * We call GitLab Groups "Orgs" in the code to retain similarity to GitHub.
+ */
+function gl_projs(req, res) {
+  var jr = {status: "err", "msg": "Could not list GL Projects."};
+  var ghcfg = global.gitlab;
+  // ...
+  var q = req.query;
+  var org = '';
+  if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
+  else { org = ghcfg.org[0]; }
+  console.log("Show org: "+org);
+  var url = "https://"+ghcfg.url+"/";
+  // https://gitlab.com/api/v4/users?username=<username-here>
+  if (ghcfg.ent) { url += "api/v4/"; } // GL Also: users/<user-id>/projects
+  //url += "users/"+org+"/projects/"; // GH
+  url += "projects/"
+  console.log("Final URL: "+url);
+  var opts = {};
+  if (ghcfg.token) { opts.headers = { "PRIVATE-TOKEN" : ghcfg.token}; } // GL
+  opts.params = { per_page: 100 }; // Also: page: 1...
+  axios.get(url, opts).then((resp) => {
+    var d = resp.data;
+    if (Array.isArray(d)) { console.log("Got "+d.length+" repos"); }
+    res.json({status: "ok", data: d});
+  })
+  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
+}
+
 /**
  * How to "getting certifate info by http"
  * openssl s_client -connect $HNAME:443

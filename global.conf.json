@@ -226,6 +226,14 @@
     "org": [],
     "token":""
   },
+  "gitlab": {
+    "url":  "gitlab.com",
+    "url_ent":"gitlab.mycomp.com",
+    "ent": 0,
+    "pgsize": 100,
+    "org": [],
+    "token":""
+  },
   "confluence": {
     "host": "confluence.mycomp.com",
     "user": "",

@@ -918,6 +918,23 @@ function ibip_cell(val, item) {
      //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
      
    ];
+   // High similarity to GitHub
+   var fldinfo_gl_projs = [
+     {"name": "id",          "title": "Repo ID",   type: "number", width: 7},
+     {"name": "name",        "title": "Repo Name", type: "text",   width: 15}, // name or full_name
+     // 
+     {"name": "description", "title": "Description", type: "text", width: 45},
+     //{"name": "language",    "title": "Language",    type: "text", width: 7},
+     {"name": "web_url",    "title": "URL",        type: "text", width: 30},
+     // Has: "forks_count"
+     // {"name": "fork",        "title": "Is Fork ?",  type: "text", width: 5}, // bool. 
+     {"name": "created_at",  "title": "Created",    type: "text", width: 10, itemTemplate: gridplug.isodate},
+     //{"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},
+     {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12},
+     //{"name": "open_issues_count",     "title": "# Issues",    type: "text", width: 25}, // GL
+     // "mirror": false,
+     
+   ];
    // For a full-page URL to document (need login ?)
    function cfl_url_gen(valXX, item) {
      var val = item._links.webui;
@@ -1059,6 +1076,6 @@ function ibip_cell(val, item) {
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
-      "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan,
+      "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs
    };
    
