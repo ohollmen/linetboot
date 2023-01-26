@@ -182,19 +182,25 @@ function createrepo (req, res) {
   var chown = "chgrp -R "+repogroup+ " "+reponame;
   var cmd = "ssh "+gurl.auth+"@"+gurl.host + " '"+cdcmd +" && "+gitcmd + " && "+chown+"'";
   var repofullname = gurlstr+reponame;
-  /*
+  // Possibly on client: git branch --set-upstream-to master home/master
+  // ... to avoid: git push -u origin branchname
+  // git config --global push.default current (All on https://stackoverflow.com/questions/6089294/why-do-i-need-to-do-set-upstream-all-the-time)
+  // Ubu18, must do at initial push: `git push --set-upstream home master` (Creates: [branch "master"]\nremote = home\nmerge = refs/heads/master)
   cproc.exec(cmd, (err, stdout, stderr) => {
-    if (err) { jr.msg += "Failed to execute mkrepo. "+ stderr; return res.json(jr); }
-    console.log(stdout);
+    if (err) { jr.msg += "Failed to execute mkrepo ("+err+"). "+ stderr; return res.json(jr); }
+    console.log("STDOUT (err="+err+"): "+stdout);
     // Clone informs in stderr
     var info = stdout;
+    // initial ??? Take info from stderr ?
     if (p.initial) {info = stderr;}
-    console.log("STDERR: ", stderr);
-    
-    res.json({status: "ok", data: info});
+    console.log("STDERR (err="+err+"): ", stderr);
+    data = {msg: info, "repourl": repo.url + "/"+reponame} // TODO: Use this, mod client to match
+    okr = {status: "ok", data: info};
+    console.log("OK-response: ", okr);
+    res.json(okr);
   });
-  */
-  res.json({status: "ok", data: "Repo "+repofullname+" should be ready to use"});
+  
+  // res.json({status: "ok", data: "Repo "+repofullname+" should be ready to use"});
   console.log("COMMAND:"+cmd);
 }
 
