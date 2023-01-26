@@ -5,7 +5,7 @@
   "main": "linetboot.js",
   "dependencies": {
     "apache-md5": "^1.1.8",
-    "async": "2.6.1",
+    "async": "2.6.4",
     "axios": "0.20.0",
     "body-parser": "1.18.3",
     "digest-fetch": "^1.2.1",
