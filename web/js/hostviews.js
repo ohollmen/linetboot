@@ -524,13 +524,18 @@ function ansirun(jev) {
   return false;
 }
 
+/** Wrapper handler for tabset view.
+ * Change of tab (also loading a new tabset and implicitly setting the default / first tab)
+ * triggers the handler associated with the view contained by tab (!).
+ * 
+*/
 function tabsetview(ev, act) {
   function gettabinfo(elsel) {
     var ti = tabloadacts.filter((it) => { return it.elsel == elsel; })[0];
     return ti;
   }
   if (!act.tabs) { return alert("tabsetview: Action using tabsetview should have 'tabs'" + JSON.stringify(act)); }
-  if (!Array.isArray(act.tabs)) { return alert("tabsetview: tabs should be an array"); }
+  if (!Array.isArray(act.tabs)) { return alert("tabsetview: tabs for view should be an array"); }
   //alert("tabsetview: Create tabset: "+act.tabs.join(', '));
   
   //function tabs_get(tabselarr) {
@@ -541,16 +546,16 @@ function tabsetview(ev, act) {
     });
   //  return tabs;
   //}
-  console.log("tabsetview: Got "+tabs.length + " items for tabs");
+  console.log("tabsetview: Got "+tabs.length + " tab items for parent view '"+act.name+"'");
   //return;
   //act.tabs.forEach((ti) => {});
   // Setup router div to contain tab structure
   $('#routerdiv').html("<div id=\"tabsnest\"></div>");
   $('#tabsnest').html( webview.tabs(tabs, null, {idattr: "elsel"}) );
   $( "#tabsnest" ).tabs({active: 1});
-  $( "#tabsnest" ).tabs({ activate: ontabactivate });
+  $( "#tabsnest" ).tabs({ activate: ontabactivate }); // Set click handler !
   $( "#tabsnest" ).tabs("option", "active", 0 );
-  // Set click handler !
+  
   
 }
 
@@ -675,9 +680,12 @@ var tabloadacts = [
   // TF: TODO: Use xpara, set fsetid to func, use urlpara ()
   {"name":"Terraform ...", "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/tftypeinst", gridid: "jsGrid_tfinst", fsetid: "tfinst",
     path: "tfinst", uisetup: null, urlpara: null, dprep: null, longload: 0},
-  {"name":"Services", "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/hostserv", gridid: "jsGrid_hostserv", fsetid: "hostserv",
-    path: "hostserv", uisetup: null, urlpara: null, dprep: null, longload: 0},
-    
+  // TODO: Add "mon"
+  {"name": "Services (Mon. and DR)", "path":"hostserv", tabs: ["servmon","dr",], hdlr: tabsetview},
+  {"name":"Services", "elsel": "servmon", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/hostserv", gridid: "jsGrid_hostserv", fsetid: "hostserv",
+    path: "", uisetup: null, urlpara: null, dprep: null, longload: 0},
+  {"name":"Disaster Recovery", "elsel": "dr", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/hostserv", gridid: "jsGrid_dr", fsetid: "dr",
+    path: "", uisetup: null, urlpara: null, dprep: null, longload: 0},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
