@@ -58,7 +58,7 @@ skipx
 # How to avoid that ? Hints on: https://www.redhat.com/archives/kickstart-list/2008-August/msg00024.html
 # Redundant ?
 # ignoredisk --drives=sdb,sdc
-#ignoredisk --only-use=sda
+#ignoredisk --only-use={{ lindisk }}
 # --append="hdd=ide-scsi ide=nodma" --boot-drive=... (Example of drive ?)
 # bootloader .... --driveorder=sda
 bootloader --location=mbr
@@ -68,7 +68,7 @@ zerombr
 # Remove partitions from system --list=sda2,sda3,sdb1 (Only individual parts) --none --linux (Linux parts only)
 # Note: Term "disklabel" or "label" seems to mean partition table (!), NOT partition or filesystem name/label (!).
 # parted seems to have "makelabel", "maketable" as synonyms for creating partition table.
-clearpart --drives=sda --all --initlabel
+clearpart --drives={{ lindisk }} --all --initlabel
 # Automatic partitioning heuristics
 # --type plain implies --nolvm
 #No such option: --type (--type plain) no such option: --nolvm. Seems Centos 6 may not be accepting any options

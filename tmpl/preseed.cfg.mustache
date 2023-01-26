@@ -265,7 +265,7 @@ d-i pkgsel/include string openssh-server python3 python2.7 curl
 # Seems like default_filesystem is never needed with explicit disk recipe
 #d-i partman/default_filesystem string ext4
 # Explicit Install Drive
-d-i partman-auto/disk string /dev/sda
+d-i partman-auto/disk string /dev/{{ lindisk }}
 
 # https://serverfault.com/questions/415174/debian-6-preseeding-keeps-asking-write-the-changes-to-disks-and-configure-lvm
 # https://cptyesterday.wordpress.com/2012/06/17/notes-on-using-expert_recipe-in-debianubuntu-preseed-files/
@@ -356,7 +356,7 @@ d-i passwd/root-password-again password {{{ user.password }}}
 d-i grub-installer/only_debian boolean true
 # Change to false as machines are (generally) exclusive special purpose machines ? (def: true, has worked ok)
 d-i grub-installer/with_other_os boolean true
-#d-i grub-installer/bootdev string /dev/sda
+#d-i grub-installer/bootdev string /dev/{{ lindisk }}
 
 ############ Hooks: "run", "early_command" and "late_command" #####################
 # Unmount drives with active partitions. Without this command all the

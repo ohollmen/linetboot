@@ -802,11 +802,13 @@ function recipe_params_disk(d, osid, ctype) {
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
   // dtype is no more passed here.
   
-  // Assemble. TODO: Make "inst" top level
-  
+  // Assemble. TODO:
+  // - Make "inst" top level
+  // - Ensure lindiskdev is present (even if just for debugging). See at bottom !
+  if (hps.lindiskdev) { } // or ! ... ?
   ////////////////////// DISK ////////////////////////////////
   // TODO: Make into object, overlay later
-  // var di = {parts: null, partials: null, instpartid: 0} // also lindisk: "sda"
+  // var di = {parts: null, partials: null, instpartid: 0} // also lindisk: "sda", ptt: '...'
   var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
   // TODO: Merge these, figure out lin/win (different signature !)
@@ -832,7 +834,7 @@ function recipe_params_disk(d, osid, ctype) {
     d.diskinfo = out; // Disk Info in whatever format directly embeddable in template
   }
   // Note: MUST also test for preseed URL as Ubu 20 can also run in legacy preseed mode !!!
-  if (osid.match(/ubuntu20/) && !ctype.match(/preseed/)) {
+  if (osid.match(/ubuntu2\d/) && !ctype.match(/preseed/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_subiquity(parts);
     console.log("SUBIQUITY-DISK-INITIAL:'\n"+out+"'");
@@ -850,7 +852,7 @@ function recipe_params_disk(d, osid, ctype) {
   d.partials = partials; // Suse or Win (XML)
   // TODO Change: tmpl/alis.conf.mustache, tmpl/ks.cfg.mustache (Uses only "sda" format), tmpl/preseed.cfg.mustache, tmpl/preseed_mini.cfg.mustache
   // osdisk.js: tmpls.yastdrive (<device>/dev/sda</device>), disk_out_ks(parr) var drive = "sda"; disk_out_subiquity() path: "/dev/sda"
-  d.lindisk = hps.lindisk || "/dev/sda"; // d.inst.lindisk ?
+  d.lindisk = hps.lindisk || "sda"; // d.inst.lindisk ? OLD (full path): "/dev/sda"
   return 0; // Disk info ?
 }
 

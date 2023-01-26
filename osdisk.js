@@ -90,7 +90,9 @@ function is_esp(p) {
 }
 /** Try to create simple Linux disk layout with root partition and swap plus mandatory extra parts.
  * Mandatory extra parts include parts like "EFI System" and RH conventional "/boot" part.
- * 
+ * Clones module global "linparts" (AoO) linux partition spec as basis for layout.
+ * @param btype (str, should be ptt=part table type) - type of boot / partition table ('mbr' or 'gpt')
+ * @param ostype - OS (Linux distro) type indicator (Valid values: 'suse', 'debian', 'centos')
  * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/installation_guide/s2-diskpartrecommend-x86
  * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/installation_guide/sect-disk-partitioning-setup-x86
  * Dir /sys/firmware/EFI indicates EFI Boot
@@ -108,7 +110,7 @@ function lindisk_layout_create(btype, ostype) {
     parts = parts.filter(non_efi);
     debug && console.log("After parts filter: "+parts.length);
   }
-  // Non-EFI
+  // Non-EFI filter cb
   function non_efi(p) { return (p.mpt != "biosboot") && (p.mpt != "/boot/efi"); }
   // TODO: Make into reusable. On linux / KS Not sure if extend is needed ?
   function check_extended(parts) {
@@ -477,7 +479,8 @@ function disk_out_ks(parr) {
   //comps.push("reqpart --add-boot");
   return comps.join("\n") + "\n";
 }
-/** Output disk in "d-i partman-auto/expert_recipe" (partman) format.
+/** Output disk in (Debian/Ubuntu/Preseed) "d-i partman-auto/expert_recipe" (partman) format.
+ * Note: The disk chosen is expressed separately by preseed `partman-auto/disk` directive (e.g. `partman-auto/disk string /dev/sda`).
  * Refs:
  * https://www.bishnet.net/tim/blog/2015/01/29/understanding-partman-autoexpert_recipe/
  * d-i/debian-installer/doc/devel/partman-auto-recipe.txt

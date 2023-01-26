@@ -62,7 +62,7 @@ d-i base-installer/install-recommends boolean {{ install_recommends }}
 d-i pkgsel/include string openssh-server python
 
 # d-i partman-auto/init_automatically_partition select biggest_free
-# d-i partman-auto/disk string /dev/sda
+# d-i partman-auto/disk string /dev/{{ lindisk }}
 # d-i partman-auto/purge_lvm_from_device boolean true
 
 d-i partman/default_filesystem string ext4

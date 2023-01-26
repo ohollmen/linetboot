@@ -42,8 +42,10 @@ filer-001 nfs=1
 dead-005 nossh=1
 ```
 
-While key names for key-value pairs are arbitrary (and may be used by ansible playbooks), some names have a special meaning
-(just as for Ansible) meaning for Linetboot. The list on notable host parameters is:
+### Linetboot Supported Inventory Parameters
+
+While the key names for key-value pairs are arbitrary (and may be used by ansible playbooks), some names have a special meaning
+ for Linetboot (just as some have for Ansible). The list on notable host parameters is:
 
 - loc (str) - Free form host location Indicator (e.g. "West+DC", "Main+Office", etc.)
 - use (str) - Brief Usage description (e.g. "MySQL+Prod", "DHCP-Server")
@@ -62,6 +64,7 @@ your BMC supports)
 - ibsync (bool) - Fetch info from and sync host with proprietary InfoBlox ip address management system
 - preseed (str) - Use an alternative preseed template (or e.g. literal file) for debugging prurposes
 - subiud (str) - Use an alternative Subiquity "user-data" template for debugging purposes 
+- lindisk - Linetboot disk device for OS installation (e.g. root partition, but this is the disk string label e.g. "sda", **not** the partition sting label "sda1")
 
 As a reminder (just to associate the connection to ansible and the possibility to share inventory), some ansible supported keys
 would be:
