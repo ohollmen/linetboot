@@ -3043,14 +3043,15 @@ function pods_info(req, res) {
   if (cfg.host.match(/^http/)) { k8surl = cfg.host + apicfg.apipath; }
   console.log("Consult k8S Live URL: "+k8surl);
   var rpara = {};  // TODO: ..
-  if (cfg.token) { rpara =  { headers: { "Authorization":"Bearer " + cfg.token } }; }
+  if (cfg.token) { rpara =  { headers: { "Authorization":"Bearer " + cfg.token } }; console.log("Got token, added to rpara."); }
+  console.log("Axios para:", rpara);
   axios.get(k8surl, rpara).then((resp) => {
     var apidata = resp.data;
     // Raw API data: console.log("Raw API data: ", apidata);
     let data = api2data(apidata);
     res.json({status: "ok", data: data}); // pods.items
   })
-  .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call"; res.json(jr); });
+  .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call: "+ex; res.json(jr); });
   // Extra data from API result.
   // Strive to return a grid-compatible AoO set.
   function api2data(rdata) {
