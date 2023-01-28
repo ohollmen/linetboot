@@ -3089,6 +3089,7 @@ function gh_projs(req, res) {
 
 /** View projects for single GitLab group (~org).
  * We call GitLab Groups "Orgs" in the code to retain similarity to GitHub.
+ * 
  */
 function gl_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GL Projects."};
@@ -3103,7 +3104,7 @@ function gl_projs(req, res) {
   // https://gitlab.com/api/v4/users?username=<username-here>
   if (ghcfg.ent) { url += "api/v4/"; } // GL Also: users/<user-id>/projects
   //url += "users/"+org+"/projects/"; // GH
-  url += "projects/"
+  url += "groups/"+org+"/projects/";
   console.log("Final URL: "+url);
   var opts = {};
   if (ghcfg.token) { opts.headers = { "PRIVATE-TOKEN" : ghcfg.token}; } // GL

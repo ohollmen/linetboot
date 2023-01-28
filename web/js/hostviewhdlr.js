@@ -1313,9 +1313,11 @@ function jgrid_form(ev, act) {
 
 // See handler simplegrid_url
 function ghprojs_uisetup(act, data) {
-  var fs = datasets.cfg.ghorgs; // datasets.cfg.docker.files;
+  var k = "ghorgs"; // 
+  if (act.path == 'glprojs') { k = "glorgs"; }
+  var fs = datasets.cfg[k]; // datasets.cfg.docker.files;
   console.log("ghprojs_uisetup ..."+ fs);
-  console.log("Got Action: ", act);
+  //console.log("Got Action: ", act);
   var cont = "";
   // toastr.info(fs);
   fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
@@ -1339,7 +1341,7 @@ function ghprojs_uisetup(act, data) {
 function ghprojs_urlpara(ev, act) {
   var val; // dcfn
   var ckey = "ghorgs"; // Config key
-  // if (???) { ckey = "glorgs"; } // Detect from where ?
+  if (act.path == "glprojs") { ckey = "glorgs"; } // Detect from action
   var ds = ev.target.dataset;
   if (ds && ds.dcfn) { val = ds.dcfn; }
   if (!val && datasets.cfg[ckey]) { val = datasets.cfg[ckey][0]; }
