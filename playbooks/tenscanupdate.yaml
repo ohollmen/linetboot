@@ -52,7 +52,7 @@
         src: '/tmp/{{ tgz_sc }}'
         dest: '/tmp/{{ tgz_sc }}'
       tags: sc
-      when '{{ tgz_sc }}'
+      when: tgz_sc
     - name: Stop Service for Update
       ansible.builtin.systemd:
         name: '{{ unit_sc }}'
@@ -61,26 +61,32 @@
     - name: Backup (Optional, see var backup)
       shell: 'tar -pzcf sc_backup.`date -Idate`.tar.gz /opt/sc'
       tags: sc
-      when: 'backup_local'
+      when: backup_local
     - name: Update SC
       shell: 'rpm -Uvh /tmp/{{ rpm_sc_update }}'
       tags: sc
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
-      ansible.builtin.service:
+      ansible.builtin.systemd:
         name: '{{ unit_sc }}'
         state: started
       tags: sc
     #### SC TGZ ####
-    
+    - name: Stop Service for TGZ Update
+      ansible.builtin.systemd:
+        name: '{{ unit_sc }}'
+        state: stopped
+      tags: sc
+      when: tgz_sc
     # Note: Should this indeed be after startup ?
     - name: Apply SC tgz patch
       shell: 'tar -C /tmp -zxvf /tmp/{{ tgz_sc }}; cd /tmp/{{ tgz_dir_patt }}; ./install.sh'
       tags: sc
-      when: '{{ tgz_sc }}'
+      when: tgz_sc
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
       ansible.builtin.service:
         name: '{{ unit_sc }}'
         state: started
       tags: sc
+      when: tgz_sc
