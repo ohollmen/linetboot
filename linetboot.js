@@ -3040,7 +3040,7 @@ function pods_info(req, res) {
   // TODO: Deprecate Non-URL (hostname only)
   var k8surl = (cfg.ssl ? "https" : "http") + "://" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
   // NEW: Detect "standard" kubeconfig URL (Simple !)
-  if (cfg.host.match(/^http/)) { k8surl = cfg.host + + apicfg.apipath; }
+  if (cfg.host.match(/^http/)) { k8surl = cfg.host + apicfg.apipath; }
   console.log("Consult k8S Live URL: "+k8surl);
   var rpara = {};  // TODO: ..
   if (cfg.token) { rpara =  { headers: { "Authorization":"Bearer " + cfg.token } }; }

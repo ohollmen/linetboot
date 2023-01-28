@@ -244,6 +244,8 @@ function disabled_detect(global) {
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
   var gh = global.github;
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("ghprojs"); }
+  var gh = global.gitlab; // Reuse gh for gitlab
+  if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("glprojs"); }
   var cfl = global.confluence;
   if (!cfl || (cfl && !cfl.user) || (cfl && !cfl.pass) ) { dis.push("cflpages"); }
   return dis;
