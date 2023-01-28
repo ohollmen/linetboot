@@ -2998,12 +2998,14 @@ function hosthier(req, res) {
   //data.gmm = gmm;
   res.json({status: "ok", data: data});
 }
-/** Get K8S Pods (and other) info.
+/** Get K8S Pods (and other) info from Kubernetes (or Minikube).
  * To run API proxying:
  * - In small scale (min stup overhead):  kubectl proxy --port=8080 --accept-hosts='^localhost$,^192.168.1.*$'
  * - In proper scale (JWT, cacert): Setup JWT, cacert properly as pointed out by article ...
- *   - Use: Authorization: Bearer $TOKEN
+ *   - Generic case: Authorization: Bearer $TOKEN
+ *   - Google GKE: ...
  *   - https://nieldw.medium.com/curling-the-kubernetes-api-server-d7675cfc398c
+ *   - https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
  * Note: This servers more than pods (almost any K8S API). TODO: rename.
  */
 function pods_info(req, res) {
@@ -3022,7 +3024,7 @@ function pods_info(req, res) {
   var apicfg = urlmap.find((it) => { return it.url == req.url; });
   if (!apicfg) { jr.msg = "No match (for: "+req.url+") in API mapping!"; return res.json(jr); }
   //var apipath = apicfg ...
-  // Mock-file
+  // No "host" given - use Mock-file
   if (!cfg.host) {
     let path = require("path");
     // Figure out testfn here !!!
@@ -3035,18 +3037,25 @@ function pods_info(req, res) {
     let data = api2data(pods);
     return res.json({status: "ok", data: data}); // pods.items
   }
-  
+  // TODO: Deprecate Non-URL (hostname only)
   var k8surl = (cfg.ssl ? "https" : "http") + "://" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
-  console.log("Consult k8S URL: "+k8surl);
-  var rpara = { headers: {"Authorization":"Bearer "} }; // TODO: ..
-  axios.get(k8surl).then((resp) => {
-    var pods = resp.data;
-    let data = api2data(pods);
+  // NEW: Detect "standard" kubeconfig URL (Simple !)
+  if (cfg.host.match(/^http/)) { k8surl = cfg.host + + apicfg.apipath; }
+  console.log("Consult k8S Live URL: "+k8surl);
+  var rpara = {};  // TODO: ..
+  if (cfg.token) { rpara =  { headers: { "Authorization":"Bearer " + cfg.token } }; }
+  axios.get(k8surl, rpara).then((resp) => {
+    var apidata = resp.data;
+    // Raw API data: console.log("Raw API data: ", apidata);
+    let data = api2data(apidata);
     res.json({status: "ok", data: data}); // pods.items
   })
   .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call"; res.json(jr); });
+  // Extra data from API result.
+  // Strive to return a grid-compatible AoO set.
   function api2data(rdata) {
     let data = rdata.items;
+    // Special cases / exceptions
     if (req.url.match(/kubapirsc/)) { data = rdata.resources; }
     return data;
   }
