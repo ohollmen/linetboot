@@ -876,6 +876,10 @@ function ibip_cell(val, item) {
      //{"name": "status.containerStatuses[0].name",  "title": "Cont Stat Name",  type: "text", width: 20},
      
    ];
+   var fldinfo_kub_nss = [
+     {"name": "metadata.name",      "title": "Namespace",  type: "text", width: 40},
+     //{"name": "metadata.name",      "title": "Namespace",  type: "text", width: 40},
+   ];
    var fldinfo_gerr_change = [
      {"name": "_number",     "title": "Number",    type: "number", width: 8},
      
@@ -1074,7 +1078,8 @@ function ibip_cell(val, item) {
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
-      "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "gerr_change": fldinfo_gerr_change,
+      "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss,
+      "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs
    };
