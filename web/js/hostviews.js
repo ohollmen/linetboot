@@ -662,14 +662,18 @@ var tabloadacts = [
       uisetup: actinfo_uisetup },
   {name: "Host Groups Hierarchy", hdlr: visnethier, url: "/hosthier", tmpl: "t_hosthier", "path": "hosthier", helemid: "hh", dprep: dprep_hosthier,
       netopts: netopts_hosthier, nclick: onhostnetclick, },
-  //  K8S
-  {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/podinfo", gridid: "jsGrid_syspods", fsetid: "syspods", path: "syspods", uisetup: null, dprep: dprep_syspods},
-  {"name": "K8S System APIs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubapirsc", gridid: "jsGrid_kubapis", fsetid: "kubapis", path: "kubapis",},
+  //  K8S (Old serv. paths: /podinfo /kubapi). TODO: Use simplegrid xui to create choices by urlpara: kub_urlpara (like GitHub/GitLab)
+  {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=pod-sys", gridid: "jsGrid_syspods",
+    fsetid: "syspods", path: "syspods",  dprep: dprep_syspods, uisetup: kub_uisetup, urlpara: kub_urlpara},
+  {"name": "K8S System APIs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=api", gridid: "jsGrid_kubapis",
+    fsetid: "kubapis", path: "kubapis", dprep: null, uisetup: kub_uisetup, urlpara: kub_urlpara},
+  {"name": "K8S Namespaces",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=nss", gridid: "jsGrid_kubnss",
+    fsetid: "kubnss", path: "kubnss", dprep: null, uisetup: kub_uisetup, urlpara: kub_urlpara }, // TODO: Fieldsets (use meta ?)
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // Git*
   {"name": "GitHub Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
-      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1}, // TODO ?: genurl ?
+      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "GitLab Grp. Repos",   "elselXX": "glprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gl_projs", gridid: "jsGrid_glprojs", fsetid: "glprojs",
       path: "glprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",

@@ -46,33 +46,40 @@ function simplegrid_cd(ev, act) {
   // var dsid = "hostlist"; // TODO: Discard
   // showgrid() - pass fldinfo[m[1]]
 /** Simple grid from URL.
+ * Hooks supported in action:
+ * - urlpara(ev, act) - Generate complete or relative URL compatible with axios.get(url)
+ *   - Handler can use URL in the action as base url to extend (e.g. with params or additional URL route components
+ *   - Handler can pick up hints set in the event
+ * - dprep(act, respdata, ev) - Refine data received from server (currently always an array)
+ *   - NEW: pass also event to be able to reuse same action for more scenarios
+ * - uisetup(act, respdata) - Setup ui (e.g. decorate, add DOM content) and associate event handlers
  */
 function simplegrid_url(ev, an) {
-  console.log("simplegrid_url URL:", an.url);
+  console.log("simplegrid_url URL(a.n="+an.path+"):", an.url);
   //$('#vtitle').html(act.name);
   var url = an.url; // an.genurl ? an.genurl(act) : an.url; // DEFAULT
   var ttgt = ev.viewtgtid || an.elsel; // was: selsel ????
   var para = "";
-  var urlgen = an.urlpara || an.genurl;
-  //if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; }
+  var urlgen = an.urlpara || an.genurl; // Allow legacy genurl
+  //if (an.urlpara && (para = an.urlpara(ev, an))) { url += "?" + para; } // After curr. var urlgen
   var spinner;
   var spel = document.getElementById(ev.viewtgtid); // ttgt
   // Note: When view calls itself, this block *IS* visited, but Spinner does not show (ev.viewtgtid/spel not there).
   if (an.longload) { console.log("LONGLOAD !"+ev.viewtgtid); spinner = new Spinner(spinopts).spin(spel); }
   else { console.log("No 'longload' (no spinner)"); }
-  if (urlgen) { url = urlgen(ev, an); }
+  if (urlgen) {  url = urlgen(ev, an); console.log("Called urlgen() => "+url); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
     var arr = (data && data.data) ? data.data : data; // AoO
     // TODO: Refine logic
     if (data.status == 'err') { return toastr.error(data.msg); }
     if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data found in response (as array)"); }
-    if (an.dprep) { an.dprep(an, arr); }
+    if (an.dprep) { an.dprep(an, arr, ev); } // New: ev
     //var an2 = rapp.dclone(an);
     // contbytemplate(an.tmpl, an, ttgt);
     rapp.templated(an.tmpl, an, ttgt); // Initial templating
     var fsetid = an.fsetid;
-    // if (typeof fsetid == 'function') { fsetid = fsetid(ev, an); }
+    if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW
     showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
@@ -870,17 +877,18 @@ function esxilist(ev, act) {
   var cfg = datasets["cfg"];
   toastr.clear();
   rapp.templated("simplegrid", act, ev.viewtgtid); // Use act.tmpl
+  // TODO: do at esxi_uisetup(act, respdata) ?
   if (cfg.vmhosts) { esxihostmenu(act, cfg.vmhosts); }
   else { $('#'+ev.viewtgtid + " " + ".xui").html("No VM hosts in this system.").show(); return; }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
-  function urlpara() {
+  function urlpara(ev, an) { // 
     var ds = ev.target.dataset;
     if (ds && ds.ghost) { host = ds.ghost; }
     if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
     return host;
   }
-  host = urlpara();
+  host = urlpara(ev, an);
   if (!host) { return toastr.error("No Default host available."); }
   $("#routerdiv h3").html(act.name + " on VM Host " +host);
   console.log("Search by: "+ host);
@@ -1224,18 +1232,57 @@ if (act.sigma) {
     }
 */
 
+// Need for coloring ?
 function dprep_syspods(act, arr) {
-  console.log("RUNNING DPREP !!!");
+  console.log("RUNNING syspods DPREP !!!");
   var cols = {"Running": "#6AB423"};
   arr.forEach((pod) => {
     if (!pod.spec || !pod.spec.containers || !Array.isArray(pod.spec.containers)) { return; }
     var conts = pod.spec.containers;
+    // Note: More than 1 cont. is NOT an error or even worth warning ... store / later output  count ?
     if (conts.length > 1) { console.error("Warning: More than 1 container for ... !!!"); }
     pod.container = pod.spec.containers[0]; // Singular, Also Move up
     if (typeof pod.container != 'object') { console.error("Warning: container is not an object"); }
-    // NEW: Add cools map
+    // NEW: Add cols map
     pod._coloring = cols;
   });
+}
+// UI Prep for xui menu
+function kub_uisetup(act, data) {
+  var cont = "";
+  var kubimap = datasets.cfg["kubimap"];
+  kubimap.forEach((kmo) => {
+    cont += " <span class=\"kubact\" data-info=\""+kmo.name+"\">"+kmo.title+"</span> ";
+  });
+  $(".xui").html(cont);
+  $(".kubact").click(function (jev) {
+    //toastr.info("Hi!");
+    var info = this.dataset.info;
+    jev.kinfo = info ; //  || ''
+    console.log("kubact ev-hdlr(a.n="+act.path+"): "+jev.kinfo);
+    jev.viewtgtid = "routerdiv";
+    simplegrid_url(jev, act); // act.hdlr(jev, act)
+    //location.hash = "";
+  });
+  $(".xui").show();
+  
+}
+
+function kub_urlpara(ev, act) {
+  console.log("kub_urlpara: Got: "+ ev.kinfo);
+  // Get from ...
+  var kinfo_def = datasets.cfg["kubimap"][0].name;
+  if (!ev.kinfo) { ev.kinfo = "pod-sys"; console.log("kub_urlpara: info="+ev.kinfo); }
+  return "/kubinfo?info="+ev.kinfo+"&CREATOR=kub_urlpara";
+  // return act.url + "?info=" + ev.kinfo;
+}
+function kub_fsetidgen(ev, act) {
+  if (!ev.kinfo) { return act.fsetid; }
+  if (ev.kinfo.match(/^pod/)) { return "syspods"; }
+  var fsm = {"nss": "kubnss", "api": "kubapis"};
+  var fsid = fsm[ev.kinfo];
+  if (!fsid) { alert("No fieldset for kinfo="+ev.kinfo); return; }
+  return fsid;
 }
 // Note: Not a Trend.
 // If all count fields do not appear in chart, log in as cov user and add to that users fields.
