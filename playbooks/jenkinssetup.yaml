@@ -23,7 +23,7 @@
       apt: name={{ item }} update_cache=yes state=present force_apt_get=yes install_recommends=no
       with_items:
         - jenkins
-	- openjdk-8-jre
+        - openjdk-8-jre
       # ls -al /usr/share/keyrings/jenkins-keyring.asc
       # curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo tee   /usr/share/keyrings/jenkins-keyring.asc > /dev/null
       # ls -al /usr/share/keyrings/jenkins-keyring.asc
@@ -32,14 +32,14 @@
       # sudo apt-get update
       # sudo apt-get install jenkins
       # sudo apt-get install openjdk-8-jre
-      - name: Start Jenkins
-        shell: sudo systemctl start jenkins
-      # sudo systemctl status jenkins
-      - name: Register Intial hash/pass token
-        shell: cat {{ initpassfile }}
-        register: md5pass
-      - name: Show token to plabook running admin
-        debug: msg='Initial unlock pass/token {{ md5pass.stdout }}'
+    - name: Start Jenkins
+      shell: sudo systemctl start jenkins
+    # sudo systemctl status jenkins
+    - name: Register Intial hash/pass token
+      shell: cat {{ initpassfile }}
+      register: md5pass
+    - name: Show token to plabook running admin
+      debug: msg='Initial unlock pass/token {{ md5pass.stdout }}'
       # TODO: Complex interaction with Jenkins Web GUI.
       # Possibly marginally doable, form params serialization, redirects involved.
       # May not be worth rev. engineering, fully automating.
@@ -50,6 +50,6 @@
       #  shell: curl -c /tmp/jc.txt --insecure -L -X POST http://{{ inventory_hostname }}:8080/j_spring_security_check -d 'from=%2F&j_username=admin&j_password={{ md5pass.stdout }}'
       #- name: Next curl
       #  shell: curl -c /tmp/jc.txt --insecure ...
-	
+
 
 

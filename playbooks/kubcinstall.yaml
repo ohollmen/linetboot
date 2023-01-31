@@ -41,7 +41,7 @@
     # In case new docker will be needed (?)
     dkr_apt_key_url: https://download.docker.com/linux/ubuntu/gpg
     # distro name: $(lsb_release -cs)
-    dkr_apt_repo_line: "deb https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+    dkr_apt_repo_line: "deb https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
     # 
     k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
     # Orig: kubernetes-xenial main
@@ -84,7 +84,7 @@
         content: '{ "exec-opts": ["native.cgroupdriver=cgroupfs"] }\n'
         dest: /etc/docker/daemon.json
         backup: yes
-	force: yes
+        force: yes
         mode: '644'
     # Possible errors:
     # - misconfiguration: kubelet cgroup driver: ...x
@@ -146,7 +146,7 @@
         # dest: '/home/{{ k8s_user }}/.kube/config'
         dest: '{{ k8s_user_home }}/.kube/config'
         remote_src: yes
-	force: yes
+        force: yes
         owner: '{{ k8s_user }}'
       when: k8smaster is defined
     # Gets Multi-doc with kind(s): ClusterRole,ClusterRoleBinding,ServiceAccount,
@@ -165,7 +165,7 @@
     ###### Worker Nodes ########################
     - name: Generate join-token on master
       shell: kubeadm token create --print-join-command
-        register: join_command
+      register: join_command
       when: k8smaster is defined
     - name: Run kubeadm init on Workers
       shell: kubeadm init
@@ -177,9 +177,9 @@
     #- name: Set Join command fact
     #  set_fact:
     #    join_command: "{{ join_command_raw.stdout_lines[0] }}"
-    #  Must run join on workers
-    # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
-      when: k8smaster
+    #  # Must run (cluster) join on workers
+    #  # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
+    #  when: k8smaster
     # This MAY need to be a play in itself
     # gather_facts: false
     - name: get join command

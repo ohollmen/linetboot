@@ -52,7 +52,7 @@
         state: absent
         force_apt_get: yes
         # install_recommends: no
-	purge: yes
+        purge: yes
         name: [ "kubelet", "kubeadm", "kubectl", "kubernetes-cni"]
     #- name: Remove kubectl on Master
     #  apt:
