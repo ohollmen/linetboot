@@ -64,6 +64,7 @@ var deployer = require("./deployer.js");
 var gerrit   = require("./gerrit.js");
 var cfl      = require("./confluence.js");
 var tform    = require("./terraform.js");
+var kubi     = require("./kubi.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -124,6 +125,7 @@ function app_init() { // global
   deployer.init(global); // Good, should have access to "gitroots" also.
   cfl.init(global);
   tform.init();
+  kubi.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -320,10 +322,11 @@ function app_init() { // global
   app.get("/deploy_config", deployer.config);
   app.get("/gitrepo_config", deployer.config);
   app.get("/hosthier", hosthier);
-  // K8S
-  app.get("/podinfo", pods_info);
-  app.get("/kubdash", pods_info);
-  app.get("/kubapirsc", pods_info);
+  // K8S (OLD: pods_info)
+  //app.get("/podinfo", kubi.kube_info);
+  //app.get("/kubdash", kubi.kube_info);
+  //app.get("/kubapirsc", kubi.kube_info);
+  app.get("/kubinfo", kubi.kube_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
   app.get("/gl_projs", gl_projs);
@@ -1964,6 +1967,7 @@ function config_send(req, res) {
   if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
   if (gl && gl.org && Array.isArray(gl.org)) { cfg.glorgs = gl.org; }
   if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
+  cfg.kubimap = (kubi && (kubi.kubimap) ) ? kubi.kubimap : [];
   res.json(cfg);
 }
 
@@ -2998,69 +3002,11 @@ function hosthier(req, res) {
   //data.gmm = gmm;
   res.json({status: "ok", data: data});
 }
-/** Get K8S Pods (and other) info from Kubernetes (or Minikube).
- * To run API proxying:
- * - In small scale (min stup overhead):  kubectl proxy --port=8080 --accept-hosts='^localhost$,^192.168.1.*$'
- * - In proper scale (JWT, cacert): Setup JWT, cacert properly as pointed out by article ...
- *   - Generic case: Authorization: Bearer $TOKEN
- *   - Google GKE: ...
- *   - https://nieldw.medium.com/curling-the-kubernetes-api-server-d7675cfc398c
- *   - https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
- * Note: This servers more than pods (almost any K8S API). TODO: rename.
- */
-function pods_info(req, res) {
-  var jr = {status: "err", "msg": "Could not list Pods"};
-  //var testfn = "./pods.json";
-  // TODO: Add attr or cb to get to AoO (to be listed).
-  // Most (v1) apis work the same with trailing slash or w/o. leave out here
-  var urlmap = [
-    {url: "/podinfo", apipath: "/api/v1/namespaces/kube-system/pods"}, // 
-    {url: "/kubdash", apipath: "/api/v1/namespaces/kubernetes-dashboard/services/"}, // Note: services. Some fields compat.
-    {url: "/kubapirsc", apipath: "/api/v1"},
-    // "/kubdash" "/kubapirsc"
-  ];
-  var cfg = global.k8s;
-  if (!cfg) { jr.msg += "No k8s config"; return res.json(jr); }
-  var apicfg = urlmap.find((it) => { return it.url == req.url; });
-  if (!apicfg) { jr.msg = "No match (for: "+req.url+") in API mapping!"; return res.json(jr); }
-  //var apipath = apicfg ...
-  // No "host" given - use Mock-file
-  if (!cfg.host) {
-    let path = require("path");
-    // Figure out testfn here !!!
-    var testfn = "./"+path.basename(apicfg.apipath)+".json";
-    if (!fs.existsSync(testfn)) { jr.msg += "No test file ("+testfn+")"; return res.json(jr); }
-    console.log("k8s: Use mock file: "+testfn);
-    var pods = require(testfn);
-    
-    if (!pods) { jr.msg += "Loading of test file failed"; return res.json(jr); }
-    let data = api2data(pods);
-    return res.json({status: "ok", data: data}); // pods.items
-  }
-  // TODO: Deprecate Non-URL (hostname only)
-  var k8surl = (cfg.ssl ? "https" : "http") + "://" + cfg.host + apicfg.apipath; // "/api/v1/namespaces/kube-system/pods";
-  // NEW: Detect "standard" kubeconfig URL (Simple !)
-  if (cfg.host.match(/^http/)) { k8surl = cfg.host + apicfg.apipath; }
-  console.log("Consult k8S Live URL: "+k8surl);
-  var rpara = {};  // TODO: ..
-  if (cfg.token) { rpara =  { headers: { "Authorization":"Bearer " + cfg.token } }; console.log("Got token, added to rpara."); }
-  console.log("Axios para:", rpara);
-  axios.get(k8surl, rpara).then((resp) => {
-    var apidata = resp.data;
-    // Raw API data: console.log("Raw API data: ", apidata);
-    let data = api2data(apidata);
-    res.json({status: "ok", data: data}); // pods.items
-  })
-  .catch((ex) => { jr.msg += "Failed k8s Api Server HTTP Call: "+ex; res.json(jr); });
-  // Extra data from API result.
-  // Strive to return a grid-compatible AoO set.
-  function api2data(rdata) {
-    let data = rdata.items;
-    // Special cases / exceptions
-    if (req.url.match(/kubapirsc/)) { data = rdata.resources; }
-    return data;
-  }
-}
+
+
+// Kube Info was here
+
+
 /** Allow viewing GH projects for single org.
  * https://docs.github.com/en/rest/overview/resources-in-the-rest-api
  * GitLab
