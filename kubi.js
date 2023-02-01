@@ -3,7 +3,7 @@
  */
  
 var fs = require("fs");
-
+var axios = require("axios");
  // List of linetboot server side data (info) set name:s (OLD: URL:s)
   // Most (v1) apis work the same with trailing slash or w/o. leave out here
   var urlmap = [
@@ -12,8 +12,9 @@ var fs = require("fs");
     {name: "pod-default", url: "/podinfodef", apipath: "/api/v1/namespaces/default/pods", title: "Default NS Pods"}, // 
     //{name: "", url: "/depinfodef", apipath: "/api/v1/namespaces/default/pods", title: "Default NS Deployments"},
     //{name: "", url: "/kubdash", apipath: "/api/v1/namespaces/kubernetes-dashboard/services/", title: "Kubernetes Dashboard"}, // Note: services. Some fields compat.
-    {name: "api", url: "/kubapirsc", apipath: "/api/v1", title: "APIs"},
-    {name: "nss", url: "/kubnss", apipath: "/api/v1/namespaces", title: "Namespaces"},
+    {name: "api", url: "/kubapirsc", apipath: "/api/v1", title: "K8S System APIs"},
+    {name: "nss", url: "/kubnss", apipath: "/api/v1/namespaces", title: "Cluster Namespaces"},
+    {name: "nodes", url: "/nodes", apipath: "/api/v1/nodes", title: "Cluster Nodes"},
     // "/kubdash" "/kubapirsc"
   ];
   
