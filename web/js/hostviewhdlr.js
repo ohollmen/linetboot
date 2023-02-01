@@ -84,7 +84,8 @@ function simplegrid_url(ev, an) {
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
     // NOTE: If we pass act to showgrid(..., act); must disable this
-    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr); }
+    // NEW(2301): Pass ev, as data within it may contribute to view
+    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr, ev); }
   }).catch(function (error) { console.log(error); })
   .finally(() => { spinner && spinner.stop(); spinner = null; });
 }
@@ -882,17 +883,17 @@ function esxilist(ev, act) {
   else { $('#'+ev.viewtgtid + " " + ".xui").html("No VM hosts in this system.").show(); return; }
   // Figure out host (default to ... (first?) ?)
   // From a-element (may be a global navi link, or host specific link)
-  function urlpara(ev, an) { // 
+  function esxi_urlpara(ev, act) { // 
     var ds = ev.target.dataset;
     if (ds && ds.ghost) { host = ds.ghost; }
     if (!host && cfg.vmhosts) { host = cfg.vmhosts[0]; }
     return host;
   }
-  host = urlpara(ev, an);
+  host = esxi_urlpara(ev, act);
   if (!host) { return toastr.error("No Default host available."); }
-  $("#routerdiv h3").html(act.name + " on VM Host " +host);
+  $("#routerdiv h3").html(act.name + " on VM Host " +host); // In _uisetup()
   console.log("Search by: "+ host);
-  var url = act.url + host;
+  var url = act.url + host; // esxi_urlgen();
   toastr.info("Request ESXI Host "+host+" VM Info ... please wait...");
   axios.get(url).then(function (resp) {
     var d = resp.data;
@@ -1248,12 +1249,16 @@ function dprep_syspods(act, arr) {
   });
 }
 // UI Prep for xui menu
-function kub_uisetup(act, data) {
+function kub_uisetup(act, data, ev) {
   var cont = "";
   var kubimap = datasets.cfg["kubimap"];
+  var idx = {};
   kubimap.forEach((kmo) => {
     cont += " <span class=\"kubact\" data-info=\""+kmo.name+"\">"+kmo.title+"</span> ";
+    idx[kmo.name] = kmo;
   });
+  var kmo = idx[ev.kinfo] || kubimap[0];
+  if (kmo) { $("#routerdiv h3").html(kmo.title); }
   $(".xui").html(cont);
   $(".kubact").click(function (jev) {
     //toastr.info("Hi!");
@@ -1279,7 +1284,7 @@ function kub_urlpara(ev, act) {
 function kub_fsetidgen(ev, act) {
   if (!ev.kinfo) { return act.fsetid; }
   if (ev.kinfo.match(/^pod/)) { return "syspods"; }
-  var fsm = {"nss": "kubnss", "api": "kubapis"};
+  var fsm = {"nss": "kubnss", "api": "kubapis", "nodes": "kubnodes"};
   var fsid = fsm[ev.kinfo];
   if (!fsid) { alert("No fieldset for kinfo="+ev.kinfo); return; }
   return fsid;

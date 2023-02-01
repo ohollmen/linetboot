@@ -877,9 +877,37 @@ function ibip_cell(val, item) {
      
    ];
    var fldinfo_kub_nss = [
-     {"name": "metadata.name",      "title": "Namespace",  type: "text", width: 40},
-     //{"name": "metadata.name",      "title": "Namespace",  type: "text", width: 40},
+     {"name": "metadata.name",      "title": "Namespace",  type: "text", width: 20},
+     {"name": "metadata.resourceVersion",      "title": "Rsc. Ver.",  type: "text", width: 10},
+     {"name": "metadata.creationTimestamp",      "title": "Created",  type: "text", width: 20},
+     //{"name": "metadata.name",      "title": "Namespace",  type: "text", width: 20},
+     {"name": "status.phase",      "title": "Status Phase",  type: "text", width: 20},
+     //{"name": "status.phase",      "title": "Status Phase",  type: "text", width: 20},
+     //{"name": "status.phase",      "title": "Status Phase",  type: "text", width: 20},
    ];
+   var fldinfo_kub_nodes = [
+    {"name": "metadata.name",      "title": "Node",  type: "text", width: 20},
+    {"name": "metadata.resourceVersion",      "title": "Rsc. Ver.",  type: "text", width: 10},
+    //{"name": "metadata.labels",      "title": "Rsc. Ver.",  type: "text", width: 10, itemTemplate: podcont_kv_cell},
+    {"name": "spec.podCIDR",      "title": "CIDR",  type: "text", width: 15},
+    // Must do: status: capacity, allocatable, conditions (arr...), addresses (AoO), daemonEndpoints, nodeInfo, images
+    {"name": "status.capacity.cpu",      "title": "CPUs",  type: "text", width: 8},
+    {"name": "status.capacity.ephemeral-storage",      "title": "Eph.Stor.",  type: "text", width: 8},
+    {"name": "status.daemonEndpoints.kubeletEndpoint.Port",      "title": "Endpoint/Port",  type: "text", width: 20},
+
+    {"name": "status.nodeInfo.operatingSystem",      "title": "OS",  type: "text", width: 8},
+    {"name": "status.nodeInfo.kernelVersion",      "title": "KernelVer",  type: "text", width: 8},
+    {"name": "status.nodeInfo.architecture",      "title": "Arch",  type: "text", width: 8},
+    {"name": "status.nodeInfo.osImage",      "title": "OS Img",  type: "text", width: 8},
+    {"name": "status.nodeInfo.kubeletVersion",      "title": "KubeletVer",  type: "text", width: 8},
+    
+    
+    //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
+    //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
+    //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
+    //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
+   ];
+
    var fldinfo_gerr_change = [
      {"name": "_number",     "title": "Number",    type: "number", width: 8},
      
@@ -1078,7 +1106,7 @@ function ibip_cell(val, item) {
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
-      "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss,
+      "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss, "kubnodes": fldinfo_kub_nodes,
       "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs
