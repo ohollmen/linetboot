@@ -248,6 +248,8 @@ function disabled_detect(global) {
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("glprojs"); }
   var cfl = global.confluence;
   if (!cfl || (cfl && !cfl.user) || (cfl && !cfl.pass) ) { dis.push("cflpages"); }
+  var ks = global.k8s;
+  if (!ks || (ks && !ks.host) || (ks && !ks.token) ) { dis.push("kubinfo"); }
   return dis;
 } // diabled_detect
 

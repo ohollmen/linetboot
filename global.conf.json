@@ -204,10 +204,10 @@
     "gitreposfn": "~/.linetboot/gitrepos.conf.json"
   },
   "k8s": {
-    "desc": "K8S Config of API Server w. JWT",
+    "desc": "K8S Config of API Server w. token",
     "hostXX": "localhost:8080",
     "ssl": 1,
-    "jwtfn": "",
+    "token": "",
     "cacertfn": ""
   },
   "gerrit": {

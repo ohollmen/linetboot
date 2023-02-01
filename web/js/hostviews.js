@@ -665,7 +665,7 @@ var tabloadacts = [
   //  K8S (Old serv. paths: /podinfo /kubapi). TODO: Use simplegrid xui to create choices by urlpara: kub_urlpara (like GitHub/GitLab)
   // fsetidgen: kub_fsetidgen, 
   {"name": "K8S System Pods",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=pod-sys", gridid: "jsGrid_syspods",
-    fsetid: "syspods", fsetidgen: kub_fsetidgen, path: "syspods",  dprep: dprep_syspods, uisetup: kub_uisetup, urlpara: kub_urlpara},
+    fsetid: "syspods", fsetidgen: kub_fsetidgen, path: "kubinfo",  dprep: dprep_syspods, uisetup: kub_uisetup, urlpara: kub_urlpara}, // OLD: path: "syspods"
   /*
   {"name": "K8S System APIs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=api", gridid: "jsGrid_kubapis",
     fsetid: "kubapis", fsetidgen: kub_fsetidgen, path: "kubapis", dprep: null, uisetup: kub_uisetup, urlpara: kub_urlpara},

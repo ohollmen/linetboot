@@ -91,6 +91,17 @@ function kube_info(req, res) {
     return data;
   }
 }
+/** Kubernetes Admission webhook system.
+ * Allow validation and mutation. Called after API server validation.
+ * - Mutating ops: 
+ * - Validating: accept / reject
+ * This only implments most primitive validation
+ * See: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+ * admissionregistration.k8s.io/v1 API must be enabled.
+ */
+function kub_validation(req, res) {
+  
+}
 
 module.exports = {
   init: init,
