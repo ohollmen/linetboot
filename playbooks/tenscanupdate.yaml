@@ -7,33 +7,65 @@
 # # Only SC supports backup step
 # ansible-playbook tenscanupdate.yaml --tags sc -e "rpm_scan_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true"
 # ```
+# # Some important dirs
+# Security Center
+# - /opt/sc/www - Document root
+# - /opt/sc/data/ *.cnf (ini format)
+# - /opt/sc/data/plugins 
+# - /opt/sc/data/nasl *.nasl (152k files) *.inc (400+ files)
+# - /opt/sc/data/admin - NA
+# - /opt/sc/data/CA - cert stuff (root, ... Apache SSLCACertificatePath)
+# - /opt/sc/support/conf/ - SecurityCenter.crt, Sec....key (pub, priv, Apache SSLCertificateFile, SSLCertificateKeyFile), httpd.conf (Includes many *.conf from current dir)
+# - /opt/sc/support/bin/ - apachectl, fcgistarter, httpd, ldapvc, onig-config, openssl, php, sqlite3
+# - /opt/sc/support/etc/ - php.ini, syslog.conf, openldap/ldap.conf
+# - /opt/sc/support/logs - Apache logs
+# - /opt/sc/support/openssl/CA - does not exist, even if referred in ...
+# Scanner:
+# - /opt/nessus/bin/nasl - NASL Interpreter
+# - /opt/nessus/com/nessus/CA/*.pem - certs (pem certs)
+# - /opt/nessus/etc/nessus/ - Nessus configs
+# - /opt/nessus/sbin - Nessus system bins nessusd, nessuscli, nessus-service
+# - /opt/nessus/lib/nessus/plugins/*.nasl - NASL scripts/plugins, Also *.inc (Including plugin_feed_info.inc)
+# View cert contents: `openssl x509 -in /opt/sc/support/conf/SecurityCenter.crt -text`
 - name: Update Tenable Scanner
   hosts: "{{ host }}"
   become: true
   vars:
+    # If using Tenable API to download file with curl
+    rpm_api_url: 'https://www.tenable.com/downloads/api/v2/pages/nessus/files'
     # Scanner needs single RPM
     rpm_scan_update: 'Nessus-10.2.0-es8.x86_64.rpm'
+    # 
     rpm_sc_update: 'SecurityCenter-5.21.0-el8.x86_64.rpm'
     # 'SC-202206.1-5.x-rh8-64.tgz'
     tgz_sc: ''
     # For cd $DIR. Actual dirname seems to be tgz name with '.tgz' stripped
-    tgz_dir_patt: 'SC-10*'
+    tgz_dir_patt: 'SC-202*'
     unit_scan: 'nessusd'
     unit_sc: 'SecurityCenter'
     backup_local: false
+    php_ini_fn: /opt/sc/support/etc/php.ini
+    # Note: Use /opt or /var if out of space. MUST have a value here !
+    tmpdir: /tmp
   tasks:
-    - name: Copy Update to Scanners
-      copy:
-        src: '/tmp/{{ rpm_scan_update }}'
-        dest: '/tmp/{{ rpm_scan_update }}'
-      tags: scanner
-    - name: Stop Service for Update
+    - name: Download Scanner Update RPM (from tenable.com)
+      shell:
+        cmd: 'curl "{{ rpm_api_url }}/{{ rpm_scan_update }}" --output {{ rpm_scan_update }}'
+        chdir: '{{ tmpdir }}'
+    #- name: Copy Update to Scanners
+    #  copy:
+    #    src: '/tmp/{{ rpm_scan_update }}'
+    #    dest: '{{ tmpdir }}/{{ rpm_scan_update }}'
+    #  tags: scanner
+    # Since 
+    - name: Stop Scanner for Update
       ansible.builtin.systemd:
         name: '{{ unit_scan }}'
         state: stopped
       tags: scanner
     - name: Update Scanner
-      shell: 'rpm -Uvh /tmp/{{ rpm_scan_update }}'
+      # Install: -ivh
+      shell: 'rpm -Uvh {{ tmpdir }}/{{ rpm_scan_update }}'
       tags: scanner
     - name: (Re)start Scanner
       # shell: service SecurityCenter start; service SecurityCenter status
@@ -42,15 +74,16 @@
         state: started
       tags: scanner
     ###### SC #####
+    # 
     - name: Copy Update to SC
       copy:
-        src: '/tmp/{{ rpm_sc_update }}'
-        dest: '/tmp/{{ rpm_sc_update }}'
+        src: '{{ tmpdir }}/{{ rpm_sc_update }}'
+        dest: '{{ tmpdir }}/{{ rpm_sc_update }}'
       tags: sc
     - name: Copy TGZ to SC
       copy:
-        src: '/tmp/{{ tgz_sc }}'
-        dest: '/tmp/{{ tgz_sc }}'
+        src: '{{ tmpdir }}/{{ tgz_sc }}'
+        dest: '{{ tmpdir }}/{{ tgz_sc }}'
       tags: sc
       when: tgz_sc
     - name: Stop Service for Update
@@ -62,6 +95,7 @@
       shell: 'tar -pzcf sc_backup.`date -Idate`.tar.gz /opt/sc'
       tags: sc
       when: backup_local
+      # when: 0
     - name: Update SC
       shell: 'rpm -Uvh /tmp/{{ rpm_sc_update }}'
       tags: sc
@@ -71,7 +105,7 @@
         name: '{{ unit_sc }}'
         state: started
       tags: sc
-    #### SC TGZ ####
+    #### SC TGZ Update ####
     - name: Stop Service for TGZ Update
       ansible.builtin.systemd:
         name: '{{ unit_sc }}'
@@ -80,13 +114,29 @@
       when: tgz_sc
     # Note: Should this indeed be after startup ?
     - name: Apply SC tgz patch
-      shell: 'tar -C /tmp -zxvf /tmp/{{ tgz_sc }}; cd /tmp/{{ tgz_dir_patt }}; ./install.sh'
+      shell: 'tar -C {{ tmpdir }} -zxvf {{ tmpdir }}/{{ tgz_sc }}; cd {{ tmpdir }}/{{ tgz_dir_patt }}; ./install.sh'
       tags: sc
       when: tgz_sc
+      # when: 0
+    - name: Remove TGZ Temp Directory
+      shell: 'rm -rf {{ tmpdir }}/{{ tgz_dir_patt }}'
+      chdir: '{{ tmpdir }}'
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
-      ansible.builtin.service:
+      ansible.builtin.systemd:
         name: '{{ unit_sc }}'
         state: started
       tags: sc
       when: tgz_sc
+    - name: Update Scanner status timeout (on SC)
+      # To check / verify
+      # /opt/sc/support/bin/sqlite3 -header -table /opt/sc/application.db "select name,value from Configuration where name='ScannerStatusTimeout'"
+      shell: /opt/sc/support/bin/sqlite3 /opt/sc/application.db "Update Configuration set value=\'300\' where name=\'ScannerStatusTimeout\'"
+    # Note: php.ini also has openssl.capath = '/opt/sc/data/CA'
+    - name: Modify PHP Ini for Mem limits and POST size
+      lineinfile:
+        regexp: '{{ regexp }}'
+        line: '{{ line }}'
+      with_items:
+        - {regexp: '^memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
+        - {regexp: '^post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
