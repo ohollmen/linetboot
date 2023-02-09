@@ -1097,6 +1097,16 @@ function ibip_cell(val, item) {
      {"name": "Check Type", "title": "Check Type", "type": "text", "width": 5},
      {"name": "Version",    "title": "Version",  "type": "text", "width": 3},
    ];
+   // Certs
+   var fldinfo_certs = [
+     {"name": "bfname",  "title": "Filename",  "type": "text", "width": 20},
+     {"name": "type",      "title": "Type",      "type": "text", "width": 14},
+     {"name": "isroot",  "title": "Root Cert ?",  "type": "text", "width": 30},
+     {"name": "issuer_cn",       "title": "Issuer", "type": "text", "width": 14},
+     {"name": "notbefore",  "title": "Starts",  "type": "text", "width": 14},
+     {"name": "notafter", "title": "Expires", "type": "text", "width": 14},
+     {"name": "signalgo",  "title": "Sign. Algo",  "type": "text", "width": 30},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1109,6 +1119,7 @@ function ibip_cell(val, item) {
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss, "kubnodes": fldinfo_kub_nodes,
       "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
-      "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs
+      "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
+      "certs": fldinfo_certs
    };
    

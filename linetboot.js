@@ -65,6 +65,7 @@ var gerrit   = require("./gerrit.js");
 var cfl      = require("./confluence.js");
 var tform    = require("./terraform.js");
 var kubi     = require("./kubi.js");
+var certs    = require("./certs.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -126,6 +127,7 @@ function app_init() { // global
   cfl.init(global);
   tform.init();
   kubi.init(global);
+  certs.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -340,6 +342,7 @@ function app_init() { // global
   app.get("/tftypeinst", tform.rsctype_show);
   app.get("/tftypelist", tform.rsctype_show);
   app.get("/hostserv", hostservices);
+  app.get("/certs", certs.certslist);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
