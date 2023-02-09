@@ -7,8 +7,18 @@
 # # Only SC supports backup step
 # ansible-playbook tenscanupdate.yaml --tags sc -e "rpm_scan_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true"
 # ```
-# # Some important dirs
-# Security Center
+# # Nessus scanner Misc Info:
+# - Docs: https://docs.tenable.com/nessus/Content/InstallNessusEssentialsProfessionalOrManager.htm
+# - download site: https://www.tenable.com/downloads/nessus ( https://www.tenable.com/downloads/nessus?loginAttempted=true )
+# - URL to test after install:  https://<remote IP address>:8834
+# - Activation code discovery: /opt/nessus/sbin/nessuscli fetch --code-in-use
+# - Activation code update/renewal: /opt/nessus/sbin/nessuscli fetch --register xxxx-xxxx-xxxx-xxxx
+# # Nessus SC Nisc info
+# - Verifying cert: /opt/sc/support/bin/openssl verify /opt/sc/support/conf/SecurityCenter.crt
+# 
+# # Some important directories
+# 
+# Security Center:
 # - /opt/sc/www - Document root
 # - /opt/sc/data/ *.cnf (ini format)
 # - /opt/sc/data/plugins 
@@ -20,15 +30,19 @@
 # - /opt/sc/support/etc/ - php.ini, syslog.conf, openldap/ldap.conf
 # - /opt/sc/support/logs - Apache logs
 # - /opt/sc/support/openssl/CA - does not exist, even if referred in ...
+# - /opt/sc/plugins/ - license.key (SC 5.2 manual p. 855)
 # Scanner:
 # - /opt/nessus/bin/nasl - NASL Interpreter
 # - /opt/nessus/com/nessus/CA/*.pem - certs (pem certs)
+# - /opt/nessus/var/nessus/CA/*.pem - serverkey.pem, cakey.pem (Note: latter may also be cacert.key per nessus docs)
 # - /opt/nessus/etc/nessus/ - Nessus configs
 # - /opt/nessus/sbin - Nessus system bins nessusd, nessuscli, nessus-service
 # - /opt/nessus/lib/nessus/plugins/*.nasl - NASL scripts/plugins, Also *.inc (Including plugin_feed_info.inc)
+# - /opt/nessus/etc/nessus/nessusd.db - Preferences DB
+# 
 # View cert contents: `openssl x509 -in /opt/sc/support/conf/SecurityCenter.crt -text`
 - name: Update Tenable Scanner
-  hosts: "{{ host }}"
+  hosts: '{{ host }}'
   become: true
   vars:
     # If using Tenable API to download file with curl
@@ -47,6 +61,7 @@
     php_ini_fn: /opt/sc/support/etc/php.ini
     # Note: Use /opt or /var if out of space. MUST have a value here !
     tmpdir: /tmp
+    runscanas: nessus
   tasks:
     - name: Download Scanner Update RPM (from tenable.com)
       shell:
@@ -73,6 +88,18 @@
         name: '{{ unit_scan }}'
         state: started
       tags: scanner
+    # Do here: useradd -r nessus {{ runscanas }}
+    # chmod 750 /opt/nessus/sbin/* && chown -R {{ runscanas }}:{{ runscanas }} /opt/nessus
+    - name: Modify systemd unit
+      lineinfile:
+        path: /usr/lib/systemd/system/nessusd.service
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        with_items:
+          - {regexp: '^ExecStart\s*=', line: 'ExecStart=/opt/nessus/sbin/nessus-service -q -no-root'}
+          - {regexp: '^User\s*=', line: 'User={{ runscanas }}'}
+    - name: Reload systemd (for unit change)
+      shell: systemctl daemon-reload
     ###### SC #####
     # 
     - name: Copy Update to SC
@@ -86,6 +113,15 @@
         dest: '{{ tmpdir }}/{{ tgz_sc }}'
       tags: sc
       when: tgz_sc
+    # TODO Deps: yum install libxslt rsync java
+    - name: 'Verify / Install dependencies'
+      package:
+        name:
+          - libxslt
+          - rsync
+          - java
+        state: present
+      tags: sc
     - name: Stop Service for Update
       ansible.builtin.systemd:
         name: '{{ unit_sc }}'
@@ -119,8 +155,9 @@
       when: tgz_sc
       # when: 0
     - name: Remove TGZ Temp Directory
-      shell: 'rm -rf {{ tmpdir }}/{{ tgz_dir_patt }}'
-      chdir: '{{ tmpdir }}'
+      shell:
+        cmd: 'rm -rf {{ tmpdir }}/{{ tgz_dir_patt }}'
+        chdir: '{{ tmpdir }}'
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
       ansible.builtin.systemd:
