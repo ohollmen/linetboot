@@ -23,6 +23,10 @@ RUN mkdir -p  /linetboot && mkdir -p /isomnt
 
 # Create symlinks (RUN ln -s ...) ?
 RUN ln -s /linetboot/ /root/linetboot
+# NEW/TODO: Compat-link for custom.setup.js
+RUN mkdir -p /root/src/
+RUN ln -s /root/linetboot/ /root/src/linetboot
+
 WORKDIR /root
 RUN mkdir -p /root/hostinfo /root/hostrmgmt /root/hostpkginfo
 
