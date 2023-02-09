@@ -87,7 +87,7 @@ function certinfo_add(files, cb) {
       if (ci.notbefore) { ci.notbefore_i = new Date(ci.notbefore).toISOString().replace(".000Z", "").replace("T", " "); }
       if (ci.notafter)  { ci.notafter_i  = new Date(ci.notafter).toISOString().replace(".000Z", "").replace("T", " "); }
       //console.log("NOW:", ci);
-      return cb(null); // FIXME: NOT (2nd): files
+      return cb(null, files);
     })
   }
   async.each(files, infoex, function (err) {
@@ -192,7 +192,7 @@ if (process.argv[1].match("certs.js")) {
   var cc = require(ccfn);
   
   var files = loadfiles(cc.certs);
-  certinfo_add(files, () => {
+  certinfo_add(files, (err, data) => {
     console.log(files);
   });
   // console.log(cc);
