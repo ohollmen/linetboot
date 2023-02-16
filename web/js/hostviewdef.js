@@ -1097,15 +1097,21 @@ function ibip_cell(val, item) {
      {"name": "Check Type", "title": "Check Type", "type": "text", "width": 5},
      {"name": "Version",    "title": "Version",  "type": "text", "width": 3},
    ];
+
    // Certs
+   function certtype_cell(val, item) {
+     if (val == 'cert' && item.isroot) { return "<b>Root-cert</b>"; }
+     return val;
+   }
    var fldinfo_certs = [
-     {"name": "bfname",  "title": "Filename",  "type": "text", "width": 20},
-     {"name": "type",      "title": "Type",      "type": "text", "width": 14},
-     {"name": "isroot",  "title": "Root Cert ?",  "type": "text", "width": 30},
-     {"name": "issuer_cn",       "title": "Issuer", "type": "text", "width": 14},
-     {"name": "notbefore",  "title": "Starts",  "type": "text", "width": 14},
-     {"name": "notafter", "title": "Expires", "type": "text", "width": 14},
-     {"name": "signalgo",  "title": "Sign. Algo",  "type": "text", "width": 30},
+     {"name": "bfname",     "title": "Filename",  "type": "text", "width": 25}, // itemTemplate: 
+     {"name": "type",       "title": "Type",      "type": "text", "width": 6, itemTemplate: certtype_cell},
+     // {"name": "isroot",  "title": "Root Cert ?",  "type": "text", "width": 6},
+     {"name": "issuer_cn",  "title": "Issuer", "type": "text", "width": 18},
+     {"name": "subject_cn", "title": "Subject", "type": "text", "width": 18},
+     {"name": "notbefore_i","title": "Valid Starting ...",  "type": "text", "width": 14},
+     {"name": "notafter_i", "title": "Expires", "type": "text", "width": 14},
+     {"name": "signalgo",   "title": "Sign. Algo",  "type": "text", "width": 15},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

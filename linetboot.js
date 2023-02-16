@@ -343,6 +343,7 @@ function app_init() { // global
   app.get("/tftypelist", tform.rsctype_show);
   app.get("/hostserv", hostservices);
   app.get("/certs", certs.certslist);
+  app.get("/certrenew", certs.renew);
  } // sethandlers
   //////////////// Load Templates ////////////////
   

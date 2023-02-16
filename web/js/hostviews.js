@@ -695,7 +695,7 @@ var tabloadacts = [
     path: "", uisetup: null, urlpara: null, dprep: null, longload: 0},
   {"name":"Disaster Recovery", "elsel": "dr", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/hostserv", gridid: "jsGrid_dr", fsetid: "dr",
     path: "", uisetup: null, urlpara: null, dprep: null, longload: 0},
-  {"name":"Certs", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/certs", gridid: "jsGrid_certs", fsetid: "certs",
+  {"name":"Certs & Keys", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/certs", gridid: "jsGrid_certs", fsetid: "certs",
     path: "certs", uisetup: null, urlpara: null, dprep: null, longload: 0},
 ];
 var dialogacts = [
