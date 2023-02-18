@@ -310,6 +310,9 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 
 <div id="helpdialog" class="" title="Help on ..."   data-info="Help Dialog" ></div>
+
+<div id="certfilesdialog" class="" title="Certificate Files ..."   data-info="Cert Files Dialog" ></div>
+
 <!-- Templates -->
 <script id="singlehost" type="text/template">
 <h3>Host {{ hname }}</h3>
@@ -707,6 +710,17 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <script id="testform" type="text/template" desc="test form">
 <form>{{{ cont }}}</form>
+</script>
+
+<script id="t_certfiles" type="text/template" desc="Certificate Files / Keys">
+  <h3>{{{ name }}} ({{{ idlbl }}})</h3>
+  {{#certfiles}}
+  <h4>{{{ pk }}} ({{#bundle}}bundle{{/bundle}})</h4>
+  <p>File item content</p>
+  <pre>
+{{{ cont }}}
+  </pre>
+  {{/certfiles}}
 </script>
 
 </body>

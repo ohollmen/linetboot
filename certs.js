@@ -8,6 +8,7 @@ var async = require("async");
 var fs    = require("fs");
 var path  = require("path");
 var yaml  = require('js-yaml');
+var Mustache = require("mustache");
 
 const { builtinModules } = require("module");
 
@@ -52,7 +53,9 @@ function foo() {
     console.log(cmd_show);
   });
 }
-
+/** Extract certificate info from all files.
+ * TODO: Separate infoex(ci, cb)
+*/
 function certinfo_add(files, cb) {
   if (!files || (typeof files != 'object') ) { console.log("No object !"); return; }
   var cmd = "openssl x509 -in '{{ fname }}' -noout -text"; // -modulus
@@ -96,7 +99,7 @@ function certinfo_add(files, cb) {
     cb(null, files);
   });
 }
-
+/** Load Cert related files (certs, privkeys) (based on "filealias" or "certs")  */
 function loadfiles(fmap) {
   var files = {}; // File cache
   Object.keys(fmap).forEach((k) => {
@@ -109,9 +112,11 @@ function loadfiles(fmap) {
   });
   return files;
 }
-/** List Certificates */
+
+
+/** List Certificates and Priv Keys in "inventory" (AoO) */
 function certslist(req, res) {
-  var jr = {status: "err", "msg": "Could not list certs."};
+  var jr = { status: "err", "msg": "Could not list certs." };
   var cc = cfg.filealias;
   if (!cc) { jr.msg += "certs files section (file aliases) missing !"; return res.json(jr); }
   var files = loadfiles(cc);
@@ -124,36 +129,101 @@ function certslist(req, res) {
   });
 }
 
-function certs_genfiles(sc) {
-  var farr = sc.certfiles || []; // 
-  sc.cpath = "/tmp/"+process.pid+"."+Math.floor(Date.now() / 1000) ;
-  // TODO: Add properties to working copy (fconf), don't create allcerts !!!
-  farr.forEach(function (fconf) {
-    // Generate good local name
-    fconf.localfn =  sc.cpath+"/"+path.basename(fconf.dest);
-    // Gather content (1...many)
-    fconf.cont =  fconf.files.map((ckey) => {
-      // TODO: allow ckey to be a file ?
-      if (fs.existsSync(ckey)) { return fs.readFileSync(ckey, 'utf8'); }
-      var fnode = files[ckey];
-      if (!fnode) { return ''; }
-      return fnode.cont;
-    }).join('');
-  });
-}
-// Lookup service config
+
+//////////////////////////// Cert file sets ///////////////////
+
+// Lookup service config (from AoO )
 function servconf(idlbl) {
   if (!Array.isArray(servcfg)) { throw "No serv configs in array !"; }
   var sc = servcfg.find(function (it) { return it.idlbl == idlbl; });
   if (!sc) { throw "No service config (of type '"+idlbl+"') found !"; }
   return sc;
 }
+/** Generate files on (cloned working copy of) sc.
+ * 
+ * @param {*} sc 
+ */
+function certs_genfiles(sc, topcb) {
+  var farr = sc.certfiles || []; // 
+  sc.cpath = "/tmp/"+process.pid+"."+Math.floor(Date.now() / 1000) ;
+  // Generate file by concat or call external command to generate
+  function cfgen(fconf, cb) {
+    // Generate by command ?
+    if (fconf.cmd) {
+      fconf.cpath = sc.cpath;  fconf.passphrase = sc.passphrase; // Add (few ?)
+      var cmd = Mustache.render(fconf.cmd, fconf);
+      cproc.exec(cmd, {cwd: sc.cpath}, function (err, stdout, stderr) {
+        //if (err) { return cb(err, null); }
+        if (err) { console.log("cfgen Err:", err); return cb(err); } // TODO: Handle
+        console.log("Ran w. out: "+stdout);
+        return cb(null);
+      });
+      return; // MUST normal-return
+    }
+    if (!fconf.files) { console.log("No files, not generating ..."); return cb(null); } // Skip item
+    
 
-/** Create certs locally */
+    // Generate good local name
+    if (fconf.dest) { fconf.localfn =  sc.cpath+"/"+path.basename(fconf.dest); }
+    else { fconf.localfn = sc.cpath +"/"+fconf.pk+".pem"; }
+    // Gather content (1...many)
+    fconf.cont =  fconf.files.map((ckey) => {
+      // TODO: allow ckey to be a file ? Can use sc.cpath
+      // Template string ? TODO: Allow more vars than sc ?
+      if (ckey.match(/\{\{/)) {
+        ckey = Mustache.render(ckey, sc);
+        // Let check below handle the rest
+        console.log("Generated ckey fname: '"+ckey+"'");
+      }
+      if (fs.existsSync(ckey)) { return fs.readFileSync(ckey, 'utf8'); }
+      var fnode = files[ckey];
+      if (!fnode) { return ''; }
+      return fnode.cont;
+    }).join('');
+    // Early sync (e.g. for coming cmd step)
+    if (fconf.sync) {
+      if (!fs.existsSync(sc.cpath)) { fs.mkdirSync(sc.cpath); }
+      fs.writeFileSync(fconf.localfn, fconf.cont, {encoding: "utf8"} );
+    }
+    return cb(null);
+  }
+  //OLD: farr.forEach(cfgen);
+  // eachSeries vs mapSeries
+  async.eachSeries(farr, cfgen, (err) => {
+    if (err) { return topcb("Error generating files: "+ err); }
+    return topcb(null);
+  });
+}
+/** Run cert/key processing hook (command) for phase ("pre", "post")
+ * Commands are always run in the path (cwd) where files were created in.
+*/
+function certs_procrun(sc, phase) {
+  // Post generation steps. Handle in separate sub ? User parametrized file-names
+  var cmdtmpl = sc[phase];
+  if (cmdtmpl) {
+    // TODO: Possibly merge params from sc (.passphrase) and fitem
+    var cmd = Mustache.render(cmdtmpl, sc);
+    console.log("Run post-step: "+cmd+ " in "+sc.cpath);
+    //return;
+    cproc.exec(cmd, {cwd: sc.cpath}, function (err, stdout, stderr) {
+      //if (err) { return cb(err, null); }
+      if (err) { console.log("Err:", err); return; } // TODO: Handle
+      console.log("Ran w. out: "+stdout);
+    });
+  }
+}
+
+
+/** Create certs (to FS) locally
+ * TODO: Treat single file save potentially as async op even if it could be done synchronously
+ * as we may want to run cproc.exec() ops.
+*/
 function certs_save(sc, pb) {
-  fs.mkdirSync(sc.cpath); // Directory
+  if (!fs.existsSync(sc.cpath)) { fs.mkdirSync(sc.cpath); } // Directory
   console.log("Created c-path: "+ sc.cpath);
   sc.certfiles.forEach( (fitem) => {
+    if (!fitem.files || !fitem.cont) { return; }
+    if (fitem.sync) { return; } // Once synced, not again/ twice
     fs.writeFileSync(fitem.localfn, fitem.cont, {encoding: "utf8"} );
     console.log("Created cert-file: "+ fitem.localfn);
   });
@@ -165,26 +235,48 @@ function certs_save(sc, pb) {
     fs.writeFileSync(sc.cpath + "/cert_trans.yaml", pbcont, {encoding: "utf8"} );
   }
 }
-/** Fill out the (cloned) PB stub with ops to copy cert files into place */
+/** Fill out the (cloned) PB stub with ops to copy cert files into place
+ * Notes about fitem:
+ * - If dest missing, fileitem is not meant to be copied by PB
+ * - If files missing, create debug task
+*/
 function certs_transfer_pb(sc, pb) {
+  var debug = {debug: {msg: "No files or file content?"}};
+  
   sc.certfiles.forEach( (fitem) => {
+    if (!fitem.dest) { console.log("Skipping not-to-be-copied item ("+fitem.pk+")"); return; }
+    if (!fitem.files) { pb.tasks.push(debug); return; } // Test size / fitem.cont ? create debug if empty ?
     // owner: "root", group: "root", "checksum": (sha1)
     pb.tasks.push({name: "Copy "+fitem.pk, "copy": {src: fitem.localfn, dest: fitem.dest, mode: "0600", backup: true}});
   });
+  // TODO: openssl to verify 1) chain and crt vs. key (-modulus)
+  if (sc.sysd) {
+    pb.tasks.push({name: "Restart Service", "systemd": { name: sc.sysd, state: "restarted"}});
+  }
   // TODO: if (sc.check)  { // or sc.inst
 }
-/** /certrenew */
-function renew(req, res) {
-  var t = req.query.systype || 'gitlab';
+/** Web handler to generate certs set /certrenew */
+function install(req, res) {
+  var jr = {status: "err", "msg": "Could not generate Cert file set. "};
+  var t = req.query.systype ; // || 'gitlab'
+  if (!t) { jr.msg += "No '?systype=...' passed. Use one of: "+servcfg.map((it) => { return it.idlbl; }).join(',');
+    return res.json(jr);
+  }
   var sc = servconf(t);
   sc = dclone(sc); // Working copy
   var pb = dclone(pbstub);
-  certs_genfiles(sc);
+  certs_genfiles(sc, certs_finish); // Generate final Cert/Key content
   //if (req.query.fmt == 'pb') {}
-    certs_transfer_pb(sc, pb); // OLD: acs
-    certs_save(sc, pb);
-  //}
-  res.json({status: "ok", data: { files: sc, pb: pb} });
+  function certs_finish(err) {
+    if (err) { jr.msg += "Err in new async cert file gen.: "+err; return res.json(jr); }
+    certs_transfer_pb(sc, pb); // Generate Playbook
+    certs_save(sc, pb); // Store on FS (/tmp)
+    // certs_procrun(sc, "post");
+    // https://github.com/janl/mustache.js/issues/687 . For templating only
+    sc.certfiles.forEach((it) => { it.bundle = (it.files.length > 1); });
+    res.json({status: "ok", data: { files: sc, pb: pb} });
+  }
+  
 }
 
 if (process.argv[1].match("certs.js")) {
@@ -201,5 +293,6 @@ if (process.argv[1].match("certs.js")) {
 module.exports = {
   init: init,
   certslist: certslist,
-  renew: renew
+  install: install,
+
 };
