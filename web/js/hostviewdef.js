@@ -1113,6 +1113,17 @@ function ibip_cell(val, item) {
      {"name": "notafter_i", "title": "Expires", "type": "text", "width": 14},
      {"name": "signalgo",   "title": "Sign. Algo",  "type": "text", "width": 15},
    ];
+   function sys_idlbl_cell(val, item) {
+     return "<span data-sysid=\""+val+"\">"+val+"</span>";
+   }
+   var fldinfo_certfiles = [
+     {"name": "idlbl",     "title": "Serv. Label",  "type": "text", "width": 10, itemTemplate: sys_idlbl_cell},
+     {"name": "name",      "title": "System/Serv. Name",      "type": "text", "width": 20, itemTemplate: null},
+     {"name": "sysd",      "title": "Unit to restart",  "type": "text", "width": 10},
+     {"name": "certfiles", "title": "Files, Bundles or Steps",  "type": "text", "width": 10, itemTemplate: gridplug.arrcnt},
+     //{"name": "files",     "title": "Files",  "type": "text", "width": 10},
+     //{"name": "cmd",     "title": "Command?",  "type": "text", "width": 10},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1126,6 +1137,6 @@ function ibip_cell(val, item) {
       "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
-      "certs": fldinfo_certs
+      "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles
    };
    

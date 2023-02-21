@@ -27,6 +27,7 @@ var ycfg = {
 /** */
 function init(mcfg) {
   if (mcfg.certs) { cfg = mcfg.certs; }
+  if (!cfg) { console.log("No certs config available."); return; } // No certs (features not enabled)!
   // Load files for all use cases / purposes
   var cc = cfg.filealias;
   if (!cc) { console.log("certs files section (file aliases) missing !"); return ; }
@@ -117,6 +118,7 @@ function loadfiles(fmap) {
 /** List Certificates and Priv Keys in "inventory" (AoO) */
 function certslist(req, res) {
   var jr = { status: "err", "msg": "Could not list certs." };
+  if (!cfg) { jr.msg += "No cert related config."; return res.json(jr); }
   var cc = cfg.filealias;
   if (!cc) { jr.msg += "certs files section (file aliases) missing !"; return res.json(jr); }
   var files = loadfiles(cc);
@@ -278,7 +280,12 @@ function install(req, res) {
   }
   
 }
-
+/** List systems for certfiles */
+function certfileslist(req, res) {
+  var jr = {status: "err", "msg": "Could not list Cert file systems. "};
+  if (!servcfg) { jr.msg += "No cert associated serfvices configured !"; return res.json(jr); }
+  res.json({status: "ok", data: servcfg });
+}
 if (process.argv[1].match("certs.js")) {
   var ccfn = process.env.HOME+"/.linetboot/certs.conf.json";
   var cc = require(ccfn);
@@ -294,5 +301,5 @@ module.exports = {
   init: init,
   certslist: certslist,
   install: install,
-
+  certfileslist: certfileslist
 };
