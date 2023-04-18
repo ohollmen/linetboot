@@ -1109,6 +1109,7 @@ function ibip_cell(val, item) {
      // {"name": "isroot",  "title": "Root Cert ?",  "type": "text", "width": 6},
      {"name": "issuer_cn",  "title": "Issuer", "type": "text", "width": 18},
      {"name": "subject_cn", "title": "Subject", "type": "text", "width": 18},
+     {"name": "serial",     "title": "Serial", "type": "text", "width": 25},
      {"name": "notbefore_i","title": "Valid Starting ...",  "type": "text", "width": 14},
      {"name": "notafter_i", "title": "Expires", "type": "text", "width": 14},
      {"name": "signalgo",   "title": "Sign. Algo",  "type": "text", "width": 15},
@@ -1120,6 +1121,7 @@ function ibip_cell(val, item) {
      {"name": "idlbl",     "title": "Serv. Label",  "type": "text", "width": 10, itemTemplate: sys_idlbl_cell},
      {"name": "name",      "title": "System/Serv. Name",      "type": "text", "width": 20, itemTemplate: null},
      {"name": "sysd",      "title": "Unit to restart",  "type": "text", "width": 10},
+     // Note : Remove plug
      {"name": "certfiles", "title": "Files, Bundles or Steps",  "type": "text", "width": 10, itemTemplate: gridplug.arrcnt},
      //{"name": "files",     "title": "Files",  "type": "text", "width": 10},
      //{"name": "cmd",     "title": "Command?",  "type": "text", "width": 10},

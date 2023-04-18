@@ -82,7 +82,7 @@ function certinfo_add(files, cb) {
       if (m = stdout.match(/\bNot Before\s*:\s*(.+)$/m)) { ci.notbefore = m[1]; }
       if (m = stdout.match(/\bNot After\s*:\s*(.+)$/m))  { ci.notafter = m[1]; }
       if (m = stdout.match(/\bSignature Algorithm:\s*(.+)$/m))   { ci.signalgo = m[1]; }
-      //if (m = stdout.match(/\bSignature Algorithm:\s*(.+)$/m)) { ci.notafter = m[1]; }
+      if (m = stdout.match(/\bSerial Number:\s*([\w:]+)/s)) { ci.serial = m[1]; }
       // Refine parsed
       ci.isroot = (ci.issuer == ci.subject) ? 1 : 0;
       if (ci.issuer && (m = ci.issuer.match(/CN=(.+)$/)) )   {  ci.issuer_cn = m[1]; }
@@ -275,8 +275,10 @@ function install(req, res) {
     certs_save(sc, pb); // Store on FS (/tmp)
     // certs_procrun(sc, "post");
     // https://github.com/janl/mustache.js/issues/687 . For templating only
-    sc.certfiles.forEach((it) => { it.bundle = (it.files.length > 1); });
-    res.json({status: "ok", data: { files: sc, pb: pb} });
+    sc.certfiles.forEach((it) => { it.bundle = it.files && (it.files.length > 1); });
+    //res.json({status: "ok", data: { files: sc, pb: pb} }); // Orig
+    sc.pb = pb;
+    res.json({status: "ok", data: sc });
   }
   
 }

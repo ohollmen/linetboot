@@ -113,6 +113,7 @@ function mainconf_process(global) {
   var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module"];
   tilde_expand(global, top_paths);
   var home = process.env['HOME'];
+  //console.log("Statring individual sections expand");
   //top_paths.forEach(function (pk) {
   //  if (global[pk]) { global[pk] = global[pk].replace('~', home); }
   //});
@@ -127,6 +128,7 @@ function mainconf_process(global) {
   }
   tilde_expand(global.ansible, ["pbpath"]);
   tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
+  //console.log("Done core.");
   //var deploy = global.deployer;
   //if (deploy) {
   tilde_expand(global.deployer, ["deployfn", "gitreposfn"]); // }
@@ -135,6 +137,7 @@ function mainconf_process(global) {
   tilde_expand(global.gerrit, ["pkey"]); // }
   tilde_expand(global.gcp, ["dyninvfn", "sakeyfn"]);
   tilde_expand(global.services, ["conffn"]);
+  //console.log("Done services.");
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
   //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
@@ -335,7 +338,7 @@ function env_merge(global) {
 function tilde_expand(obj, keyarr) {
   // if (typeof obj != 'object') { throw "Not an object"; }
   // Be forgiving about particular config section (e.g. "cov") not existing ...
-  if (typeof obj != 'object') { console.log("Warning: Passed config section is not an 'object' (got: '"+typeof obj+"')"); return; }
+  if (typeof obj != 'object') { console.error("Warning: Passed config section is not an 'object' (got: '"+typeof obj+"')"); return; }
   if (!Array.isArray(keyarr)) { throw "Not an array (of property keys)"; }
   var home = process.env['HOME'];
   keyarr.forEach(function (pk) {

@@ -697,8 +697,10 @@ var tabloadacts = [
     path: "", uisetup: null, urlpara: null, dprep: null, longload: 0},
   {"name":"Certs & Keys", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/certs", gridid: "jsGrid_certs", fsetid: "certs",
     path: "certs", uisetup: null, urlpara: null, dprep: null, longload: 0},
-  {"name":"Certs File Bundling", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/certfiles", gridid: "jsGrid_certfiles", fsetid: "certfiles",
-    path: "certfiles", uisetup: null, urlpara: null, dprep: null, longload: 0, "resarrprop": "files.certfiles"}, // files.certfiles
+  {"name":"Certs File Systems", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/certsystems", gridid: "jsGrid_certsys", fsetid: "certsysfiles",
+    path: "certsys", uisetup: certsys_uisetup, urlpara: null, dprep: null, longload: 0, "resarrprop": "files.certfiles"}, // files.certfiles
+  {"name":"Certs File Bundling", "elselXX": "XX", tmpl: "t_certfiles", "hdlr": gendialog,  url: "/certrenew", gridid: "jsGrid_certfiles", fsetid: "certfiles", 
+     path: "certfiles", uisetup: null, dialogid: "certfilesdialog"},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -713,7 +715,7 @@ function gendialog(ev, act) {
   if (ev.viewdata) { return showdialog(ev.viewdata); } // sync
   if (!act.url) {   return; }
   axios.get(act.url).then(function (resp) {
-    var d = resp.data;
+    var d = resp.data; // data always passed "raw"
     if (!d) { return alert("No data from server for dialog !"); }
     showdialog(d);
   })
@@ -726,7 +728,7 @@ function gendialog(ev, act) {
     rapp.templated(act.tmpl, data, act.dialogid);
     var dopts = {modal: true, width: 500, height: 200};
     console.log("Dialog.dataset", diael.dataset);
-    // Look for size in ... target elem (jev: this)
+    // Look for dialog size (XSxYS) in ... target elem (jev: this)
     if (diael.dataset && diael.dataset.dsize) {
       var m = diael.dataset.dsize.match(/(\d+)x(\d+)/);
       if (m) { dopts.width = m[1];  dopts.height = m[2]; }

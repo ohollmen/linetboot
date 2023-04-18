@@ -277,7 +277,12 @@ function stats_proc(hnode, cb) {
           console.log('stream-close: ' +hn+ ' (code=' + code +  ', tout=' +tout+')');
           //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
         })
-        .on('end', function () { conn.end(); return cb(null, additem(prec)); }) // NEW (move conn.end() here)
+        // Note: We possibly should not call the cb() here as conn.on('', ...) may follow, causing "Callback was already called."
+        .on('end', function () {
+          conn.end();
+          return cb(null, additem(prec)); // This does not seem to be culprit for conn.on('error', ..) "...already called"
+          //return;
+        }) // NEW (move conn.end() here)
         .on('data', function on_data_uptime(data) {
           //console.log('stream-data('+cfg.id+'): ' + data); // Buffer
           //OLD: prec[cfg.prop] = data.toString(); // parseInt(data);
@@ -293,7 +298,8 @@ function stats_proc(hnode, cb) {
       console.log(prec.ssherr);
       // HERE ?
       conn.end(); // or does close/end event still take place ?
-      return cb(null, additem(prec)); // long time loc. "Callback was already called." (BUGS.md)
+      //return cb(null, additem(prec)); // long time loc. "Callback was already called." (BUGS.md)
+      additem(prec);
     });
     conn.on('end', function () {
       console.log("conn-end:   "+hn+'('+cfg.id+')');

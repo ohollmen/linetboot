@@ -133,14 +133,21 @@ or "Host" record). The machines for PXE boot should be recorded as "Host" record
 
 # Configuring TFTP Server
 
+## Configuring Linux (Debian,Ubuntu,RHEL)
+
 Config locations (for Ubuntu tftpd servers):
 
 - tftpd - /etc/inetd.conf - Has a line to launch tftpd
 - tftpd-hpa - /etc/init/tftpd-hpa.conf, /etc/init.d/tftpd-hpa /etc/default/tftpd-hpa (Add -vvv to TFTP_OPTIONS=...
    for increased verbosity)
   - On an old Debian logs go to: /var/log/daemon.log or /var/log/syslog (See your debian doc for exact location)
-  
-  
+- TFTP root: /var/lib/tftpboot/
+
+## Configuring MacOS
+
+Excellent guude: https://kb.promise.com/thread/how-do-i-enable-a-tftp-server-on-mac-os-x/
+- TFTP Root: /private/tftpboot/
+
 ## Using UEFI PXE Boot (syslinux.efi)
 
 <!--
@@ -152,20 +159,97 @@ handled by installer (TODO: Test out and provide step-by-step example on how to 
 Ubuntu 18 version of syslinux.efi seems to support loading of kernel and initrd over http and as a result should be bootmenu
 (pxelinux.cfg/default) compatible with lpxelinux.0.
 
-## Using VirtualBox "virtual PXE boot and vitual TFTP server"
+## Using VirtualBox "virtual PXE boot using virtual TFTP server"
 
 Less advertised feature of VirtualBox is it's ability to allow PXE boot via its Virtual TFTP server.
 There is no actual TFTP server running but only a specifically created directory layout that mimicks
 TFTP server (VirtualBox handles this internally). For example on Mac the the root directory for TFTP content
-would be `/Users/johnsmith/Library/VirtualBox/TFTP/`. Per this path the setup of menu would require:
+would be (e.g.) `/Users/johnsmith/Library/VirtualBox/TFTP/`. Per this path the setup of menu would require:
 
-    VBOX_TFTP_ROOT=/Users/johnsmith/Library/VirtualBox/TFTP/
-    mkdir -p $VBOX_TFTP_ROOT/pxelinux.cfg
-    cp /path/to/my_pxe_menu_file $VBOX_TFTP_ROOT/pxelinux.cfg/default
+    # Linux: ~/.config/VirtualBox/TFTP/
+    # VirtualBox Virtual TFTP Server root:
+    VBOX_TFTP_ROOT=$HOME/Library/VirtualBox/TFTP/
+    # Make pxelinux config dir
+    mkdir -v -p $VBOX_TFTP_ROOT/pxelinux.cfg/
+    # Generate pxelinux bootloader config (named "default" per pxelinux conventions)
+    # Assume cwd (current working dir) as lineboot codebase top dir
+    cat ~/.linetboot/global.conf.json | ./node_modules/mustache/bin/mustache - ./tmpl/default.installer.menu.mustache > /tmp/default
+    # sanity check: less /tmp/default (e.g. no templating curlies should be present)
+    # Copy pxelinux config under VirtualBox TFTP root:
+    #cp /path/to/my_pxe_menu_file $VBOX_TFTP_ROOT/pxelinux.cfg/default
+    cp /tmp/default $VBOX_TFTP_ROOT/pxelinux.cfg/default
     
 The content can (and should) be identical to regular "real" TFTP server (i.e. you should still have the pxelinux *.c32 modules in $VBOX_TFTP_ROOT/.
-The booting can still happen via a live lineboot server via HTTP.
+The booting from kernel and initrd loading onwards can still happen via a live linetboot server via HTTP.
+Copying 
+```
+# E.g. on Mac (assuming you have the bootloader executable and modules in place):
+cp -r /private/tftpboot/ $HOME/Library/VirtualBox/TFTP/
+
+# Alternatively ... Rsync from remote linux
+rsync -av $USER@myremotelinux:/var/lib/tftpboot/ $HOME/Library/VirtualBox/TFTP/
+```
+## Configuring VirtualBox for PXE / TFTP Boot
+
+- Machine Item (Right mouse button) => Settings => System (Icon/Tab) =>
+Boot Order
+- Change default (Floppy,Optical,Hard Disk, Network) to start with Network (unselected by default)
+- Looks by default for filename: ${VM_NAME}.pxe
+
+To avoid loading bootloader by name ${VM_NAME}.pxe you need to set the
+name of bootloader binary explicitly:
+```
+# Note the letter 'l' in lpxelinux.0 (e.g. for machine RHEL8)
+# Make sure machine is in "off" state, or else you'll get:
+# VBoxManage: error: The machine 'RHEL8' is already locked for a session (or being unlocked)
+VBoxManage modifyvm RHEL8 --nattftpfile1 /lpxelinux.0
+```
+The Boot Order GUI and modifyvm (CLI) Changes the your ${VM_NAME}.vbox (XML) config file:
+```
+# From
+  <NAT localhost-reachable="true"/>
+
+# To ...
+  <NAT localhost-reachable="true">
+     <TFTP boot-file="/lpxelinux.0"/>
+  </NAT>
+
+# And add & re-order boot items e.g. to prioritize network boot (1 => first / prioritized boot method):
+<Order position="1" device="Network"/>
+```
+Instead of using VirtualBox GUI, You can start your VM from CLI:
+```
+VirtualBoxVM --startvm RHEL8
+```
+
 Info Source: https://gerardnico.com/virtualbox/pxe.
+
+## Using QEMU to Boot PXE
+
+QEMU also has a built-in TFTP server, whset root diretory you provide
+on comand line (as part of -netdev parameter). You also provide the
+normally "delivered-by-DHCP" parameters like `bootfile=...` as part of
+command line (-netdev) instead of using actual DHCP (In VBox this came
+from config file).
+
+Example script to run as run-qemu -m 8192 -hda ~/pxebootdisk.vmdk, reusing
+the earlier established TFTP area:
+```
+#!/bin/sh
+# Notes: -device can have mac=52:05...
+# qemu-img create -f vmdk ~/pxebootdisk.vmdk 10
+# Use: qemu-system-x86_64
+qemu-kvm -cpu host -accel kvm \
+-netdev user,id=net0,net=192.168.88.0/24,tftp=$HOME/Library/VirtualBox/TFTP/,bootfile=/pxelinux.0 \
+-device virtio-net-pci,netdev=net0 \
+-object rng-random,id=virtio-rng0,filename=/dev/urandom \
+-device virtio-rng-pci,rng=virtio-rng0,id=rng0,bus=pci.0,addr=0x9 \
+-serial stdio -boot n $@
+```
+
+See: https://www.brianlane.com/post/qemu-pxeboot/
+https://gist.github.com/pojntfx/1c3eb51afedf4fa9671ffd65860e6839
+
 
 ------------------------------------------------------------------------
 

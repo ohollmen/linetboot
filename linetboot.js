@@ -456,6 +456,9 @@ function app_init() { // global
   app.use(session(sesscfg));
   // *Must* reside after session
   app.use(linet_mw);
+  // TODO: Allow controlling source IP addr
+  // https://stackoverflow.com/questions/12349251/restrict-access-to-node-js-based-http-server-by-ip-address
+  // server.on('connection', function (sock) { console.log(sock.remoteAddress); });
   sethandlers();
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')

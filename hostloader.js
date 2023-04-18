@@ -6,6 +6,8 @@
  * - JSON host facts loading from ansible collected JSON fact files
  * - Loading extra / custom hosts from a CSV format text files
  * 
+ * # TODO: Allow loading ansible dynamic inventories
+ * 
  * # References
  * 
  * - Ubuntu 20.04 / python3 Breaks facts format () ... https://www.claudiokuenzler.com/blog/989/ansible-linux-distribution-release-discovery-handle-ubuntu-20.04
@@ -29,6 +31,19 @@ function init(global, gcolls) {
   if (!module.exports.colls) { module.exports.colls = colls; } // Lazy-assign
   debug = global.debug || 0;
 }
+/** Load Ansible (GCP) JSON dynamic inventory file.
+ * You should have 
+ * Dynamic inventory should have been dumped with:
+ * ```
+ * ansible inventory --list
+ * ```
+ * NOTE: See ansdi,js for this
+*/
+function dyninv_load(fn) {
+  // Has: 
+  //var hroot = require(fn);
+}
+
 /** Create filtered (non-empty) set of lines from hosts file.
  * @param hfn {string} - Filename for hosts file
  * @return Array of Lines (on failures an empty array is still returned)

@@ -1400,3 +1400,26 @@ function ghprojs_urlpara(ev, act) {
   //return "fn="+dcfn; // OLD: params only
   return act.url + "?org="+val; // NEW: Resp. for whole URL
 }
+
+function certsys_uisetup(act, data, ev) {
+  //var idx = {};
+  //data.forEach((it) => { idx[it.idlbl] = it; });
+  $("[data-sysid]").click(function (jev) {
+    // See: showpeople
+    var idlbl = jev.target.dataset.sysid;
+    //alert("Hello "+ idlbl);
+    //var e = idx[idlbl];
+    //console.log(e);
+    var act = tabloadacts.filter((a) => { return a.path == "certfiles"; })[0];
+    if (!act) { console.log("No Action"); return; }
+    var url = act.url + "?systype=" + idlbl;
+    axios.get(url).then((resp) => {
+      e = resp.data.data;
+      // Set data to event, Call dialog hdlr(ev, act) gendialog(ev, act)
+      jev.viewdata = e;
+      gendialog(jev, act);
+    });
+    
+  });
+  
+}

@@ -24,8 +24,8 @@ function init(mcfg) {
   console.log("Initing deployer");
   cfg = mcfg.deployer || mcfg;
   if (!cfg) { return; }
-  if (!cfg.deployfn) { console.error("No deployer filename given"); return; }
-  if (!fs.existsSync(cfg.deployfn)) { console.error("Deployer config ("+cfg.deployfn+") does not exist"); return; }
+  if (!cfg.deployfn) { console.error("Found deployer config, but no deployer filename given (=> disabled)"); return; }
+  if (!fs.existsSync(cfg.deployfn)) { console.error("Deployer config file ("+cfg.deployfn+") does not exist"); return; }
   depcfg = require(cfg.deployfn);
   if (!depcfg) { console.error("Failed to load checked-to-exist (JSON): "+cfg.deployfn+""); return; }
   console.log("depcfg successfully loaded: "+depcfg);
