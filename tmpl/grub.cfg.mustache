@@ -30,12 +30,24 @@
 # - package grub-common has unicode.pf2 (grub/fonts/unicode.pf2)
 # - Package grub-imageboot - important for booting ISO/raw images
 #
+# # Using this Grub template
+# To test raw output (with raw mustache) in linetboot top directory:
+# ```
+# cat global.conf.json | ./node_modules/mustache/bin/mustache - ./tmpl/grub.cfg.mustache
+# ```
+# Generate grub (and pxelinux) conf files and send to currently configured TFTP server:
+# ```
+# ./linetadm.js tftpsetup
+# ```
 # Note: grub seems to be lacking the "append" ()
 set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 set default 0
 set timeout=10
-# This *can* be global instead of repeated in each menu item
+# "root" (below) *can* be global instead of repeated in each individual menu item.
+# If copying boot-items from pxelinux menu file (default.installer.menu.mustache),
+# strip out the  "http://{{ httpserver }}" prefix from kernel / initrd
+# properties of boot-item (here in grub: linux/initrd).
 set root=(http,{{ httpserver }})
 
 menuentry "Memory Test (memtest86, Live)" {
@@ -69,6 +81,11 @@ menuentry "Ubuntu MATE 20 Desktop (64bit, Live)" {
   linux  /ubuntu20dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu20dt/ debug ip=dhcp toram
   initrd /ubuntu20dt/casper/initrd
 }
+
+menuentry "Ubuntu MATE 22 Desktop (64bit, Live)" {
+  linux  /ubuntu22dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu22dt/ debug ip=dhcp toram
+  initrd /ubuntu22dt/casper/initrd
+}
 ##################################################
 
 
@@ -88,6 +105,13 @@ menuentry 'Centos 7 Auto Install' {
   echo "Loading Centos initrd"
   initrdefi /centos7/images/pxeboot/initrd.img
   echo "Booting installation kernel"
+}
+
+### Arch
+menuentry "Arch Linux (Live Console, No Auto Install)" {
+  linux /archlinux/arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
+  # Grub support for multiple initrd items ? 
+  initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 }
 
 # https://www.cyber-tec.org/2014/07/19/setup-pxe-boot-environment/
@@ -115,7 +139,7 @@ menuentry "FreeDOS 1.0 (Live)" {
 # https://github.com/quattor/aii/issues/216 - Good examples on DHCP config by client types,
 #    also other lengthy expert discussion
 #  - 00, 09, 07 06
-menuentry "Windows Server 2019" {
+menuentry "Windows Server 2019 (Work in progress)" {
   # GRUB does not support parsing El Torito boot catalog
   # https://help-grub.gnu.narkive.com/nLb4Hafg/grub-2-how-boot-iso-with-memdisk
   # linux v.s. linux16 - http://lastweek.io/lego/kernel/boot/
