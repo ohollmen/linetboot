@@ -1,0 +1,27 @@
+# ## Collect packages from hosts
+# 
+# Override destination path from command line
+# ```
+# ansible-playbook ... -e "destpath=$HOME/hostpkginfo"
+# ```
+- name: Collect Package List/Metainfo from Hosts
+  become: yes
+  hosts: '{{ host }}'
+  vars:
+    destpath: '/tmp/hostpkginfo'
+  tasks:
+    - name: Get package list (DEB)
+      shell: 'dpkg --get-selections'
+      register: pkginfo
+      when: 'ansible_os_family == "Debian"'
+    - name: Get package list (RPM)
+      shell: 'yum list installed'
+      register: pkginfo
+      when: 'ansible_os_family == "RedHat"'
+    # pkginfo.stdout
+    - name: Save Package list to a file
+      copy:
+        content: '{{ pkginfo.stdout }}'
+	dest: '{{destpath}}/{{ inventory_hostname }}'
+      delegate_to: localhost
+
