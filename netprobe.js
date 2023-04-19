@@ -298,8 +298,8 @@ function stats_proc(hnode, cb) {
       console.log(prec.ssherr);
       // HERE ?
       conn.end(); // or does close/end event still take place ?
-      //return cb(null, additem(prec)); // long time loc. "Callback was already called." (BUGS.md)
-      additem(prec);
+      return cb(null, additem(prec)); // long time loc. "Callback was already called." (BUGS.md)
+      //additem(prec);
     });
     conn.on('end', function () {
       console.log("conn-end:   "+hn+'('+cfg.id+')');
