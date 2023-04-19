@@ -2,7 +2,7 @@
  * Kubernetes Info (kubi)
  */
  
-var fs = require("fs");
+var fs    = require("fs");
 var axios = require("axios");
  // List of linetboot server side data (info) set name:s (OLD: URL:s)
   // Most (v1) apis work the same with trailing slash or w/o. leave out here
