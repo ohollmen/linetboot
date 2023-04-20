@@ -4,6 +4,7 @@
   "smbserver" : "192.168.1.141",
   "mirrorserver": "",
   "debug": 1,
+  "passfn": "~/.linetboot/.htpasswd",
   "inst": {
     "desc": "Settings for OS Installer or scripts run during install",
     "userconfig": "~/.linetboot/initialuser.conf.json",
@@ -44,7 +45,7 @@
     "hdrbgX": "https://events.redhat.com/accounts/register123/redhat/events/ansible-technical-wkshp/ansible_storage_1080.jpg",
     "hdrbg": "https://cms.qz.com/wp-content/uploads/2018/12/tinyturtles.jpg?quality=75&strip=all&w=1600&h=1067",
     "apiena": 1,
-    "authusers": ["ohollmen", "mrsmith", "auntnancy"],
+    "authusers": ["ohollmen", "mrsmith", "auntnancy", "guest"],
     "grpattr": "grpid",
     "corshdr": 1
   },

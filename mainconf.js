@@ -110,7 +110,7 @@ function mainconf_process(global) {
   });
   //////// "~" ($HOME) expansion //////////////////
   // ... for config convenience (top-level & some sects ?)
-  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module"];
+  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module", "passfn"];
   tilde_expand(global, top_paths);
   var home = process.env['HOME'];
   //console.log("Statring individual sections expand");

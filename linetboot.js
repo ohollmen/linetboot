@@ -66,6 +66,7 @@ var cfl      = require("./confluence.js");
 var tform    = require("./terraform.js");
 var kubi     = require("./kubi.js");
 var certs    = require("./certs.js");
+var htpasswd = require("./htpasswd.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -128,6 +129,7 @@ function app_init() { // global
   tform.init();
   kubi.init(global);
   certs.init(global);
+  htpasswd.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -187,7 +189,7 @@ function app_init() { // global
   ////////////////////// Installer ///////////////////////////////////
   
   
-  function sethandlers() { // app
+  function sethandlers(mcfg) { // app
   // preseed_gen - Generated preseed and kickstart shared handler
   // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   osinst.url_hdlr_set(app); // NEW (driven by recipe selections)
@@ -268,8 +270,10 @@ function app_init() { // global
   app.get("/ldaptest",  ldconnx.ldaptest); // Moved
   app.get("/diskinfo",  osdisk.diskinfo);
   //BAN: app.get("/login",  login);
-  app.post("/login",  login);
   
+  
+  if (mcfg && mcfg.passfn && fs.existsSync(mcfg.passfn)) { app.post("/login",  login_simple); }
+  else { app.post("/login",  login); }
   app.get("/userent",  userent);
   
   app.get("/logout",  logout);
@@ -299,8 +303,8 @@ function app_init() { // global
   app.get("/iloglisthosts",  osinst.ilog_view_hosts);
   
   app.get("/rpaddmems",  rp_add_mems);
-  if (global.cov && global.cov.pass) {
-    covconn.init(global);
+  if (mcfg.cov && mcfg.cov.pass) {
+    covconn.init(mcfg);
     app.get("/covtgtchart",  covconn.express_report);
     app.get("/covtgtgrid",  covconn.express_report);
     // Iss / Def
@@ -459,7 +463,7 @@ function app_init() { // global
   // TODO: Allow controlling source IP addr
   // https://stackoverflow.com/questions/12349251/restrict-access-to-node-js-based-http-server-by-ip-address
   // server.on('connection', function (sock) { console.log(sock.remoteAddress); });
-  sethandlers();
+  sethandlers(global);
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
   var ldc = global.ldap; // ldc - LDAP Config
@@ -2385,7 +2389,7 @@ function media_info(req, res) {
  */
 function login(req, res) {
   var jr = {status: "err", msg: "Auth Failed."};
-  var q = req.query; // 
+  var q = req.query; // DO NOT allow !
   // TODO: Prefer POST, support GET in transition phase (and with optional forced config?)
   if (req.method == 'POST') { q = req.body; }
   var ldc = global.ldap; // LDAP conf from main config
@@ -2521,10 +2525,26 @@ Emitted 'error' event at:
 
 process.on('uncaughtException') // 17 mins ?
 */
+
+function login_simple(req, res) {
+  var jr = {status: "err", msg: "Auth Failed."};
+  var q;
+  if (req.method == 'POST') { q = req.body; }
+  else { jr.msg += "Must POST !"; return res.json(jr); }
+  if (!q.username) { jr.msg += "No username"; return res.json(jr); }
+  if (!q.password) { jr.msg += "No password"; return res.json(jr); }
+  var ok = htpasswd.authenticate(q.username, q.password);
+  if (!ok) { jr.msg += "Check your credentials !"; return res.json(jr); }
+  // htpasswd.getinfo(q.username);
+  req.session.user = {username: q.username}; // TODO: More ...
+  return res.json({status: "ok", data: req.session.user});
+}
+
+
 /** /userent
  * */
 function userent(req, res) {
-  var jr = {status : "err", msg : "No Autheticated User Found."};
+  var jr = {status : "err", msg : "No Authenticated User Found."};
   if (!req.session || !req.session.user) { return res.json(jr); }
   res.json({status: "ok", data: req.session.user});
 }
