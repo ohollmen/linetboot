@@ -32,7 +32,7 @@
     #- debug: var=pkginfo
     - set_fact:
         pkglist: '{{ pkginfo.stdout }}'
-    - debug: var=pkglist
+    #- debug: var=pkglist
     - name: Save Package list to a file
       become: false
       local_action:
