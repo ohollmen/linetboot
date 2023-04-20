@@ -357,7 +357,7 @@ function app_init() { // global
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
   hlr.hosts_load(global);
-  hlr.facts_load_all(); // var hostarr = 
+  hlr.facts_load_all({short: global.core.shorthname}); // var hostarr = 
   
   /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file)
    * Note: This is only needed with bad DHCP service that returns wrong or undeterministic

@@ -158,12 +158,18 @@ This is an optional step for minimal installation, but you can collect
 OS install packages to get statistics chart on it in "Packages" tab in Web GUI.
 Example of manual package extraction commands (for DEB and RPM based distros):
 
+    mkdir ~/hostpkginfo
+    # Extracting package host-by-host individually
     # Debian/Ubuntu Host
     ssh remoteuser@ws-001.comp.com dpkg --get-selections > ~/hostpkginfo/ws-001.comp.com
     # RedHat/Centos Host
     ssh remoteuser@ws-002.comp.com yum list installed > ~/hostpkginfo/ws-002.comp.com
+    # Using a linetboot bundled playbook to extract package lists (Normal SSH)
+    ansible-playbook -i ~/.linetboot/hosts playbooks/hostpkginfocollect.yaml -e "host=all ansible_user=$USER ansible_sudo_pass=$ANSIBLE_PASS destpath=$HOME/hostpkginfo"
+    # Same ... dynamic inventory and passwordless sudo
+    ansible-playbook playbooks/hostpkginfocollect.yaml -e "host=all destpath=$HOME/hostpkginfo"
 
-NOTE: There should be a supporting ansible playbook for doing this.
+NOTE: Use ansible playbook for extracting any larger amounts of package lists.
 
 ### Misc. Config Adjustments
 

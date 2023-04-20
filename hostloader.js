@@ -300,11 +300,14 @@ function hline_parse(hnline) {
  */
 function facts_load_all(opts) {
   opts = opts || {};
+  //var shortname = global.core.shorthname;
   if (!colls) { throw "No colls (module level) object !"; }
   if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
   colls.hostnames.forEach(function (hn) {
     var f = facts_load(hn, opts);
     if (!f) { console.log("facts_load_all: No facts for: "+hn); return; }
+    // ansible_fqdn vs. ansible_hostname
+    if (opts.short && (f.ansible_fqdn != f.ansible_hostname)) { f.ansible_fqdn = f.ansible_hostname; }
     host_add(f);
   });
   opts.debug && console.log("Cached: " + Object.keys(colls.hostcache).join(','));
