@@ -41,6 +41,6 @@
         content: '{{ pkglist }}'
         dest: '{{ destpath }}/{{ inventory_hostname }}'
         #dest: './{{ inventory_hostname }}.tmp.txt'
-      run_once: True
+      #run_once: True
       #delegate_to: localhost
       #delegate_to: 127.0.0.1
