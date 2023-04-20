@@ -9,19 +9,38 @@
   hosts: '{{ host }}'
   vars:
     destpath: '/tmp/hostpkginfo'
+    #NOT: ansible_python_interpreter: '/usr/local/bin/python3'
+    # Lookup table for distro associated package listing commands
+    cmds:
+      Debian: 'dpkg --get-selections'
+      RedHat: 'yum list installed'
+  #gather_facts: True # Must gather because ansible_os_family
+  # fact_path: /etc/ansible/facts.d
   tasks:
-    - name: Get package list (DEB)
-      shell: 'dpkg --get-selections'
+    #- name: Get package list (DEB)
+    #  shell: 'dpkg --get-selections'
+    #  register: pkginfo_d
+    #  when: ansible_os_family == "Debian"
+    #- name: Get package list (RPM)
+    #  shell: 'yum list installed'
+    #  register: pkginfo_r
+    #  when: ansible_os_family == "RedHat"
+    - name: Get package list (RPM/DEB)
+      shell: '{{ cmds[ansible_os_family] }}'
       register: pkginfo
-      when: 'ansible_os_family == "Debian"'
-    - name: Get package list (RPM)
-      shell: 'yum list installed'
-      register: pkginfo
-      when: 'ansible_os_family == "RedHat"'
     # pkginfo.stdout
+    #- debug: var=pkginfo
+    - set_fact:
+        pkglist: '{{ pkginfo.stdout }}'
+    - debug: var=pkglist
     - name: Save Package list to a file
-      copy:
-        content: '{{ pkginfo.stdout }}'
-	dest: '{{destpath}}/{{ inventory_hostname }}'
-      delegate_to: localhost
-
+      become: false
+      local_action:
+        module: copy
+        #content: '{{ pkginfo.stdout }}'
+        content: '{{ pkglist }}'
+        dest: '{{ destpath }}/{{ inventory_hostname }}'
+        #dest: './{{ inventory_hostname }}.tmp.txt'
+      run_once: True
+      #delegate_to: localhost
+      #delegate_to: 127.0.0.1
