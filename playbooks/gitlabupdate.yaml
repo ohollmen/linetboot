@@ -1,0 +1,53 @@
+# ## Update Gitlab (RHEL/YUM)
+# 
+# Example run:
+# ```
+# ansible-playbook gitlabupdate.yaml -e "host=mygitlabhost destver=15.7.5-ee.0.el8"
+# ansible-playbook gitlabupdate.yaml -e "host=all destver=15.7.5-ee.0.el8" -l 'mygitlabhost'
+# # To really run ...
+# .... -e "exec=1 .."
+# ```
+# ### About Upgrade Increments
+# 
+# GitLab.io a has a helpful page (miniapp) for choosing the version to upgrade to:
+# [GitLab Upgrade Path](https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/).
+# Use it for a good recommendation "by GitLab pros".
+- name: Upgrade GitLab (EE) on RHEL8
+  hosts: '{{ host }}'
+  become: true
+  vars:
+    # .. or w/o trailing slash ? Alt: gitlab-ce
+    aprefix: gitlab-ee-
+    # Get Version e.g. from: 
+    destver: 15.7.5-ee.0.el8
+    reposcript: https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh
+    exec: 0
+  tasks:
+    - name: Show available versions
+      shell: 'yum --showduplicates list gitlab-ee'
+      register: initverout
+    - debug:
+        #msg: 'Gitlab choices: {{ initverout.stdout }}'
+        var: initverout.stdout
+    # NO verbosity, output always
+    - name: Prep GitLab Repository Meta (in /etc/yum.repos.d/)
+      shell: 'curl {{ reposcript }} | sudo bash'
+    - name: Backup Gitlab Config (/etc/gitlab)
+      shell: 'cp -v -r /etc/gitlab /etc/gitlab_`date -Idate`_backup'
+      register: bkout
+    - debug:
+        var: bkout.stdout
+    - name: Install Update (YUM)
+      shell: yum install -y gitlab-ee-{{ destver }}
+      when: exec
+    - name: Check GitLab Status
+      shell: gitlab-ctl status
+      register: glstatusout
+    - debug:
+        var: glstatusout.stdout_lines
+    - name: Check GitLab Subsystems
+      shell: gitlab-rake gitlab:check
+    #NOT: gitlab-ctl version
+    - name: Verify Final Version
+      shell: gitlab-rake gitlab:env:info
+      register: gitlab_ver_info
