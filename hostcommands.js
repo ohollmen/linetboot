@@ -137,7 +137,7 @@ function commands_gen(op, hostarr, ps) {
       currhname: process.env['HOSTNAME'], // Current Linetboot local host (Problem on MacOS)
       username: username, userhome: process.env["HOME"], // User
       pkglistcmd: plcmd, paths: paths,
-      dom: dom, dom_dash: dom.replace(".", "-"),
+      dom: dom, dom_dash: dom.replace(/\./g, "-"),
       
     };
     // Override for any lower-level handler
