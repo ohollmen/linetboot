@@ -762,7 +762,7 @@ function gen_allhost_output(req, res) {
   var jr = {"status":"err", "msg":"Failed to generate hostcommand output."};
   var genopts_idx = {};
   var hc = require("./hostcommands.js");
-  hc.init();
+  hc.init(global);
   var genopts = hc.genopts;
   if (!genopts || !Array.isArray(genopts)) { jr.msg += " No genopts avail or not an array"; console.log(jr.msg); return res.end(jr.msg); }
   var getopts_idx = hc.genopts_idx;

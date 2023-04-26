@@ -12,6 +12,13 @@
 # GitLab.io a has a helpful page (miniapp) for choosing the version to upgrade to:
 # [GitLab Upgrade Path](https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/).
 # Use it for a good recommendation "by GitLab pros".
+# 
+# ### Running the Playbook
+# 
+# Playbook `yum install` take a long time to execute. Please do NOT interrupt the execution,
+# it is likely not stuck (or e.g. blocked by interactive prompting).
+# If you have doubts, open an interactive terminal on target/remote host and check running processes
+# to see the state of install / update.
 - name: Upgrade GitLab (EE) on RHEL8
   hosts: '{{ host }}'
   become: true

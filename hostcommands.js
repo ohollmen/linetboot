@@ -75,11 +75,15 @@ var Mustache = require("mustache");
     {lbl: "ibqueryhost", name: "Lookup IB Host Info",
       inittmpl: "# export IBCREDS=ibuser:ibpass; export IBAPIURL=https://ib.mycomp.com/wapi/v2.10",
        tmpl: "curl -v -k  -u $IBCREDS -X GET $IBAPIURL'/wapi/v1.2/record:host?name={{{ hname }}}'  "+" ",},
+    {lbl: "gcdnsrec", name: "GC DNS Record",
+       tmpl: "gcloud dns record-sets create {{ hname_s }}.{{ dom_dash }}. --rrdatas={{ ipaddr }} --type A --ttl=300 --zone=projects/$GCP_VPC_PROJECT/managedZones/{{ dom_dash }}\n"}
   ];
 var genopts_idx;
+var mcfg;
 
 // TODO: user.username
-function init() {
+function init(_mcfg) {
+  if (_mcfg) {mcfg = _mcfg; }
   genopts_idx = {};
   genopts.forEach(function (it) { genopts_idx[it.lbl] = it; }); // Once ONLY (at init) !
   module.exports.genopts_idx = genopts_idx;
@@ -120,7 +124,7 @@ function commands_gen(op, hostarr, ps) {
     var initout = Mustache.render(op.inittmpl, ip);
     if (initout) { cmds.push(initout); }
   }
-  
+  var dom = ( mcfg && mcfg.net && mcfg.net.domain ) ? mcfg.net.domain : "example.com";
   hostarr.forEach(function (f) {
     var plcmd = os_pkg_cmd[f.ansible_os_family];
     if (!plcmd) { cmds.push("# No package list command for os\n"); return; }
@@ -128,10 +132,12 @@ function commands_gen(op, hostarr, ps) {
     // Actually this is a mix of module context and host context params
     var info = {
       hname: f.ansible_fqdn, ipaddr: f.ansible_default_ipv4.address, // Host (in iteration)
+      hname_s: f.ansible_hostname,
       macaddr: f.ansible_default_ipv4.macaddress,
       currhname: process.env['HOSTNAME'], // Current Linetboot local host (Problem on MacOS)
       username: username, userhome: process.env["HOME"], // User
-      pkglistcmd: plcmd, paths: paths
+      pkglistcmd: plcmd, paths: paths,
+      dom: dom, dom_dash: dom.replace(".", "-"),
       
     };
     // Override for any lower-level handler
