@@ -76,7 +76,7 @@ var Mustache = require("mustache");
       inittmpl: "# export IBCREDS=ibuser:ibpass; export IBAPIURL=https://ib.mycomp.com/wapi/v2.10",
        tmpl: "curl -v -k  -u $IBCREDS -X GET $IBAPIURL'/wapi/v1.2/record:host?name={{{ hname }}}'  "+" ",},
     {lbl: "gcdnsrec", name: "GC DNS Record",
-       tmpl: "gcloud dns record-sets create {{ hname_s }}.{{ dom_dash }}. --rrdatas={{ ipaddr }} --type A --ttl=300 --zone=projects/$GCP_VPC_PROJECT/managedZones/{{ dom_dash }}\n"}
+       tmpl: "gcloud dns record-sets create {{ hname_s }}.{{ dom }}. --rrdatas={{ ipaddr }} --type A --ttl=300 --zone=projects/$GCP_VPC_PROJECT/managedZones/{{ dom_dash }}\n"}
   ];
 var genopts_idx;
 var mcfg;
