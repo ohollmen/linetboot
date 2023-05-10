@@ -349,6 +349,7 @@ function app_init() { // global
   app.get("/certs", certs.certslist);
   app.get("/certrenew", certs.install);
   app.get("/certsystems", certs.certfileslist);
+  app.get("/vulnlist", vulnlist);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -3207,4 +3208,15 @@ function hostservices(req, res) {
 
   });
   res.json({status: "ok", data: hs});
+}
+// For client vulnlist
+function vulnlist(req, res) {
+  var fname = process.env["HOME"] + "/Downloads/x_n1ll2_fedramp_po_poam.json";
+  if (!fs.existsSync(fname)) { console.error("No vuln file "); }
+  var varr = require(fname);
+  if (!varr) { console.error("No vuln data "); }
+  varr = varr.records;
+  if (!Array.isArray(varr)) { console.error("No vuln data as Array"); }
+  console.log(varr.length+" Items in array")
+  res.json({status: "ok", data: varr});
 }

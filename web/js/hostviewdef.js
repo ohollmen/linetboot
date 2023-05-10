@@ -1126,6 +1126,50 @@ function ibip_cell(val, item) {
      //{"name": "files",     "title": "Files",  "type": "text", "width": 10},
      //{"name": "cmd",     "title": "Command?",  "type": "text", "width": 10},
    ];
+
+function cve_cell(val, item) {
+  return `<a href="https://nvd.nist.gov/vuln/detail/${val}">${val}</a>`;
+}
+function contlist_cell(val, item) {
+  if (!val || typeof val != 'string') { return ''; }
+  var arr = val.split("\n");
+  arr = arr.map((cs) => { var pcs = cs.split(/\//); pcs.splice(0, 3); return pcs.join('/'); });
+  return arr.join("<br>");
+}
+function riskadj_cell(val, item) {
+  if (!val) { return; }
+  if (val != item["original_risk_rating"]) { return `<b>${val}</b>`; }
+  return val;
+}
+   var fldinfo_vulnlist = [
+     {"name": "number",               "title": "ID", "type": "text", "width": 10, },
+     //{"name": "vulnerability", "title": "", "type": "text", "width": 10, itemTemplate: cve_cell },
+     {"name": "weakness_source_identifier", "title": "", "type": "text", "width": 10, itemTemplate: cve_cell },
+     {"name": "weakness_description", "title": "CVE Desc", "type": "text", "width": 10, },
+     {"name": "vendor_dependent_product_name", "title": "Vendor/Prod", "type": "text", "width": 5, },
+     {"name": "asset_identifier",     "title": "Asset", "type": "text", "width": 35, itemTemplate: contlist_cell },
+     {"name": "resources_required",    "title": "Assigned to", "type": "text", "width": 10, },
+     {"name": "overall_remediation_plan", "title": "Plan", "type": "text", "width": 10, },
+     {"name": "original_risk_rating",   "title": "Risk", "type": "text", "width": 5, },
+     {"name": "adjusted_risk_rating",   "title": "Risk Adj.", "type": "text", "width": 5, itemTemplate: riskadj_cell },
+     {"name": "false_positive",         "title": "FPos", "type": "text", "width": 5, },
+     {"name": "scheduled_completion_date", "title": "", "type": "text", "width": 10, },
+     // 
+     {"name": "deviation_rationale",    "title": "Deviation Rat.", "type": "text", "width": 10, },
+    {"name": "comments",                "title": "Comments", "type": "text", "width": 10, },
+     // 
+     // 
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+     // {"name": "", "title": "", "type": "text", "width": 10, }
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1139,6 +1183,6 @@ function ibip_cell(val, item) {
       "gerr_change": fldinfo_gerr_change,
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
-      "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles
+      "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
    };
    

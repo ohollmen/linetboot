@@ -701,6 +701,9 @@ var tabloadacts = [
     path: "certsys", uisetup: certsys_uisetup, urlpara: null, dprep: null, longload: 0, "resarrprop": "files.certfiles"}, // files.certfiles
   {"name":"Certs File Bundling", "elselXX": "XX", tmpl: "t_certfiles", "hdlr": gendialog,  url: "/certrenew", gridid: "jsGrid_certfiles", fsetid: "certfiles", 
      path: "certfiles", uisetup: null, dialogid: "certfilesdialog"},
+  // Vuln resol
+  {"name":"Vulnerability Resolution", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/vulnlist", gridid: "jsGrid_vulnlist", fsetid: "vulnlist", 
+     path: "vulnlist", uisetup: null, dialogidXXX: ""},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
