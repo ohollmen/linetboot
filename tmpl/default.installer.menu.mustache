@@ -414,6 +414,27 @@ initrd http://{{ httpserver }}/redhat8/images/pxeboot/initrd.img
 append auto=true devfs=nomount method=http://{{ httpserver }}/redhat8/ ks=http://{{ httpserver }}/ks.cfg?osid=centos7
 
 
+# Fedora PXE
+# Install / PXE Docs
+# https://jfearn.fedorapeople.org/fdocs/en-US/Fedora/20/html/Installation_Guide/s1-netboot-pxe-config.html
+# https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Boot_Options/
+# Image Links
+# https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/ (Missing last 2)
+# All: https://mirror.arizona.edu/fedora/linux/releases/ (E.g. https://mirror.arizona.edu/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso)
+# Ra fedoraproject URL: https://download.fedoraproject.org/pub/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso
+# Notes:
+# - basenames or kernel, initrd seem RH-conventional (are paths the same? assume so)
+# - Look for: append root=live:http://.../squashfs.img for Live mode ? (Note: this is not exlusively an initrd, but root
+# - install Fedora: append ... repo=http://dl.fedoraproject.org/pub/fedora/linux/releases/20/Fedora/x86_64/os/
+# - Newer Fedoras require inst.repo=... instead of only repo=..., Also inst.ks=... See also: inst.ks.sendsn (sn=Serial number)
+#    inst.sshd, inst.vnc, inst.vncpassword. method=... has been replaced by inst.repo. See: 
+label fedora38
+menu label Fedora 38 (Live)
+kernel http://{{ httpserver }}/fedora/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/fedora/images/pxeboot/initrd.img
+# auto=true (supported w. fedora ?) xdriver=vesa nomodeset inst.ks=http://{{ httpserver }}/ks.cfg?osid=fedora38
+#append  devfs=nomount inst.repo=http://{{ httpserver }}/fedora38/x86_64/os inst.ks.sendmac
+
 # Dell Update CD (R630)
 # Aka DTK = Dell Deployment Toolkit (File isolinux/VER_INFO gives DTK version, e.g. DTK_VERSION_STRING="6.3.0")
 # DSA = DellOpenManage Server Assistant
