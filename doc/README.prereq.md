@@ -418,12 +418,27 @@ in your DHCP configuration:
 ...
 dhcp-match=set:efi-x86_64,option:client-arch,7
 dhcp-boot=tag:efi-x86_64,grub/shimx64.efi.signed
+# HTTP Boot (https://www.redhat.com/sysadmin/uefi-http-boot-libvirt)
+# https://forum.openwrt.org/t/dnsmasq-uefi-http-boot-problem/118660/2
+dhcp-vendorclass=set:efi-http,HTTPClient:Arch:00016
+dhcp-option-force=tag:efi-http,60,HTTPClient
+dhcp-boot=tag:efi-http,"http://192.168.1.100:3000/rhel8/EFI/BOOT/BOOTX64.EFI"
 ...
 # ISC DHCP (/etc/dhcp/dhcpd.conf)
+# Classic / Native PXE
 class "pxeclients" {
   match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
   option tftp-server-name "192.168.1.100";
   option bootfile-name   "/grub/shimx64.efi.signed";
+}
+# Modern UEFI BIOS HTTP Boot
+# See: https://documentation.suse.com/sles/15-SP2/html/SLES-all/cha-deployment-prep-uefi-httpboot.html
+# Note: if using https, the cert must be in DER format (to convert):
+# openssl x509 -in CERTIFICATE.crt -outform der -out CERTIFICATE.der
+class "httpclients" {
+  match if substring (option vendor-class-identifier, 0, 10) = "HTTPClient";
+  option vendor-class-identifier "HTTPClient";
+  filename "http://192.168.1.100:3000/tftpboot/EFI/BOOT/bootx64.efi";
 }
 ```
 Note: Some articles suggest that file `shimx64.efi.signed` should be renamed to `bootx64.efi` and `grubnetx64.efi.signed` to `grubx64.efi` respectively. However with the PXE clients and DHCP servers I've tested with the original filenames seem to work fine.
