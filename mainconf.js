@@ -253,6 +253,8 @@ function disabled_detect(global) {
   if (!cfl || (cfl && !cfl.user) || (cfl && !cfl.pass) ) { dis.push("cflpages"); }
   var ks = global.k8s;
   if (!ks || (ks && !ks.host) || (ks && !ks.token) ) { dis.push("kubinfo"); }
+  var ser = global.services;
+  if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
   return dis;
 } // diabled_detect
 

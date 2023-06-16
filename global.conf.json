@@ -235,6 +235,13 @@
     "org": [],
     "token":""
   },
+  "services": {
+    "conffn" : "~/.linetboot/serv_host.json",
+    "domainname": "mycomp.com",
+    "dnsttl": 300,
+    "enacerts": 1,
+    "disa": 1
+  },
   "confluence": {
     "host": "confluence.mycomp.com",
     "user": "",
