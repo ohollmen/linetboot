@@ -1,0 +1,55 @@
+# # RHEL XRDP Install (w. XFCE)
+# 
+# Note: In case functional troubleshooting / debugging is needed, change
+# `/etc/xrdp/xrdp.ini` section `[Logging]` setting `Loglevel=...` to **DEBUG**.
+# If UI fonts show monotype, change them (e.g.): Font: Sans Regular ... 10 => Cantarell Bold ... 10
+# ## Diagnosing, troublehsooting
+# - Check the presence (or persistence of temporarily disconnected RDP session
+#   by: `watch -n 2'ps -ef | grep Xvnc'`
+# - Forcefully terminate all sessions: `killall Xvnc`
+# 
+- name: RHEL XRDP Install (w. XFCE)
+  hosts: '{{ host }}'
+  #serial: 1
+  become: yes
+  #gather_facts: no
+  vars:
+    - xrdpuser: jsmith
+    # xfce4-session startxfce4 ?
+    - sessionexe: xfce4-session
+  tasks:
+    # TODO: Separate for RH/Deb (x-base)
+    # Seems there is no need to do recommended group installs.
+    # To see files contained: dnf repoquery -l the_package
+    - name: Install xrdp packages
+      package:
+        name:
+          - epel-release
+          - xrdp
+          # Needed in addition of tigervnc-server-minimal (which is
+          # implied dep. of xrdp) ? Pulls large number of Perl* stuff.
+          # Keep out-of the way.
+          #- tigervnc-server
+          - xfce4-session
+          # Has xfsettingsd
+          - xfce4-settings
+          - xfce4-panel
+          # Contains Thunar, deemed as mandatory
+          - xfdesktop
+          - xfwm4
+          # For Chrome (Proactive, e.g. Firefox wors w/o these
+          - mesa-libgbm
+          - vulkan-loader
+    - name: Enable XRDP
+      systemd:
+        name: xrdp
+        # restarted, reloaded?
+        state: started
+        enabled: true
+        daemon_reload: true
+    #- name: Establish User dot-xsession
+#    - copy:
+#        - content: '{{ sessionexe }}'
+#       - dest: '{{ lookup("ansible.builtin.env", "HOME") }}/.xsession'
+#        # MUST have +x
+#        - mode: a+rx
