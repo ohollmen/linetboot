@@ -259,6 +259,14 @@
     "apikey":"",
     "types":[1,2]
   },
+  "jira": {
+    "host": "jira.mycomp.com",
+    "user": "",
+    "pass": "",
+    "query": "",
+    "isspatt": "[A-Z]+\\-\\d{3,6}",
+    "apiprefix": ""
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],

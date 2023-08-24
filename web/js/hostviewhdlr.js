@@ -1350,15 +1350,20 @@ function jgrid_form(ev, act) {
   var labelw = act.labelw || "120";
   var cont = "";
   fdefs.forEach((fd) => { // map ?
+    var wtype = f.wtype || "text";
     //if (!fd.visible && cfg.onlyvis) { return; }
+    // TODO: (fctx/cfg, fd)
     cont += "<label style=\"width: "+labelw+"px\" for=\"w_"+fd.name+"\">"+fd.title+"</label>";
     // TODO: Choice of w. (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
-    cont += "<input type=\"text\" name=\"w_"+fd.name+"\" id=\"w_"+fd.name+"\">";
+    
+    if (wtype == 'text') {
+      cont += "<input type=\"text\" name=\"w_"+fd.name+"\" id=\"w_"+fd.name+"\">";
+    }
     cont += "<br/>";
     
   });
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
-  datasets["testform"] = "<form>{{{ cont }}}</form>";
+  datasets["testform"] = "<form>\n{{{ cont }}}\n</form>";
   rapp.templated("testform", {cont: cont}, tgtid);
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
 }
