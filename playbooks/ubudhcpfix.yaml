@@ -1,12 +1,23 @@
+# # Fix Ubuntu Resolved DHCP / DNS Related Networking
+# Shown to work in Ubuntu 18.04 and 22.04.
+# NetworkManager.conf ...
 # Added (in [main] section (!!!) (https://askubuntu.com/questions/907246/how-to-disable-systemd-resolved-in-ubuntu)
 # dns=default
 # Note also: /etc/default/networking
+# - https://serverfault.com/questions/810636/how-to-manage-dns-in-networkmanager-via-console-nmcli
+# - https://serverfault.com/questions/37850/how-can-i-set-a-search-domain-and-other-resolv-conf-parameters-in-ubuntu
 - name: Copy remote keys to ansible machine
   become: yes
   hosts: '{{ host }}'
   #serial: 1
   vars:
     routerip: '192.168.1.1'
+    # Ubuntu default (Use `nmcli con`)
+    nmifname: 'Wired connection 1'
+    # E.g. cloudflare '1.1.1.1 1.0.0.1' (space sep.)
+    dns: ''
+    # DNS Search path (space sep)
+    dns_search: ''
   # TODO: Disable systemd-resolved, mod: /etc/systemd/resolved.conf 
   tasks:
     - name: Stop systemd-resolved
@@ -39,9 +50,20 @@
         # with_items:
         #   - {"regexp":"","line":""}
         #   - {"regexp":"DNS\s*=","line":"DNS={{routerip}}"}
+    # Creates something like:
+    # /etc/NetworkManager/system-connections/Wired\ connection\ 1.nmconnection 
+    # Idempotency: Only timestamp=1689724930 changes
+    - name: Set DNS server for NM interface (if available)
+      shell: 'nmcli con mod "{{ nmifname }}" ipv4.dns "{{ dns }}"'
+      when: dns
+    - name: Set DNS search path for NM interface (if available)
+      shell: 'nmcli con mod "{{ nmifname }}" ipv4.dns-search "{{ dns_search }}"'
+      when: dns_search
+
     - name: Restart service NetworkManager
       # ansible.builtin.systemd:
       systemd:
         state: restarted
         daemon_reload: yes
         name: NetworkManager
+
