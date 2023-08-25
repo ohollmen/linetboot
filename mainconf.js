@@ -289,8 +289,9 @@ function env_merge(global) {
   if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path   = process.env["LINETBOOT_TMPL_PATH"]; }
   // RMGMT_PATH
   if (process.env["RMGMT_PATH"])            { stub("ipmi"); global.ipmi.path = process.env["RMGMT_PATH"]; }
-  // 
+  // LINETBOOT_PKGLIST_PATH (Orig. in here) or PKGLIST_PATH (Was found in orig. code)
   if (process.env["LINETBOOT_PKGLIST_PATH"]) { global.pkglist_path = process.env["LINETBOOT_PKGLIST_PATH"]; }
+  if (process.env["PKGLIST_PATH"])           { global.pkglist_path = process.env["PKGLIST_PATH"]; }
   
   if (process.env["LINETBOOT_LDAP_SIMU"]) { global.ldap.simu = process.env["LINETBOOT_LDAP_SIMU"]; }
   // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
