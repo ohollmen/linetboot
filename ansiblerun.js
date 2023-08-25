@@ -452,6 +452,8 @@ function ansible_play_list(acfg, pbpath, opts) { // dirname
       //path.basename(); // Already basenames
       var relname = dirname + "/" + fname;
       var node = { basename: fname, relname: relname };
+      // Special name-case ".vars.yaml" (variables-only file)
+      if (fname.match(/\.vars\.yaml/)) { return 0; }
       // TODO: Catch exception an bypass faulty yaml
       var yf; var cont;
       try {
@@ -466,11 +468,12 @@ function ansible_play_list(acfg, pbpath, opts) { // dirname
       // TODO: Checks here !
       // Lookup Playbook name ?
       var pb = yf[0];
-      node.playname = yf[0].name; // Play(book) title ?
+      if (!pb) { console.error("No 'name' for playbook ("+relname+"), must have this to be processed !!!"); process.exit(1); }
+      node.playname = pb.name; // Play(book) title ?
       if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
-      node.taskcnt = yf[0].tasks.length;
+      node.taskcnt = pb.tasks.length;
       // Task names ?
-      node.tasknames = yf[0].tasks.filter((t) => { return (t.name); }).map((t) => { return t.name; });
+      node.tasknames = pb.tasks.filter((t) => { return (t.name); }).map((t) => { return t.name; });
       node.vars = yf[0].vars || {}; // Play(-level) Vars
       // Store tasks ?
       fnodes.push(node);
