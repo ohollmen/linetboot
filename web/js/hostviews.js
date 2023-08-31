@@ -704,6 +704,8 @@ var tabloadacts = [
   // Vuln resol
   {"name":"Vulnerability Resolution", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/vulnlist", gridid: "jsGrid_vulnlist", fsetid: "vulnlist", 
      path: "vulnlist", uisetup: null, dialogidXXX: ""},
+  {"name":"Images authorized for Use", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/authimg", gridid: "jsGrid_authimg", fsetid: "authimg", 
+     path: "authimg", uisetup: null, dialogidXXX: ""},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
@@ -722,7 +724,7 @@ function gendialog(ev, act) {
     if (!d) { return alert("No data from server for dialog !"); }
     showdialog(d);
   })
-  .catch(function (ex) { console.log(""); });
+  .catch(function (ex) { console.log("No data for dialog from URL: "+act.url+""); });
   function showdialog(data) {
     if (!act.dialogid) { return alert("No dialog indicated (by 'dialogid')"); }
     // Check existence of elem by act.dialogid

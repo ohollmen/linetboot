@@ -254,6 +254,7 @@ function app_init() { // global
   app.patch('/redfish/v1/Systems/1/:hname', reboot_test); // For testing
   
   app.get("/dockerenv", dockerenv_info);
+  app.get("/authimg", docker_authimages);
   app.get("/config", config_send);
   app.get("/install_boot", installrequest);
   app.get("/bootreset", bootreset); // Created after tftplist
@@ -353,11 +354,11 @@ function app_init() { // global
  } // sethandlers
   //////////////// Load Templates ////////////////
   
-  fact_path = process.env["FACT_PATH"] || global.fact_path;
+  fact_path = global.fact_path;
   //console.log(process.env);
-  if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env !"); process.exit(1); }
+  if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env or set mcfg.fact_path !"); process.exit(1); }
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
-  global.fact_path = fact_path; // Store final in config
+  // OLD: global.fact_path = fact_path; // Store final in config
   ///////////// Hosts and Groups (hostloader.js) ////////////////////
   
   hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
@@ -417,6 +418,8 @@ function app_init() { // global
     });
   });
   */
+  // TODO: elevate higher / set more early. Probing options:  __dirname and process.cwd() and path.dirname(__filename)
+  process.env["LINETBOOT_APP_PATH"] = __dirname; // NOTE: Use process.env["LINETBOOT_APP_PATH"] in lboot_setup_module to load add'l modules
   /* Run customization setup plugin */
   var modfn = global.lboot_setup_module;
   // TODO: Later eliminate and let normal module path resolution take place?
@@ -715,7 +718,7 @@ function oninstallevent(req,res) {
 */
 function pkg_counts (req, res) {
   // Package dir root
-  var root = process.env["PKGLIST_PATH"] || process.env["HOME"] + "/hostpkginfo";
+  var root = global.pkglist_path || process.env["HOME"] + "/.linetboot/hostpkginfo";
   var jr = {status: "err", msg: "Package list collection failed."};
   if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
   // Get package count for a single host. Uses global hostcache and 9outer var) root.
@@ -1929,6 +1932,16 @@ function dockerenv_info(req, res) {
     catch (ex) { jr.msg += "Loading of docker configs failed"; return res.json(jr); }
   }
   return res.json({status: "ok", data: docker_conf});
+}
+/** Display authorized images (from a TSV/CSV file) */
+function docker_authimages(req, res) {
+  var jr = {"status": "err", msg: "Failed docker allow image view."};
+  var opts = {sep: "\t", hdr: ["ignore0", "author", "img", "tag", "sha256sum", "img_id", "ign1", "ign2"], ignfirst: true};
+  var fname = global.docker ? global.docker.authimgfn : "";
+  if (!fname ||  !fs.existsSync(fname)) { jr.msg += "File '"+fname+"' not in config or not found on FS."; return res.json(jr);}
+  var csv = hlr.csv_parse(fname, opts);
+  csv.forEach( (r) => { r.sha256sum = r.sha256sum.replace(/^sha256:/, ''); });
+  res.json({"status": "ok", data: csv});
 }
 
 /** Send misc/select key-value pairs of config information to frontend.

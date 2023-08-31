@@ -1170,6 +1170,15 @@ function riskadj_cell(val, item) {
      // {"name": "", "title": "", "type": "text", "width": 10, }
      // {"name": "", "title": "", "type": "text", "width": 10, }
    ];
+   var fldinfo_authimg = [
+    // Also imgbn (bn w. tag)
+    {"name": "img",               "title": "Image Path", "type": "text", "width": 30, },
+    {"name": "tag",               "title": "Image Tag", "type": "text", "width": 15, },
+    {"name": "sha256sum",         "title": "Image SHA(2)", "type": "text", "width": 10, itemTemplate: gridplug.csum_short},
+    {"name": "img_id",            "title": "Image ID", "type": "text", "width": 10, itemTemplate: gridplug.csum_short},
+    {"name": "author",            "title": "Image Author", "type": "text", "width": 15, },
+    // {"name": "pull",            "title": "Pull", "type": "text", "width": 15, },
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1184,5 +1193,6 @@ function riskadj_cell(val, item) {
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
+      "authimg": fldinfo_authimg
    };
    
