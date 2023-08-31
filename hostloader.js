@@ -541,6 +541,7 @@ function csv_parse_data(cont, opts) {
   console.log("csv_parse_data: " + lines.length + " lines. Headers: "+opts.hdr);
   console.log("csv_parse_data: opts: ", opts);
   var hdr = opts.hdr || lines.shift().split(opts.sep, opts.max);
+  if (opts.hdr && opts.ignfirst) { lines.shift(); }
   // Validate header names as symbol names ?
   opts.debug && console.log("Headers: ", hdr);
   var arr = []; // Final Array-of-Objects (AoO) from CSV
