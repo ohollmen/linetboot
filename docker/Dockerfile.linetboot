@@ -55,4 +55,4 @@ EXPOSE 3000
 # Note if ENTRYPOINT is in exec form, CMD (in exec form) becomes
 # (add'l) params to ENTRYPOINT command.
 # CMD bash
-CMD node linetboot
+CMD node linetboot.js
