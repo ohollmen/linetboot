@@ -706,6 +706,11 @@ var tabloadacts = [
      path: "vulnlist", uisetup: null, dialogidXXX: ""},
   {"name":"Images authorized for Use", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/authimg", gridid: "jsGrid_authimg", fsetid: "authimg", 
      path: "authimg", uisetup: null, dialogidXXX: ""},
+     {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist?jqp=fr", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
+     path: "jiraiss", uisetup: null, dialogidXXX: "", "longload": 1},
+
+     {"name":"TF Nets", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/yaml/nets", gridid: "jsGrid_tfnets", fsetid: "tfnets", 
+     path: "tfnets", uisetup: null, dialogidXXX: "", "longload": 1},
 ];
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
