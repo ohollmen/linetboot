@@ -35,7 +35,7 @@ function init(_cfg) {
   
   try {
     if (!cfg) { throw "No config"; }
-    if (!cfg.host || !cfg.user || !cfg.pass) { throw "Config props (host,user,pass) missing ..."; }
+    if (!cfg.host || !cfg.user || !cfg.pass) { throw "Config props (host,user,pass) for JIRA config missing ..."; }
   } catch (ex) { console.log("Jira Init Error(early): "+ex); cfg=null; inited++; return; }
   // Compile issue pattern
   issre = new RegExp(cfg.isspatt);
@@ -47,37 +47,56 @@ function init(_cfg) {
 
 function body_opts(opts, m) {
   var hasbody = {"post": 1, "put": 1};
-  opts.headers |= {};
+  opts.headers  ||= {};
   if (hasbody[m]) {
     opts.headers["content-type"] = "application/json";
   }
   opts.headers.accept = "application/json";
 }
-
+// Note initial behavior: Errors 405, 400 gotten when param "jql" passed in GET (q-param) or POST (json) 
 function jira_query(req, res) {
-  var url = "https://" + cfg.host + apiprefix ; // + "search"
+  var jr = {status: "err", msg: "Failed to query JIRA. "};
+  var url = "https://" + cfg.host + apiprefix + "search";
   // Single-query: GET /rest/api/2/issue/$issuekey . Also has option expand=names
   var q = (req && req.query) ? req.query : {};
+  if (!q) { jr.msg += "No query URL"; res.json(jr); }
   // Jira Issue from Query
   //if (q.iid.match(issre)) { url += ""; }
+  var rbody = {}; // POST Body
   // Jira Query from Exp. query
-  //if (q.jql) { url+= "?jql=" + q.jql; }
-  // Query from profile
+  if (q.jql) { url+= "?jql=" + q.jql; }
+  url += "?startAt=2&maxResults=2"; // For GET and POST
+  //else {  url += "?jql=assignee%20%3D%20currentUser%28%29"; }
+  //else {  url += "?jql=assignee%3D"+process.env["USER"];  }
+
+  rbody.jql = "project = "+cfg.project+" AND assignee = "+process.env["USER"] + " AND resolution = Unresolved"; // POST
+  //var qstr = "?jql="+encodeURIComponent(rbody.jql); console.log("QSTR: "+ qstr); // NOT Used
+  // Query from query profiles (passed in q.jqp)
+  console.log("Q-params: ", q);
+  console.log("J-config: ", cfg);
+  if (q.jqp && cfg.jqps && cfg.jqps[q.jqp]) {
+    console.log("Override default query by valid profile (label): "+ q.jqp);
+    rbody.jql = cfg.jqps[q.jqp];
+  }
   var opts = {}; // Should follow HTTP responses (Location: ... how on axios level ?)
   // Use cfl as helper ...
-  try { cfl.add_basic_creds(cfg, opts); } catch (ex) { jr.msg += "Error using creds: "+ex; return res.json(jr); }
+  try { cfl.add_basic_creds(cfg, opts); } catch (ex) { jr.msg += "Error using creds: "+ex; console.log("JIRA Creds-add error: "+jr.msg); return res.json(jr); }
   body_opts(opts, "get");
-  axios.get(url, opts).then((resp) => {
+  console.log(`Call JIRA (POST) URL ${url} with data,opts: `, rbody, opts );
+  //axios.get(url, opts).then((resp) => {
+  axios.post(url, rbody, opts).then((resp) => {
     var d = resp.data;
-    console.log("Got JIRA Data: "+ JSON.stringify(d, null, 2) );
-    //if (q.html) { console.log("HTML:\n"+d.body.storage.value); res.end(d.body.storage.value); }
-    //else { res.json({status: "ok", data: d}); }
-  }).catch((ex) => { jr.msg += "Failed JIRA Api Server HTTP Call "+ex; res.json(jr); })
+    //console.log("Got JIRA Data: "+ JSON.stringify(d, null, 2) );
+    if (q.html) { console.log("HTML:\n"+d.body.storage.value); res.end(d.body.storage.value); }
+    // TODO: rethink d.issues
+    else { res.json({status: "ok", data: d.issues, url: url}); }
+  }).catch((ex) => { jr.msg += "Failed JIRA Api Server HTTP Call: "+ex; console.log("JIRA Query error: "+jr.msg); res.json(jr); })
 }
 
 module.exports = {
   init: init,
-  jira_query: jira_query
+  jira_query: jira_query,
+  cfg: cfg,
 };
 
 if (process.argv[1].match("jira.js")) {
