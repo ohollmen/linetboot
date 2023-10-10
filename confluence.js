@@ -67,7 +67,8 @@ function confluence_index(req, res) {
     if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
     var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
     if (!creds_b64) { throw "Basic 64 creds empty !"; }
-    opts.headers = { Authorization : "Basic "+creds_b64};
+    opts.headers ||= {};
+    opts.headers.Authorization = "Basic "+creds_b64;
   } // add_basic_creds
 
 function confluence_page(req, res) {
@@ -103,5 +104,6 @@ function confluence_page(req, res) {
 module.exports = {
   init: init,
   confluence_index: confluence_index,
-  confluence_page: confluence_page
+  confluence_page: confluence_page,
+  add_basic_creds: add_basic_creds
 };
