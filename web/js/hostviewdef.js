@@ -1179,6 +1179,42 @@ function riskadj_cell(val, item) {
     {"name": "author",            "title": "Image Author", "type": "text", "width": 15, },
     // {"name": "pull",            "title": "Pull", "type": "text", "width": 15, },
    ];
+   function jirakey_cell(val, item) {
+     return ( item.fields && item.fields.issuetype ) ? val + " ("+item.fields.issuetype.name+")" : val + " (N/A)";
+   }
+   // "id": "35340990088",
+   var fldinfo_jiraiss = [
+    {"name": "fields.issuetype.name",          "title": "Issue Type", "type": "text", "width": 5, },
+    {"name": "key",               "title": "Issue ID", "type": "text", "width": 7, itemTemplate: jirakey_cell},
+    //{"name": "fields.project.key",               "title": "Project", "type": "text", "width": 7, },
+    {"name": "fields.summary",           "title": "Summary", "type": "text", "width": 40, },
+    {"name": "fields.assignee.displayName",               "title": "Assignee", "type": "text", "width": 10, itemTemplate: null},
+    {"name": "fields.reporter.displayName", "title": "Reporter", "type": "text", "width": 10, itemTemplate: null},
+    {"name": "fields.creator.displayName",  "title": "Creator", "type": "text", "width": 10, itemTemplate: null},
+    {"name": "fields.status.name",          "title": "Status", "type": "text", "width": 4, },
+    // Time info
+    {"name": "fields.created",               "title": "Created", "type": "text", "width": 10, },
+    {"name": "fields.duedate",               "title": "Due Date", "type": "text", "width": 10, },
+    
+    //{"name": "subtasks",               "title": "Sub Tasks", "type": "text", "width": 30, itemTemplate: null},
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+   ];
+   // TF Net definitions
+   var fldinfo_tfnets = [
+     {"name": "subnet_name",               "title": "Subnet Name", "type": "text", "width": 9, },
+     {"name": "subnet_ip",                  "title": "IP CIDR Range", "type": "text", "width": 7, },
+     {"name": "numips",                     "title": "# IPs", "type": "text", "width": 5, },
+     //{"name": "range.start",                     "title": "Start IP", "type": "text", "width": 5, },
+     //{"name": "range.end",                     "title": "End IP", "type": "text", "width": 5, },
+     {"name": "subnet_region",              "title": "Network Region", "type": "text", "width": 7, },
+     {"name": "subnet_private_access",      "title": "Priv.Access", "type": "text", "width": 5, },
+     {"name": "subnet_flow_logs",           "title": "Flow Logs ?", "type": "text", "width": 5, },
+    
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1193,6 +1229,6 @@ function riskadj_cell(val, item) {
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
-      "authimg": fldinfo_authimg
+      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets
    };
    
