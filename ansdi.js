@@ -63,5 +63,8 @@ if (path.basename(process.argv[1]).match(/ansdi.js$/)) {
 }
 
 module.exports = {
-
+  init: init,
+  load: ansdi_load,
+  hosts: ansdi_hosts,
+   
 };
