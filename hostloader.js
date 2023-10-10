@@ -14,7 +14,7 @@
  */
 "use strict;";
 var fs = require("fs");
-var fact_path;
+var fact_path; // Module-global facts path config populated from mcfg.fact_path at init()
 var colls;
 var debug = 0;
 /** Initialize host loader module.
@@ -30,6 +30,7 @@ function init(global, gcolls) {
   colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [], groups: {} };
   if (!module.exports.colls) { module.exports.colls = colls; } // Lazy-assign
   debug = global.debug || 0;
+  // return module.exports; // ?????
 }
 /** Load Ansible (GCP) JSON dynamic inventory file.
  * You should have 
