@@ -19,6 +19,21 @@
 # it is likely not stuck (or e.g. blocked by interactive prompting).
 # If you have doubts, open an interactive terminal on target/remote host and check running processes
 # to see the state of install / update.
+# 
+# ### Gitlab maintetnance mode
+# 
+# GitLab can be turned into meaintenance mode by: Admin => Settings => General => Maintenance mode.
+# Toggle on "Enable maintenance mode". After upgrade, toggle this off. In either case: "Save Changes".
+# 
+# Using "Rails Console" the same can be done by:
+# ```
+# sudo gitlab-rails console
+# # Enable
+# ::Gitlab::CurrentSettings.update!(maintenance_mode: true)
+# ::Gitlab::CurrentSettings.update!(maintenance_mode_message: "New message")
+# # Disable
+# ::Gitlab::CurrentSettings.update!(maintenance_mode: false)
+# ```
 - name: Upgrade GitLab (EE) on RHEL8
   hosts: '{{ host }}'
   become: true
