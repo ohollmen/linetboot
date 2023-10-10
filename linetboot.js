@@ -67,6 +67,7 @@ var tform    = require("./terraform.js");
 var kubi     = require("./kubi.js");
 var certs    = require("./certs.js");
 var htpasswd = require("./htpasswd.js");
+var jira     = require("./jira.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -130,6 +131,7 @@ function app_init() { // global
   kubi.init(global);
   certs.init(global);
   htpasswd.init(global);
+  jira.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req ?)
     console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
@@ -351,6 +353,8 @@ function app_init() { // global
   app.get("/certrenew", certs.install);
   app.get("/certsystems", certs.certfileslist);
   app.get("/vulnlist", vulnlist);
+  app.get("/isslist", jira.jira_query);
+  app.get("/yaml/nets", yaml_show);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -1933,7 +1937,24 @@ function dockerenv_info(req, res) {
   }
   return res.json({status: "ok", data: docker_conf});
 }
-/** Display authorized images (from a TSV/CSV file) */
+/** Display authorized images (from a TSV/CSV file)
+ * TODO: Create collection file display with ability to show:
+ * - JSON by j = JSON.parse()
+ * - YAML by y = yaml.safeLoad(out);
+ * - CSV by aoo = hlr.csv_parse(fname, opts)
+ * - XML ?
+ * Each profile should lay out:
+ * - profile id/label
+ * - filetype (if cannot be derived from suffix) OR more abstractly data source type (url, dbquery)
+ * - filename (support relative, absolute, tilde-based)
+ * 
+ * - fixed route-url to show at (or default to /fdisp/${proflbl})
+ * - optional "csvopts" (w. set, hdr, ignfirst as needed by CSV content)
+ * - The client side field set id to use to display data in grid
+ * - prostproc - postprocessing of data
+ * Note: The entries in AoO data may be nested, but they will shown in grid and grid field definitions can pick up values
+ * from the depth of 
+*/
 function docker_authimages(req, res) {
   var jr = {"status": "err", msg: "Failed docker allow image view."};
   var opts = {sep: "\t", hdr: ["ignore0", "author", "img", "tag", "sha256sum", "img_id", "ign1", "ign2"], ignfirst: true};
@@ -1942,6 +1963,23 @@ function docker_authimages(req, res) {
   var csv = hlr.csv_parse(fname, opts);
   csv.forEach( (r) => { r.sha256sum = r.sha256sum.replace(/^sha256:/, ''); });
   res.json({"status": "ok", data: csv});
+}
+/** Display YAML
+ * 
+ */
+function yaml_show(req, res) {
+  var cfg = {ftype: "yaml", fn: process.env["HOME"] + "/.linetboot/subnets-svgovus1.yaml"};
+  var cont = fs.readFileSync(cfg.fn, 'utf8');
+  var y = yaml.safeLoad(cont);
+  y.forEach( (e) => {
+    var ip_m = e.subnet_ip.split('/');
+    //console.log(ip_m);
+    var n = parseInt(ip_m[1]);
+    //console.log(n);
+    e.numips = 2 ** (32-n); // Math.pow(2, (32-n))
+    // e.range = SubnetCIDRAdviser.getIpRangeForSubnet( e.subnet_ip ); // start, end
+  });
+  res.json({"status": "ok", data: y});
 }
 
 /** Send misc/select key-value pairs of config information to frontend.
