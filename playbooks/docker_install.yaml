@@ -1,20 +1,36 @@
-# ## Install Docker on 
+# ## Install Docker on RH (or Debian)
 # Example of running:
-# ansible-playbook docker_install.yaml -e "dockeruser=misterx"
+# ```
+# ansible-playbook docker_install.yaml -e '{"host":"runner", "dockergroup":"docker", "dockerusers":["misterx","mrsy"]}'
+# ```
+# # Resources
+# - Workarounds for installing docker on RH - https://access.redhat.com/discussions/6249651
+# - Docker on RH8: https://help.hcltechsw.com/bigfix/10.0/mcm/MCM/Install/install_docker_ce_docker_compose_on_rhel_8.html
 - name: Install Docker
   hosts: '{{ host }}'
   become: yes
   vars:
-    dockeruser: jsmith
+    dockerusers: ["jsmith", "sjohnson"]
     # Seems to be universal (at least in RH, Debian families)
     dockergroup: docker
   tasks:
-    - name: Install Docker
+    #-name: Add Docker Repo
+    # shell: 'yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo && sed -i 's~/rhel/~/centos/~g' /etc/yum.repos.d/docker-ce.repo'
+    # shell: 'dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo'
+    - name: Install Docker (RH)
+      # 
+      # Note: docker depends on containerd.io (containes containerd and runc)
+      # Needed (?): --nobest --allowerasing Also: --noplugins
       shell:  yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-      when: 'ansible_os_family == "RedHat"'
+      when: ansible_os_family == "RedHat"
+    - name: Install Docker (Debian)
+      shell:  apt install docker.io
+      when: ansible_os_family == "Debian"
     - name: Add user to a group
       user:
+        name: '{{ item }}'
         append: true
         groups: '{{ dockergroup }}'
-    - name: Enable docker
-      shell: systemctl enable docker
+      with_items: dockerusers
+    - name: Start and Enable docker
+      shell: 'systemctl start docker && systemctl enable docker'
