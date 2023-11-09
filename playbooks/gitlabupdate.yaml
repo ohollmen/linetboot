@@ -45,6 +45,8 @@
     reposcript: https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh
     exec: 0
   tasks:
+    - name: Turn on maintenance mode
+      shell: "sudo gitlab-rails runner '::Gitlab::CurrentSettings.update!(maintenance_mode: true);::Gitlab::CurrentSettings.update!(maintenance_mode_message: \"Upgrading GitLab\")'"
     - name: Show available versions
       shell: 'yum --showduplicates list gitlab-ee'
       register: initverout
@@ -73,3 +75,5 @@
     - name: Verify Final Version
       shell: gitlab-rake gitlab:env:info
       register: gitlab_ver_info
+    - name: Turn off maintenance mode
+      shell: "sudo gitlab-rails runner '::Gitlab::CurrentSettings.update!(maintenance_mode: false);::Gitlab::CurrentSettings.update!(maintenance_mode_message: \"\")'"
