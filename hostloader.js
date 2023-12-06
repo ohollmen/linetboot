@@ -550,7 +550,10 @@ function csv_parse_data(cont, opts) {
     var rec = {};
     var lrec = l.split(opts.sep, opts.max); // Max as many fields as hdr ?
     if (!l) { return; } // Empty !
-    if (hdr.length != lrec.length) { console.log("Flawed rec. - field counts not matching ("+hdr.length+" vs "+lrec.length+")"); return; }
+    if (hdr.length != lrec.length) {
+      console.log("Flawed rec. - field counts not matching ("+hdr.length+" vs "+lrec.length+")");
+      if (!opts.sloppy) { return; }
+    }
     for (var i =0;i<lrec.length;i++) { rec[hdr[i]] = lrec[i]; }
     arr.push(rec);
   });
