@@ -3,9 +3,9 @@
 # Example:
 # ```
 # # 
-# ansible-playbook tenscanupdate.yaml --tags scanner -e "rpm_scan_update=Nessus-10.2.0-es8.x86_64.rpm"
+# ansible-playbook tenscanupdate.yaml --tags scanner -e "host=all rpm_scan_update=Nessus-10.2.0-es8.x86_64.rpm" --limit "tenable-scanner*"
 # # Only SC supports backup step
-# ansible-playbook tenscanupdate.yaml --tags sc -e "rpm_scan_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true"
+# ansible-playbook tenscanupdate.yaml --tags sc -e "host=all rpm_sc_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true" --limit "tenable-sc*"
 # ```
 # # Nessus scanner Misc Info:
 # - Docs: https://docs.tenable.com/nessus/Content/InstallNessusEssentialsProfessionalOrManager.htm
@@ -16,7 +16,14 @@
 # # Nessus SC Nisc info
 # - Verifying cert: /opt/sc/support/bin/openssl verify /opt/sc/support/conf/SecurityCenter.crt
 # 
-# # Some important directories
+# ## Downloading files from Tenable
+# Use user api key (e.g.):
+# ```
+# curl --request GET --url 'https://www.tenable.com/downloads/api/v2/pages/nessus/files/Nessus-10.6.1-es8.x86_64.rpm' \
+#     --header 'Authorization: Bearer bce768c...' --output 'Nessus-10.6.1-es8.x86_64.rpm'
+# ```
+# 
+# ## Some important directories
 # 
 # Security Center:
 # - /opt/sc/www - Document root
@@ -31,6 +38,7 @@
 # - /opt/sc/support/logs - Apache logs
 # - /opt/sc/support/openssl/CA - does not exist, even if referred in ...
 # - /opt/sc/plugins/ - license.key (SC 5.2 manual p. 855)
+# 
 # Scanner:
 # - /opt/nessus/bin/nasl - NASL Interpreter
 # - /opt/nessus/com/nessus/CA/*.pem - certs (pem certs)
@@ -148,16 +156,23 @@
         state: stopped
       tags: sc
       when: tgz_sc
+    - name: Extract .tgz basename to use as dirname
+      shell: 'basename {{ tgz_sc }} .tgz'
+      register: tgzdir
+      tags: sc
     # Note: Should this indeed be after startup ?
     - name: Apply SC tgz patch
-      shell: 'tar -C {{ tmpdir }} -zxvf {{ tmpdir }}/{{ tgz_sc }}; cd {{ tmpdir }}/{{ tgz_dir_patt }}; ./install.sh'
+      # Stop using tgz_dir_patt !!!
+      shell: 'tar -C {{ tmpdir }} -zxvf {{ tmpdir }}/{{ tgz_sc }}; cd {{ tmpdir }}/{{ tgzdir.stdout }}; ./install.sh'
       tags: sc
       when: tgz_sc
       # when: 0
-    - name: Remove TGZ Temp Directory
+    - name: Remove TGZ and Temp Directory
       shell:
-        cmd: 'rm -rf {{ tmpdir }}/{{ tgz_dir_patt }}'
+        cmd: 'rm -rf {{ tmpdir }}/{{ tgzdir.stdout }} {{ tgz_sc }}'
         chdir: '{{ tmpdir }}'
+      tags: sc
+      when: tgz_sc
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
       ansible.builtin.systemd:
@@ -170,10 +185,14 @@
       # /opt/sc/support/bin/sqlite3 -header -table /opt/sc/application.db "select name,value from Configuration where name='ScannerStatusTimeout'"
       shell: /opt/sc/support/bin/sqlite3 /opt/sc/application.db "Update Configuration set value=\'300\' where name=\'ScannerStatusTimeout\'"
     # Note: php.ini also has openssl.capath = '/opt/sc/data/CA'
+    # The memory_* and post_max_* should be in [PHP]
     - name: Modify PHP Ini for Mem limits and POST size
       lineinfile:
         regexp: '{{ regexp }}'
         line: '{{ line }}'
+        #insertafter: '^[PHP]$'
+        path: /opt/sc/support/etc/php.ini
       with_items:
-        - {regexp: '^memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
-        - {regexp: '^post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
+        - {regexp: '^[;# ]*memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
+        - {regexp: '^[;# ]*post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
+      tags: sc

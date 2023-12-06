@@ -1,4 +1,7 @@
 # ## Install Docker on RH (or Debian)
+# Note: Because of multiple users allowed access to docker by "dockerusers", the parameter
+# override has to be passed as JSON in --extra-vars.
+# 
 # Example of running:
 # ```
 # ansible-playbook docker_install.yaml -e '{"host":"runner", "dockergroup":"docker", "dockerusers":["misterx","mrsy"]}'
