@@ -66,11 +66,11 @@ function htdata(vp, cb) {
     cfl.add_basic_creds(vp, rpara);
     rpara.headers.Accept = "application/json";
   }
-  console.log("rpara: ", rpara);
+  if (vp.debug) { console.log("rpara: ", rpara); }
   axios.get(vp.url, rpara).then( function (resp) {
-    console.error("Then ..."); // return;
+    if (vp.debug) { console.error("Then ..."); } // return;
     var d = resp.data;
-    console.log("Got initial data: "+ d);
+    //console.log("Got initial data: "+ d);
     // TODO: Implement a meta-notation like _ONLYKEYVAL, _FIRSTITEM to select / transform
     // in a special way
     if (vp.arrsel) { d = data_select(d, vp); }
@@ -115,10 +115,12 @@ if (!path.basename(process.argv[1]).match(/htviews.js$/)) {
     if (!viewid) { usage("No viewid passed from CL"); }
     var vcfg = cfg.views.find( (v) => { return v.id == viewid; });
     if (!vcfg)   { usage("No view by id "+viewid+" found in config"); }
+    if (process.env["HTVIEW_DEBUG"]) { vcfg.debug = 1; }
     console.log("Got view cfg: ", vcfg);
     htview.htdata(vcfg, null);
   }
   ops[op]();
-  process.exit(1);
+  // Do NOT .exit(), this will terminate async (HTTP) ops. 
+  //process.exit(1);
 }
 
