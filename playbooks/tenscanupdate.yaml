@@ -111,10 +111,11 @@
         path: /usr/lib/systemd/system/nessusd.service
         regexp: '{{ item.regexp }}'
         line: '{{ item.line }}'
-        with_items:
-          - {regexp: '^ExecStart\s*=', line: 'ExecStart=/opt/nessus/sbin/nessus-service -q --no-root'}
-          - {regexp: '^User\s*=', line: 'User={{ runscanas }}'}
+      with_items:
+        - {regexp: '^ExecStart\s*=', line: 'ExecStart=/opt/nessus/sbin/nessus-service -q --no-root'}
+        - {regexp: '^User\s*=', line: 'User={{ runscanas }}'}
       tags: scanner
+      when: cfgmod
     - name: Reload systemd (for unit change)
       shell: systemctl daemon-reload
       tags: scanner
