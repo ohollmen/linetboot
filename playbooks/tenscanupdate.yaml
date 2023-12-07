@@ -62,24 +62,27 @@
     # 'SC-202206.1-5.x-rh8-64.tgz'
     tgz_sc: ''
     # For cd $DIR. Actual dirname seems to be tgz name with '.tgz' stripped
-    tgz_dir_patt: 'SC-202*'
+    # DONOTUSE: tgz_dir_patt: 'SC-202*'
     unit_scan: 'nessusd'
     unit_sc: 'SecurityCenter'
     backup_local: false
     php_ini_fn: /opt/sc/support/etc/php.ini
     # Note: Use /opt or /var if out of space. MUST have a value here !
-    tmpdir: /tmp
+    tmpdir: /var/tmp
     runscanas: nessus
   tasks:
+    # Note: Scanner packages do not require authentication
     - name: Download Scanner Update RPM (from tenable.com)
       shell:
         cmd: 'curl "{{ rpm_api_url }}/{{ rpm_scan_update }}" --output {{ rpm_scan_update }}'
         chdir: '{{ tmpdir }}'
-    #- name: Copy Update to Scanners
-    #  copy:
-    #    src: '/tmp/{{ rpm_scan_update }}'
-    #    dest: '{{ tmpdir }}/{{ rpm_scan_update }}'
-    #  tags: scanner
+      delegate_to: localhost
+      tags: scanner
+    - name: Copy Update RPM to Scanners
+      copy:
+        src: '{{ tmpdir }}/{{ rpm_scan_update }}'
+        dest: '{{ tmpdir }}/{{ rpm_scan_update }}'
+      tags: scanner
     # Since 
     - name: Stop Scanner for Update
       ansible.builtin.systemd:
@@ -98,16 +101,21 @@
       tags: scanner
     # Do here: useradd -r nessus {{ runscanas }}
     # chmod 750 /opt/nessus/sbin/* && chown -R {{ runscanas }}:{{ runscanas }} /opt/nessus
-    - name: Modify systemd unit
+    # See also: https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html
+    # https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#User=
+    # See also systemd --user. Both ExecStart= and User= reside in [Service] section
+    - name: Modify systemd unit (to include --no-root)
       lineinfile:
         path: /usr/lib/systemd/system/nessusd.service
         regexp: '{{ item.regexp }}'
         line: '{{ item.line }}'
         with_items:
-          - {regexp: '^ExecStart\s*=', line: 'ExecStart=/opt/nessus/sbin/nessus-service -q -no-root'}
+          - {regexp: '^ExecStart\s*=', line: 'ExecStart=/opt/nessus/sbin/nessus-service -q --no-root'}
           - {regexp: '^User\s*=', line: 'User={{ runscanas }}'}
+      tags: scanner
     - name: Reload systemd (for unit change)
       shell: systemctl daemon-reload
+      tags: scanner
     ###### SC #####
     # 
     - name: Copy Update to SC
@@ -141,7 +149,7 @@
       when: backup_local
       # when: 0
     - name: Update SC
-      shell: 'rpm -Uvh /tmp/{{ rpm_sc_update }}'
+      shell: 'rpm -Uvh {{ tmpdir }}/{{ rpm_sc_update }}'
       tags: sc
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
@@ -173,17 +181,11 @@
         chdir: '{{ tmpdir }}'
       tags: sc
       when: tgz_sc
-    - name: (Re)start Security Center
-      # shell: service SecurityCenter start; service SecurityCenter status
-      ansible.builtin.systemd:
-        name: '{{ unit_sc }}'
-        state: started
-      tags: sc
-      when: tgz_sc
     - name: Update Scanner status timeout (on SC)
       # To check / verify
       # /opt/sc/support/bin/sqlite3 -header -table /opt/sc/application.db "select name,value from Configuration where name='ScannerStatusTimeout'"
-      shell: /opt/sc/support/bin/sqlite3 /opt/sc/application.db "Update Configuration set value=\'300\' where name=\'ScannerStatusTimeout\'"
+      shell:
+        cmd: /opt/sc/support/bin/sqlite3 /opt/sc/application.db "Update Configuration set value=\'300\' where name=\'ScannerStatusTimeout\'"
     # Note: php.ini also has openssl.capath = '/opt/sc/data/CA'
     # The memory_* and post_max_* should be in [PHP]
     - name: Modify PHP Ini for Mem limits and POST size
@@ -196,3 +198,10 @@
         - {regexp: '^[;# ]*memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
         - {regexp: '^[;# ]*post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
       tags: sc
+    - name: (Re)start Security Center
+      # shell: service SecurityCenter start; service SecurityCenter status
+      ansible.builtin.systemd:
+        name: '{{ unit_sc }}'
+        state: started
+      tags: sc
+      when: tgz_sc
