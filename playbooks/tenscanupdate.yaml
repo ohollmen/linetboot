@@ -2,7 +2,7 @@
 # Run by --tags with either target `--tags sc` or `--tags scanner`
 # Example:
 # ```
-# # 
+# # Scanner
 # ansible-playbook tenscanupdate.yaml --tags scanner -e "host=all rpm_scan_update=Nessus-10.2.0-es8.x86_64.rpm" --limit "tenable-scanner*"
 # # Only SC supports backup step
 # ansible-playbook tenscanupdate.yaml --tags sc -e "host=all rpm_sc_update=SecurityCenter-5.21.0-el8.x86_64.rpm tgz_sc=SC-202206.1-5.x-rh8-64.tgz backup_local=true" --limit "tenable-sc*"
@@ -70,6 +70,8 @@
     # Note: Use /opt or /var if out of space. MUST have a value here !
     tmpdir: /var/tmp
     runscanas: nessus
+    # Modify configs
+    cfgmod: false
   tasks:
     # Note: Scanner packages do not require authentication
     - name: Download Scanner Update RPM (from tenable.com)
@@ -186,6 +188,8 @@
       # /opt/sc/support/bin/sqlite3 -header -table /opt/sc/application.db "select name,value from Configuration where name='ScannerStatusTimeout'"
       shell:
         cmd: /opt/sc/support/bin/sqlite3 /opt/sc/application.db "Update Configuration set value=\'300\' where name=\'ScannerStatusTimeout\'"
+      tags: sc
+      when: cfgmod
     # Note: php.ini also has openssl.capath = '/opt/sc/data/CA'
     # The memory_* and post_max_* should be in [PHP]
     - name: Modify PHP Ini for Mem limits and POST size
@@ -195,9 +199,10 @@
         #insertafter: '^[PHP]$'
         path: /opt/sc/support/etc/php.ini
       with_items:
-        - {regexp: '^[;# ]*memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
-        - {regexp: '^[;# ]*post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
+        - {regexp: '^[; ]*memory_limit\s+=\s+', line: 'memory_limit = 17000M'}
+        - {regexp: '^[; ]*post_max_size\s+=\s+', line: 'post_max_size = 17000M'}
       tags: sc
+      when: cfgmod
     - name: (Re)start Security Center
       # shell: service SecurityCenter start; service SecurityCenter status
       ansible.builtin.systemd:
