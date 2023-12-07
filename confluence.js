@@ -64,11 +64,19 @@ function confluence_index(req, res) {
 }
 
  function add_basic_creds(cfg, opts) {
-    if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
-    var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
-    if (!creds_b64) { throw "Basic 64 creds empty !"; }
     opts.headers ||= {};
-    opts.headers.Authorization = "Basic "+creds_b64;
+    // New: tweak logic to facilitate Bearer auth
+    //if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
+    if ( cfg.user && cfg.pass) { 
+      var creds_b64 = Buffer.from(cfg.user+":"+cfg.pass).toString('base64');
+      if (!creds_b64) { throw "Basic 64 creds empty !"; }
+      opts.headers.Authorization = "Basic "+creds_b64;
+    }
+    else if (cfg.token) {
+      opts.headers.Authorization = "Bearer "+cfg.token;
+    }
+    else { throw "Neither Basic or Bearer auth credentials were configured"; }
+    return;
   } // add_basic_creds
 
 function confluence_page(req, res) {
