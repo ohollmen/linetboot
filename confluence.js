@@ -64,7 +64,8 @@ function confluence_index(req, res) {
 }
 
  function add_basic_creds(cfg, opts) {
-    opts.headers ||= {};
+    //opts.headers ||= {};
+    opts.headers = opts.headers || {}; // 
     // New: tweak logic to facilitate Bearer auth
     //if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
     if ( cfg.user && cfg.pass) { 

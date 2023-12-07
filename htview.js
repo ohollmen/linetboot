@@ -11,6 +11,8 @@
 * - user - Username (for basic auth)
 * - pass - Password for basic auth
 * - token - Singular Token for Bearer authentication
+* - TODO: - fmt -format other than (default) JSON (i.e. "yaml")
+* 
 * ## TODO
 * - Use Jira/Other module for adding creds
 * - Allow file sources (also ones cached from an URL, implement caching here ?)
@@ -22,7 +24,7 @@
 
 var path  = require("path");
 var axios = require("axios");
-var cfl   = require("./confluence.js")
+var cfl   = require("./confluence.js"); // For add_basic_creds() ONLY
 var cfg = {};
 function init(_cfg, app) {
   if (_cfg["htview"]) { _cfg = _cfg["htview"]; }
@@ -33,7 +35,7 @@ function init(_cfg, app) {
   cfg = _cfg;
   if (!app) { return; } // Not a webapp context
   views.forEach( (v) => {
-    app.get(v.localurl, htview)
+    app.get(v.localurl, htview);
   });
 }
 
@@ -45,27 +47,44 @@ function htview_send(req, res) {
   //res.json({status: "ok", data: d});
 }
 
+function data_select(d, vp) {
+  if (!vp.arrsel) { return d; }
+  var as = vp.arrsel.split(/\./);
+  var i = 0;
+  // && is_object( d[ as[i] ] )
+  for (i=0;as[i] && d[ as[i] ];i++) { d = d[ as[i] ]; }
+  if (!d) { console.error("No data remains after selecting by dot-notation !"); }
+  return d;
+}
+
+/** GET data by http (GET) and
+ * Optionally use dot-notation selctor to access correct data within returned JSON data.
+ */
 function htdata(vp, cb) {
   var rpara = {};
-  if (cfg.user || cfg.pass || cfg.token) {
-    cfl.add_basic_creds(cfg, rpara);
+  if (vp.user || vp.pass || vp.token) {
+    cfl.add_basic_creds(vp, rpara);
+    rpara.headers.Accept = "application/json";
   }
-  axios.get(vp.url, rpara).then( (resp) => {
+  console.log("rpara: ", rpara);
+  axios.get(vp.url, rpara).then( function (resp) {
+    console.error("Then ..."); // return;
     var d = resp.data;
+    console.log("Got initial data: "+ d);
     // TODO: Implement a meta-notation like _ONLYKEYVAL, _FIRSTITEM to select / transform
     // in a special way
-    if (vp.arrsel) {
-      var as = vp.arrsel.split(/\./);
-      var i = 0;
-      // && is_object( d[ as[i] ] )
-      for (i=0;as[i] && d[ as[i] ];i++) { d = d[ as[i] ]; }
-    }
-    console.log(d);
+    if (vp.arrsel) { d = data_select(d, vp); }
+    //console.log(d);
+    console.error( JSON.stringify(d, null, 2) );
+  }).catch( function (ex) {
+    console.log("Error fetching data for view: "+ex);
   });
+  //console.log("end-of-htdata");
 }
 
 function usage(msg) {
   if (msg) { console.error(msg); }
+  //"Try one of subcommands: "+Object.keys(ops).join(",");
   process.exit(1);
 }
 module.exports = {
@@ -73,18 +92,33 @@ module.exports = {
   htdata: htdata,
   
 };
-
+// CL "main".
 if (!path.basename(process.argv[1]).match(/htviews.js$/)) {
   var mcfgfn = process.env["HOME"]+"/.linetboot/global.conf.json";
   var mcfg = require(mcfgfn);
   if (!mcfg) { usage("No main config loaded"); }
   var htview = module.exports;
-  var viewid = process.argv[2];
-  if (!viewid) { usage("No viewid passed from CL"); }
   htview.init(mcfg);
-  var vcfg = cfg.views.find( (v) => { return v.id == viewid; });
-  if (!vcfg) { usage("No view by id "+viewid+" found in config"); }
-  console.log("Got view cfg: ", vcfg);
-  htview.htdata(vcfg, null);
+  var ops = {view: view, list: list};
+  var op = process.argv[2];
+  var ophelp = "Try one of subcommands: "+Object.keys(ops).join(",");
+  if (!op)      { usage("No subcommand passed. "+ophelp); }
+  if (!ops[op]) { usage(`No subcommand ${op} found.`+ ophelp); }
+  function list() {
+    console.log("Listing of profiles");
+    cfg.views.forEach( (v) => {
+      console.log(`Profile: ${v.id}, from: ${v.url}`);
+    });
+  }
+  function view() {
+    var viewid = process.argv[3];
+    if (!viewid) { usage("No viewid passed from CL"); }
+    var vcfg = cfg.views.find( (v) => { return v.id == viewid; });
+    if (!vcfg)   { usage("No view by id "+viewid+" found in config"); }
+    console.log("Got view cfg: ", vcfg);
+    htview.htdata(vcfg, null);
+  }
+  ops[op]();
+  process.exit(1);
 }
 
