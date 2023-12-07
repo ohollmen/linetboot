@@ -194,8 +194,8 @@
     # The memory_* and post_max_* should be in [PHP]
     - name: Modify PHP Ini for Mem limits and POST size
       lineinfile:
-        regexp: '{{ regexp }}'
-        line: '{{ line }}'
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
         #insertafter: '^[PHP]$'
         path: /opt/sc/support/etc/php.ini
       with_items:
