@@ -76,7 +76,7 @@
     # Note: Scanner packages do not require authentication
     - name: Download Scanner Update RPM (from tenable.com)
       shell:
-        cmd: 'curl "{{ rpm_api_url }}/{{ rpm_scan_update }}" --output {{ rpm_scan_update }}'
+        cmd: 'curl "{{ rpm_api_url }}/{{ rpm_scan_update }}" --output {{ rpm_scan_update }} && chmod a+rw {{ rpm_scan_update }}'
         chdir: '{{ tmpdir }}'
       delegate_to: localhost
       tags: scanner
