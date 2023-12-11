@@ -1,0 +1,101 @@
+# ## Upgrade RedHat Satellite (6.x) on RHEL 8 (minor or patch)
+# 
+# Example run for patch version (Example scenarios: patch (by pattern): 6.11.z, minor upgrade to exact version 6.12:
+# ```
+# # Patch upgrade
+# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.11.z" --syntax-check
+# # Minor upgrade
+# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.12 minor=1" --syntax-check
+# ```
+# Note: Larger version upgrades within the 6.X version family (e.g. stepping X from 11 to 13) need minorup set to true.
+# 
+# 
+# ## Detecting/Extracting version number pattern
+# 
+# The version passed to playbook as "tgtver" is to be a version pattern, not an exact version.
+# Version patterns have a letter (e.g. "z") at the end to denote 1 or 2 trailing dot-versions of the actual version.
+# RedHat satellite-maintain commands will (internally / behind-the-scenes) choose the version to install.
+# On version e.g. 6.13.4 replace thrid dot-version with e.g. z to allow patch version to be updated.
+# Also `sudo satellite-maintain upgrade list-versions` gives same number
+# ```
+# [root@anotherhost# sudo satellite-maintain upgrade list-versions
+# Checking for new version of satellite-maintain...
+# Nothing to update, can't find new version of satellite-maintain.
+# 6.13.z
+# ```
+# ## Versions available
+# 
+# For info on versions released / available, go to: https://access.redhat.com/articles/1365633 (Note: may require RH account)
+# 
+# ## Version numbering inconsistency in RH Satellite product
+# 
+# Note also that the version number - in regards to number of digits is inconsistent.
+# E.g. Subsequent versions may be numbered 6.13.4 (no fourth digit) and 6.13.4.1 (has 4th digit).
+# See: https://access.redhat.com/articles/1365633
+# 
+# ## Changes
+# - Add -y to commands
+#
+- name: Upgrade RH Satellite
+  hosts: '{{ host }}'
+  become: yes
+  vars:
+    # Note: this could have .z at end (typically for minor upgrades) - include it
+    tgtver: '6.12'
+    # Only relevant on minor upgrade ("minorup == true")
+    minorup_repos: ["satellite-maintenance-6.12-for-rhel-8-x86_64-rpms", "satellite-6.12-for-rhel-8-x86_64-rpms"]
+    # Satelite-mainatin upgrade (check, run) default options (shared between two sub-sub commands)
+    smup_opts: '--whitelist="check-tmout-variable,non-rh-packages"''
+    # Deprecated / Discontinued (veruprepos, verupopts) as "too-granular"
+    #veruprepos:
+    #  #'6.11.z': '???'
+    #  '6.12': satellite-maintenance-6.12-for-rhel-8-x86_64-rpms --enable satellite-6.12-for-rhel-8-x86_64-rpms
+    #  '6.13': 'satellite-maintenance-6.13-for-rhel-8-x86_64-rpms'
+    # These seem to have settled to good default vals
+    #verupopts:
+    #  '6.11.z': ''
+    #  '6.12': '--whitelist=check-tmout-variable'
+    #  '6.13': ''
+    #  '6.13.z': '--whitelist="check-tmout-variable,non-rh-packages"'
+    # Note: Should be FQDN per RH guides. Any satellite install/upgrade flows mess up the hostname.
+    # See task below to understand how to fix.
+    rhsat_host: 'sat.mycomp.com'
+    # Enable "minor" (bigger of 2, see below)
+    # Note The bigger upgrade is called "minor upgrade", smaller is called "patch upgrade" (default)
+    minorup: 0
+    reboot: 0
+  tasks:
+    - name: Set hostname (to FQDN) for installer
+      shell: hostnamectl set-hostname {{ rhsat_host }}
+    # manual probe of versions available (e.g.):
+    #   satellite-maintain upgrade list-versions
+    #   # Suggested: Use health check option (6.11z example uses -w "non-rh-packages")
+    #   satellite-maintain upgrade check --target-version 6.12 --health...
+    # https://access.redhat.com/solutions/2755731
+    - name: Delete Paused tasks
+      shell: foreman-rake foreman_tasks:cleanup TASK_SEARCH='label ~ *'  VERBOSE=true STATES='paused,stopped'
+    # NEW: Enable one-by-one for easier Ansible handling
+    #- name: Enable minor upgrade version specific Repos
+    #  # Note added enable here to the base command, do multiple repos separately
+    #  # Most of time there is one repo, sometimes two (or more ?). TODO: revamp vars/params
+    #  shell: 'subscription-manager repos --enable {{ item }}'
+    #  #OLD:with_items: veruprepos[tgtver]
+    #  with_items: '{{ minorup_repos }}'
+    #  when: minorup
+    #- name: Enable Satellite DNF module (for RHEL 8)
+    #  # This seems to be universal across minor upgrades
+    #  shell: 'dnf module enable satellite-maintenance:el8'
+    #  when: minorup
+    # This section is common to patch and minor upgrades (always run)
+    # For minor version tgtver is someting like "6.14" 
+    - name: Check for Upgrade
+      shell: satellite-maintain upgrade check -y --target-version {{ tgtver }} --whitelist="check-tmout-variable,non-rh-packages"
+    # No --whitelist needed for 6.13 (See vars). Per output this has --force option (to get rid of interactive prompting)
+    # Seems -y is effective for suppressing interaction.
+    - name: Run Upgrade
+      # Seems whitelist opts might depend on version (see verupopts => {{ verupopts[tgtver] }})
+      shell: 'satellite-maintain upgrade run -y --target-version {{ tgtver }} --whitelist="check-tmout-variable,non-rh-packages"'
+    # At End: Recommended to run: dnf needs-restarting --reboothint
+    #- name: Reboot upgraded host (optional)
+    #  shell: reboot
+    #  when: reboot
