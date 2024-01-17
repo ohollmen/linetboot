@@ -23,6 +23,20 @@
 #     --header 'Authorization: Bearer bce768c...' --output 'Nessus-10.6.1-es8.x86_64.rpm'
 # ```
 # 
+# ## Backing up SC
+# 
+# Whole /opt/sc ( https://docs.tenable.com/security-center/Content/Backup.htm )
+# ```
+# tar -pzcf sc_backup.tar.gz /opt/sc
+# # Verify integrity
+# tar -tvf sc_backup.tar.gz
+# ```
+# Config only backups (by PHP, https://docs.tenable.com/security-center/Content/ConfigurationBackup.htm ):
+# ```
+# sudo mkdir /root/sc_config_09_01
+# # -l = local, -r = remote (e.g. ... -r tns@100.100.100.100:/tmp/)
+# sudo /opt/sc/support/bin/php /opt/sc/src/tools/backupSCConfiguration.php -l /root/sc_config_09_01
+# ```
 # ## Some important directories
 # 
 # Security Center:
