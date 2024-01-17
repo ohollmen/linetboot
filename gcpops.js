@@ -16,7 +16,8 @@ var compute; // = require('@google-cloud/compute'); // For const:  Missing initi
 
 // var compute = new Compute(); // Older version
 // var axios = require("axios");
-
+var async = require("async");
+var cproc = require("child_process"); // https://nodejs.org/api/child_process.html
 //var gcp = require('google-cloud'); // gcp.compute
 // Hmmm (!?) gcp.
 // const computeProtos = compute.protos.google.cloud.compute.v1;
@@ -148,7 +149,7 @@ async function waitop(operation, vmcfg) {
   console.log(operation);
   return 1;
 }
-if (process.argv[1].match(/gcpops.js$/)) {
+if (process.argv[1].match(/XXXXXXgcpops.js$/)) {
   var mcfname = process.env["HOME"]+"/.linetboot/global.conf.json";
   var mcfg = require(mcfname);
   init(mcfg.gcp);
@@ -207,4 +208,64 @@ module.exports = {
   init: init,
   waitop: waitop,
   listInstancesOfProject: listInstancesOfProject,
+  subdivide: subdivide,
+  subarr_proc: subarr_proc,
 };
+  // Sub-divide / Pre-process to batches
+function subdivide(arr, sasize, opts) {
+  opts = opts || {debug: 0}
+  var bs = []; //var i = 0;
+  var sa; // Sub-array
+  sasize = sasize || 3;
+  // Using arr.length would leave out last (uneven / remainder) batch
+  for (var i=0;(sa = arr.splice(0, sasize)) && sa.length ;i++) { opts.debug && console.log(sa); bs[i] = sa; }
+  return bs;
+}
+
+function subarr_proc(arr, sasize, proccb, opts, finalcb) {
+  opts = opts || {debug: 0}
+  // Batch processing (still abstract). TODO: Pass the item processor here (ctx var ?).
+  function proc_batch(sarr, cb) {
+    //console.log("Got:", sarr);
+    // Mock-up: proc_item
+    async.map(sarr, proc_item, (err, results) => {
+      if (err) { console.log("Error processing a parallel batch !"); return cb(err, null); }
+      opts.debug && console.log(`Done inner map batch of ${sarr.length} items.`);
+      opts.debug && console.log("Got res: ", results);
+      // Note: eachSeries will still use first as error. We now use mapSeries
+      cb(null, results);
+    });
+  }
+  var bs = gcpops.subdivide(arr, sasize);
+  opts.debug && console.log( JSON.stringify(bs) ); // process.exit(0);
+  // eachOfSeries will get index, eachSeries will not (neither will get compl. cb results), mapSeries completion cb gets called w. err,results
+  async.mapSeries(bs, proc_batch, (err, results) => {
+    if (err) { console.error("Outer (series) processing - Got error: "+err); return ; }
+    opts.debug && console.log("Done all batches ", results);
+    if (finalcb) { finalcb(err, results); }
+    else { console.error("Warning: finalcb not passed (should pass for full async control)"); }
+  });
+  // Always aim to pass finalcb and capture results. There's no meaningful return value here.
+}
+
+if (process.argv[1].match("gcpops.js")) {
+  var gcpops = module.exports;
+  // Test for now https://caolan.github.io/async/v3/docs.html
+  var arr = ["bu1","bu2","bu3","bu4","bu5","bu6","bu7","bu8","bu9","bu10","bu11","bu12","bu13","bu14","bu15","bu16",];
+  // Map item cb (e.g. gcloud compute machine-images delete client-template)
+  function proc_item(item, cb) {
+    console.log("Process: "+item);
+    var cmd = "echo "+ item + "; sleep 2";
+    // opts as optional 2nd
+    cproc.exec(cmd, (err, stdout, stderr) => {
+      if (err) { console.log("Error running "+cmd+" "+ err); return cb(err, null); }
+      cb(null, stdout);
+    });
+    
+  }
+  var sasize = 3;
+  var opts = {debug: 0};
+  function finalcb() { console.log("Done (main)"); }
+  gcpops.subarr_proc(arr, sasize, proc_item, opts, finalcb); // finalcb (test w. null)
+  //NOT:process.exit(0);
+}

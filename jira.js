@@ -47,7 +47,8 @@ function init(_cfg) {
 
 function body_opts(opts, m) {
   var hasbody = {"post": 1, "put": 1};
-  opts.headers  ||= {};
+  //opts.headers  ||= {}; // OK in Newer node
+  opts.headers = opts.headers || {};
   if (hasbody[m]) {
     opts.headers["content-type"] = "application/json";
   }
