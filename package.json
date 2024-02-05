@@ -28,7 +28,7 @@
     "docker-imager": "git://github.com/ohollmen/docker-imager.git",
     "jsdoc": "3.5.5",
     "jshint": "2.9.7",
-    "pm2": "3.2.8",
+    "pm2": "5.2.2",
     "yarn": "1.22.1"
   },
   "optionalDependencies": {
