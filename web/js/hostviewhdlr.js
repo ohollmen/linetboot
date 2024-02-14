@@ -1341,30 +1341,72 @@ function cmod_covcomp(data, copts) {
   return copts;
 }
 
+function form_jg(fdefs, opts) {
+  opts = opts || {labelw: 120, wfactor: 0.6, };
+  
+  var labelw = opts.labelw || 120;
+  let cont = "";
+  var idv = "";
+  var wfactor = opts.wfactor || 0.6; // TODO: From params
+  fdefs.forEach((fd) => { // map ?
+    var wtype = fd.wtype || "text";
+    //if (!fd.visible && cfg.onlyvis) { return; }
+    if (fd.ispkey) {
+      //DONOT:cont += `<input type="hidden" name=\"w_${fd.name}" id="w_${fd.name}" class="pkey">`;
+      return; } // Pkey, hide (transmit to up a diff. way)
+    // TODO: (fctx/cfg, fd)
+    cont += `<label style="width: ${labelw}px" for="w_${fd.name}">${fd.title}</label>`;
+    // TODO: Choice of w. (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
+    // TODO: Call callbacks w. (fd, opts)
+    if (wtype == 'text') {
+      //  type="number" (min/max)
+      var sizeinfo = Math.round(fd.width * wfactor) || 20;
+      cont += `<input type="text" name=\"w_${fd.name}" id="w_${fd.name}" size="${sizeinfo}">`;
+    }
+    else if (wtype == 'textarea') {
+      cont += `<textarea  name="w_${fd.name}" id="w_${fd.name}" rows="5" cols="33"></textarea>`
+    }
+    else if (wtype == 'options') {
+      // Populate options dynamically
+      cont += `<select Xtype="text" name="w_${fd.name}" id="w_${fd.name}"\"></select>`;
+    }
+    else if (wtype == 'checkbox') {
+      // checked=checked indeterminate / w.select()
+      cont += `<input type="checkbox" name=\"w_${fd.name}" id="w_${fd.name}">`;
+    }
+    else if (wtype == 'radiobutton') {
+      // checked=checked indeterminate / w.select()
+      cont += `<input type="radiobutton" name=\"w_${fd.name}" id="w_${fd.name}">`;
+    }
+    else if (wtype == 'date') {
+      // min / max required pattern (re)
+      cont += `<input type="date" name=\"w_${fd.name}" id="w_${fd.name}">`;
+    }
+    else if (wtype == 'slider') {
+      // min / max / step required 
+      cont += `<input type="range" name=\"w_${fd.name}" id="w_${fd.name}">`;
+    }
+    else { cont += `<input type="text" name=\"w_${fd.name}" id="w_${fd.name}">`; }
+    cont += "<br/>";
+    
+  });
+  return cont;
+}
+
 function jgrid_form(ev, act) {
-  var tgtid = ev.routepath ? "routerdiv" : act.elsel;
+  var tgtid = act.elsel || "routerdiv"; // ev.routepath ? "routerdiv" : ;
   var fsid = act.fsetid;
   if (!fsid) { toastr.error("No basis to create form 1\n"); return; }
   var fdefs = fldinfo[fsid];
   if (!fdefs) { toastr.error("No basis to create form 2\n"); return; }
-  var labelw = act.labelw || "120";
-  var cont = "";
-  fdefs.forEach((fd) => { // map ?
-    var wtype = f.wtype || "text";
-    //if (!fd.visible && cfg.onlyvis) { return; }
-    // TODO: (fctx/cfg, fd)
-    cont += "<label style=\"width: "+labelw+"px\" for=\"w_"+fd.name+"\">"+fd.title+"</label>";
-    // TODO: Choice of w. (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
-    
-    if (wtype == 'text') {
-      cont += "<input type=\"text\" name=\"w_"+fd.name+"\" id=\"w_"+fd.name+"\">";
-    }
-    cont += "<br/>";
-    
-  });
+  let cont = form_jg(fdefs, {labelw: act.labelw});
+  
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
-  datasets["testform"] = "<form>\n{{{ cont }}}\n</form>";
-  rapp.templated("testform", {cont: cont}, tgtid);
+  // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
+  // 
+  //datasets["testform"]
+  rapp.dcache["testform"] = `<h1>{{{ name }}}</h1><form id="eform">\n{{{ cont }}}\n<input type="button" id="savebutt" value="Save" /></form>`;
+  rapp.templated("testform", {name: act.name, cont: cont}, tgtid);
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
 }
 

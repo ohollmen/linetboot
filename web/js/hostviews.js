@@ -76,7 +76,7 @@ function js_grid_filter (filter) {
   }
 }
 
-// 
+// NOT in use ? (w. new showgrid_*)
 var db = {
   datakey: "hosts",
   filterdebug: 1,
@@ -109,12 +109,11 @@ function showgrid_opts(divid, griddata, fields) {
   // NOTE: Use a unique thing for datakey: ... (e.g. divid OR append name props of fields ...
   var mydb = {datakey: divid, filterdebug: 1, loadData: js_grid_filter, uisruncnt: 0}; // rapp.dclone(db);
   //mydb.loadData = js_grid_filter;
-  mydb[divid] = griddata;
+  mydb[divid] = griddata; // TODO: retroactive check on docs: why also here (See gridopts.data above). for rapp (cb passing) purposes ?
   gridopts.controller = mydb;
-  //gridopts.controller = db; // Global
+  //NOT: gridopts.controller = db; // Global
   return gridopts;
 }
-  // var gridopts = 
   
    var scales = {
       yAxes: [
@@ -550,7 +549,8 @@ function tabsetview(ev, act) {
   //return;
   //act.tabs.forEach((ti) => {});
   // Setup router div to contain tab structure
-  $('#routerdiv').html("<div id=\"tabsnest\"></div>");
+  var contdiv = "routerdiv"; // ID !
+  $('#'+contdiv).html("<div id=\"tabsnest\"></div>");
   $('#tabsnest').html( webview.tabs(tabs, null, {idattr: "elsel"}) );
   $( "#tabsnest" ).tabs({active: 1});
   $( "#tabsnest" ).tabs({ activate: ontabactivate }); // Set click handler !
@@ -1281,6 +1281,10 @@ function procinfo(hname, dialogsel, cb) {
 // $("#jsGrid").jsGrid("sort", field);
 // NOTE: The new showgrid_opts() makes the controller short-lifetime, per grid instance (no global interference)
 // http://js-grid.com/docs/#callbacks
+// See: showgrid_opts() (called here), js_grid_filter() as db.loadData CB.
+// Gets config info from act (uisetup, ), act also gets attached to gridopts.controller.act = act;
+// Internally scoped onRefreshed CB also calls act.uisetup(act, data)
+// TODO: new Gridder(), expose gridopts, db, allow setting by opts() (override any) before calling showgrid()
 function showgrid (divid, griddata, fields, act) {
   // toastr.error
   if (!divid || typeof divid != 'string') { return toastr.error("showgrid: Div id not passed !"); }
@@ -1328,7 +1332,7 @@ function showgrid (divid, griddata, fields, act) {
     //if (ctrl.uisruncnt) {
     console.log("UI Setup has been run by grid N times: "+ctrl.uisruncnt); // }
     if (ctrl.uisruncnt && act.noresetup) { console.log("Prevent uisetup rerun");return; }
-    act.uisetup(act, data);
+    act.uisetup(act, data); // act.uisetup was checked above
     ctrl.uisruncnt++;
   }
 }
