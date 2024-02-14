@@ -5,7 +5,7 @@
 # # Patch upgrade
 # ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.11.z" --syntax-check
 # # Minor upgrade
-# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.12 minor=1" --syntax-check
+# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.12 minorup=1" --syntax-check
 # Minor upgrade with explicit passing of repos (MUST use JSON params)
 # ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e '{"host":"all", "rhsat_host":"rhsatellite-01.corp.com", "tgtver"" "6.12", \
 #     "minorup": 1, "minorup_repos": ["satellite-maintenance-6.12-for-rhel-8-x86_64-rpms", "satellite-6.12-for-rhel-8-x86_64-rpms"]}'
