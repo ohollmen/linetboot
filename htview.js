@@ -25,20 +25,41 @@
 var path  = require("path");
 var axios = require("axios");
 var cfl   = require("./confluence.js"); // For add_basic_creds() ONLY
+// var datapop = require("./datapop.js");
 var cfg = {};
+var cbmod = null; // Transformational callbacks, etc.
+/** Init htview mainly based on .js config file (JS for the code/callbacks)  */
 function init(_cfg, app) {
   if (_cfg["htview"]) { _cfg = _cfg["htview"]; }
   if (!_cfg) { console.error("htview: No config found");  return; }
-  var views = _cfg.views;
-  if (!views) { console.error("htview: No views configured");  return; }
+  // TODO: Secondary (separate file) for configs !!! (e.g. htviews.conf.json)
+  var views;
+  if (_cfg.conffn) { views = require(_cfg.conffn); } // Rely on ext. conf file
+  else { views = _cfg.views; } // Use "views" array directly from config
+  if (!views) { console.error("htview: No views configured (in main conf or ext. conf)");  return; }
   if (!Array.isArray(views)) { console.error("htview: views not configured in a Array !");  return; }
   cfg = _cfg;
-  if (!app) { return; } // Not a webapp context
+  // Try js.
+  if (cfg.datacbmodule) { cbmod = require(cfg.datacbmodule); console.log("htview CB:s loaded from "+cfg.datacbmodule); }
+  // TODO: merge callbacks to RT version of original config
+  // if (cbmod) { ... }
+  if (!app) { return; } // Not a (express) webapp context
   views.forEach( (v) => {
     app.get(v.localurl, htview);
   });
 }
-
+/** Merge data transformation callbacks to original structure (at init()).
+ * If structure of datacb changes, do changes ONLY here.
+*/
+function datacb_merge(views, cbmod) {
+  views.forEach( (htvc) => {
+    // Lookup any callbacks from cbmod
+    // if ( cbmod[] ) {}
+  });
+  // function alookup(item) { // from *Array*
+  //  var cbnode = cbmod.find( () => {  } );
+  //}
+}
 
 function htview_send(req, res) {
   var jr = {status: "error", msg: "Could not create grid view result. "};
