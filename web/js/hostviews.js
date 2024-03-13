@@ -706,12 +706,55 @@ var tabloadacts = [
      path: "vulnlist", uisetup: null, dialogidXXX: ""},
   {"name":"Images authorized for Use", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/authimg", gridid: "jsGrid_authimg", fsetid: "authimg", 
      path: "authimg", uisetup: null, dialogidXXX: ""},
-     {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist?jqp=fr", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
+  {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist?jqp=fr", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
      path: "jiraiss", uisetup: null, dialogidXXX: "", "longload": 1},
 
-     {"name":"TF Nets", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/yaml/nets", gridid: "jsGrid_tfnets", fsetid: "tfnets", 
+  {"name":"TF Nets", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/yaml/nets", gridid: "jsGrid_tfnets", fsetid: "tfnets", 
      path: "tfnets", uisetup: null, dialogidXXX: "", "longload": 1},
+  {"name":"Cert Decode", "elselXX": "XX", tmpl: "certdecf", "hdlr": certdecode,  url: "/certdecode", path: "certdec" },
+  {"name":"Cert Sys Documentation", "elselXX": "XX", tmpl: "", "hdlr": certdoc,  url: "/certsysdoc", path: "certsysdoc" },
 ];
+
+function certdecode(ev, act) {
+  rapp.templated(act.tmpl, act, "routerdiv");
+  $("#cdbut").click( function (jev) {
+    var cont = $("#certcont").val();
+    if (!cont) { return toastr.error("No PEM content provided"); }
+    //$("cdpad").???
+    if (document.getElementById('cdpad').checked) {
+      console.log("Len before pad: "+cont.length);
+      if (!cont.match(/\n$/)) { cont += "\n"; }
+      console.log("Len after pad: "+cont.length);
+      // Update ALSO textarea ?
+      $("#certcont").val(cont);
+    }
+    //console.log("Cert cont: "+cont);
+    var opts = { headers: {"Content-type":"application/json"} };
+    var data = {cert: cont};
+    axios.post("/certdec", data, opts).then( (resp) => {
+      console.log(resp.data);
+      var d = resp.data;
+      if (d.status == "err") { return toastr.error(d.msg); }
+      // Show 
+      $("#certdia").html("<pre class=\"cerdet\">"+resp.data.data.raw+"</pre>");
+      // Delete redundant for raw dump ?
+      var delattr = ["notbefore","notafter","cont","raw","fname"];
+      delattr.forEach( (a) => { delete resp.data.data[a] });
+      $("#certinfo").html("<pre class=\"cerdet\">"+JSON.stringify(resp.data.data, null, 2)+"</pre>");
+    }).catch( (ex) => {});
+  });
+}
+
+function certdoc(ev, act) {
+  axios.get(act.url).then( (resp) => {
+    var cont = resp.data.data;
+    if (!cont) { return toastr.error("Documentation Generation error: "+resp.data.msg); }
+    var converter = new showdown.Converter();
+    cont = converter.makeHtml(cont);
+    $("#routerdiv").html(cont);
+  }).catch( (ex) => {});
+}
+
 var dialogacts = [
   {name: "", tmpl: "", hdlr: null, url: "", diaid: "", uisetup: null}
 ];

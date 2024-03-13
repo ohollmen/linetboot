@@ -11,7 +11,7 @@ var gridplug = {
   },
   arrcnt: (val, item) => {
     if (!Array.isArray(val)) { return ""; }
-    return Array.length;
+    return val.length;
   },
   // Note: Assumes color to be dark enough to have (text) color: white
   coloring: (val, item) => {
@@ -839,9 +839,11 @@ function ibip_cell(val, item) {
      if (!val || !Array.isArray(val)) { return ""; }
      return val.length;
    }
-   // See dockver
+   // See dockver. TODO: Add to gridplug
    function podcont_kv_cell(val, item) {
      if (!val) { return ""; }
+     // (val != null) &&  Note: val.constructor === Object ... NOT:  !val.keys
+     if ( (typeof val != 'object') || (val.__proto__ != Object.prototype) ) { return ""; }
      return Object.keys(val).map((k) => { return k + "="+ val[k]; }).join("<br>");
      //return "";
    }
@@ -1007,10 +1009,10 @@ function ibip_cell(val, item) {
      */
    ];
    function zone_cell(val, item) {
-     if (!val) { return ""; }
-     var col = "#0000BB"; tcol = "#FFFFFF";
-     if (val.match(/east/)) { col = "#BB0000"; tcol = "#FFFFFF"; }
-     return "<span style=\" background-color: "+col+"; color: "+tcol+"; display: inline-block; width: 100%\">"+val+"</span>";
+     if (!val) { return ""; } // Orig using BB
+     var col = "#8888BB"; tcol = "#FFFFFF";
+     if (val.match(/east/)) { col = "#BB8888"; tcol = "#FFFFFF"; } // inline-block
+     return "<span style=\" background-color: "+col+"; color: "+tcol+"; display: block; width: 100%; border-radius: 5px; padding: 2px; border: 0;\">"+val+"</span>";
    }
    function netif_cell(val, item) {
      var ni; try { ni = item.networkInterfaces[0]; } catch (ex) { return ""; }
@@ -1024,15 +1026,17 @@ function ibip_cell(val, item) {
    }
    // GCP Dynamic Inv.
    var fldinfo_gcpdi = [
-     {"name": "name",        "title": "Name",   type: "text", width: 14, css: "hostcell"},
+     {"name": "name",        "title": "Name",      type: "text", width: 14, css: "hostcell"},
      {"name": "project",     "title": "Project",   type: "text", width: 12},
-     {"name": "zone",        "title": "Zone",   type: "text", width: 8, itemTemplate: zone_cell},
-     {"name": "machineType", "title": "Mach. Type",   type: "text", width: 7},
-     {"name": "status",      "title": "Status",   type: "text", width: 7},
-     {"name": "tags.items",  "title": "Tags",   type: "text", width: 15, itemTemplate: array_cell}, // Array
+     {"name": "zone",        "title": "Zone",      type: "text", width: 8, itemTemplate: zone_cell},
+     {"name": "machineType", "title": "Mach. Type",type: "text", width: 7},
+     {"name": "status",      "title": "Status",    type: "text", width: 7},
+     {"name": "tags.items",  "title": "Tags",      type: "text", width: 12, itemTemplate: array_cell}, // Array
+     {"name": "labels",      "title": "Labels",    type: "text", width: 12, itemTemplate: podcont_kv_cell}, // Object (k-v)
      // networkInterfaces[0].networkIP
      {"name": "networkInterfaces", "title": "Net-If",   type: "text", width: 15, itemTemplate: netif_cell},
-     //{"name": "disks",      "title": "NumDisks",   type: "number", width: 10, itemTemplate: null},
+     {"name": "deletionProtection", "title": "Del.Prot.",   type: "text", width: 5, itemTemplate: null},
+     {"name": "disks",      "title": "NumDisks",   type: "number", width: 5, itemTemplate: gridplug.arrcnt},
      //{"name": "deletionProtection", "title": "Protected",   type: "text", width: 7},
    ];
    // TF Views
@@ -1065,7 +1069,8 @@ function ibip_cell(val, item) {
     {"name": "hatype",       "title": "HA Type",     type: "text", width: 14, }, // Del ?
     {"name": "projid",       "title": "Project",      type: "text", width: 14, },
     {"name": "procset",      "title": "Processes",    type: "text", width: 14, itemTemplate: procset_cell},
-    {"name": "unit",         "title": "Systemd Unit",  type: "text", width: 14, }, // Multiple ?
+    {"name": "unit",         "title": "Systemd Unit",  type: "text", width: 10, }, // Multiple ?
+    {"name": "port",         "title": "Svc. port",  type: "text", width: 7, },
     {"name": "notes",        "title": "Notes",         type: "text", width: 14, },
    ];
    function lbip_cell(val, item) {
@@ -1074,16 +1079,22 @@ function ibip_cell(val, item) {
    }
    var fldinfo_dr = [
     {"name": "title",        "title": "Service Name",   type: "text", width: 14, css: "hostcell"},
+    // {"name": "instpatt",        "title": "HostPattern Name",   type: "text", width: 14},
     {"name": "hatype",       "title": "HA/DR Type",     type: "text", width: 8, },
     {"name": "servdns",     "title": "Serv. Host",     type: "text", width: 7, },
     {"name": "projid",   "title": "Project",   type: "text", width: 10,},
     // {"name": "hazone",       "title": "GCP Zone",   type: "text", width: 8,}, // Not singular !
-    {"name": "domainname",   "title": "DNS Domain",   type: "text", width: 15,},
-    {"name": "halbip",       "title": "LB or Host IP Addresses (A,B)",   type: "text", width: 16, itemTemplate: lbip_cell},
-    {"name": "hasubnet",     "title": "GCP Subnet",   type: "text", width: 7,},
-    {"name": "haimgbn",      "title": "Image Name",   type: "text", width: 10,},
-    // NA: {"name": "hapair",       "title": "Prim, Sec(DR)",   type: "text", width: 14,},
 
+    {"name": "domainname",   "title": "DNS Domain",   type: "text", width: 15,},
+    {"name": "haimgbn",      "title": "Image NamePatt.",   type: "text", width: 10,},
+    // AoS
+    {"name": "halbip",       "title": "LB or Host IP Addresses (A,B)",   type: "text", width: 16, itemTemplate: lbip_cell},
+    {"name": "hasubnets",     "title": "GCP Subnets (A,B)",   type: "text", width: 10, itemTemplate: lbip_cell},
+    
+    // NA:
+    {"name": "hapair",       "title": "Prim, Sec(DR)",   type: "text", width: 16, itemTemplate: lbip_cell},
+    // 
+    {"name": "snapschds",       "title": "SnapShot Sched's",   type: "text", width: 16, itemTemplate: lbip_cell},
    ];
    // Select cols of nessus CSV
    var fldinfo_nscan = [
@@ -1107,12 +1118,14 @@ function ibip_cell(val, item) {
      {"name": "bfname",     "title": "Filename",  "type": "text", "width": 25}, // itemTemplate: 
      {"name": "type",       "title": "Type",      "type": "text", "width": 6, itemTemplate: certtype_cell},
      // {"name": "isroot",  "title": "Root Cert ?",  "type": "text", "width": 6},
-     {"name": "issuer_cn",  "title": "Issuer", "type": "text", "width": 18},
-     {"name": "subject_cn", "title": "Subject", "type": "text", "width": 18},
+     // Should use itemTemplate and extract CN ?
+     {"name": "issuer",  "title": "Issuer", "type": "text", "width": 18, itemTemplate: null},
+     {"name": "subject", "title": "Subject", "type": "text", "width": 18, itemTemplate: null},
      {"name": "serial",     "title": "Serial", "type": "text", "width": 25},
      {"name": "notbefore_i","title": "Valid Starting ...",  "type": "text", "width": 14},
      {"name": "notafter_i", "title": "Expires", "type": "text", "width": 14},
      {"name": "signalgo",   "title": "Sign. Algo",  "type": "text", "width": 15},
+     {"name": "md5sum",     "title": "MD5",  "type": "text", "width": 7},
    ];
    function sys_idlbl_cell(val, item) {
      return "<span data-sysid=\""+val+"\">"+val+"</span>";
@@ -1120,9 +1133,14 @@ function ibip_cell(val, item) {
    var fldinfo_certfiles = [
      {"name": "idlbl",     "title": "Serv. Label",  "type": "text", "width": 10, itemTemplate: sys_idlbl_cell},
      {"name": "name",      "title": "System/Serv. Name",      "type": "text", "width": 20, itemTemplate: null},
+     {"name": "certnote",     "title": "Notes",  "type": "text", "width": 20}, // long, wrap (small text ?)
      {"name": "sysd",      "title": "Unit to restart",  "type": "text", "width": 10},
      // Note : Remove plug
-     {"name": "certfiles", "title": "Files, Bundles or Steps",  "type": "text", "width": 10, itemTemplate: gridplug.arrcnt},
+     {"name": "certfiles", "title": "Files, Bundles or Steps",  "type": "text", "width": 10, itemTemplate: gridplug.arrcnt}, // gridplug.arrcnt () =>
+     {"name": "cfgfile", "title": "Config file (for certs)",  "type": "text", "width": 15,},
+     {"name": "certpath", "title": "Common Cert. Path",  "type": "text", "width": 20,},
+     {"name": "chmod",     "title": "Perms",  "type": "text", "width": 7},
+     
      //{"name": "files",     "title": "Files",  "type": "text", "width": 10},
      //{"name": "cmd",     "title": "Command?",  "type": "text", "width": 10},
    ];
