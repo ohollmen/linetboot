@@ -257,7 +257,7 @@ function stats_proc(hnode, cb) {
   ];
   // Detect presence of rmgmt. TODO: Move out of ipmi.js ?
   prec.hasrm = ipmi.rmgmt_exists(hnode.ansible_fqdn, process.env["RMGMT_PATH"]);
-  function additem(prec) { debugarr.push(prec); return prec; }
+  function additem(prec) { debugarr.push(prec); return prec; } // Add debug item to debug array
   async.map(oparams, runprobecmd, function(err, results) {
     if (err) { var cerr = "Error completing async.map: " + err; console.log(cerr); return cb(cerr); }
     return cb(null, prec);

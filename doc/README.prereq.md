@@ -167,6 +167,8 @@ tweak shell run-config files like .bashrc):
     echo -e "CHANGELOG.md\nLICENSE\nREADME.md\nexclude.txt" > exclude.txt
     # test: --dry-run
     sudo rsync -av  --exclude-from exclude.txt ./ /usr/local/
+    # Or plain cp command (no rsync):
+    # cp -r .  /usr/local
     # re-cache executables in $PATH
     hash -r
 

@@ -514,6 +514,7 @@ append ramdisk_size=72399 root=live:CDLABEL=CDROM rootfstype=auto  rd.live.image
 # https://github.com/digital-wonderland/packer-templates/blob/master/openSUSE-13.1_x86_64/http/autoinst.xml
 # OpenSUSE Leap and TW have packages in /x86_64/, /noarch/ and metadata in /repodata/
 # https://doc.opensuse.org/projects/autoyast/
+# NFS mount based install: https://lizards.opensuse.org/2014/01/29/network-boot-live-iso/ (w. isofrom_device=nfs:10... isofrom_system=/ope...)
 ##label opensuse_tw_64
 ##menu label OpenSUSE Thumbleweed 64 bit Mini/Net (Auto-Install)
 ##kernel http://{{ httpserver }}/opensuse_tw_64/boot/x86_64/loader/linux

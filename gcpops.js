@@ -83,6 +83,10 @@ var gcp_cmds = {
   "proj_list": "gcloud projects list --format json",
   // Accts
   "sa_list": "gcloud iam service-accounts list --format json",
+  // List machine images
+  "mi_list": "gcloud compute machine-images list --project my-proj",
+  "mi_del":  "gcloud compute machine-images delete --project my-proj",
+
 };
 var cfg;
 
@@ -264,7 +268,7 @@ if (process.argv[1].match("gcpops.js")) {
     
   }
   var sasize = 3;
-  var opts = {debug: 0};
+  var opts = {debug: 1};
   function finalcb() { console.log("Done (main)"); }
   gcpops.subarr_proc(arr, sasize, proc_item, opts, finalcb); // finalcb (test w. null)
   //NOT:process.exit(0);

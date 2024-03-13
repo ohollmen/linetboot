@@ -352,6 +352,8 @@ function app_init() { // global
   app.get("/certs", certs.certslist);
   app.get("/certrenew", certs.install);
   app.get("/certsystems", certs.certfileslist);
+  app.post("/certdec", certs.certdec);
+  app.get("/certsysdoc", certs.certsysdoc);
   app.get("/vulnlist", vulnlist);
   app.get("/isslist", jira.jira_query);
   app.get("/yaml/nets", yaml_show);
@@ -753,7 +755,7 @@ function pkg_counts (req, res) {
   });
   
 }
-/** Generate commands output for all hosts (/allhostgen or /allhostgen/:outfmt)
+/** Generate (various) commands output for all hosts (/allhostgen or /allhostgen/:outfmt)
 * Output can be (for example):
 *
 * - Certain well known file format for an application / OS subsystem
@@ -950,7 +952,7 @@ function netplan_yaml(req, res) {
   }
 }
 /** TODO: Populate Netplan structure and output it in Yaml.
- * TODO: Rely on osinstall to populate the structure
+ * Rely on osinstall (osinst) to populate part of the structure.
  */
 function netplan_yaml2(req, res) {
   //var jr = {status: "err", msg: "No Netplan created"};
@@ -1284,7 +1286,8 @@ function rmgmt_list(req, res) {
   } // resolve
   res.json(arr);
 }
-/** Perform set of network probe tests by DNS, Ping, SSH ()
+/** Perform set of network probe tests by DNS, Ping, SSH ().
+ * Use netprobe(.js) to handle probing. 
  * Send results as JSON AoO in member "data".
  * @todo Add err param.
 */
@@ -1413,8 +1416,10 @@ function ansible_run_serv(req, res) {
   res.json(runinfo);
 }
 /** Gather Facts web handler.
+ * Aims to be intelligent about new gather result by comparing sizes, data itself.
  * POST JOSN params are similar to ansible_run_serv, except any playbooks or play profiles are ignored.
  * Gather facts to a temp directory for comparison.
+ * @todo Gather on staging area, move to final loc after approve, 
  */
 function ansible_facts_gather(req, res) {
   var jr = {status: "err", msg: "Could not run Ansible Fact gather. "};
@@ -1631,7 +1636,7 @@ function hostp_prop_stat(req, res) {
   });
   res.json({status:"ok", data: arr});
 }
-/** Aggregate count of particular value in a property.
+/** Aggregate count of particular value in a property (for charting).
  * This is suitable for "type stats" (e.g. ansible_architecture, ansible_machine, ansible_domain, ansible_kernel, ansible_os_family, ansible_pkg_mgr ansible_processor_cores...).
  */
 function hostp_prop_aggr(req, res) {
@@ -1675,6 +1680,8 @@ function hostp_prop_aggr(req, res) {
 /** Present pkg stats (yes/no) for set of pkgs.
  * Send both js-grid grid def and AoO data.
  * See also: ospackages.js: pkgset() and pkg_counts()
+ * @todo Instead of boolean, Aim to provide more informative version number. RH/RPM tools have this,
+ *   dpkg requires multiple commands (list pkgs+per package info).
  */
 function host_pkg_stats(req, res) {
   // Sample-only array
@@ -1964,7 +1971,7 @@ function docker_authimages(req, res) {
   csv.forEach( (r) => { r.sha256sum = r.sha256sum.replace(/^sha256:/, ''); });
   res.json({"status": "ok", data: csv});
 }
-/** Display YAML
+/** Display YAML - use htview.js
  * 
  */
 function yaml_show(req, res) {
@@ -3011,15 +3018,30 @@ function bootables_status(req, res) {
 /** Fetch info from Jenkins API.
  * Wrap response with standard Linetboot response wrapping.
  * @todo Possibly server multiple URL:s / views, provide multi-http request aggregation.
+ * https://www.jenkins.io/doc/book/using/remote-access-api/
+ * https://ci.jenkins.io/job/Websites/job/jenkins.io/job/master/lastSuccessfulBuild/api/
+ * https://jenkins.mycomp.net/user/$USERNAME/api/
  */
 function jenkins_jobs(req, res) {
   var jcfg = global.jenkins;
   var jr = {status: "err", msg: "Failed to get Jenkins jobs. "};
   if (!jcfg) { jr.msg += "No Jenkins config."; return res.json(jr); }
   // TODO: https !!!
-  var url = "http://"+jcfg.user+":"+jcfg.pass+"@"+jcfg.host+"/api/json?pretty=true";
+  //var url = "http://"+jcfg.user+":"+jcfg.pass+"@"+jcfg.host+"/api/json?pretty=true";
+  var usch = jcfg.ssl ? "https" : "http";
+  var url = usch +"://"+jcfg.host+"/api/json?pretty=true"; // &depth=N (0,1,2,3)
+  // Job name gotten from jobs[N].name (--data => application/x-www-form-urlencoded)
+  // Note: Name may be *long* (with multiple paths steps), not just simple \w+ token.
+  // /job/JOB_NAME/build?token=TOKEN_NAME (Go to build, Auth... Token: ...)
+  // Still GET, params passed in GET query URL
+  // /job/JOB_NAME/buildWithParameters --data id=123 --data verbosity=high (or --form key=@file)
+  // --form => multipart/form-data
   console.log("Concluded URL: "+ url);
-  axios.get(url).then((resp) => {
+  var opts = {"headers": {"Authorization": ""}};
+  cfl.add_basic_creds(jcfg, opts);
+  //console.log("Call Jenkins w-opts:", opts); // return;
+
+  axios.get(url, opts).then((resp) => {
     var d = resp.data;
     if (!d) { jr.msg += "No Jenkins data."; return res.json(jr); }
     return res.json({status: "ok", data: d});
@@ -3028,7 +3050,7 @@ function jenkins_jobs(req, res) {
     return res.json(jr);
   });
 }
-/** Create Host Hierarchy.
+/** Create Host Hierarchy data for visualization.
  * https://visjs.github.io/vis-network/examples/
  * https://ww3.arb.ca.gov/ei/tools/lib/vis/examples/network/06_groups.html
  * https://unpkg.com/vis@0.5.1/index.html
@@ -3245,12 +3267,14 @@ function gcpdi_show(req, res) {
 }
 
 /**
- * TODO: Aggregate with ansdi
+ * TODO: Aggregate with ansdi ? use htview ?
  */
 function hostservices(req, res) {
-  var jr = {status: "err", msg: "Services could not be displayed"};
+  var jr = {status: "err", msg: "Services could not be displayed. "};
   var cfg = global.services;
-  var fname = cfg.conffn; // process.env["HOME"]+"/src_nnnn/postops/serv_host.json";
+  var fname = cfg.conffn;
+  if (!fname) { jr.msg += "No service host config found."; return res.json(jr); }
+  if (!cfg.domainname) {} // needed ?
   //var hconf = {"domainname": "domain.com"};
   var hs = require(fname);
   
@@ -3260,7 +3284,7 @@ function hostservices(req, res) {
   });
   res.json({status: "ok", data: hs});
 }
-// For client vulnlist
+// For client vulnlist. use htview.js
 function vulnlist(req, res) {
   var fname = process.env["HOME"] + "/Downloads/x_n1ll2_fedramp_po_poam.json";
   if (!fs.existsSync(fname)) { console.error("No vuln file "); }
