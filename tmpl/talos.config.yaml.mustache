@@ -1,0 +1,54 @@
+# Talos (network) config. Assume single interface.
+# All sections in talos-conventional order.
+# https://www.talos.dev/v1.6/advanced/metal-network-configuration/
+addresses:
+    # TODO: CIDR bits
+    - address: {{{ net.ipaddress }}}/{{ net.cidr }}
+      linkName: bond0
+      family: inet4
+      scope: global
+      flags: permanent
+      layer: platform
+# Link entries may also have a "vlan" (sub)section (w. vlanID, vlanProtocol).
+# Does masterName trigger DHCP sourcing (or what does, the links section itself ?)
+# There can also be `name: bond0` here (!)
+links:
+    # name: en9sp0
+    - name: eth0
+      up: true
+      masterName: bond0
+      slaveIndex: 0
+      layer: platform
+      #vlan:
+      #  vlanID: 35
+      #  vlanProtocol: 802.1ad
+# Also: priority
+routes:
+    - family: inet4
+      # This seems to be a mask
+      #dst: 10.0.0.0/8
+      # TODO: CIDR (Okay to leave empty)
+      #dst: {{{ net.netmask }}}/{{ net.cidr }}
+      # E.g. 10.68.182.0
+      gateway: {{ net.gateway }}
+      outLinkName: bond0
+      table: main
+      scope: global
+      type: unicast
+      protocol: static
+      layer: platform
+hostnames:
+    - hostname: {{{ net.hostname }}}
+      layer: platform
+resolvers: []
+  #- dnsServers:
+  #{{#net.nameservers }}
+  #    - {{{.}}}
+  ##{{/net.nameservers }}
+  #  layer: platform
+# Use only single (If none given, use default (?). DHCP ? No: hard-wired ntp.xxx.org)
+timeServers: []
+#  - timeServers:
+#      - {{{ net.ntpserver }}}
+#    # Same level as nested timeServers
+#    layer: platform

@@ -17,6 +17,7 @@ passwd:
       groups:
         - wheel
       #ssh_authorized_keys:
+      #  - {{{ user.sshkey }}}
       #  - ssh-rsa AAAA...
       # E.g. mkpasswd --method=yescrypt
       #password_hash: {{ user.password_crypted }}

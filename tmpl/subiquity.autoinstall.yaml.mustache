@@ -1,6 +1,7 @@
 #cloud-config
 # https://ubuntu.com/server/docs/install/autoinstall-schema autoinstall JSON schema
 # https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py 
+# https://askubuntu.com/questions/1415360/ubuntu-22-04-autoinstall-storage-section-autoinstall-config-did-not-create-ne
 autoinstall:
   version: 1
   # use interactive-sections to avoid an automatic reboot
@@ -15,12 +16,13 @@ autoinstall:
       uri: "http://us.archive.ubuntu.com/ubuntu"
     - arches: [default]
       uri: "http://ports.ubuntu.com/ubuntu-ports"
-  packages: ["python"]
+  packages: ["python3"]
   # identity - Notes
   # - This section seesm to be optional if "user-data" section is present
   # - hostname values seems to be referred from (url) "/meta-data" (e.g. "instance-id: focal-autoinstall")c
   # r00tme
-  identity: {hostname: {{{ net.hostname }}}, password: $6$.c38i4RIqZeF4RtR$hRu2RFep/.6DziHLnRqGOEImb15JT2i.K/F9ojBkK/79zqY30Ll2/xx6QClQfdelLe.ZjpeVYfE8xBBcyLspa/,
+  # $6$.c38i4RIqZeF4RtR$hRu2RFep/.6DziHLnRqGOEImb15JT2i.K/F9ojBkK/79zqY30Ll2/xx6QClQfdelLe.ZjpeVYfE8xBBcyLspa/
+  identity: {hostname: {{{ net.hostname }}}, password: '{{{ user.password_crypted }}}',
     username: '{{{ user.username }}}', realname: '{{{ user.fullname }}}'}
   # user-data: {timezone: '{{{ time_zone }}}', disable_root: false}
   keyboard: {layout: us, variant: ''}
@@ -68,7 +70,7 @@ autoinstall:
       - {device: format-1, path: /, type: mount, id: mount-2}
       - {device: format-0, path: /boot, type: mount, id: mount-1}
       - {device: format-2, path: /boot/efi, type: mount, id: mount-3}
-  # Script hooks
+  # Script hooks (AoS)
   #late-commands: ...
   #error-commands: ...
 write_files:

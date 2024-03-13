@@ -1,0 +1,27 @@
+{
+  "name": "INSTANCE_TEMPLATE_NAME"
+  "properties": {
+    "machineType": "zones/ZONE/machineTypes/MACHINE_TYPE",
+    "networkInterfaces": [
+      {
+        "network": "global/networks/default",
+        "accessConfigs": [
+          {
+            "name": "external-IP",
+            "type": "ONE_TO_ONE_NAT"
+          }
+        ]
+      }
+    ],
+    "disks": [
+      {
+        "type": "PERSISTENT",
+        "boot": true,
+        "mode": "READ_WRITE",
+        "initializeParams": {
+          "sourceImage": "projects/IMAGE_PROJECT/global/images/IMAGE"
+        }
+      }
+    ]
+  }
+}
