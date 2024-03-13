@@ -87,38 +87,55 @@ var setupmod = {}; // custom CB Module
 var logdb = {};
 //var tmpls = {};
 var recipes = [
-  {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache"},
-  {"url":"/ks.cfg",             "ctype":"ks",         "tmpl":"ks.cfg.mustache"},
-  {"url":"/sysconfig_network",  "ctype":"netw_rh",    "tmpl":"sysconfig_network.mustache"},
-  {"url":"/interfaces",         "ctype":"netif",      "tmpl":"interfaces.mustache"},
-  {"url":"/preseed.desktop.cfg","ctype":"preseed_dt", "tmpl":"preseed.desktop.cfg.mustache"},
-  {"url":"/preseed_mini.cfg",   "ctype":"preseed_mini","tmpl":"preseed_mini.cfg.mustache"},
+  {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache",        "defosid": "debian"},
+  {"url":"/ks.cfg",             "ctype":"ks",         "tmpl":"ks.cfg.mustache",             "defosid": "redhat"},
+  {"url":"/sysconfig_network",  "ctype":"netw_rh",    "tmpl":"sysconfig_network.mustache",   "defosid": "redhat"},
+  {"url":"/interfaces",         "ctype":"netif",      "tmpl":"interfaces.mustache",          "defosid": "debian"},
+  {"url":"/preseed.desktop.cfg","ctype":"preseed_dt", "tmpl":"preseed.desktop.cfg.mustache", "defosid": "debian"},
+  {"url":"/preseed_mini.cfg",   "ctype":"preseed_mini","tmpl":"preseed_mini.cfg.mustache",   "defosid": "debian"},
   // /boot/pc-autoinstall.conf on TFTP ?
-  {"url":"/pc-autoinstall.conf","ctype":"bsd1",      "tmpl":"pc-autoinstall.conf.mustache"},
-  {"url":"/cust-install.cfg",   "ctype":"bsd2",      "tmpl":"pcinstall.cfg.mustache"},
-  {"url":"/install.conf",       "ctype":"openbsd",    "tmpl":"install.conf.mustache"}, // OpenBSD
-  {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache"},
+  {"url":"/pc-autoinstall.conf","ctype":"bsd1",      "tmpl":"pc-autoinstall.conf.mustache",  "defosid": "pcbsd"},
+  {"url":"/cust-install.cfg",   "ctype":"bsd2",      "tmpl":"pcinstall.cfg.mustache",        "defosid": "pcbsd"},
+  {"url":"/install.conf",       "ctype":"openbsd",    "tmpl":"install.conf.mustache",        "defosid": "openbsd"}, // OpenBSD
+  {"url":"/Autounattend.xml",   "ctype":"win",        "tmpl":"Autounattend.xml.mustache",    "defosid": "win"}, // No osid can be passed
   // Suse / Yast
-  {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"}, // ctype: "*yast*" ?
+  {"url":"/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache", "defosid": "suse"}, // ctype: "*yast*" ?
   // {"url":"/control-files/autoinst.xml",       "ctype":"suse",       "tmpl":"autoyast.autoinstall.xml.mustache"},
-  {"url":"/alis.conf",       "ctype":"arch",       "tmpl":"alis.conf.mustache"},
+  {"url":"/alis.conf",       "ctype":"arch",       "tmpl":"alis.conf.mustache",  "defosid": "arch"},
   // Ubuntu 20 ("focal") "autoinstall" yaml (not template-only) ?
   // https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
-  {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", "pp": pp_subiquity},
+  // Boot append ... ds=nocloud-net;s=http://{{ httpserver }}/ ... (ds=datasource,s=seedfrom, seems "user-data" gets apppended to seedfrom)
+  // Before this an url "/meta-data" gets called handled by ubu20_meta_data
+  {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", "defosid": "ubuntu20", "pp": pp_subiquity},
+  {"url":"/22/user-data",       "ctype":"ubu22",       "tmpl":"subiquity.autoinstall.yaml.mustache", "defosid": "ubuntu22", "pp": pp_subiquity},
   // FCOS JSON /config.ign. Recommended to create (Butane) YAML, convert (with Butane/podman) to ign JSON
-  {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "pp": pp_fcos}, // TODO: ign.mustache
+  {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "defosid": "fcos", "pp": pp_fcos}, // TODO: ign.mustache
+  // Talos Matchbox server uses paths like /assets/controlplane.yaml /assets/worker.yaml
+  {"url":"/talos/config",       "ctype":"talos", "tmpl":"talos.config.yaml.mustache", "defosid": "talos",} // Separate controlplane, worker ? or figure out at server osinstall runtime (Inventory) ?
 ];
+
+function user_passwd_crypted(user) {
+    if (!user) { return ""; }
+    if (!user.password) { return ""; }
+    var saltraw = crypto.randomBytes(6);
+    var salt = saltraw.toString('base64');
+    //var hashedpass =
+    return sha512crypt.b64_sha512crypt(user.password, salt);
+    //return hashedpass;
+}
 function pp_subiquity(out, d) {
   var out2 = out;
   var y;
   var ycfg = {
     'styles': { '!!null': 'canonical' },
   };
+  // Holistic recipe
   try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall YAML load: "+ex); }
   // Add disk (d.diskinfo), net (d.net)
-  console.log("pp_subiquity(dump):"+JSON.stringify(y, null, 2));
+  console.log("pp_subiquity(dump-orig-tmpl-filled):"+JSON.stringify(y, null, 2));
   if (y) {
     var dy;
+    // Diskinfo
     try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk YAML load: "+ex); }
     if (!Array.isArray(dy)) { console.log("Disk YAML not parseable"); }
     // Disk
@@ -133,6 +150,17 @@ function pp_subiquity(out, d) {
 // Do essentially what "butane" utility does to Butane-syntax YAML. Includes Initial cut
 // on converting keys with "_([a-z])" to uppercase($1) (e.g. home_dir => homeDir)
 // https://coreos.github.io/ignition/examples/
+// Also (initially) generate a SHA-512 (Type: 6) linux (salted) passwd string out of the clear
+// passwd stored in lineboot user config. TODO: Make into reusable.
+// Refs:
+// - https://www.cyberciti.biz/faq/understanding-etcshadow-file/
+//   - Salt and Crypted fields said to be in ... (yescrypt: [./A-Za-z0-9])
+// - https://en.wikipedia.org/wiki/Passwd (Also discusses rounds=X param (default 5000 on sha-256/512 by https://www.akkadia.org/drepper/SHA-crypt.txt)
+// - man crypt - Salt said to be up to 16 chars, final sha-512 base64: 86 chars
+// - /etc/chadow - salt field seems to contain 8 bytes of final stored data (cybercity says ...)
+// - echo -n "123456" | base64 => MTIzNDU2 (8 chars)
+// - Password hash base64 MUST have '=' signs delete from string
+// https://stackoverflow.com/questions/14178068/sha256-crypt-sha512-crypt-in-node-js
 function pp_fcos(out, d) {
   var out2 = out;
   var y;
@@ -152,12 +180,13 @@ function pp_fcos(out, d) {
     // ssh_authorized_keys=>sshAuthorizedKeys, password_hash=> passwordHash
     // Fix homedir because: useradd: Cannot create directory /home_install
     if (p && p.users && p.users[0]) {
-      camelcase(p.users[0]);
+      camelcase(p.users[0]); // Nested item, camelcase
       p.users[0]["homeDir"] = "/home/devops";
       //"$6$"+
       //var salt = "0XwRWIsO"; user.password = "";
       //salt = "0XwRWIsO";
       //let saltraw = new Buffer(salt, 'base64');
+      // Linux (generally) uses 6 randombyte seed, that turns to 8 base64 encoded chars in salt sub-field
       var saltraw = crypto.randomBytes(6); // 8 hex chars = 4 bytes ? org. 16
       var salt = saltraw.toString('base64');
       console.log("Salt Raw len: "+saltraw.length);
@@ -165,6 +194,7 @@ function pp_fcos(out, d) {
       // crypto.pbkdf2Sync(“password”, “salt”, “iterations”, “length”, “digest”)
       if (!user.password) { console.log("Warning: No passwd found in pwent !"); }
       //var hash = crypto.pbkdf2Sync(user.password, salt, 5000, 64, "sha512").toString("base64"); // rounds by crypt 3 5000 (org. 1000)
+      
       //hash = hash.replace(/=+$/, ""); // 88 => 86 (==$)
       console.log("Clear "+user.password+" ("+user.password.length+")");
       //console.log("SHA-512: "+hash + " ("+hash.length+")"); // 86
@@ -189,9 +219,11 @@ function pp_fcos(out, d) {
       // https://github.com/mvo5/sha512crypt-node - Low level lib ... Depends on http://pajhome.org.uk/crypt/md5/sha512.html by Paul Johnston
       // http://www.akkadia.org/drepper/SHA-crypt.txt
       // https://www.npmjs.com/package/jshashes/v/1.0.6
+      // Returns *whole* password field $TYPE$SALT$HASH
       var hashedpass = sha512crypt.b64_sha512crypt(user.password, salt);
       p.users[0]["passwordHash"] = hashedpass; // "$6$"+ salt + "$"+ hash; // "$6$0XwRWIsO$.bEcqJy1xTLMJcwLSg7kdTsOEcwIi49Lnm6//b0FwMGSHv0rGEmw4NS189j8tTNLkPnrsGlP4LIUia8Ph.8Yc.";
       console.log("Shadow line: "+p.users[0]["passwordHash"]);
+      // TODO: Move to user.sshkey
       var pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
       if (pubkey) { p.users[0]["sshAuthorizedKeys"] = [pubkey]; }
       if (Array.isArray(p.users[0].groups)) { p.users[0].groups.push("docker"); }
@@ -220,7 +252,18 @@ var recipes_idx = {};
 // Pass url as req.route.path
 function url_config_type(url) {
   //return tmplmap[url]; // OLD
+  
   return recipes_idx[url].ctype;
+}
+// Lookup install config by URL.
+// dclone() and reinstall pp-callback, Set family here or later (!)
+function url_config(url) {
+  var c = recipes_idx[url];
+  if (!c) { return null; }
+  var pp = c.pp;
+  c = dclone(c);
+  c.pp = pp;
+  return c;
 }
 
 /** Wrapper for getting template content by URL.
@@ -228,9 +271,9 @@ function url_config_type(url) {
  * @param forcefn {string} - template filename to force for this URL instead of one looked up from recipe info
  * @return template content
  */
-function template_content(url, forcefn) {
-  var recipe = recipes_idx[url]; // url
-  if (!recipe) { console.log("No recipe for URL: "+ url); return ""; }
+function template_content(recipe, forcefn) {
+  // var recipe = recipes_idx[url]; // url
+  if (!recipe) { console.log("No recipe passed !"); return ""; }
   var fn = recipe.tmpl;
   // Force template name override, but put his still through filename resolution.
   if (forcefn) { fn = forcefn; console.log("Override template name (from hostparams?) to: "+forcefn); }
@@ -314,11 +357,24 @@ function url_hdlr_set(app) {
     console.log("Recipe-URL: "+r.url);
     app.get(r.url, preseed_gen);
   });
-  
+  // Talos OAuth https://www.talos.dev/v1.6/advanced/machine-config-oauth/
+  app.get("/device/code", talos_dev_code);
+  app.get("/token", talos_dev_code);
   //urls.forEach(function (it) {
   //  console.log("Recipe-URL: "+it);
   //  app.get(it, preseed_gen);
   //});
+  // // access_token: token_type: expires_in:, refresh_token:, scope: "read", uid: "", info: {name:, email: }
+  function talos_dev_code(req, res) {
+    // Client sends client_id ? https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/
+    // Also: client_secret
+    // https://developers.google.com/identity/protocols/oauth2
+    var cid = req.query.client_id; // ??? req.query.response_type See Digital ocean ...
+    if      (req.url.match(/token/)) {}
+    else if (req.url.match(/device/)) {}
+    // What should be the response ?
+    res.json({}); 
+  }
 }
 //////////////////// OS INSTALL Main ///////////////////////
 /** Detect IP v4 address from HTTP request.
@@ -403,7 +459,7 @@ function preseed_gen(req, res) {
   var ip = ipaddr_v4(req); // Detect IP
   // TODO: Review osid / oshint concept (and for what all it is used (1. Mirrors, 2. ...)
   // DEPRECATED: global.targetos ||
-  var osid = req.query["osid"] ||  "ubuntu18"; // TODO: 1) Later. recipe.osid
+  var osid_q = req.query["osid"] ||  ""; // TODO: 1) Later. recipe.osid OLD def: "ubuntu18"
   if (xip) { console.log("Overriding ip: " + ip + " => " + xip); ip = xip; }
   // Lookup directly by IP
   var f = hostcache[ip]; // Get facts. Even no facts is ok for new hosts.
@@ -413,15 +469,42 @@ function preseed_gen(req, res) {
   console.log("OS Install recipe gen. by (full w. qparams) URL: " + req.url + " (detected ip="+ip+", osid="+osid+")"); // osid=
   console.log("Host "+ip+" "+(f ? "HAS" : "does NOT have ")+" facts");
   var url = req.route.path; // Base part of URL (No k-v params after "?" e.g. "...?k1=v1&k2=v2" )
-  var recipe = recipes_idx[url]; // Lookup recipe
+  //OLD:var recipe = recipes_idx[url]; // Lookup recipe
+  var recipe = url_config(url);  // Possibly pass req to even resolve/init ip(addr)
   if (!recipe) { res.end("# No recipe for URL (URLs get (usually) auto assigned, How did you get here !!!)\n"); return; }
-  var ctype = url_config_type(url); // tmplmap[req.route.path]; // config type
-  // TODO: Allow manually authored kickstart, preseed, etc. to come in here
+  if (!recipe.ctype) { res.end("# Config type ('ctype', e.g. ks, preseed, etc.) could not be found/derived\n"); return; }
+  //if (osid_q) {
+  recipe.osid = osid_q;
+  recipe.ip = ip;
+  //}
+  //OLD:var ctype = url_config_type(url); // config type. Redundant as looked up from recipe node => recipe.ctype;
+  
+  
+  ////////////// Install context //////////////////////
+  // TODO: Allow manually authored kickstart, preseed, etc. to be used instead of recipe dictated "standard" template ("tmpl").
   // Look fname up from host inventory parameters (tmpl=) ? Allow it to be either fixed/literal or template ?
   // Problem: Different for every OS. would need to have as many keys as OS:s
   // var override;
-  if (!ctype) { res.end("# Config type ('ctype', ks, preseed, etc.) could not be derived\n"); return; }
-  console.log("Concluded config type: '" + ctype + "' for url: "+url);
+  
+  console.log("Concluded config type: '" + recipe.ctype + "' for url: "+recipe.url);
+  // TODO: ADD "family" derivation debian/rhel
+  // Tests for implied osid. NOTE: These could be tested by recipe.ctype (win,suse: osid=r.ctype)
+  //if (url.match(/autounattend/i))
+  if (recipe.ctype == "win") { recipe.osid = 'win'; } // mainly for win disk
+  //if (url.match(/autoinst.xml/i))
+  if (recipe.ctype == "suse") { recipe.osid = 'suse'; }
+  //if (url.match(/\buser-data\b/i))
+  // TODO: How to differentiate ubuntu20,*22,*24 ?
+  if (recipe.ctype == "ubu20") { recipe.osid = 'ubuntu20'; } // As this *cannot* be fitted into boot CL URL
+  if (!recipe.osid) {recipe.osid = recipe.defosid; }
+  var osid = recipe.osid; // For Compatibility
+  var ctype = recipe.ctype; // For Compatibility. Use recipe.ctype in code
+  var m;
+  if (m = recipe.osid.match(/^([a-zA-Z_]+)(\d+)$/)) { recipe.osbase = m[1]; recipe.ver = m[2]; } // Parse osbase, ver
+  // Should these map to top-parent or immediate parent (e.g. popos, mint) ?
+  var fammap = {"redhat":"redhat", "centos":"redhat", "rocky":"redhat",    "debian":"debian", "ubuntu":"debian", "popos":"debian", };
+  if (recipe.osbase && fammap[recipe.osbase]) { recipe.osfamily = fammap[recipe.osbase]; }
+  console.log("osid after possible overrides (by url:"+recipe.url+"): '"+recipe.osid+"'.\nCurr-ctx: "+JSON.stringify(recipe));
   ///////////////////// Params Creation /////////////////////////////////
   // Acquire all params and blend them together (into single params structure) for templating.
   // Skipping certain params creation (based on complex conditions) is unnecessary as we can wastefully
@@ -431,12 +514,9 @@ function preseed_gen(req, res) {
   // Do not support As-is No templating by sending immmediately - BAD Because we can anyways use hard template
   // (and testing would case a lot of if-elsing and exceptional return point).
   //MAYBE:else  if (p.insttmpl) {} // Load overriden template - BAD Because cannot hard-wire for arbitrary OS
+  
   var d; // Final template params
-  // Test implied osid
-  if (url.match(/autounattend/i)) { osid = 'win'; } // mainly for win disk
-  if (url.match(/autoinst.xml/i)) { osid = 'suse'; }
-  if (url.match(/\buser-data\b/i)) { osid = 'ubuntu20'; } // As this *cannot* be fitted into URL
-  console.log("osid after possible overrides (by url:"+url+"): "+osid);
+  
   var hps = hlr.hostparams(f) || {}; // Host params
   // No facts (f=null) is okay here
   d = recipe_params_init(f, global, user, ip);
@@ -476,35 +556,41 @@ function preseed_gen(req, res) {
   }
   // Postpone this check to see if facts (f) are needed at all !
   if (!d ) { // && !skip // TODO: Update error message below
-    var msg2 = "# No IP Address "+ip+" found in host DB (for url: "+url+",  f="+f+")\n"; // skip="+skip+",
+    var msg2 = "# No IP Address "+recipe.ip+" found in host DB (for url: "+recipe.url+",  f="+f+")\n"; // skip="+skip+",
     res.end(msg2); // ${ip}
     console.log(msg2); // ${ip}
     // "Run: nslookup ${ip} for further info on host."
     return; // We already sent res.end()
   }
+  // Add (sha512) password has (whole field, stating with type=6, $6$...)
+  if (d.user) {
+    var saltraw = crypto.randomBytes(6);
+    var salt = saltraw.toString('base64');
+    d.user.password_crypted = sha512crypt.b64_sha512crypt(d.user.password, salt);
+  }
   // Moved latter univ. applicable stages (from recipe_params_init) here
   // Tweaks to params, e.g. appending additional lines, Centos/RH net.dev =  net.mac
   console.log("Call patch (stage 2 param formulation) ...");
-  patch_params(d, osid); // Tolerant of no-facts
+  patch_params(d, recipe.osid); // Tolerant of no-facts
   netconfig_late(d.net);
   net_strversions(d.net); // Late !
-  recipe_params_disk(d, osid, ctype); // DISK
+  recipe_params_disk(d, recipe.osid, recipe.ctype); // DISK
   console.error("Calling mirror_info(global, osid) (by:" + global + ")");
-  d.mirror = mirror_info(global, osid, ctype) || {};
+  d.mirror = mirror_info(global, recipe.osid, recipe.ctype) || {};
   // d.mirror = mirror; // No intermed var
 
-  if (patch_params_custom) { patch_params_custom(d, osid); }
+  if (patch_params_custom) { patch_params_custom(d, recipe.osid); }
   // Copy "inst" section params to top level for (transition period ?) compatibility !
   params_compat(d);
   d.hps = hps; // Host params !
   params_verify(d);
   if (req.query.json) { return res.json(d); }
-  //////////////////// Config Output (preseed.cfg, ks.cfg) //////////////////////////
+  //////////////////// Config Output (preseed.cfg, ks.cfg, ...) //////////////////////////
   //OLD2: var tmplcont = template_content(ctype); // OLD global.tmpls[ctype]; // OLD2: (ctype) => (url)
   // Lookup hostparams to facilitate preseed / debian-installer debugging with hard wired/literal preseeds (from internet)
-  var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null;
+  var forcefn = (url.match(/preseed.cfg/) && hps.preseed) ? hps.preseed : null; // override preseed file to come from static disk file (non-generated)
   if (osid == 'ubuntu20' && hps.subiud) { forcefn = hps.userdata; } // subiquity troubleshoot
-  var tmplcont = template_content(url, forcefn); // forcefn => Overriden fn
+  var tmplcont = template_content(recipe, forcefn); // forcefn => Overriden fn
   if (!tmplcont) { var msg3 = "# No template content for ctype: " + ctype + "\n"; console.log(msg3); res.end(msg3); return; }
   console.log("Starting template expansion for ctype = '"+ctype+"', forced template: '"+forcefn+"'"); // tmplfname = '"+tmplfname+"'
   var output = Mustache.render(tmplcont, d, d.partials);
@@ -538,8 +624,8 @@ function params_verify(d) {
   // - Others (not suse or Win) have d.diskinfo (but not partials)
   // So either one should be present.
   // NOT: Seems custom items in recipes (see top) with special "ctype" can throw this expectation off
-  // One of osid:s have to match !
-  if (!d.diskinfo && !d.partials) { throw "No disk recipe content (both diskinfo and partials missing)"; } // Disk recipe content
+  // OLD: One of osid:s have to match ! NEW: Some osid:s are not interested in disk formulation
+  //if (!d.diskinfo && !d.partials) { throw "No disk recipe content (both diskinfo and partials missing)"; } // Disk recipe content
   if (d.disk) { throw "Legacy ansible 'disk' info is remaining"; }
   if (!d.hps) { throw "No host iventory (k-v) params"; }
 }
@@ -555,7 +641,8 @@ function params_verify(d) {
 * @return None (Only tweak parms object d passed here)
 */
 function patch_params(d, osid) {
-  console.log("Patching by osid:" + osid);
+  // var osid = recipe.osid;
+  console.log("Patching by osid: '" + osid + "' (not required by patch_params)");
   if (osid.indexOf("ubuntu14") > -1) {
     // Checked vmlinuz-3.16.0-77-generic to be valid 14.04 kernel, whereas
     // All vmlinuz-4.4.0-*-generic kernels are xenian/16.04 kernels and fail the install
@@ -708,10 +795,18 @@ function recipe_params_cloned(global, user) {
 function params_compat(d) {
   // For now all keys (Explicit: "locale","keymap","time_zone","install_recommends", "postscripts")
   if (!d.inst) { return 0; }
+  // for compat ... copy to top level
   Object.keys(d.inst).forEach((k) => { d[k] = d.inst[k]; });
   // Just before Recipe or JSON params dump delete cluttering parts that will never be used in OS install context.
   // This is also a good note-list of what should likely not be there (in main config) at all.
   // Note: Theoretically customizations might do someting w. groups
+  var keepers = ["inst","postinst","probe","net", "user", "diskinfo",
+    "parts", "parr", "mirror", "postscripts"]; // type object sections to keep.
+  var middle = ["ldap", "k8s"]; // To possibly keep
+  //Object.keys(d).forEach( (k) => {
+  //   // Top level Scalar/Array => copy (keep)
+  //   // else if ( ! keepers.includes(k)) { delete(d[k]); }
+  //});
   // function param_sections_rm(d) {
   delete(d.groups);
   delete(d.tftp);
@@ -730,6 +825,10 @@ function params_compat(d) {
   delete(d.cov);
   delete(d.core); // Consider/revert (has e.g. appname)
   delete(d.ipmi); // Consider (IPMI ops) !
+  var dodel = ["jenkins","deployer", "gerrit", "github", "gitlab", "services", "confluence", "terraform", "artihub","jira", "htview",
+    "recipes", // These should be merged by now
+  ];
+  dodel.forEach( (k) => { delete(d[k]); } );
   // } 
 }
 
@@ -797,6 +896,10 @@ function recipe_params_net_f(d, f, ip) { // , global, ip,  osid, ctype
  *   (for many/most install types).
  */
 function recipe_params_disk(d, osid, ctype) {
+  var recipe = {osid: osid, ctype: ctype};
+  //if (!recipe) { return; }
+  //var osid = recipe.osid;
+  // var osid = recipe.ctype;
   var hps = d.hps || {};
   if (!osid || !ctype) { return; }
   // NOTE: Override for windows. we detect osid that is "artificially" set in caller as
@@ -811,20 +914,21 @@ function recipe_params_disk(d, osid, ctype) {
   // var di = {parts: null, partials: null, instpartid: 0} // also lindisk: "sda", ptt: '...'
   var parts; var partials; var instpartid;
   var ptt = hps["ptt"] || 'mbr';
+  console.log("Chosen partition table type (ptt): "+ptt);
   // TODO: Merge these, figure out lin/win (different signature !)
-  if (osid.match(/^win/)) {
+  if (recipe.osid.match(/^win/)) {
     parts = osdisk.windisk_layout_create(ptt);
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     partials = osdisk.tmpls; // TODO: merge, not override !
     d.instpartid = instpartid = parts.length; // Windows only ... Because of 1-based numbering length will be correct
   }
-  if (osid.match(/^suse/)) {
+  if (recipe.osid.match(/^suse/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'suse');
     console.log("Generated parts for osid: "+osid+" pt: "+ptt);
     partials = osdisk.tmpls; // TODO: merge, not override !
   }
   // This and the rest produce content, not params for partials
-  if (osid.match(/ubu/) || osid.match(/deb/)) { // /(ubu|deb)/
+  if (recipe.osid.match(/ubu/) || osid.match(/deb/)) { // /(ubu|deb)/
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_partman(parts);
     console.log("PARTMAN-DISK-INITIAL:'"+out+"'");
@@ -834,13 +938,14 @@ function recipe_params_disk(d, osid, ctype) {
     d.diskinfo = out; // Disk Info in whatever format directly embeddable in template
   }
   // Note: MUST also test for preseed URL as Ubu 20 can also run in legacy preseed mode !!!
-  if (osid.match(/ubuntu2\d/) && !ctype.match(/preseed/)) {
+  // Exception: autoinstall config did not create needed bootloader partition
+  if (recipe.osid.match(/ubuntu2\d/) && !ctype.match(/preseed/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'debian');
     let out = osdisk.disk_out_subiquity(parts);
     console.log("SUBIQUITY-DISK-INITIAL:'\n"+out+"'");
     d.diskinfo = out;
   }
-  if (osid.match(/(centos|redhat|rocky)/)) {
+  if (recipe.osid.match(/(centos|redhat|rocky)/)) {
     parts = osdisk.lindisk_layout_create(ptt, 'centos');
     let out = osdisk.disk_out_ks(parts);
     console.log("KICKSTART-DISK-INITIAL:'"+out+"'");
@@ -858,11 +963,15 @@ function recipe_params_disk(d, osid, ctype) {
 
 /** Choose final package repo mirror servers for currently installed OS.
  * Use (global config and) osid (passed as query variable from boot menu) to drive the decision.
- * Set "hostname" and "directory" (path on mirror server) into the returned object.
+ * 
+ * Return a populated-based-on-context-and-config "mirror" object with:
+ * - "hostname" (the mirror server)
+ * - "directory" (path on mirror server)
+ * 
  * @param global - Main config structure
- * @param osid - OS id label (from boot menu recipe URL) passed to server as query parameter
- * @param ctype - Config type
- * @return Mirror config with "hostname" and "directory".
+ * @param osid - OS id label (from boot menu recipe URL, eg. "...?osid=centos7") passed to server as query parameter
+ * @param ctype (string) - Config type (e.g. "preseed", see recipes = [{},{},...] on top, member ctype).
+ * @return Mirror config with "hostname" and "directory" (to be joined on template parameter data top-leve "mirror").
  * 
  * ## Info on mirror settings on OS
  * - Debian/Ubuntu:
@@ -879,22 +988,24 @@ function mirror_info(global, osid, ctype) {
   // Logic for missing osid but calls via URL "/preseed.cfg" (e.g. "Recipes Preview")
   // if (!osid && somerecipe.url.match(/^preseed.cfg/)) { osid = 'ubuntu'; } // Force Default on missing osid ?
   var mirrcfg = {osid: osid, hostname: global.httpserver, directory: ""}; // Default to local linetboot server and loop mounted media as mirror
-  // Lookup table from osid to directory name and optional internet mirror.
+  // Lookup table from pattern in **osid** to directory name and optional internet mirror.
   // Keep items ordered with most specific first (e.g. ^ubuntu16 before ^ubuntu).
   var mirrmatch = [
-    // dir is the default *internet* mirrror dir. TODO: Have separate dir/inetdir
+    // "dir" is the default *internet* mirrror dir. TODO: Have separate dir/inetdir
     {patt: "^ubuntu16", dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com", useinet: true},
     {patt: "^ubuntu",   dir: "/ubuntu", inetmirrhost: "us.archive.ubuntu.com"}, // ^ubuntu(\d+) ?
     // NOT: Assume "netboot" (netboot.tar.gz) and NO repos/packages in tar.gz
     {patt: "^debian",   dir: "/debian", inetmirrhost: "ftp.us.debian.org"} // useinet: true
-    // Centos ...
-    
+    // Advice: point dir (URL end) to file with .discinfo file (On ISO this is same as root-dir / .treeinfo dir)
+    // Centos ... Can we abstract this ? /pub/centos/5.4/
+    //{patt: "^centos", dir: "/centos/6/os/x86_64", inetmirrhost: "mirror.centos.org"},
+    //{patt: "^rocky",  dir: "/pub/rocky/8/BaseOS/x86_64/os/", inetmirrhost: "download.rockylinux.org"},
   ];
-  // lookup match node
+  // lookup match for mirror-config node in above 
   var mn = mirrmatch.find((mn) => { return osid.match(new RegExp(mn.patt)); });
-  if (mn) {
+  if (mn) { // Found !
      
-     // Check for global preference for internet mirrors or osid-based preference for internet mirrors
+     // Check for global preference for internet mirrors (default: false/0) or osid-based preference for internet mirrors
      if (global.inst.inetmirror || mn.useinet) {
        mirrcfg.hostname  = mn.inetmirrhost;
        mirrcfg.directory = mn.dir; // grab internet mirror dir from mn
@@ -909,21 +1020,39 @@ function mirror_info(global, osid, ctype) {
      return mirrcfg;
   }
   // For ubuntu / debian set params to use in recipe vars mirror/http/hostname and mirror/http/directory
+  // RH/Centos/Rocky note: The directory is expected to have leading and trailing slash
+  // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/performing_an_advanced_rhel_8_installation/creating-a-remote-repository_installing-rhel-as-an-experienced-user#creating-a-remote-repository_creating-a-remote-repository
   if (global.inst.inetmirror) {
     if (osid.match(/^ubuntu/)) { return {hostname: "us.archive.ubuntu.com", directory: "/ubuntu"}; }
     // See: https://www.debian.org/mirror/list (http://ftp.us.debian.org/debian/)
     if (osid.match(/^debian/)) { return {hostname: "ftp.us.debian.org", directory: "/debian"}; }
+    // Centos ??? (See e.g. https://forums.rockylinux.org/t/rocky-8-6-error-on-install-cannot-download-package/6840/11)
+    // Example paths in repo:
+    // TOP: https://download.rockylinux.org/pub/rocky/8/BaseOS/x86_64/os/
+    // repodata / repomd.xml: https://download.rockylinux.org/pub/rocky/8/BaseOS/x86_64/os/repodata/repomd.xml
+    // https://download.rockylinux.org/pub/rocky/8/BaseOS/x86_64/os/Packages/j/ (a http dir listing)
+    // Manual: https://docs.rockylinux.org/guides/8_6_installation/ (Manual says not to include trailing slash in repo path !!!, i.e. ".../BaseOS/x86_64/os")
+    // How do we detect sub-distro
+    if (osid.match(/^centos/)) {
+      console.log("Possibly incomplete mirror-decision implementation for centos/redhat/rocky");
+      // /pub/rocky/8/AppStream/x86_64/os/
+      // /pub/rocky/8/AppStream/x86_64/os/Packages/j/java-17-openjdk-headless-17.0.5.0.8-1.el8_7.x86_64.rpm
+      //if (...Rocky...) { return {hostname: "download.rockylinux.org", directory: "/pub/rocky/8/BaseOS/x86_64/os/"}; } // Also "http://dl.rockylinux.org"
+    }
   }
   // Local linetboot based mirror (from loopmounted ISO image), only hostname changes
   else {
+    // var m = {hostname: global.httpserver};
     if (osid.match(/^ubuntu/)) { return {hostname: global.httpserver, directory: "/ubuntu"}; }
     if (osid.match(/^debian/)) { return {hostname: global.httpserver, directory: "/debian"}; }
+    // RH-style distros: top-of the tree (right under osid directory, so pass osid and use it on template)
+    if (osid.match(/^centos/)) { return {hostname: global.httpserver, directory: "/"+osid+"/"}; }
   }
   // Legacy (to-be-discontinued) way of choosing mirror
   var choose_mirror = function (mir) { return mir.directory.indexOf(osid) > -1 ? 1 : 0; };
   var mirror = global.mirrors.filter(choose_mirror)[0]; // NOT: Set {} by default
-  if (!mirror) { console.log("No Mirror"); return null; } // NOT Found ! Hope we did not match many either.
-  console.log("Found Mirror("+osid+"):", mirror);
+  if (!mirror) { console.log(`No Mirror for osid: ${osid}, ctype: ${ctype}`); return null; } // NOT Found ! Hope we did not match many either.
+  console.log(`Found Mirror(osid: ${osid}, ctype: ${ctype}):`, mirror);
   mirror = dclone(mirror); // NOTE: This should already be a copy ?
   // Linetboot or other globally used Mirror
   if (global.mirrorhost && mirror) { mirror.hostname = global.mirrorhost; } // Override with global
@@ -1116,11 +1245,13 @@ function script_send(req, res) {
     var osid = ""; // Note dummy osid. TODO: ... ?
     var ctype = "";
     var d = recipe_params_init(f, global, user, ip);
-    if (!f) { var xd = recipe_params_dummy(d, osid, ip); } // osid no more used in func
-    patch_params(d, osid); // Tolerant of no-facts and osid empty (not null)
+    if (!f) { var xd = recipe_params_dummy(d, recipe.osid, ip); } // osid no more used in func
+    patch_params(d, recipe.osid); // Tolerant of no-facts and osid empty (not null)
     netconfig_late(d.net);
     net_strversions(d.net); // Late !
-    recipe_params_disk(d, osid, ctype); // Returns on no osid, no ctype
+    // Must have osid (e.g even for recipe preview)
+    if (!recipe.osid) { recipe.osid = recipe.defosid; }
+    recipe_params_disk(d, recipe.osid, recipe.ctype); // Returns on no osid, no ctype
     //console.error("Calling mirror_info(global, osid) (by:" + global + ")");
     // d.mirror = mirror_info(global, osid, ctype) || {}; // Eliminate for now
     //if (patch_params_custom) { patch_params_custom(d, osid); }
