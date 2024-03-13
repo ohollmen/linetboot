@@ -1,5 +1,16 @@
 #!/usr/local/bin/node
 /**
+ * ## Serv entrypoints
+ * - certs - Certs and Keys listing
+ * - certsys - Systems using certificates
+ * 
+ * ## Config File (Section "certs")
+ * - servcfg - Services Config - Introduces how various cervices deal with certificates
+ * - certbase - Certificate base directory top-root. All certs are assumed to reside here and the paths of name-to-filename index in "filealias" (see below)
+ *   section are expected to
+ * - filealias - Index Object with keys reflecting the symbolic names of certificates (e.g. "caroot" for CA Root Certificate) mapped to relative file paths of
+ *   certificate files under "certbase" (see above)
+ * 
 * ## Properties of system config nodes
 * - idlabel - symbol label by which config can be referred (no spaces, preferably no camel-casing)
 * - name - Displayable name for system config
@@ -34,7 +45,8 @@ var fs    = require("fs");
 var path  = require("path");
 var yaml  = require('js-yaml');
 var Mustache = require("mustache");
-
+var crypto = require('crypto');
+var showdown = require("showdown");
 const { builtinModules } = require("module");
 
 var certsroot = process.env.HOME + "/.linetboot/certs/"; // only used by foo()
@@ -50,20 +62,28 @@ var ycfg = {
   //'sortKeys': true
   lineWidth: 200
 };
-/** */
+// wildcard_net: "XXXXXXXXXX"
+var csymalias = {
+  wildcert_net: "Server/Wildcard certificate",  privkey_net: "Private Key (of Server/Wildcard certificate)",
+  wildcert_com: "Server/Wildcard certificate",  privkey_com: "Private Key (of Server/Wildcard certificate)",
+  cainter: "Cert Authority Intermediate Certificate", caroot: "Cert Authority Root Certificate",};
+/** Init module */
 function init(mcfg) {
-  console.log("certs.init() Running");
+  console.error("certs.init() Running");
   if (mcfg.certs) { cfg = mcfg.certs; }
   else { cfg = mcfg; }
-  if (!cfg) { console.log("No certs config available."); return; } // No certs (features not enabled)!
+  if (!cfg) { console.log("No 'certs' config (section) available."); return; } // No certs (features not enabled)!
   // Load files for all use cases / purposes
   var cc = cfg.filealias;
-  if (!cc) { console.log("certs files section (file aliases) missing !"); return ; }
+  if (!cc) { console.log("certs files mapping section (file aliases) missing !"); return ; }
+  // 
   if (!cfg.certbase) { console.log("No certificate base directory given."); return; }
   if (!fs.existsSync(cfg.certbase)) { console.log("certificate base directory ("+cfg.certbase+") does not exist."); return; }
   files = loadfiles(cc);
   if (!files) { console.log("No cert/key files loaded !"); return; }
   var xcfg; // serv. cfg
+  // Load services config (note: "servcfg" (valued to AoO) branch is kind of redundant (could contain AoO as root)
+  // but allows other config attrs on top level)
   if (cfg.servcfg && fs.existsSync(cfg.servcfg)) {
     xcfg = require(cfg.servcfg);
     if (xcfg && xcfg.servcfg) { servcfg = xcfg.servcfg; }
@@ -96,7 +116,46 @@ function foo() {
     console.log(cmd_show);
   });
 }
-/** Extract certificate info from all files.
+
+// Enhance Certificate info (ci) with additional details on cert.
+  // Note: This receives objects (to mutate)
+  // TODO: Keep cb-compat between async each() and map() ?
+  //var infoex = function (ci, cb) {
+    function infoex(ci, cb) {
+      if (ci.type != 'cert') { return cb(null); } // Silent error
+      var cmd = `openssl x509 -in ${ci.fname} -noout -text`;
+      //console.log("Got: "+ ci); // cb(null);
+      //console.log("CMD: "+ cmd); // cb(null);
+      cproc.exec(cmd, function (err, stdout, stderr) {
+        //console.log("Ran shell: "+err);
+        // console.log("Ran shell out: "+stdout);
+        if (err) { return cb(err, null); }
+        
+        // ci.processed = 1;
+        var m; // match
+        if (m = stdout.match(/\bIssuer:\s*(.+)$/m))     { ci.issuer = m[1]; }
+        if (m = stdout.match(/\bSubject:\s*(.+)$/m))    { ci.subject = m[1]; }
+        if (m = stdout.match(/\bNot Before\s*:\s*(.+)$/m)) { ci.notbefore = m[1]; }
+        if (m = stdout.match(/\bNot After\s*:\s*(.+)$/m))  { ci.notafter = m[1]; }
+        if (m = stdout.match(/\bSignature Algorithm:\s*(.+)$/m))   { ci.signalgo = m[1]; }
+        if (m = stdout.match(/\bSerial Number:\s*([\w:]+)/s)) { ci.serial = m[1]; }
+        // Win Thumb ... ???
+  
+        // Refine parsed
+        ci.isroot = (ci.issuer == ci.subject) ? 1 : 0;
+        if (ci.issuer && (m = ci.issuer.match(/CN=(.+)$/)) )   {  ci.issuer_cn = m[1]; }
+        if (ci.subject && (m = ci.subject.match(/CN=(.+)$/)) ) {  ci.subject_cn = m[1]; }
+        // Could strip: T12:00:00.000Z or as min .000Z .split("T")[0] OR 
+        if (ci.notbefore) { ci.notbefore_i = new Date(ci.notbefore).toISOString().replace(".000Z", "").replace("T", " "); }
+        if (ci.notafter)  { ci.notafter_i  = new Date(ci.notafter).toISOString().replace(".000Z", "").replace("T", " "); }
+        //console.log("NOW:", ci);
+        if (ci.wantraw) { ci.raw = stdout; }
+        //return cb(null, files); // Return files - why ?
+        return cb(null, ci); // Better sign ?
+      })
+    } // end infoex
+
+/** Extract certificate info (most important fields) from all files.
  * TODO: Separate infoex(ci, cb)
 */
 function certinfo_add(files, cb) {
@@ -105,45 +164,20 @@ function certinfo_add(files, cb) {
   //Object.keys(files).forEach((k) => {
   //  var ci = files[k];
   //});
-  // Note: This receives objects (to mutate)
-  // TODO: Keep cb-compat between async each() and map() ?
-  var infoex = function (ci, cb) {
-    if (ci.type != 'cert') { return cb(null); }
-    var cmd = `openssl x509 -in ${ci.fname} -noout -text`;
-    //console.log("Got: "+ ci); // cb(null);
-    //console.log("CMD: "+ cmd); // cb(null);
-    cproc.exec(cmd, function (err, stdout, stderr) {
-      //console.log("Ran shell: "+err);
-      // console.log("Ran shell out: "+stdout);
-      if (err) { return cb(err, null); }
-      
-      // ci.processed = 1;
-      var m;
-      if (m = stdout.match(/\bIssuer:\s*(.+)$/m))     { ci.issuer = m[1]; }
-      if (m = stdout.match(/\bSubject:\s*(.+)$/m))    { ci.subject = m[1]; }
-      if (m = stdout.match(/\bNot Before\s*:\s*(.+)$/m)) { ci.notbefore = m[1]; }
-      if (m = stdout.match(/\bNot After\s*:\s*(.+)$/m))  { ci.notafter = m[1]; }
-      if (m = stdout.match(/\bSignature Algorithm:\s*(.+)$/m))   { ci.signalgo = m[1]; }
-      if (m = stdout.match(/\bSerial Number:\s*([\w:]+)/s)) { ci.serial = m[1]; }
-      // Refine parsed
-      ci.isroot = (ci.issuer == ci.subject) ? 1 : 0;
-      if (ci.issuer && (m = ci.issuer.match(/CN=(.+)$/)) )   {  ci.issuer_cn = m[1]; }
-      if (ci.subject && (m = ci.subject.match(/CN=(.+)$/)) ) {  ci.subject_cn = m[1]; }
-      // Could strip: T12:00:00.000Z or as min .000Z .split("T")[0] OR 
-      if (ci.notbefore) { ci.notbefore_i = new Date(ci.notbefore).toISOString().replace(".000Z", "").replace("T", " "); }
-      if (ci.notafter)  { ci.notafter_i  = new Date(ci.notafter).toISOString().replace(".000Z", "").replace("T", " "); }
-      //console.log("NOW:", ci);
-      return cb(null, files);
-    })
-  }
+  
   async.each(files, infoex, function (err) {
     if (err) { console.log("Error in proc: "+err); return cb(null, files); }
-    console.log("Done each !\n");
+    console.log("Done infoextract on each !\n");
     cb(null, files);
   });
 }
-/** Load Cert related files (certs, ca-certs, privkeys) (based on "filealias" or OLD:"certs")  */
+/** Load Cert related files (certs, ca-certs, privkeys) synchronously (based on "filealias" or OLD-member:"certs")
+ * Add props: fname, bfname(optional), cont, type: "cert"
+ * @param fmap - Object mapping (from main conf .certs.filealias) from symbolic names to FS filenames.
+ * @return files map with same keys as input-fmap and values being detailed objects.
+*/
 function loadfiles(fmap) {
+  if (!fmap) { console.error("No file symnname-to-filename map to load certs by !"); return null; }
   var files = {}; // File cache (by key-names found in fmap)
   var certbase = ""; // Root/Base dir From config (see init())
   Object.keys(fmap).forEach((k) => {
@@ -156,19 +190,20 @@ function loadfiles(fmap) {
     // "...key..." anywhere in name (be more explicit about this ? e.g. try to find in key k)
     if (fname.match(/\.key$/)) { files[k].type = 'key'; }
     else { files[k].type = 'cert'; }
+    files[k].md5sum = crypto.createHash('md5').update( files[k].cont ).digest("hex");
   });
   return files;
 }
 
 
-/** List Certificates and Priv Keys in "inventory" (AoO) (e.g. /certslist) */
+/** HTTP handler for Listing Certificates and Priv Keys in "inventory" (AoO) (e.g. /certslist) */
 function certslist(req, res) {
   var jr = { status: "err", "msg": "Could not list certs. " };
   if (!cfg) { jr.msg += "No cert related config."; return res.json(jr); }
   var cc = cfg.filealias;
   if (!cc) { jr.msg += "certs files section (file aliases) missing !"; return res.json(jr); }
   var files = loadfiles(cc); // done / do at init() + dclone() ? Keep cloned to remove "cont"
-  certinfo_add(files, (err, data) => {
+  certinfo_add(files, (err, data) => { // data seems to also be the files
     if (err) { jr.msg += "Error: "+err; return res.json(jr); }
     //NOT: if (!Array.isArray(data)) { jr.msg += "Cert info not returned in Array"; return res.json(jr); }
     //NOT: if (!data.length) { jr.msg += "No (0) Cert info items Array"; return res.json(jr); }
@@ -182,14 +217,14 @@ function certslist(req, res) {
 
 //////////////////////////// Cert file sets ///////////////////
 
-// Lookup service config (from AoO ) by it's type / idlbl.
+// Lookup service config (from AoO of all configs) by it's type / idlbl.
 function servconf(idlbl) {
   if (!Array.isArray(servcfg)) { throw "No serv configs in array !"; }
   var sc = servcfg.find(function (it) { return it.idlbl == idlbl; });
   if (!sc) { throw "No service config (of type '"+idlbl+"') found !"; }
   return sc;
 }
-/** Generate files on (cloned working copy of) sc.
+/** Generate files (e.g. bundles) on (cloned working copy of) sc.
  * 
  * @param {*} sc (cpath = local (and asible remote ?) cert temp path)
  * @param topcb - cb to call w. error (null == Success, no error)
@@ -244,6 +279,7 @@ function certs_genfiles(sc, topcb) {
       if (!fnode) { return ''; }
       return fnode.cont;
     }).join('');
+    fconf.md5sum = crypto.createHash('md5').update( fconf.cont ).digest("hex");
     // Early sync (e.g. for coming cmd step)
     if (fconf.sync) {
       if (!fs.existsSync(sc.cpath)) { fs.mkdirSync(sc.cpath); }
@@ -364,7 +400,31 @@ function install(req, res) {
     sc.pb = pb;
     res.json({status: "ok", data: sc });
   }
-  
+}
+// CL Version of install
+function install_cli(t) {
+  //var t = process.env[SYSTYPE];
+  if (!t) { usage("No service type passed after subcommand !\n"); }
+  var sc = servconf(t); // systype
+  if (!sc) { console.error("Not a valid service type\n"); process.exit(1); }
+  console.log("Prepping certs for service of type: "+t);
+  sc = dclone(sc); // Working copy of system cert spec (cloned from original)
+  var pb = dclone(pbstub); // Play copy
+  certs_genfiles(sc, certs_finish); // Generate final Cert/Key content
+  //if (req.query.fmt == 'pb') {}
+  function certs_finish(err) {
+    if (err) { jr.msg += "Err in new async cert file gen.: "+err; return res.json(jr); }
+    certs_transfer_pb(sc, pb); // Generate Playbook
+    certs_save(sc, pb); // Store on FS (/tmp)
+    // certs_procrun(sc, "post");
+    // https://github.com/janl/mustache.js/issues/687 . For templating only
+    sc.certfiles.forEach((it) => { it.bundle = it.files && (it.files.length > 1); });
+    //res.json({status: "ok", data: { files: sc, pb: pb} }); // Orig
+    sc.pb = pb;
+    //console.log(JSON.stringify(sc, null, 2));
+    console.log("Cert renewal artifacts created in: "+sc.cpath);
+    //res.json({status: "ok", data: sc });
+  }
 }
 /** List systems for certfiles (e.g. "certsystems") */
 function certfileslist(req, res) {
@@ -372,27 +432,124 @@ function certfileslist(req, res) {
   if (!servcfg) { jr.msg += "No cert associated services configured !"; return res.json(jr); }
   res.json({status: "ok", data: servcfg });
 }
+/** Decode certificate (POST /certdec)  */
+function certdec(req, res) {
+  var jr = {status: "err", msg: "Could not Process Certificate. "};
+  var cont = req.body.cert;
+  if (cont.match(/PRIVATE KEY/)) { jr.msg += "Looks like this is PRIVATE KEY. Only PEM Certificates are supported."; return res.json(jr); }
+  console.log("CERT:"+cont);
 
-// CLI Main
-if (process.argv[1].match("certs.js")) {
-  var linconfpath = process.env.HOME+"/.linetboot/";
-  var mcfg = require(linconfpath+"global.conf.json"); // Should use maincfg wrapper
-  var ccfg = mcfg.certs;
-  if (!ccfg) { throw "No certs section in main config"; }
-  // Check object if (typeof ccfg != 'object') { throw ""; }
-  var ccfn = process.env.HOME+"/.linetboot/certs.conf.json";
-  var cc = require(ccfn);
-  // TODO: init() here ?
-  var files = loadfiles(cc.certs); // DO NOT Use cc.cets !!!
-  certinfo_add(files, (err, data) => {
-    console.log(files);
+  var fn = "/tmp/cert_"+Date.now()+".crt";
+  console.log("FN:"+fn);
+  // try {
+  fs.writeFileSync(fn, cont, {encoding: "utf8"});
+  //} catch (ex) { }
+  // Create wrapper suitable for infoex(ci, cb). See loadfiles() for what should init. be there.
+  // NOTE: Indicate wantraw: 1 to capture raw stdout.
+  var ci = {fname: fn, bfname: path.basename(fn), cont: cont, type: "cert", wantraw: 1}; // fname, bfname(optional), cont, type: "cert"
+  infoex(ci, (err, ci) => {
+    if (err) { jr += "Error in details extraction\n"; return res.json(jr); }
+    try { fs.unlinkSync(fn); } catch(ex) { console.log("Could not remove any temporarily stored cert. " + ex.toString()); return res.json(jr); }
+    console.log(ci.raw);
+    res.json({status: "ok", data: ci, }); // msg: "Wrote: "+fn
   });
-  // console.log(cc);
-  
+}
+function certsysdoc(req, res) {
+  var jr = {status: "err", msg: "Could not create documentation !"};
+  var cont = certsys_doc();
+  if (!cont) { return res.json(jr); }
+  res.json({status: "ok", data: cont});
+}
+
+function certsys_doc(opts) {
+  opts = opts || {html: 0, stdout: 0, }
+  var exc = {"mhd":1, "symdcs": 1, "": 1, "":1, "":1 };
+  var cont = "# Service Certificates\n\n";
+  servcfg.forEach( (sc) => {
+    if (exc[sc.idlbl]) { return; }
+    cont += `##  ${sc.name}\n\n${sc.certnote}\n` // ${sc.certnote2}
+    cont += `Files to be delivered onto ${sc.name} host (and commands to run):\n\n`;
+    var bfiles = sc.certfiles.filter( (f) => { return f.files; });
+    var cmds   = sc.certfiles.filter( (f) => { return f.cmd && !f.disa; });
+    bfiles.forEach( (f) => { // f.files f.files &&
+      var many = (f.files.length > 1); // Bundle ?
+      //OLD:cont += + (many ? `consisting of  files. Construct by:\n` : `.\n`);
+      var ftype = "File";
+      if (f.pk == 'privkey') { ftype = "Private Key"; }
+      if (f.pk == 'cert') { ftype = "Server/Wildcard Certificate"; }
+      if (f.pk == 'bundle') { ftype = "Bundle"; }
+      //
+      // cf = Component file
+      if ( many ) {
+        cont += `${ftype} (named e.g.) ${f.dest} must be created as a bundle by concatenating following ${f.files.length} files (in given order):\n\n`
+        f.files.forEach( (cf) => {
+          var fdesc = csymalias[cf] || cf;
+          cont += `- ${fdesc}\n`;
+        });
+        cont += "\n"; // end of list
+      }
+      else {
+        var fdesc = csymalias[  f.files[0]  ] || f.files[0];
+        cont += `${ftype} (named e.g.) ${f.dest} should be used with content (as renamed file of ...) ${fdesc}.\n\n`
+      }
+      
+      
+    });
+    cmds.forEach( (f) => { cont += `- Additionally run: ${f.cmd}\n`; } );
+    if (sc.import) { cont += `Import certificate to central keystore by: \`${sc.import}\`\n`; }
+    if (sc.sysd) { cont += `If system runs under systemd control, run: \`systemctl restart ${sc.sysd}\`.\n`; }
+    cont += "\n\n";
+
+  }); // End single system
+  if (opts.html) { var converter = new showdown.Converter(); cont = converter.makeHtml(text); }
+  if (opts.stdout) { console.log(cont); }
+  return cont;
 }
 module.exports = {
   init: init,
   certslist: certslist,
+  // Web handlers
   install: install,
-  certfileslist: certfileslist
+  certfileslist: certfileslist,
+  certdec: certdec,
+  certsysdoc: certsysdoc,
 };
+
+// OK Action (Dump)
+function certinfo() { certinfo_add(files, (err, data) => { console.log(files); }); }
+var ops = {doc: () => { certsys_doc({stdout: 1}); }, certinfo: certinfo,
+  dump_servcfg: () => { console.log(JSON.stringify(servcfg, null, 2)); },
+  //dump_certinfo: () => {  },
+  certgen: () => { console.log(process.argv); install_cli(process.argv[2]); }, /// function install
+  servtypelist: () => { servcfg.forEach( (sc) => { console.log( `${sc.idlbl} - ${sc.name}`); }); }
+};
+function usage(msg) {
+  if (msg) { console.error(msg); }
+  console.error("Use one of subcommands:\n"+ Object.keys(ops).join(", "));
+  process.exit(1); // Safe to exit on errors
+}
+// CLI Main
+if (process.argv[1].match("certs.js")) {
+  var certs = module.exports;
+  var linconfpath = process.env.HOME+"/.linetboot/";
+  var mcfg = require(linconfpath+"global.conf.json"); // Should use maincfg wrapper
+  
+  //var ccfg = mcfg.certs;
+  //if (!ccfg) { throw "No certs section in main config"; }
+  certs.init(mcfg);
+  var op = process.argv.splice(2, 1)[0]; // var op = process.argv[2];
+  if (!op) { usage("No op passed."); }
+  if (!ops[op]) { usage("Not one of the supported subcommands !"); }
+  // Check object if (typeof ccfg != 'object') { throw ""; }
+  // Below cc loaded by init as: glob. servcfg
+  //var servfn = process.env.HOME+"/.linetboot/certs.conf.json";
+  //var cc = require(servfn);
+  //if (!cc) { console.log("No service config loaded !"); return; }
+  // TODO: init() here ?
+  //ALREADY in init() var files = loadfiles(ccfg.filealias); // DO NOT Use cc.certs !!!
+  //if (!files) { console.log("No certs found in config !"); return; }
+  
+  //OLD: certsys_doc();
+  // console.log(cc);
+  ops[op](); // pass ... ?
+}
