@@ -19,9 +19,9 @@ var axios = require("axios");
   ];
   
 var cfg = null; // null ?
-function init(global) {
-  cfg = global.k8s;
-  if (!cfg) { return; }
+function init(mcfg) {
+  cfg = (mcfg && mcfg.k8s) ? mcfg.k8s : mcfg ;
+  if (!cfg) { console.error("No k8s config passed !"); return; }
   return module.exports;
 }
 /** Get K8S Pods (and other) info from Kubernetes (or Minikube, "/kubinfo").
@@ -103,9 +103,50 @@ function kub_validation(req, res) {
   
 }
 
+/** Merge lists of pods on clusters (with each cluster pod listing) in JSON format.
+ * List should have been created using `kubectl get pods` on each cluster (output from one cluster to one file).
+ * Uses the json branch "items" as pod list. Adds cluster name in preoperty "cluster" to have a recall of
+ * what cluster each sublist is from. Get pods from property "items".
+*/
+function cluster_lists_merge(clnames, clpath) {
+  var allpods = [];
+  // Expect names to be in format: `podlist.${clname}.json`
+  var errs = 0;
+  clnames.forEach( (clname) => {
+    var fn = `${clpath}/podlist.${clname}.json`;
+    var pldata = require(fn);
+    var pl = pldata.items;
+    if (!Array.isArray(pl)) { errs++; return; }
+    // Add cluster name (*BEFORE* concat)
+    pl.forEach( (p) => { p.cluster = clname; } );
+    allpods = allpods.concat(pl);
+  });
+  if (errs) { return null; }
+  return allpods;
+}
+
 module.exports = {
   init: init,
   kubimap: urlmap,
   //kubimap: kubimap,
   kube_info: kube_info
 };
+var ops = {listpods: listpods_all, };
+function listpods_all() {
+  var podlist = cluster_lists_merge(cfg.clusters, cfg.podlistpath);
+  console.log(JSON.stringify(podlist, null, 2));
+}
+function usage(msg) {
+  if (msg) { console.error(msg); }
+  console.log("Try one of the subcommands: "+Object.keys(ops).join(', ') );
+  process.exit(1);
+}
+if (process.argv[1].match("kubi.js")) {
+  var mfn = process.env["HOME"]+"/.linetboot/global.conf.json";
+  var mcfg = require(mfn);
+  init(mcfg);
+  var op = process.argv.splice(2, 1)[0];
+  if (!op) { usage("No subcommand passed\n"); }
+  if (!ops[op]) { usage(`No subcommand ${op} available`); }
+  ops[op]();
+}
