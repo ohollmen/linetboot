@@ -12,6 +12,7 @@
     "dns": "0.2.2",
     "express": "4.16.4",
     "express-session": "1.17.1",
+    "ini": "^4.1.1",
     "js-yaml": "^3.13.1",
     "ldapjs": "2.2.0",
     "mustache": "3.0.1",
