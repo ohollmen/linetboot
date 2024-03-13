@@ -202,7 +202,8 @@
   "deployer": {
     "deployfn": "~/.linetboot/deploy.conf.json",
     "deployfn_EXAMPLE": "~/linetboot/deploy.conf.example.json",
-    "gitreposfn": "~/.linetboot/gitrepos.conf.json"
+    "gitreposfn": "~/.linetboot/gitrepos.conf.json",
+    "bareroot": ""
   },
   "k8s": {
     "desc": "K8S Config of API Server w. token",

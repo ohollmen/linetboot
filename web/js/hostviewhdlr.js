@@ -1016,10 +1016,11 @@ function shellview_show(ev, act) {
   }
 }
 /** Deploy Git projects (configured on server side).
+ * Reused for deploy, mkrepo, deployprojs
  */
 function proj_deploy(ev, act) {
   var tgtid = ev.viewtgtid;
-  console.log("Gi Deploy /createrepo ev.viewtgtid: "+tgtid);
+  console.log("Git Deploy / Createrepo ev.viewtgtid: "+tgtid);
   rapp.templated(act.tmpl, act, tgtid);
   axios.get(act.url).then((resp) => {
     var d = resp.data.data;
@@ -1047,7 +1048,16 @@ function mkrepo_uisetup(act, data) {
     axios.post("/createrepo", p).then((resp) => {
       var d = resp.data;
       if (d.status == "err") { return toastr.error(act.name+" error: " + d.msg); }
-      toastr.info(act.name+" success with info: " + d.data);
+      toastr.info(act.name+" success with info: " + d.data.msg);
+      // NEW: Update info sect on: tmpl: "t_mkrepo"
+      // TODO: Follow ansible GUI example of showing <pre> on-demand (only)
+      var infoel = document.getElementById("mkrepo_usage");
+      if (!infoel) { console.log("No mkrepo_usage (id) element !"); return; }
+      var remname = "myrepo"; // TODO: parametrize from GUI
+      var text = `# Clone empty repo and fill it out\ngit clone ${d.data.repourl}\n`;
+      text += `# Add newly created repo as remote and push to it\ngit remote add ${remname} ${d.data.repourl}\ngit push ${remname} master\n`
+      text += `# Push and set as default upstream repo\ngit push --set-upstream ${remname} master`; // TODO: Only set as upstream (not push)
+      infoel.innerHTML = text
     }).catch((ex) => {
       toastr.error("Problems with Deployment: "+ex);
     }).finally(() => {  spinner.stop(); }); // spinner &&

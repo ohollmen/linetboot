@@ -328,6 +328,9 @@ function env_merge(global) {
     stub("github"); var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
     global.github.org = orgstr ? orgstr.split(/,/) : [];
   }
+  if (process.env["LINETBOOT_GIT_BAREROOT"])  { stub("deployer"); global.deployer.bareroot = process.env["LINETBOOT_GIT_BAREROOT"]; }
+  // Fake fact hosts CVS filename
+  if (process.env["LINETBOOT_NEWHOSTS"])  {  global.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }

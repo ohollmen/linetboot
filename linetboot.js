@@ -324,6 +324,7 @@ function app_init() { // global
   app.get("/jenkins_jobs", jenkins_jobs);
   app.get("/deploy", deployer.deploy); // /deploy/:proj/:dlbl (This would pop. q.params)
   app.post("/deploy", deployer.deploy);
+  app.get("/bares", deployer.barerepos_list); // 24-02
   app.get("/createrepo", deployer.createrepo);
   app.post("/createrepo", deployer.createrepo);
   //app.get("/initdeploy", deployer.initdeploy);
@@ -995,6 +996,7 @@ function ubu20_meta_data(req, res) {
   var hn = 'host-01';
   if (!f || !f.ansible_hostname) { }
   else { hn = f.ansible_hostname; }
+  console.log("ubu20_meta_data: hn="+hn);
   res.end("instance-id: "+hn+"\n"); // focal-autoinstall
 }
 

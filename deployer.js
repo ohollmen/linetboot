@@ -120,7 +120,7 @@ function config(req, res) {
   res.json({status: "ok", data: d});
 }
 
-/**
+/** Create a new Empty Git repo on one of the remote servers (using SSH).
 * DO something like:
 ssh ${USER}@remhost 'cd /the/repos && git init --bare --shared=group reponame.git && chown -R $USER:www-data reponame.git'
 * ## Repo config
@@ -190,12 +190,12 @@ function createrepo (req, res) {
     if (err) { jr.msg += "Failed to execute mkrepo ("+err+"). "+ stderr; return res.json(jr); }
     console.log("STDOUT (err="+err+"): "+stdout);
     // Clone informs in stderr
-    var info = stdout;
+    var msg = stdout;
     // initial ??? Take info from stderr ?
-    if (p.initial) {info = stderr;}
+    if (p.initial) {msg = stderr;}
     console.log("STDERR (err="+err+"): ", stderr);
-    data = {msg: info, "repourl": repo.url + "/"+reponame} // TODO: Use this, mod client to match
-    okr = {status: "ok", data: info};
+    data = {msg: msg, "repourl": repo.url + "/"+reponame} // TODO: Use this, mod client to match
+    okr = {status: "ok", data: data};
     console.log("OK-response: ", okr);
     res.json(okr);
   });
@@ -222,11 +222,63 @@ function listrefs(req, res) {
   //
   //});
 }
-
+/** List Bare Git repos (In myproject1.git naming format) on central server (where this app is running or ...) under "bareroot".
+ * Supporting info for creating local read-only backup mirror of your actual live "in-use" git server (named e.g. "git" here):
+ * ```
+ * rsync -av root@git:/git/ /var/gitrepos
+ * ```
+ * @todo Potentially convert this to (or implement in parallel) support set of Git repos *with* workarea(s) and direct access to
+ *    (e.g.) README.md, package.json, etc.
+ * @todo I cans of single handler handling bare repos AND workarea repos call bareroot reposroot.
+ */
+function barerepos_list(req, res) {
+  var jr = { status: "err", "msg": "Failed to list bare repos. "};
+  var ini = require("ini"); // Load here for now (ini@4.1.1)
+  // TODO: Possibly (later) allow multiple bare roots
+  var br = cfg.bareroot; // Top root. Also: export LINETBOOT_GIT_BAREROOT=...
+  var gitserv = cfg.gitserv || "git.mycomp.com"; // TODO:
+  var userid = "mrsmith"; // Def. empty
+  //console.log(req);
+  //if (req.) { userid = req...; }
+  if (!fs.existsSync(br)) { jr.msg += "Bare root does not exist !"; return res.json(jr); }
+  if (! br.match(/\/$/)) { br += "/"; } // Normalize
+  var fns = fs.readdirSync(br);
+  // In bare repos: Test dir name suffix (enough proof ?). Possibly also presence of ./config (./description) ?
+  fns = fns.filter( (fn) => { return fn.match(/\.git$/); }); // Plus: is-a-directory !!
+  // In workarea repo: NO name filtering, but test fs.existsSync(fn+"/.git")
+  // Filter by name
+  // var namere = cfg.excpatt ? new RegExp(cfg.excpatt) : null;
+  //if (namere) { fns = fns.filter( (fn) => { return ! fn.match(namere); }); } // Not matching exc. patt
+  // .map() ? find . -name "config" | xargs -n 1 cat (Also: "description")
+  var repos = [];
+  fns.forEach( (fn) => {
+    console.log("Handle (dir): "+br+"/"+fn);
+    var brfull = br+fn;
+    // Check "signature" files" config, description. If missing, skip
+    if (!fs.existsSync(brfull+"/config") || !fs.existsSync(brfull+"/description")) { console.log("Warn: No config or desc. in "+brfull); return; }
+    var cont_cfg  = fs.readFileSync(brfull+"/config", 'utf8');
+    var cont_desc = fs.readFileSync(brfull+"/description", 'utf8').trim(); // trim ?
+    // Parse ini ?
+    var config = ini.parse(cont_cfg);
+    // TODO: http(s)/SSH URL ?
+    // https://stackoverflow.com/questions/31801271/what-are-the-supported-git-url-formats
+    // https://github.com/git/git/blob/master/t/t0110-urlmatch-normalization.sh
+    var gituser = userid ? userid+"@": ""; // Default: empty
+    var repo = {desc: cont_desc, config: config,
+      // git typical git@serv:theuser/project.git (Q: need to strp *leading* slash ? A: will be present most of the time, most of cases, i.e. "..:/path1/repo.git),
+      // ssh: ssh://theuser@serv/path/rep.git
+      repourl: {http: "https://"+gituser+gitserv+brfull, ssh: "ssh://"+gituser+gitserv+brfull, git: gituser+gitserv+":"+brfull,
+        "file": "file://"+brfull}
+    };
+    repos.push(repo);
+  });
+  res.json({status: "ok", data: repos});
+}
 module.exports = {
   init: init,
   // initdeploy: initdeploy,
   deploy: deploy,
   config: config,
-  createrepo: createrepo
+  createrepo: createrepo,
+  barerepos_list: barerepos_list,
 };
