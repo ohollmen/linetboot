@@ -21,6 +21,7 @@
     "ping": "0.2.2",
     "properties-parser": "0.6.0",
     "sha512crypt-node": "^1.0.2",
+    "showdown": "^2.1.0",
     "ssh2": "0.8.9",
     "xml2js": "^0.4.23"
   },
