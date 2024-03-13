@@ -65,7 +65,7 @@ var winparts = [
 ];
 // /boot/efi FS Recommends: Suse: FAT32 (vfat ?)
 var linparts = [
-  { size_mb: 250, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // 512
+  { size_mb: 600, type: "Primary",  fmt: "ext4", lbl:"boot", mpt: "/boot"}, // Was 250, Make 512,550,500 as Rocky/RH requires > 512
   // Linux distros seem to agree on the mpt: "/boot/efi"
   // NEW: Added lbl: ESP
   { size_mb: 200, type: "Primary",  fmt: "fat32", lbl:"ESP", mpt: "/boot/efi"}, // "EFI System" UEFI (esp), See RH pages (fat32/vfat ?)
@@ -581,13 +581,15 @@ function disk_out_parted(parr) {
  *   - mount - Mounting spec, refers to format by `device: ...`(! term reused, see partition)
  * - All of above types are are presented in linear array (!)
  * - Additionally the disk / partition table (type: disk) is presented in the same linear array (typically as first item)
- * 
+ * - Exception: autoinstall config did not create needed bootloader partition => grub_device: true to the disk, not a partition
  * ### References
  * 
  * - https://ubuntu.com/server/docs/install/autoinstall-reference
  * - https://askubuntu.com/questions/1244293/how-to-autoinstall-config-fill-disk-option-on-ubuntu-20-04-automated-server-in
  * - https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py - disk schema allowed vals
  * - https://www.molnar-peter.hu/en/ubuntu-jammy-netinstall-pxe.html
+ * - https://askubuntu.com/questions/1415360/ubuntu-22-04-autoinstall-storage-section-autoinstall-config-did-not-create-ne
+ *   ( Exception: autoinstall config did not create needed bootloader partition )
  */
 function disk_out_subiquity(parr) {
   var parttypes = {"mbr": "msdos", "gpt":"gpt"}; // subiquity uses msdos (dos), not "mbr"
@@ -596,7 +598,7 @@ function disk_out_subiquity(parr) {
   // var basedisk = path.basename(d.lindisk);
   var diskname = "sda";
   // parted uses gpt/msdos.So does ubiquity
-  var disk = { type: "disk", id: "disk-"+diskname, ptable: mytype, path: "/dev/"+diskname, preserve: false, name: '', grub_device: false, // true ?
+  var disk = { type: "disk", id: "disk-"+diskname, ptable: mytype, path: "/dev/"+diskname, preserve: false, name: '', grub_device: true, // old false => true ? OK, works
      wipe: "superblock"
      };
   var comps = [disk]; // "mklablel "+
@@ -610,13 +612,13 @@ function disk_out_subiquity(parr) {
     // NOTE: "number:..." Should be 1-based per examples, partition: ... 0-based (e.g. partition-0) or 1-based "partition-"+diskname+idx1
     var sp = { type: "partition", id: "partition-"+diskname+idx1, device: "disk-"+diskname,  preserve: false, number: idx1,
        //size: p.size_mb*1000000,  flag: "boot",
-       //grub_device: true,
+       //grub_device: true, <= Used on disk level
     };
     // Add optionals
     sp.size = p.extend ? -1 : p.size_mb*1000000;
     // flag: bios_grub
     if (idx1 == 1) { sp.flag = "boot"; } // TODO: REVIEW p.lbl == "biosboot"
-    if (idx1 == 1) { sp.grub_device = true; }
+    //if (idx1 == 1) { sp.grub_device = true; } // Use on part conditionally ? Disabled for debug
     //comps.push(sp);
     //dcs.parts.push(sp);
     parts.push(sp);
