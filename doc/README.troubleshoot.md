@@ -35,11 +35,19 @@ General hints on troubleshooting installation on various distributions.
 
 See also /etc/NetworkManager/system-connections/Wired\ connection\ 1
 
-### Ubuntu 20.04
+### Ubuntu Subiquity Installer 20.04 / 22.04
+
 Any completed install creates:
-- installer log: /var/log/installer/autoinstall-user-data
+- Recipe: /var/log/installer/autoinstall-user-data
+- /var/log/installer/subiquity-server-debug.log shows how python parses the
+  kerne command line (e.g. 'sd': 'nocloud;s=http://...')
 - cloud-config log (used at first boot): /target/var/lib/cloud/seed/nocloud-net/user-data
 - watch files in: /target/var/lib/cloud/seed/nocloud-net
+- Installer crash logs (e.g.): /var/crash/1709921626.155607224.ui.crash
+- /var/log/installer/subiquity*
+- Install Config: /var/log/installer/curtin-install-cfg.yaml (N/A !!)
+- Install log:    /var/log/installer/curtin-install.log, (N/A !!)
+- /var/log/curtin/installer.log
 
 ### Centos (6, 7)
 
