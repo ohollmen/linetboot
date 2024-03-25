@@ -290,6 +290,7 @@ function app_init() { // global
   app.get("/meta-data",  ubu20_meta_data);
   
   app.post("/keyxchange",  keys_exchange);
+  app.get("/linet_pubkey", keys_pubkey);
   
   app.get("/eflowrscs",  eflowrscs);
   app.get("/eflowrsctoggle",  eflowrsctoggle);
@@ -987,12 +988,14 @@ function netplan_yaml2(req, res) {
   var ycont = yaml.safeDump(JSON.parse(JSON.stringify({network: np})), ycfg);
   res.send(ycont);
 }
-/** Generate Ubuntu 20 subiquity single line meta-data file with hostname (!).
+/** Generate Ubuntu 20 subiquity single line meta-data file with hostname (GET /meta-data).
  * Lookup facts for IP and extract (non-FQDN) hostname.
+ * The value of "instance-id: ..." gets logged by subiquity into /var/lib/cloud/data/instance-id (where is it used ?)
+ * @todo Move to osinstall
  */
 function ubu20_meta_data(req, res) {
   var ip = osinst.ipaddr_v4(req);
-  var f = hostcache[ip];
+  var f = hostcache[ip]; // hostcache also exists in osinstall.js
   var hn = 'host-01';
   if (!f || !f.ansible_hostname) { }
   else { hn = f.ansible_hostname; }
@@ -2701,6 +2704,19 @@ function keys_exchange(req, res) {
     catch (ex) { console.log("Failed to append key to "+fn+""); return 1; }
     return 0;
   }
+}
+/** Respond with shell-script-friendly plain ascii (Non-JSON) public key (GET /linet_pubkey).
+ * This can be added to remote-host (host being installed by linetboot) ~/authorized_keys.
+ */
+function keys_pubkey(req, res) {
+  var key = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  if (!key) { return res.send("");}
+  // Keep newline for append-friendly format (?)
+  //if (key.substr(key.length-1, 1) == "\n") {
+  //  console.log("Strip linefeed");
+  //  key = key.substr(0, key.length-1);
+  //}
+  res.send(key);
 }
 // /eflowrscs
 function eflowrscs(req, res) {
