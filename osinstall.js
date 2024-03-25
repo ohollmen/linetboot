@@ -105,8 +105,10 @@ var recipes = [
   // Ubuntu 20 ("focal") "autoinstall" yaml (not template-only) ?
   // https://askubuntu.com/questions/1235723/automated-20-04-server-installation-using-pxe-and-live-server-image
   // Boot append ... ds=nocloud-net;s=http://{{ httpserver }}/ ... (ds=datasource,s=seedfrom, seems "user-data" gets apppended to seedfrom)
-  // Before this an url "/meta-data" gets called handled by ubu20_meta_data
+  // Before this an url "/meta-data" gets called handled by ubu20_meta_data (See linetboot.js)
   {"url":"/user-data",       "ctype":"ubu20",       "tmpl":"subiquity.autoinstall.yaml.mustache", "defosid": "ubuntu20", "pp": pp_subiquity},
+  // 'user-agent': 'Cloud-Init/22.2-0ubuntu1~22.04.3'
+  // At least 22.04 allows URL: /vendor-data to be consulted (Now: 404 / Not Found)
   {"url":"/22/user-data",       "ctype":"ubu22",       "tmpl":"subiquity.autoinstall.yaml.mustache", "defosid": "ubuntu22", "pp": pp_subiquity},
   // FCOS JSON /config.ign. Recommended to create (Butane) YAML, convert (with Butane/podman) to ign JSON
   {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "defosid": "fcos", "pp": pp_fcos}, // TODO: ign.mustache
@@ -126,21 +128,19 @@ function user_passwd_crypted(user) {
 function pp_subiquity(out, d) {
   var out2 = out;
   var y;
-  var ycfg = {
-    'styles': { '!!null': 'canonical' },
-  };
+  var ycfg = { 'styles': { '!!null': 'canonical' }, };
   // Holistic recipe
   try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall YAML load: "+ex); }
   // Add disk (d.diskinfo), net (d.net)
   console.log("pp_subiquity(dump-orig-tmpl-filled):"+JSON.stringify(y, null, 2));
-  if (y) {
+  if (y) { // ... YAML loaded/parsed successfully
     var dy;
-    // Diskinfo
+    // Parse Diskinfo
     try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk YAML load: "+ex); }
     if (!Array.isArray(dy)) { console.log("Disk YAML not parseable"); }
-    // Disk
+    // Combine Disk to main config tree
     y.autoinstall.storage.config = dy;
-    // Net / Netplan
+    // Net / Netplan ???
     // y.autoinstall.network.network = 
     out2 = "#cloud-config\n"+yaml.safeDump(y, ycfg);
   }
@@ -357,9 +357,13 @@ function url_hdlr_set(app) {
     console.log("Recipe-URL: "+r.url);
     app.get(r.url, preseed_gen);
   });
+  //////// Additional Install-type specific handlers //////
   // Talos OAuth https://www.talos.dev/v1.6/advanced/machine-config-oauth/
   app.get("/device/code", talos_dev_code);
   app.get("/token", talos_dev_code);
+  // Ubuntu 2X.04 Server (At least 22.04). See subiq. installer log: /var/log/casper.log for how this was handled.
+  // This URL gets called ~10x at 1s. intervals, so having an empty response from it saves time.
+  app.get("/vendor-data", function (req, res) { return res.end("#cloud-config\n"); });
   //urls.forEach(function (it) {
   //  console.log("Recipe-URL: "+it);
   //  app.get(it, preseed_gen);
@@ -520,6 +524,10 @@ function preseed_gen(req, res) {
   var hps = hlr.hostparams(f) || {}; // Host params
   // No facts (f=null) is okay here
   d = recipe_params_init(f, global, user, ip);
+  // TODO: Bring check for d HERE !
+  // SSH public key
+  d.ssh_pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  if (d.ssh_pubkey && d.ssh_pubkey.match(/\s+$/)) { d.ssh_pubkey = d.ssh_pubkey.replace(/\s+$/, ""); }
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&
     // If we have facts (registered host), Lookup inventory hostparameters
@@ -1245,13 +1253,14 @@ function script_send(req, res) {
     var osid = ""; // Note dummy osid. TODO: ... ?
     var ctype = "";
     var d = recipe_params_init(f, global, user, ip);
-    if (!f) { var xd = recipe_params_dummy(d, recipe.osid, ip); } // osid no more used in func
-    patch_params(d, recipe.osid); // Tolerant of no-facts and osid empty (not null)
+    // Had: recipe.osid
+    if (!f) { var xd = recipe_params_dummy(d, osid, ip); } // osid no more used in func
+    patch_params(d, osid); // Tolerant of no-facts and osid empty (not null)
     netconfig_late(d.net);
     net_strversions(d.net); // Late !
     // Must have osid (e.g even for recipe preview)
-    if (!recipe.osid) { recipe.osid = recipe.defosid; }
-    recipe_params_disk(d, recipe.osid, recipe.ctype); // Returns on no osid, no ctype
+    //if (!recipe.osid) { recipe.osid = recipe.defosid; }
+    recipe_params_disk(d, osid, ctype); // Returns on no osid, no ctype
     //console.error("Calling mirror_info(global, osid) (by:" + global + ")");
     // d.mirror = mirror_info(global, osid, ctype) || {}; // Eliminate for now
     //if (patch_params_custom) { patch_params_custom(d, osid); }
