@@ -219,7 +219,16 @@ The layout rules for parameter "tree" are:
 
 With all said, the Linetboot Web GUI allows seeing the outcome of template expansion by navigating to: **Boot/Install** => **Tab: Recipes Preview** => Choose the **host** (line) and **recipe type** (column).
 
-**OS Intial User** will be available (in branch "user") for recipe just as it is described in **initialuser.conf.json** file (See README.linetbootconf.md for the documentation on user properties).
+**OS Intial User** will be available (in branch "user") for recipe just as it is described in **initialuser.conf.json** file (See README.linetbootconf.md for the documentation on user properties). The properties (repeated here for completeness) are:
+- user.fullname (str) - Full name (firstname and lastname) of user
+- user.username (str) - User (OS) login name
+- user.uidnum (int) - Desired UID number (e.g. 500, 1000) for the user. Check that this is alingned with your OS:s UID allocation ranges
+(OS:s may have policies and preferences like "normal users must have UID >= 1000")
+- user.password (str) - User clear text password. Please keep the whole linetboot or this file with file access permissions that will not reveal this (e.g. `chmod go-rwx initialuser.conf.json`)
+- user.groups (array-of-str) - Group names for additional groups for user
+- user.homedir - Home directory path for user
+- user.password_crypted - SHA512 (The modern linux standard) hash of encrypted password generated (on-the-fly) from user.password
+  - Note: Lineboot still leaves the user.password into parameters to have both available for installer recipes
 
 ## Solution Hints for Recipe based Automation
 
@@ -267,7 +276,7 @@ hname,macaddr,ipaddr
 test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115
 test-002.mycorp.com,b0:26:30:f8:07:35,192.168.1.116
 ```
-To use admin too newhostgen operation you *must* add (otherwise optional) column  "bmcipaddr":
+To use admin tool newhostgen operation you *must* add (otherwise optional) column  "bmcipaddr":
 ```
 hname,macaddr,ipaddr,bmcipaddr
 test-001.mycorp.com,b0:26:30:f8:07:34,192.168.1.115,192.168.1.215

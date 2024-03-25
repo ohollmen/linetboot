@@ -37,10 +37,12 @@ See also /etc/NetworkManager/system-connections/Wired\ connection\ 1
 
 ### Ubuntu Subiquity Installer 20.04 / 22.04
 
+#### 20.04
+
 Any completed install creates:
 - Recipe: /var/log/installer/autoinstall-user-data
 - /var/log/installer/subiquity-server-debug.log shows how python parses the
-  kerne command line (e.g. 'sd': 'nocloud;s=http://...')
+  kernel command line (e.g. 'sd': 'nocloud;s=http://...')
 - cloud-config log (used at first boot): /target/var/lib/cloud/seed/nocloud-net/user-data
 - watch files in: /target/var/lib/cloud/seed/nocloud-net
 - Installer crash logs (e.g.): /var/crash/1709921626.155607224.ui.crash
@@ -48,6 +50,25 @@ Any completed install creates:
 - Install Config: /var/log/installer/curtin-install-cfg.yaml (N/A !!)
 - Install log:    /var/log/installer/curtin-install.log, (N/A !!)
 - /var/log/curtin/installer.log
+
+#### 22.04 Jammy Jellyfish
+
+- Under /var/lib/cloud/
+  - seed - JSON files about URL:s hit
+  - data
+- Installer creates /home/ubuntu-server (uidnum=999) /home/installer (uidnum=100) and respective users (Also .ssh)
+- Recipe avail (e.g.) at /var/lib/cloud/instance/
+  - cloud-config.txt
+  (Slightly reformatted YAML, same structure. truncated ?)
+  - user-data.txt Same, slightly differently formatted
+  - vendor-data.txt (empty)
+- /var/log/casper.log (main install log)
+- /var/log/cloud-init.log
+- 22.04 does NOT tolerate #cloud-config YAML with write_files set to
+  null - must be "iterable" => empty array/list
+
+https://askubuntu.com/questions/1344472/combine-cloud-init-autoinstall-with-other-cloud-init-modules
+https://ubuntu.com/server/docs/install/autoinstall-reference#user-data
 
 ### Centos (6, 7)
 
