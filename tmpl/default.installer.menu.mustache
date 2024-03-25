@@ -307,6 +307,8 @@ kernel http://{{ httpserver }}/ubuntu22/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu22/casper/initrd
 # Note: recipe not fetched with abbreviations ds,s ?). Note dot-versions (e.g. .1,.4) below - these have to match kernel,initrd.
 # ONLY Grub should need escape for ';' in ds=...
+# With enough memory (8 GB) and No OOM (Out-of-mem) errors, Subiquity *will* fetch recipe.
+# ... BUT somethow autoinstall will not trigger.
 append ip=dhcp url=http://{{ httpserver }}/ubuntu-22.04.1-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
 # root=/dev/ram0 ramdisk_size=2200000
 
@@ -875,8 +877,12 @@ menu label FreeDOS 1.0 (Live)
 kernel /memdisk
 # append initrd=http://{{ httpserver }}/freedos1/fdboot.img
 # Depends on presence of clonezilla 2.6.3-7
-append initrd=http://{{ httpserver }}/clonezilla/live/freedos.img
+append initrd=http://{{ httpserver }}/clzilla/live/freedos.img
 
+label freedos_usb
+menu label FreeDOS 1.0 USB (Live)
+kernel /memdisk
+append initrd=http://{{ httpserver }}/FD13FULL.img
 
 # Diskless client
 # https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt

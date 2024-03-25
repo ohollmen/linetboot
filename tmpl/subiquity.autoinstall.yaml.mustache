@@ -1,44 +1,69 @@
 #cloud-config
-# https://ubuntu.com/server/docs/install/autoinstall-schema autoinstall JSON schema
+# https://ubuntu.com/server/docs/install/autoinstall - Automated Server installation (Still shows 2 nested network sections for 20.04 bug)
+# https://ubuntu.com/server/docs/install/autoinstall-schema - autoinstall JSON schema
+# https://ubuntu.com/server/docs/install/autoinstall-reference - autoinstall reference (as of 2024-02)
 # https://github.com/canonical/curtin/blob/master/curtin/block/schemas.py 
 # https://askubuntu.com/questions/1415360/ubuntu-22-04-autoinstall-storage-section-autoinstall-config-did-not-create-ne
+# https://askubuntu.com/questions/1403686/ubuntu-22-04-autoinstall-method - Info on CLI Options
 autoinstall:
   version: 1
-  # use interactive-sections to avoid an automatic reboot
+  # use interactive-sections to avoid an automatic reboot and/or to provide interactive (user-driven) selections
   #interactive-sections:
   #  - locale
+  # Search for 3rd party drivers
+  #src:
+  #  search_drivers: true
+  # Pre block devices and network devices detection commands.
+  #early-commands:
+  # cmds after the install has completed successfully and any updates and packages installed, just before the system reboots.
+  #late-commands:
+  # commands to run after the install has failed
+  # error-commands:
+  #   - tar c /var/log/installer | nc 192.168.0.1 1000
+  # report progress via POSTing JSON reports to a URL. Accepts the same configuration as curtin
+  # https://curtin.readthedocs.io/en/latest/topics/reporting.html#webhook-reporter
+  # reporting: {builtin: { type: webhook, endpoint: '', level: INFO }}
   apt:
     # even set to no/false, geoip lookup still happens
     #geoip: no
     preserve_sources_list: false
+    # There should be an intermediate attr/level "mirror-selection:" here (!?)
+    # https://ubuntu.com/server/docs/install/autoinstall shows example: uri: http://repo.internal/
     primary:
     - arches: [amd64, i386]
       uri: "http://us.archive.ubuntu.com/ubuntu"
     - arches: [default]
       uri: "http://ports.ubuntu.com/ubuntu-ports"
+  # 20.04 Install may need this
   packages: ["python3"]
+  # NO Snaps !
+  snaps: []
   # identity - Notes
   # - This section seesm to be optional if "user-data" section is present
-  # - hostname values seems to be referred from (url) "/meta-data" (e.g. "instance-id: focal-autoinstall")c
-  # r00tme
-  # $6$.c38i4RIqZeF4RtR$hRu2RFep/.6DziHLnRqGOEImb15JT2i.K/F9ojBkK/79zqY30Ll2/xx6QClQfdelLe.ZjpeVYfE8xBBcyLspa/
+  # - hostname values seems to be referred from (url) "/meta-data" (e.g. "instance-id: focal-autoinstall")
   identity: {hostname: {{{ net.hostname }}}, password: '{{{ user.password_crypted }}}',
     username: '{{{ user.username }}}', realname: '{{{ user.fullname }}}'}
-  # user-data: {timezone: '{{{ time_zone }}}', disable_root: false}
+  # user-data: {timezone: '{{{ inst.time_zone }}}', disable_root: false}
+  timezone: '{{{ inst.time_zone }}}'
+  # Need "toggle" for 20.04 bug (?)
   keyboard: {layout: us, variant: ''}
   locale: en_US.UTF-8
-  # interface name will probably be different
+  # interface name will probably be different. For buggy subiquity 20.04 two nested "network:" attrs are needed !!
+  # (See special notes: https://ubuntu.com/server/docs/install/autoinstall-reference)
+  # Should ens192 be eno1 (Alias: enp0s25) ?
   network:
     network:
       version: 2
       ethernets:
-        ens192:
+        # ens192:
+	eno1:
           critical: true
           dhcp-identifier: mac
           dhcp4: true
+  # proxy: http://squid.internal:3128/
   ssh:
     allow-pw: true
-    authorized-keys: []
+    authorized-keys: [{{#ssh_pubkey}}'{{{ ssh_pubkey}}}'{{/ssh_pubkey}}]
     install-server: true
   # this creates an efi partition, /boot partition, and root(/) lvm volume
   storage:
@@ -73,7 +98,10 @@ autoinstall:
   # Script hooks (AoS)
   #late-commands: ...
   #error-commands: ...
-write_files:
+# Seems this must be empty arr for 22.04: NoneType object is not iterable.
+# Article: https://askubuntu.com/questions/1344472/combine-cloud-init-autoinstall-with-other-cloud-init-modules
+# says these are written in installation env, not target (See user-data for that per article ... user-data.write_files)
+write_files: []
   # override the kernel package
   #- path: /run/kernel-meta-package
   #  content: |
