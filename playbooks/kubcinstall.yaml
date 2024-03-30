@@ -6,6 +6,13 @@
 # - Copying local ansible user public key to service acct
 #   (e.g. using ansible `authorized_key` module)
 # 
+# This playbook also assumes that:
+# - hostnames are set, known in local DNS (possibly also DHCP) and usable to e.g. refer to hosts
+#   at ansible control host (playbook does NOT include any `hostnamectl set-hostname ...` or tweaking of /etc/hosts
+#   verify by: `ansible 'kubhost-*' -m shell -b -a 'dig +short -x `hostname -I`' -e 'ansible_user=jsmith'`).
+# - Package index have been updated and packages have been upgraded to newest version e.g. by ansible ad-hoc command
+#   `ansible 'kubhost-*' -m shell -b -a 'apt update; apt upgrade'`
+# 
 # ## Host inventory vars
 # 
 # - On master set `k8smaster=1`
@@ -16,6 +23,7 @@
 # Choose carefully the version of k8s (k8s_ver) for e.g. network plugin compatibility.
 # 
 # ## Running
+# 
 # Typical extra vars: '{"k8s_user":"kubadm", "k8s_user_home":"/home_local/kubadm", "k8s_ver": "1.21.9-00"}'
 # Fixed: The error was: error while evaluating conditional (k8smaster): 'k8smaster' is undefined (fixed by: k8smaster is defined)
 # 
@@ -23,89 +31,215 @@
 # ## Verifying
 # - Log on to master: ssh ubuntu@master_ip
 # - Execute: kubectl get nodes
+# - Run kubelet check on all nodes: ansible 'kub*' -m shell -b -a 'systemctl status kubelet'
 # 
 # ## Refs
-# -  https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
+# Kubernetes:
+# - How to Install Kubernetes on Ubuntu 22.04: https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
 # - https://zhuanlan.zhihu.com/p/40931670 (Chinese, use Translate)
 #  - /etc/default/kubelet: KUBELET_KUBEADM_EXTRA_ARGS=--cgroup-driver=<value>
 #  - Lots of other relevant points
 # - Ubu 20.04, Nvidia and Calico: https://zhuanlan.zhihu.com/p/138554103
-# 
+# - Cherry Servers: Install .. on 22.04: https://www.cherryservers.com/blog/install-kubernetes-on-ubuntu
+# - https://monowar-mukul.medium.com/kubernetes-create-a-new-token-and-join-command-to-rejoin-add-worker-node-74bbe8774808
+# - https://hbayraktar.medium.com/how-to-install-kubernetes-cluster-on-ubuntu-22-04-step-by-step-guide-7dbf7e8f5f99
+# - https://www.redswitches.com/blog/install-kubernetes-on-ubuntu/
+# - https://www.linuxtechi.com/install-kubernetes-on-ubuntu-22-04/ Calico net, lots of kudos (Also: sudo kubeadm reset cleanup-node)
+# Other (e.g. PGP/GPG):
+# - https://www.digitalocean.com/community/tutorials/how-to-handle-apt-key-and-add-apt-repository-deprecation-using-gpg-to-add-external-repositories-on-ubuntu-22-04
 - name: Install Kubernetes Cluster
   hosts: '{{ host }}'
   become: yes
   vars:
     # Built in ... ansible_distribution_release or ansible_lsb.codename
     # Distros: xenial=16.04, bionic=18.04, focal=20.04 jammy=22.04
-    k8s_distro: 'bionic'
+    # Not needed in new K8S model (See: k8s_apt_repo_line)
+    #k8s_distro: 'bionic'
+    masterip: 192.168.1.3
     # In case new docker will be needed (?)
-    dkr_apt_key_url: https://download.docker.com/linux/ubuntu/gpg
-    # distro name: $(lsb_release -cs)
-    dkr_apt_repo_line: "deb https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+    #dkr_apt_key_url: https://download.docker.com/linux/ubuntu/gpg
+    # distro name: $(lsb_release -cs). Should exist in facts. Examples: 18.04: bionic, 
+    #dkr_apt_repo_line: "deb https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+    # Key URL (this has been constant for very long time)
+    #k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    # New Release.key in PGP format, conversion to GPG will require --dearmor (See task)
+    k8s_apt_key_url:  https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key
     # 
-    k8s_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
     # Orig: kubernetes-xenial main
-    k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-{{ ansible_lsb.codename }} main"
+    # Getting distro codename: lsb_release -c -s . Ubuntu facts have ansible_lsb.codename (e.g. gparted does not)
+    #OLD: k8s_apt_repo_line: "deb http://apt.kubernetes.io/ kubernetes-{{ ansible_lsb.codename }} main"
+    k8s_apt_repo_line: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /"
+    # Choose the version from: https://kubernetes.io/releases/
+    # Ubuntu K8S release page: https://ubuntu.com/kubernetes/docs/supported-versions
+    # Ubuntu (18.04) packages have below -00 padded/trailed format
     # k8s_ver: 1.14.0-00
     # latest for 18.04 (as of 2022-02):
     # k8s_ver: 1.23.3-00
-    # Should use (for 18.04, as of 22-02)
-    k8s_ver: 1.21.9-00
+    # Should use 1.21.9-00 (for 18.04, as of 22-02)
+    # See: https://kubernetes.io/blog/2023/08/31/legacy-package-repository-deprecation/
+    # See: https://kubernetes.io/blog/2023/08/15/pkgs-k8s-io-introduction/
+    #k8s_ver: 1.21.9-00
+    # NEW: Version appears in apt_*_url vars. in vN.MM format.
+    k8s_ver: v1.28
     # Flannel Default 10.244.0.0/16. 
     k8s_cluster_cidr: '10.244.0.0/16'
     k8s_user: ubuntu
     # TODO: use in tasks !
     k8s_user_home: /home/ubuntu
+    # Containerd depended-on kernel modules (overlay seems to always be loaded/present for docker - that needs it - esp.)
+    k8s_kmods: ["overlay","br_netfilter"]
+    ############# NETWORK (Calico/Flannel) #################
     # Github repo: https://github.com/flannel-io/flannel/blob/master/Documentation/kube-flannel.yml
     # ()
-    # k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+    # OLD: k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
     # 221a83cab893a4a724aaff0bb53fbfd14a7724e4 Jul 24, 2020
-    k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/221a83cab893a4a724aaff0bb53fbfd14a7724e4/Documentation/kube-flannel.yml
+    # OLD: k8s_flannel_yaml: https://raw.githubusercontent.com/coreos/flannel/221a83cab893a4a724aaff0bb53fbfd14a7724e4/Documentation/kube-flannel.yml
+    # Non-coreos specific (coreos project dead), new maintainer on GitHub
+    #                 https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml (Or v3.25.0)
+    k8s_flannel_yaml: https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  ######################## TASKS ####################
   tasks:
-    # Add K8S install pkg repos
-    # curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-    - name: Add Google K8S apt-key
-      apt_key:
-        url: '{{ k8s_apt_key_url }}'
-        state: present
+    ###################### REPOS PREP AND INSTALLATIONS (All nodes) #################
+    # Older repos do not necessary have /etc/apt/keyrings/
+    - name: Create /etc/apt/keyrings/ for older distros
+      file:
+        path: '/etc/apt/keyrings/'
+        state: directory
+	mode: 0755
+        
+    # Add K8S install pkg repos to /etc/apt/keyrings/
+    # (See CL examples for equivalent, latter from 22.04 install article)
+    # curl -s    https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+    # curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+    # curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    - name: Add K8S apt-key / GPG Key
+      # --dearmor : PGP key into a GPG file format
+      shell: 'curl -fsSL {{ k8s_apt_key_url }} | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg'
+      #apt_key:
+      #  url: '{{ k8s_apt_key_url }}'
+      #  state: present
+    # Note: apt.kubernetes.io is DEPRECATED => pkgs.k8s.io
     # sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-... main"
+    # deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes.gpg] http://apt.kubernetes.io/ kubernetes-xenial main
+    # Added to: /etc/apt/sources.list.d/kubernetes.list
     - name: Add Kubernetes APT Repository
       apt_repository:
         repo: '{{ k8s_apt_repo_line }}'
         state: present
+	# Note: suffix .list will be auto-added, path: /etc/apt/sources.list.d/
         filename: 'kubernetes'
-    # Must do on docker configs (will this sustain over docker.io install ?)
-    # The cgroupdriver must match between docker and k8s (See: misconfiguration: kubelet cgroup driver: ...)
-    # Set as *exclusive content of /etc/docker/daemon.json
-    # NOTE: /var/lib/kubelet/config.yaml is supposed to have "cgroupDriver" (at least in some versions, e.g. around 1.11.0)
-    # See: https://github.com/kubernetes/kubernetes/issues/65863
-    - name: Set cgroupdriver to match (docker vs. k8s)
-      copy:
-        content: '{ "exec-opts": ["native.cgroupdriver=cgroupfs"] }\n'
-        dest: /etc/docker/daemon.json
-        backup: yes
-        force: yes
-        mode: '644'
+    # Apt Update ?
+    
     # Possible errors:
     # - misconfiguration: kubelet cgroup driver: ...x
     # - failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file \"/var/lib/
-    - name: Master/WorkerNode Common installs
+    # In intrest of "keeping things simple" install kubectl ALSO on worker nodes (as it is not big and you might potentially use it there too)
+    # It is suggested to run version commands like (e.g.) kubeadm version
+    # Note: docker.io depends on containerd (already early-on, e.g. 18.04), so it is going to be installed. However install of containerd
+    # does NOT (necessarily) create /etc/containerd/ (or config.toml within that)
+    - name: Install Master/WorkerNode Common K8S packages
       apt:
         update_cache: yes
         state: present
         force_apt_get: yes
         install_recommends: no
-        name: ["docker.io", "apt-transport-https", "kubelet={{ k8s_ver }}", "kubeadm={{ k8s_ver }}"]
-    - name: Install kubectl on Master
-      apt:
-        name: "kubectl={{ k8s_ver }}"
-        state: present
-        force: yes
-        install_recommends: no
-      when: k8smaster is defined
-    #  "stderr": "swapoff: –a: swapoff failed: No such file or directory",
-    #- name: Disable swap for K8S Initialization
-    #  shell: /sbin/swapoff –a
+	# Expected: curl ca-certificates software-properties-common gnupg. Note gnupg2 is dummy trans. pkg for gnupg (2.X)
+        # gnupg2 apt-transport-https 
+	# K8S can work with plain containerd, without complete docker.io (that still depends on containerd)
+        #name: ["containerd", "apt-transport-https", "kubelet={{ k8s_ver }}", "kubeadm={{ k8s_ver }}", "kubectl={{ k8s_ver }}"]
+	# Install default versions (to see what ver format from pkgs.k8s.io is ) Use: containerd.io ?
+	name: ["containerd", "apt-transport-https", "kubelet", "kubeadm", "kubectl"]
+    #- name: Install kubectl on Master
+    #  apt:
+    #    name: "kubectl={{ k8s_ver }}"
+    #    state: present
+    #    force: yes
+    #    install_recommends: no
+    #  when: k8smaster is defined
+    
+    # Prevent K8S packages from being updated during normal update
+    # (E.g. https://phoenixnap.com/kb/install-kubernetes-on-ubuntu recommends this)
+    # TODO: ansible.builtin.dpkg_selections: name: kubeadm selection: hold OR: ansible.builtin.apt
+    - name: Lock/Pin K8S packages
+      shell:
+        cmd: sudo apt-mark hold kubelet kubeadm kubectl
+    #################### PREREQUISITES #######################
+    # Config priciples
+    # - Do configurations ONLY after installs, so that install does not remove or run into conflict
+    #   with packages default config files.
+    # - Use Ansible copy: .. content: ... on files that do not exist and will be freshly created
+    # - Use lineinfile on files that already exist and contain valuable configs.
+    # "stderr": "swapoff: -a: swapoff failed: No such file or directory",
+    # To make permanent: sudo sed -i '/ swap / s/^/#/' /etc/fstab (swap anywhere on line)
+    - name: Disable swap for K8S Initialization
+      shell:
+        cmd: /sbin/swapoff -a
+    - name: Disable swap permanently
+      #shell: sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+      shell:  sed -i '/ swap / s/^/#/' /etc/fstab
+      #  cmd: 
+    # Add modules to config AND run modprobe on each (Also suggested k8s.conf, these seem to NOT be containerd-only)
+    - name: Configure k8s required modules
+      copy:
+        content: '{{ k8s_kmods | join("\n") }}'
+        #content: "overlay\nbr_netfilter"
+	# OLD: containerd.conf
+        dest: /etc/modules-load.d/k8s.conf
+	mode: 0644
+    - name: Load k8s required modules
+      shell:
+        cmd: 'sudo modprobe {{ item }}'
+      with_items: {{ k8s_kmods }}
+    # Run `sudo sysctl --system` after changes
+    - name: Configure Kubernetes network (by sysctl)
+      copy:
+        content: "net.bridge.bridge-nf-call-ip6tables = 1\nnet.bridge.bridge-nf-call-iptables = 1\nnet.ipv4.ip_forward = 1"
+	dest: /etc/sysctl.d/kubernetes.conf
+	mode: 0644
+    - name: Activate K8S network sysctl changes (no reboot)
+      shell: sysctl --system
+    
+    #################### CONFIG (COMMON) #######################
+    # Must do on docker configs (will this sustain over docker.io install ?)
+    # The cgroupdriver must match between docker and k8s (See: misconfiguration: kubelet cgroup driver: ...)
+    # Set as *exclusive content of /etc/docker/daemon.json
+    # NOTE: /var/lib/kubelet/config.yaml is supposed to have "cgroupDriver" (at least in some versions, e.g. around 1.11.0)
+    # See: https://github.com/kubernetes/kubernetes/issues/65863
+    # NOTE: May need to use (module/task) file: path: /etc/docker/ state: directory
+    # NOTE: https://phoenixnap.com/kb/install-kubernetes-on-ubuntu recommends more complex/diverse JSON
+    #- name: Set cgroupdriver to match (between docker and k8s)
+    #  copy:
+    #    content: '{ "exec-opts": ["native.cgroupdriver=cgroupfs"] }\n'
+    #    dest: /etc/docker/daemon.json
+    #    backup: yes
+    #    force: yes
+    #    mode: '644'
+    # Prep/config Containerd if it is used.
+    - name: Create dir for /etc/containerd/config.toml
+      file:
+        path: '/etc/containerd'
+        state: directory
+	mode: 0755
+    - name: Populate (default) /etc/containerd/config.toml
+      shell: containerd config default > /etc/containerd/config.toml
+    - name: Modify containerd SystemdCgroup in /etc/containerd/config.toml
+      # sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+      lineinfile:
+        line: 'SystemdCgroup = true'
+	regexp: '^SystemdCgroup'
+	path: '/etc/containerd/config.toml'
+    - name: Restart containerd after re-config
+      shell: systemctl restart containerd && systemctl enable containerd
+    # Kubelet Config. Note: How do the 2x KUBELET_EXTRA_ARGS env settings (in 2 files) coexist and be effective ?
+    - name: Config kubelet (/etc/default/kubelet and systemd unit)
+      lineinfile:
+        line:   '{{ item.line }}'
+        regexp: '{{ item.regexp }}'
+        path:   '{{ item.path }}'
+      with_items:
+        - {line: 'KUBELET_EXTRA_ARGS="--cgroup-driver=cgroupfs"', regexp: '^KUBELET_EXTRA_ARGS', path: '/etc/default/kubelet'}
+	- {line: 'Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"', regexp: 'KUBELET_EXTRA_ARGS', path: '/etc/systemd/system/kubelet.service.d/10-kubeadm.conf'}
+    ###################### MASTER INIT #########################
     # Suggested by error msgs: -v=5  --ignore-preflight-errors=all
     # "The connection to the server 10.75....:6443 was refused - did you specify the right host or port?"
     # Host tried (from master) was master
@@ -115,30 +249,50 @@
     # https://stackoverflow.com/questions/45708175/kubelet-failed-with-kubelet-cgroup-driver-cgroupfs-is-different-from-docker-c
     #  journalctl -u kubelet
     # Suggested in  /etc/docker/daemon.json   "exec-opts": ["native.cgroupdriver=cgroupfs"],
+    # /etc/modules-load.d/
+    - name: Generate token string on master (not stored)
+      shell: kubeadm token generate
+      register: tokout
+      delegate_to: '{{ masterip }}'
+    - name: Generate Cert key (for --certificate-key)
+      shell: kubeadm certs certificate-key
+      register: certout
+      delegate_to: '{{ masterip }}'
     - name: Initialize the Cluster (on master)
       # --image-repository
-      shell: kubeadm init --pod-network-cidr={{ k8s_cluster_cidr }} >> cluster_initialized.txt
+      # --pod-network-cidr={{ k8s_cluster_cidr }} - default: auto-gen
+      # --certificate-key {{ certout.stdout }}
+      shell: kubeadm init  --token '{{ tokout.stdout }}' --token-ttl 72h --upload-certs >> cluster_initialized.txt
       args:
-        chdir: $HOME
+        chdir: '{{ lookup('env', 'HOME') }}'
         creates: cluster_initialized.txt
+      delegate_to: '{{ masterip }}'
       when: k8smaster is defined
-    # kubeadm init On nodes (to e.g. create /var/lib/kubelet/config.yaml) ?
+    # https://monowar-mukul.medium.com/kubernetes-create-a-new-token-and-join-command-to-rejoin-add-worker-node-74bbe8774808
+    # Also: cmd: 'kubeadm token create' (w/o params) Outputs token only, run immediately after:
+    # kubeadm token create hp9b0k.1g9tqz8vkf78ucwf --print-join-command
+    # kubeadm join 192.168.56.110:6443 --token hp9b0k.1g9tqz8vkf78ucwf --discovery-token-ca-cert-hash sha256:32eb67948d72ba99aac9b5bb0305d66a48f43b0798cb2df99c8b1c30708bdc2c
+    
+    # NOT: kubeadm init On nodes (to e.g. create /var/lib/kubelet/config.yaml) ?
     # Can we not impersonate, but say user: ... (like in copy) here. YES, BUT...
     # become/become_user is better at detecting users (possibly custom) homedir
     # Also: {{ ansible_env.HOME }} on https://docs.ansible.com/ansible/latest/reference_appendices/faq.html
+    # TODO: Run this on all nodes ??
     - name: Create .kube directory
-      become: yes
-      become_user: '{{ k8s_user }}'
       file:
-        path: $HOME/.kube
+        #path: '{{ lookup('env', 'HOME') }}/.kube'
         #path: '/home/{{ k8s_user }}/.kube'
-        #path: '{{ k8s_user_home }}/.kube'
+        path: '{{ k8s_user_home }}/.kube'
         state: directory
         mode: 0755
-        #owner: '{{ k8s_user }}'
+        owner: '{{ k8s_user }}'
+      become: yes
+      become_user: '{{ k8s_user }}'
       when: k8smaster is defined
-    # Is the file heavily protected, can we symlink ?
-    - name: Copy admin.conf to user's kube config
+    # Just copy, do not symlink
+    # NOTE: Must be done AFTER master kubeadm init
+    # filename can be set to env. KUBECONFIG=...
+    - name: Copy admin.conf from /etc to user's kube config
       copy:
         src: /etc/kubernetes/admin.conf
         # NOTE: This will not work for custom homedirs
@@ -154,56 +308,51 @@
     # DaemonSet:s (should be) installed by (e.g.) nodeSelector: beta.kubernetes.io/arch: amd64
     # Complaints (Kub. 1.23.3-00) about kinds: ClusterRole, ClusterRoleBinding (and
     # DaemonSet in later YAML manifest). Have these kinds been deprecated with very recent 1.23 k8s ?
+    # Note: kubectl supports also URLs, not only local files.
+    # https://kubernetes.io/docs/concepts/cluster-administration/addons/
     - name: install Pod (flannel) network (by k8s YAML apply)
       become: yes
       become_user: '{{ k8s_user }}'
       shell: 'kubectl apply -f {{ k8s_flannel_yaml }} >> pod_network_setup.txt'
       args:
-        chdir: $HOME
+        chdir: '{{ lookup('env', 'HOME') }}'
         creates: pod_network_setup.txt
+      # User deploy ?
+      #become: true
+      #become_user: '{{ k8s_user }}'
       when: k8smaster is defined
-    ###### Worker Nodes ########################
-    - name: Generate join-token on master
-      shell: kubeadm token create --print-join-command
-      register: join_command
-      when: k8smaster is defined
-    - name: Run kubeadm init on Workers
-      shell: kubeadm init
-      when: k8smaster is not defined
-    # Seems must set_fact as intermediate step.
-    # Seems: This would need to be in a single host play (e.g. host: master)
-    # Needs to be in a multi-play playbook YAML
-    # Needs to be recalled (in second, worker play) by: shell: "{{ hostvars['master'].join_command }}
-    #- name: Set Join command fact
+    ########################## WORKER NODES ########################
+    # See: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
+    # Token format is [a-z0-9]{6}.[a-z0-9]{16} - e.g. abcdef.0123456789abcdef
+    # How complete is the join command?
+    # NOTE: join-command would have a benefit of also having hash for --discovery-token-ca-cert-hash
+    #- name: Fetch kubeadm join command (from master)
+    #  shell: 'kubeadm token create --print-join-command'
+    #  register: join_command_raw
+    #  delegate_to: '{{ masterip }}'
+    #  # when: k8smaster
+    # set_fact (module) Sets *on the host* being executed, then avail. in (e.g.) hostvars[inventory_hostname][varname]
+    # 
+    #- name: Set join command as fact
     #  set_fact:
     #    join_command: "{{ join_command_raw.stdout_lines[0] }}"
-    #  # Must run (cluster) join on workers
-    #  # kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
     #  when: k8smaster
-    # This MAY need to be a play in itself
-    # gather_facts: false
-    - name: get join command
-      shell: 'kubeadm token create --print-join-command'
-      register: join_command_raw
-      when: k8smaster
-    # set_fact Sets *on the host* being executed, then avail. in (e.g.) hostvars[inventory_hostname][varname]
-    - name: Set join command
-      set_fact:
-        join_command: "{{ join_command_raw.stdout_lines[0] }}"
-      when: k8smaster
     # Continue by executing join_command on Workers.
     # Note 'master' here is the inventory_hostname for master (first token on hosts line)
-    #- name: join cluster
+    #- name: Join Worker to cluster by join_command
     #  shell: "{{ hostvars['master'].join_command }} >> node_joined.txt"
     #  args:
     #    chdir: $HOME
     #    creates: node_joined.txt
     - name: Run kubeadm join ... on workers
       # Example (In newer (already at least in 1.18): --token, not --discovery-token)
-      #shell: kubeadm join --discovery-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash sha256:1234..cdef 1.2.3.4:6443
-      shell: '{{ join_command.stdout_lines[0] }}'
+      # --certificate-key {{ certout.stdout }}
+      #shell: kubeadm join --token {{ token }} --discovery-token-ca-cert-hash sha256:{{ cacert_hash }} {{ masterip }}:6443
+      shell:  kubeadm join --token {{ token }} --discovery-token-unsafe-skip-ca-verification {{ masterip }}:6443
+      #shell: '{{ join_command.stdout_lines[0] }}'
+      when: k8smaster is not defined
     # Need to restart worker kubelet ?
     - name: Worker Kubelet restart
       # shell: echo Hello
-      shell: systemctl daemon-reload ; systemctl restart kubelet
+      shell: systemctl daemon-reload && systemctl restart kubelet
       when: k8smaster is not defined
