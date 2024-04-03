@@ -133,8 +133,9 @@ function app_init() { // global
   htpasswd.init(global);
   jira.init(global);
   var logger = function (res,path,stat) {
-    // TODO: Extract URL from res ? (res has ref to req ?)
-    console.log("Send STATIC file in path: " + path + " ("+stat.size+" B)");
+    // TODO: Extract URL from res ? (res has ref to req in res.req)
+    //var req = res.req;
+    console.log("Send STATIC file in fspath: " + path + " ("+stat.size+" B, meth: "+res.req.method+")");
     // console.log(stat); // Stat Object
   };
   if (global.gerrit) { gerrit.init(global); }
@@ -287,7 +288,7 @@ function app_init() { // global
   app.get("/ipamsync",  iblox.ipam_sync);
   app.get("/ipamnets",  iblox.networks);
   // cloud-init/subiquity/curtin
-  app.get("/meta-data",  ubu20_meta_data);
+  app.get("/meta-data",  ubu20_meta_data); // TODO: osinstall.
   
   app.post("/keyxchange",  keys_exchange);
   app.get("/linet_pubkey", keys_pubkey);
@@ -999,8 +1000,21 @@ function ubu20_meta_data(req, res) {
   var hn = 'host-01';
   if (!f || !f.ansible_hostname) { }
   else { hn = f.ansible_hostname; }
+  // TODO: if hostname was not foudn in f, try resolving (async !) from DNS (likely to be correct)
+  // See patt: DNS-reverse(hostname):  
+  //if (!f || !f.ansible_hostname) {
+  //   dns.reverse(ip, function (err, domains) {
+  //     if (err) { console.log("Error in reverse lookup !"); return send_hn_meta(); }
+  //     if (!Array.isArray(domains)) { console.log("DNS names not in array !"); return send_hn_meta(); }
+  //     // Array of DNS names, pick [0]
+  //     console.log("DNS-reverse(hostname): ", domains[0]);
+  //     //send_hn_meta(domains[0]);
+  //   });
+  //}
+  //function send_hn_meta(hn) {
   console.log("ubu20_meta_data: hn="+hn);
   res.end("instance-id: "+hn+"\n"); // focal-autoinstall
+  //}
 }
 
 /** generate API doc out of swagger API doc YAML file.
@@ -2301,7 +2315,9 @@ function bootreset(req, res) {
 }
 /** List Media directories (Under image mount dir) GET: /medialist
  * Additionally probes into stub directories to see if they are mounted (and have one or more files).
- * TODO: Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
+ * TODO:
+ * - Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
+ * - Resolve descriptive name from ISO FS for distro (e.g. Ubu 2X: $ISOROOT/.disk/info)
  */
 function media_listing (req, res) {
   var jr = {status: "err", "msg": "Could properly list media dirs. "};
@@ -2327,7 +2343,7 @@ function media_listing (req, res) {
   });
   // Fails on Mac/BSD because of field layout, but does not crash.
   losetup_assocs((err, csv) => {
-    if (err) { console.log("losetup_assocs faile: "+err); }
+    if (err) { console.log("losetup_assocs failed: "+err); }
     console.log("LO_ASSOCS:", csv);
     // Index (by mountpt) and join !
     var idx_mpt = {};
