@@ -299,17 +299,26 @@ append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu22dt/ debug
 # append initrd=http://{{ httpserver }}/initrd.gz -- ks=http://192.168.1.141/ks.cfg
 # #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
+# Ubuntu server 24.04 Noble Numbat
+label ubuntu2404
+menu label Install Ubuntu 24.04 Server subiquity/Live (WIP Automated)
+kernel http://{{ httpserver }}/ubuntu24/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu24/casper/initrd
+# New keyword seems to be iso-url=... (OLD: url=...)
+append ip=dhcp iso-url=http://{{ httpserver }}/noble-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
+
 # Ubuntu Server 22.04
 # https://www.jimangel.io/posts/automate-ubuntu-22-04-lts-bare-metal/ - Lots of info about cloud-config
 label ubuntu2204
-menu label Install Ubuntu 22.04 Server subiquity/Live (WIP: Automated)
+menu label Install Ubuntu 22.04 Server subiquity/Live (Automated)
 kernel http://{{ httpserver }}/ubuntu22/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu22/casper/initrd
-# Note: recipe not fetched with abbreviations ds,s ?). Note dot-versions (e.g. .1,.4) below - these have to match kernel,initrd.
+# Note: recipe not fetched with abbreviations ds,s ?). Note: dot-versions (e.g. .1,.4) in iSO image name below - these have to match kernel,initrd.
+# 
 # ONLY Grub should need escape for ';' in ds=...
 # With enough memory (8 GB) and No OOM (Out-of-mem) errors, Subiquity *will* fetch recipe.
 # ... BUT somethow autoinstall will not trigger.
-append ip=dhcp url=http://{{ httpserver }}/ubuntu-22.04.1-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
+append ip=dhcp url=http://{{ httpserver }}/ubuntu-22.04.4-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
 # root=/dev/ram0 ramdisk_size=2200000
 
 # Ubuntu Server 20.04 (Focal Fossa) w. Subiquity based "modern" installer
