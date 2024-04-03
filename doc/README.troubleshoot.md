@@ -66,6 +66,8 @@ Any completed install creates:
 - /var/log/cloud-init.log
 - 22.04 does NOT tolerate #cloud-config YAML with write_files set to
   null - must be "iterable" => empty array/list
+- Install boot complains: contents of "..-amd64.iso" does not start with b'#cloud-config' - image is  in kernel cli key url=..., checked /proc/cmdline on install machine, same CLI worked on prev install (!). Why is subiquity trying
+to parse ISO as '#cloud-config' ?
 
 https://askubuntu.com/questions/1344472/combine-cloud-init-autoinstall-with-other-cloud-init-modules
 https://ubuntu.com/server/docs/install/autoinstall-reference#user-data
