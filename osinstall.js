@@ -140,7 +140,9 @@ function pp_subiquity(out, d) {
     if (!Array.isArray(dy)) { console.log("Disk YAML not parseable"); }
     // Combine Disk to main config tree
     y.autoinstall.storage.config = dy;
-    // Net / Netplan ???
+    // Use local repo for updates ? Example 
+    y.autoinstall.apt.primary[0].uri = "http://"+mirror.hostname+"/"+mirror.directory;
+    // Net / Netplan ??? (Note: leave second "network" out for 22.04 
     // y.autoinstall.network.network = 
     out2 = "#cloud-config\n"+yaml.safeDump(y, ycfg);
   }
@@ -491,6 +493,13 @@ function preseed_gen(req, res) {
   // var override;
   
   console.log("Concluded config type: '" + recipe.ctype + "' for url: "+recipe.url);
+  ///////// OSID Detections ///////////////////
+  // Try fill/override "osid" by:
+  // - recipe.ctype
+  // - HTTP req.headers, esp. "user-agent" (Note: These will be normalized to lower-case by express)
+  var hdrs = req.headers;
+  //if (!hdrs) {}
+  console.log("OSINSTALL-HDRS:", hdrs);
   // TODO: ADD "family" derivation debian/rhel
   // Tests for implied osid. NOTE: These could be tested by recipe.ctype (win,suse: osid=r.ctype)
   //if (url.match(/autounattend/i))
@@ -498,8 +507,12 @@ function preseed_gen(req, res) {
   //if (url.match(/autoinst.xml/i))
   if (recipe.ctype == "suse") { recipe.osid = 'suse'; }
   //if (url.match(/\buser-data\b/i))
-  // TODO: How to differentiate ubuntu20,*22,*24 ?
-  if (recipe.ctype == "ubu20") { recipe.osid = 'ubuntu20'; } // As this *cannot* be fitted into boot CL URL
+  // TODO: How to differentiate ubuntu20,*22,*24 (As this *cannot* be fitted into boot CL URL) ?
+  if (recipe.ctype == "ubu20") {
+    recipe.osid = 'ubuntu20'; // TODO: Be more intelligent about below.
+    if (hdrs['user-agent'] && hdrs['user-agent'].match(/22\.04/)) { recipe.osid = 'ubuntu22'; }
+    if (hdrs['user-agent'] && hdrs['user-agent'].match(/24\.04/)) { recipe.osid = 'ubuntu24'; }
+  } // 
   if (!recipe.osid) {recipe.osid = recipe.defosid; }
   var osid = recipe.osid; // For Compatibility
   var ctype = recipe.ctype; // For Compatibility. Use recipe.ctype in code
