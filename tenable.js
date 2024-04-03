@@ -50,16 +50,21 @@ function nes_proc(d, opts) {
   l = l.filter(filtcb);
   console.log(JSON.stringify(l, null, 2));
   if (opts.cmds) {
+    // Note: name may be (e.g.) Nessus-latest-el8.x86_64.rpm
+    // Should have curl rename (-o) to version number name given in member "file".
+    l[0].nessus = true;
     tocurl(l[0], opts.rpara);
   }
 }
 
 function tocurl(dn, rpara) {
-  var bcmd = `curl -X GET '${dn.file_url}' -O`;
+  var bcmd = `curl -X GET '${dn.file_url}'`;
   if (rpara.headers && dn.requires_auth) {
     var ks = Object.keys(rpara.headers);
     ks.forEach( (k) => { bcmd += ` --header '${k}: ${rpara.headers[k]}'`; });
   }
+  if (dn.nessus) { bcmd += " -o "+dn.file; }
+  else { bcmd += " -O"; }
   console.log(bcmd);
   return bcmd;
 }
