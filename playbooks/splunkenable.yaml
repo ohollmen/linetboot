@@ -31,7 +31,7 @@
     - debug: msg="{{ stopout.stdout }}"
     - name: Let Splunk Create a systemd Unit
       shell:
-        cmd: '{{ sp_exe }} enable boot-start -user splunk -systemd-managed 1'
+        cmd: '{{ sp_exe }} enable boot-start -user splunk -group splunk -systemd-managed 1'
         creates: /etc/systemd/system/Splunkd.service
       #when: 0
     - name: Reload Units
