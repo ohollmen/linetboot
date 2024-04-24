@@ -3,6 +3,8 @@
 # Example of running:
 # ```
 # ansible-playbook splunkupdate.yaml -e "splunkrpm=splunk-9.1.1-64e843ea36b1.x86_64.rpm host=all srctmp=/var/tmp" --limit 'splunkhost*'
+# # Wait for start op.
+# ansible-playbook splunkupdate.yaml -e "splunkrpm=splunk-9.1.1-64e843ea36b1.x86_64.rpm host=all startwait=90" --limit 'splunkhost*'
 # ```
 # 
 # ## Information On (Install and) Upgrade
@@ -22,6 +24,7 @@
    splunkgrp: 'splunk'
    srctmp: '/tmp/'
    desttmp: '/tmp/'
+   startwait: 30
   tasks:
   - name: Copy splunk install/upgrade RPM
     copy:
@@ -48,8 +51,10 @@
     # Note: must have become to have become_user be effective
     become: true
     become_user: '{{ splunkuser }}'
-  # Above start runs async ? Seems like a bit of delay here might help
-  #- shell: sleep 30
+  # Above start runs async ? Seems like a bit of delay here might help.
+  # OR investigate splunk utiility for sync/blocking behaviour (wait to complete)
+  - name: Wait for splunk update to complete
+    shell: 'sleep {{ startwait }}'
   - name: Restart splunk service
     shell:
       cmd: 'systemctl restart Splunkd'
