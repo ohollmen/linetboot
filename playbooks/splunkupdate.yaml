@@ -1,0 +1,56 @@
+# ## Update Splunk
+# 
+# Example of running:
+# ```
+# ansible-playbook splunkupdate.yaml -e "splunkrpm=splunk-9.1.1-64e843ea36b1.x86_64.rpm host=all srctmp=/var/tmp" --limit 'splunkhost*'
+# ```
+# 
+# ## Information On (Install and) Upgrade
+# - https://docs.splunk.com/Documentation/Splunk/9.1.1/Installation/HowtoupgradeSplunk
+# - https://docs.splunk.com/Documentation/Forwarder/9.2.1/Forwarder/Upgradetheuniversalforwarder
+# - License (XML) has to be entered in Web GUI (Settings => Licensing => Add License)
+# ## Possible errors
+# - "Failed to stop Splunkd.service: Unit Splunkd.service not loaded." - the systemd unit for "Splunkd" is not found on system.
+#   - https://docs.splunk.com/Documentation/Splunk/9.2.1/Admin/RunSplunkassystemdservice
+- name: Update Splunk on RHEL(8)
+  hosts: '{{ host }}'
+  become: true
+  vars:
+   splunkrpm: 'splunk-9.1.1-64e843ea36b1.x86_64.rpm'
+   splunkbin: '/opt/splunk/bin/splunk'
+   splunkuser: 'splunk'
+   splunkgrp: 'splunk'
+   srctmp: '/tmp/'
+   desttmp: '/tmp/'
+  tasks:
+  - name: Copy splunk install/upgrade RPM
+    copy:
+      src: '{{ srctmp }}/{{ splunkrpm }}'
+      dest: '{{ desttmp }}'
+      mode: 'a+rw'
+  - name: Stop Splunk (Before install)
+    shell:
+      cmd: 'systemctl stop Splunkd'
+  # Note: Having Splunk stopped will trigger error, thus ignore it.
+  - name: Check Status
+    shell: 'systemctl status Splunkd'
+    ignore_errors: yes
+  - name: Update Splunk (from RPM)
+    shell:
+      cmd: 'rpm -U --replacefiles --replacepkgs {{ desttmp }}/{{ splunkrpm }}'
+      chdir: /opt
+  - name: Change Splunk Files to be owned by Splunk User
+    shell:
+      cmd: 'chown -R {{ splunkuser }}:{{ splunkgrp }} /opt/splunk'
+  - name: Run Splunk Update executable (installed earlier by RPM)
+    shell:
+      cmd: '{{ splunkbin }} start --accept-license --answer-yes --no-prompt'
+    # Note: must have become to have become_user be effective
+    become: true
+    become_user: '{{ splunkuser }}'
+  # Above start runs async ? Seems like a bit of delay here might help
+  #- shell: sleep 30
+  - name: Restart splunk service
+    shell:
+      cmd: 'systemctl restart Splunkd'
+    ignore_errors: yes
