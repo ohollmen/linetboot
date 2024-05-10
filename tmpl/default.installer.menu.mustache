@@ -215,11 +215,13 @@ initrd http://{{ httpserver }}/core_tinycore.gz
 label debian10
 menu label Debian 10 Buster (Full Automated / WIP)
 # These paths are valid for (e.g) debian-10.7.0-amd64-DVD-1.iso, debian-10.4.0-amd64-DVD-1.iso (both ~3.9GB)
-kernel http://{{ httpserver }}/debian10/install.amd/vmlinuz ~528K
+# below ~528K
+kernel http://{{ httpserver }}/debian10/install.amd/vmlinuz
 # initrd http://{{ httpserver }}/debian10/install.amd/initrd.gz 19.6M
 # Paths for netboot.tar.gz (Unpackaged with instructions above)
 # kernel http://{{ httpserver }}/debian10net/debian-installer/amd64/linux ~528K
-initrd http://{{ httpserver }}/debian10net/debian-installer/amd64/initrd.gz ~30.8M
+# below ~30.8M
+initrd http://{{ httpserver }}/debian10net/debian-installer/amd64/initrd.gz
 # Ironically, the kernel (by checksum) is the same on ISO and .tar.gz. initrd differs (~20 vs. ~30MB)
 # initrd http://{{ httpserver }}/debian1070-installer/initrd.gz
 append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=debian10
@@ -290,6 +292,27 @@ kernel http://{{ httpserver }}/ubuntu22dt/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu22dt/casper/initrd
 append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu22dt/ debug ip=dhcp toram
 
+# 24.04 DT - Assume similar boot (Do we need: root=/dev/ram0)
+# https://canonical-subiquity.readthedocs-hosted.com/en/latest/intro-to-autoinstall.html
+# https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html
+# The 20.04 and up Server style autoinstall(.yaml) Supported in Desktop 23.04 and later
+# Notes on "Netboot tarball" (e.g. "64-bit PC (AMD64) netboot tarball") 	ubuntu-24.04-netboot-amd64.tar.gz / 81MB
+# - Says: The netboot tarball contains files needed to boot the Ubuntu installer over the network. Server ? DT ?
+# - The below (very similar to earlier Ubuntus) works, but "toram" removed (caused RAM usage to go 7.9GB => 2.7 GB)
+# Refs:
+# - https://discourse.ubuntu.com/t/from-installation-to-provisioning-upgrading-the-ubuntu-desktop-installer/42139
+# - Netboot desktop installation (22.04): https://discourse.ubuntu.com/t/ubuntu-22-04-pxe-uefi-netboot-desktop-installation/27841
+#   - https://www.molnar-peter.hu/en/ubuntu-jammy-netinstall-pxe.html (massive amout of great links to ubiquity DT PXE boot/install, e.g ...)
+#   - Kernel CLI args https://wiki.ubuntu.com/DesktopCDOptions
+#   - 
+label ubuntu24dt
+menu label Ubuntu MATE 24 Desktop (64bit, Live)
+kernel http://{{ httpserver }}/ubuntu24dt/casper/vmlinuz
+initrd http://{{ httpserver }}/ubuntu24dt/casper/initrd
+# Keep (min): debug ip=dhcp. Check: toram ? Seems toram loads all to ram ~1 min (60/s) * ~ 100MB/sec = ~ 6GB (size of ISO)
+# Remove: toram
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu24dt/ debug ip=dhcp
+
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
 # menu label Installer Boot - Kickstart (First Disk ignored)
@@ -334,6 +357,9 @@ append ip=dhcp url=http://{{ httpserver }}/ubuntu-22.04.4-live-server-amd64.iso 
 # https://github.com/cloudymax/pxeless
 # https://discourse.ubuntu.com/t/automated-server-install-quickstart/16614/24
 # OLDER: https://wiki.ubuntu.com/UEFI/PXE-netboot-install
+# - Canonical repo for cloud-init:
+#   - Docs: https://github.com/canonical/cloud-init/tree/main/doc
+#   - cloud-config Examples: https://github.com/canonical/cloud-init/tree/main/doc/examples
 # See also next boot item for preseed based "legacy" installer.
 # Discussed on: https://discourse.ubuntu.com/t/netbooting-the-live-server-installer/14510/9
 # Seems file / URL path downloaded is "user-data"
