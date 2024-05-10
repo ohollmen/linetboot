@@ -1,55 +1,196 @@
 # # RHEL XRDP Install (w. XFCE)
 # 
-# Note: In case functional troubleshooting / debugging is needed, change
-# `/etc/xrdp/xrdp.ini` section `[Logging]` setting `Loglevel=...` to **DEBUG**.
-# If UI fonts show monotype, change them (e.g.): Font: Sans Regular ... 10 => Cantarell Bold ... 10
+# ## Running
+# ```
+# ansible-playbook xrdpsetup.yaml 
+# ```
 # ## Diagnosing, troublehsooting
+# 
 # - Check the presence (or persistence of temporarily disconnected RDP session
 #   by: `watch -n 2'ps -ef | grep Xvnc'`
 # - Forcefully terminate all sessions: `killall Xvnc`
+# - To see listener: `netstat -antp | grep xrdp`
 # 
+# Note: In case functional troubleshooting / debugging is needed, change
+# `/etc/xrdp/xrdp.ini` section `[Logging]` setting `Loglevel=...` to **DEBUG**.
+# If UI fonts show monotype, change them (e.g.):
+# Font: Sans Regular ... 10 => Cantarell Bold ... 10
+# 
+# ## Security
+# Some sources suggest enabling (RHEL) firewalld systemd service and doing:
+# ```
+# sudo firewall-cmd --permanent --add-port=3389/tcp && sudo firewall-cmd --reload
+# ```
+# ## Troubleshoot
+# 
+# - VNC: An unexpected error occurred when communicating w. the server: No matching security types. Attempt to reconnect?
+#   - /usr/libexec/vncserver has $config{'securitytypes'} (orig: SecurityTypes=...), supports vncauth, tlsvnc, x509vnc
+# - Xvnc :2 -geometry 1024x768 -depth 16 -rfbauth /home/ohollmen/.vnc/passwd -bs   -dpi 96 -verbose
+#   - Connecting OK, but leaves desctop black
+#   - Running with `sudo vncsession mrsmith :2` seems to launch onto background and honor ~/.vnc/config
+#   - The /usr/share/xsessions/xfce.desktop seems to facilitate complete XFCE session, launches
+#     startxfce4 (as child of vncsession)
+# - Set passwd (into ~/.vnc/passwd) using `vncpasswd` (sets VNC-only password for current $USER, obscured)
+# - Set users to /etc/tigervnc/vncserver.users per examples in file (e.g. ":2=mrsmith")
+# - Stop firewall to be able to connect (to e.g. 5902): `sudo systemctl stop firewalld`
+# - Option session should match one of the `$sesstype.desktop` files in /usr/share/xsessions
+# - ~/.Xauthority is (re-)written even if you move it to another name (by xinit ?)
+# ## Other / Refs
+# - See
+#   -(ubuntu/Debian) /etc/X11/Xsession, /etc/X11/Xsession.options,
+#   - RH directory: /usr/share/xsessions
+# - VNC Systemd Setup: https://www.ibm.com/support/pages/how-configure-vnc-server-red-hat-enterprise-linux-8
+# - vncserver starts Xvnc (Old vnc (e.g. 1.8.0, Ubuntu 18.04: 1.7.0) wrapped by xinit (exec:s and disappears)
+# TigerVNC 1.10.0 was released with RHEL 8.3, implementing full native systemd support.
+# - Good minimal (RH) VNC install: https://linuxconfig.org/install-vnc-server-on-redhat-8
+# - Centos 7 (pre 8.3) w. DIY / custom systemd: https://www.tecmint.com/install-and-configure-vnc-server-in-centos-7/ (port 5901)
+# - Security Types: https://superuser.com/questions/1194583/tigervnc-viewer-no-matching-security-types
+# - OLD Q on rfbauth: https://unix.stackexchange.com/questions/23431/authenticating-with-x11vnc-whats-the-difference-between-auth-and-rfbauth
+# - https://forum.xfce.org/viewtopic.php?id=13421
+# - RHAT Guide: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/using_the_desktop_environment_in_rhel_8/accessing-the-desktop-remotely_using-the-desktop-environment-in-rhel-8
+# - RHEL VNC PAM Auth: https://access.redhat.com/solutions/7028399
+#   - /etc/pam.d/tigervnc
+#   - In ~/.vnc/config: SecurityTypes=TLSPlain PlainUsers=mrsmith
+#   - OR In: /etc/tigervnc/vncserver-config-defaults ... PlainUsers=$USER
+#   - For Cert auth: X509Plain, vncviewer -SecurityTypes X509Plain -X509CA ca-bundle.crt my-server.example.com:1
+#   - https://groups.google.com/g/tigervnc-users/c/dHaoiQyx0ZI (See: brian...@gmail.com / Brian Long)
+#   - Add pam_service=login (aka PAMService, See: man Xvnc). login is the file /etc/pam.d/login (PAM config)
+#   - https://github.com/TigerVNC/tigervnc/pull/1664
+#   - https://issues.redhat.com/browse/RHEL-4258
+# - /usr/share/doc/tigervnc/HOWTO.md
 - name: RHEL XRDP Install (w. XFCE)
   hosts: '{{ host }}'
   #serial: 1
   become: yes
   #gather_facts: no
   vars:
-    - xrdpuser: jsmith
+    xrdpuser: jsmith
     # xfce4-session startxfce4 ?
-    - sessionexe: xfce4-session
+    sessionexe: xfce4-session
+    debug: false
+    # Various package dependencies groups in order low ... high (level).
+    # Note: (RH) "tigervnc" is client (only)
+    pkgs_rh_vnc: tigervnc-server
+    # Must be installed with --no-install-recommends (tigervnc-common will
+    # pull libx11-6)
+    pkgs_deb_vnc: tigervnc-standalone-server
+    # Universally named xfce4-* packages
+    pkgs_xfce_uni: [xfce4-session, xfce4-settings, xfce4-panel, xfce4-terminal, xfwm4] # xfwm4, xfdesktop4
+    # TODO: Consider xfwm4-themes
+    # OLD: Note: we can remove rh:xfdesktop, deb:xfdesktop4 because xfwm4 depends on them (respectively, on both)
+    #pkgs_xf_rh: [xfdesktop, xfwm4] # No need
+    # In deb: xfwm4 depson: xfdesktop4, xfce4-session pulls xfdesktop4
+    #pkgs_xf_deb: [xfdesktop4, xfwm4] # No need
+    # Universal - now in pkgs_xfce_uni
+    #pkgs_xf_uni: [xfdesktop4]
+    ###### Fonts ###########
+    pkgs_font_rh: [liberation-fonts.noarch liberation-fonts-common.noarch liberation-mono-fonts.noarch liberation-narrow-fonts.noarch liberation-sans-fonts.noarch liberation-serif-fonts.noarch]
+    pkgs_font_deb: [fonts-liberation2]
+    vnc_disp_id: 2
+    #disp_re: '^:{{vnc_disp_id}}'
   tasks:
-    # TODO: Separate for RH/Deb (x-base)
-    # Seems there is no need to do recommended group installs.
-    # To see files contained: dnf repoquery -l the_package
-    - name: Install xrdp packages
+    - name: Enable EPEL repo (RH/Centos)
       package:
         name:
           - epel-release
+      when: ansible_os_family == "RedHat"
+    ############## VNC (Also used by xrdp) ###############
+    # TODO: Separate for RH/Deb (x-base)
+    # Seems there is no need to do recommended group installs.
+    # To see ... :
+    # - files contained: dnf repoquery -l the_package
+    # - deps : yum deplist tigervnc-server | grep provider | sort -u
+    #
+    # Important for Ubuntu/Debian: Do not pull extra (massive) deps !!
+    - name: Install VNC (Deb/Ubu)
+      shell: 'apt install -y --no-install-recommends {{ pkgs_deb_vnc }}'
+      when: ansible_os_family == "Debian"
+    # Needed in addition of tigervnc-server-minimal (which is
+    # implied dep. of xrdp) ? Pulls large number of Perl* stuff.
+    # Can we keep this out-of the way ? Traditional approach installs this
+    # and implicitly pull all the (necessary+bloatware) deps.
+    - name: Install VNC (RHEL/Centos/Fedora)
+      shell: 'dnf install -y tigervnc-server'
+      when: ansible_os_family == "RedHat"
+    ########## XFCE4 Desktop ####
+    # Checks on xfwm4 (Deb,RH): Deb xfce4 deps on xfdesktop4, RH: xfdesktop depends on xfwm4 (!!)
+    - name: Install XFCE Base Comps. (All platforms)
+      package:
+        name: {{ pkgs_xfce_uni }}
+    - name: RH: Add xfdesktop
+      shell: 'dnf install -y xfdesktop'
+      when: ansible_os_family == "RedHat"
+    ##### Fonts, addl desktop support ##############
+    - name: Fonts, DT Support (Deb/Ubu)
+      # --no-install-recommends ??
+      shell: 'apt install -y --no-install-recommends {{ pkgs_font_deb | join(" ") }} mesa-vulkan-drivers'
+      when: ansible_os_family == "Debian"
+    # mesa, vulkan For Chrome (Proactive, e.g. Firefox works w/o these)
+    # deb: mesa-vulkan-drivers (deps: libx11-xcb1)? libgbm1 (depof: libegl-mesa0)
+    - name: Fonts, DT Support (RH/Centos)
+      shell: 'dnf install -y {{ pkgs_font_rh | join(" ") }} mesa-libgbm vulkan-loader'
+      when: 'ansible_os_family == "RedHat"'
+    # Deb xrdp depends on libx11-6 (Xlib, the client lib for X), but do not include recommends !
+    # RH xrdp resides in EPEL repos. This could be install by yum OR (e.g.)
+    # shell: sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    - name: Install xrdp packages
+      package:
+        name:
+          #- epel-release
           - xrdp
-          # Needed in addition of tigervnc-server-minimal (which is
-          # implied dep. of xrdp) ? Pulls large number of Perl* stuff.
-          # Keep out-of the way.
-          #- tigervnc-server
-          - xfce4-session
-          # Has xfsettingsd
-          - xfce4-settings
-          - xfce4-panel
-          # Contains Thunar, deemed as mandatory
-          - xfdesktop
-          - xfwm4
-          # For Chrome (Proactive, e.g. Firefox wors w/o these
-          - mesa-libgbm
-          - vulkan-loader
-    - name: Enable XRDP
+          ##- tigervnc-server
+          #-xfce4-session
+          ## Has xfsettingsd
+          #- xfce4-settings
+          #- xfce4-panel
+          ## xfdesktop (RH) Contains Thunar, deemed as mandatory. Deb: xfdesktop4
+          #- xfdesktop
+          ## - xfwm4 # Already depended on by xfdesktop / xfdesktop4
+          #- mesa-libgbm
+          #- vulkan-loader
+    ###### Enable services, configure #############
+    # At least RH wants to have these for reasonable looks
+    - name: Enable XRDP (systemd service)
       systemd:
         name: xrdp
         # restarted, reloaded?
         state: started
         enabled: true
         daemon_reload: true
-    #- name: Establish User dot-xsession
-#    - copy:
-#        - content: '{{ sessionexe }}'
-#       - dest: '{{ lookup("ansible.builtin.env", "HOME") }}/.xsession'
-#        # MUST have +x
-#        - mode: a+rx
+    # Not used w. plain VNC (?)
+    - name: Establish XRDP User dot-xsession
+      copy:
+	content: '{{ sessionexe }}'
+	# {{ lookup("ansible.builtin.env", "HOME") }}
+	# dest: '/home/{{ xrdpuser }}/.xsession'
+	# For now assume homedir path under /home/ w/o separate homedir var.
+	dest: '/home/{{ xrdpuser }}/.xsession'
+	# MUST have +x
+	mode: a+rx
+      when: 1
+    # May have .vnc/passwd per libexec/vncserver
+    - name: Ensure presence of ~/.vnc config dir
+      shell: 'mkdir -p /home/{{ xrdpuser }}/.vnc'
+    - name: Create VNC User's ~/.vnc/xstartup
+      copy:
+	# TODO: xfce terminal
+	#content: 'xterm -geometry 1044x810+10+10 &'
+	content: 'xfce4-terminal &'
+	dest: "/home/{{ xrdpuser }}/.vnc/xstartup"
+	mode: a+rx
+    # Add user per display (e.g.): ":2=mrsmith"
+    - name: Create user in /etc/tigervnc/vncserver.users
+      lineinfile:
+	path: /etc/tigervnc/vncserver.users
+	regexp: '^:2='
+	line: ':{{ vnc_disp_id }}={{ xrdpuser }}'
+    # Use: /usr/lib/systemd/system/vncserver@.service
+    # Executes (bash): /usr/libexec/vncsession-start , which executes (elf,20k) /usr/sbin/vncsession mrsmith :2
+    # ("normally started by system service mgr")
+    # /usr/bin/vncserver is perl starts XVnc with lots of options (~l.306..327) and spaws desktop addl
+    # executables (by $xstartupFile). Seems only "vncauth", "tlsvnc", "x509vnc" lead to $vncAuthEnabled.
+    # Template / content OR copy, source-local
+    - name: Create vncserver@2.service
+      copy:
+	src: '/usr/lib/systemd/system/vncserver@.service'
+	dest: '/usr/lib/systemd/system/vncserver@{{ vnc_disp_id }}.service'
