@@ -15,16 +15,20 @@
 # - Activation code update/renewal: /opt/nessus/sbin/nessuscli fetch --register xxxx-xxxx-xxxx-xxxx
 # # Nessus SC Nisc info
 # - Verifying cert: /opt/sc/support/bin/openssl verify /opt/sc/support/conf/SecurityCenter.crt
-# 
+#
 # ## Downloading files from Tenable
-# Use user api key (e.g.):
+# Use user api key for Tenable SC (e.g.):
 # ```
-# curl --request GET --url 'https://www.tenable.com/downloads/api/v2/pages/nessus/files/Nessus-10.6.1-es8.x86_64.rpm' \
-#     --header 'Authorization: Bearer bce768c...' --output 'Nessus-10.6.1-es8.x86_64.rpm'
+# # Manual download example for Nessus.
+# # Nessus Scanner - open download (No account required). The playbook auto-downloads the file - no need to download manually.
+# curl --request GET --url 'https://www.tenable.com/downloads/api/v2/pages/nessus/files/Nessus-10.6.1-es8.x86_64.rpm' -O
+# # Tenable.sc - download with API Key authentication (Requires customer account on tenable.com)
+# curl "https://www.tenable.com/downloads/api/v2/pages/tenable-sc/files/SecurityCenter-6.1.1-el8.x86_64.rpm" \
+#     --header 'Authorization: Bearer bce768c...' -O
 # ```
-# 
+#
 # ## Backing up SC
-# 
+#
 # Whole /opt/sc ( https://docs.tenable.com/security-center/Content/Backup.htm )
 # ```
 # tar -pzcf sc_backup.tar.gz /opt/sc
@@ -38,11 +42,11 @@
 # sudo /opt/sc/support/bin/php /opt/sc/src/tools/backupSCConfiguration.php -l /root/sc_config_09_01
 # ```
 # ## Some important directories
-# 
+#
 # Security Center:
 # - /opt/sc/www - Document root
 # - /opt/sc/data/ *.cnf (ini format)
-# - /opt/sc/data/plugins 
+# - /opt/sc/data/plugins
 # - /opt/sc/data/nasl *.nasl (152k files) *.inc (400+ files)
 # - /opt/sc/data/admin - NA
 # - /opt/sc/data/CA - cert stuff (root, ... Apache SSLCACertificatePath)
@@ -52,7 +56,7 @@
 # - /opt/sc/support/logs - Apache logs
 # - /opt/sc/support/openssl/CA - does not exist, even if referred in ...
 # - /opt/sc/plugins/ - license.key (SC 5.2 manual p. 855)
-# 
+#
 # Scanner:
 # - /opt/nessus/bin/nasl - NASL Interpreter
 # - /opt/nessus/com/nessus/CA/*.pem - certs (pem certs)
@@ -61,8 +65,11 @@
 # - /opt/nessus/sbin - Nessus system bins nessusd, nessuscli, nessus-service
 # - /opt/nessus/lib/nessus/plugins/*.nasl - NASL scripts/plugins, Also *.inc (Including plugin_feed_info.inc)
 # - /opt/nessus/etc/nessus/nessusd.db - Preferences DB
-# 
+#
 # View cert contents: `openssl x509 -in /opt/sc/support/conf/SecurityCenter.crt -text`
+# ## Refs
+# - Tenable API Overview: https://docs.tenable.com/security-center/api/
+# - API PDF: https://docs.tenable.com/security-center/api/pdf/Tenablesc_API.pdf
 - name: Update Tenable Scanner
   hosts: '{{ host }}'
   become: true
@@ -71,7 +78,7 @@
     rpm_api_url: 'https://www.tenable.com/downloads/api/v2/pages/nessus/files'
     # Scanner needs single RPM
     rpm_scan_update: 'Nessus-10.2.0-es8.x86_64.rpm'
-    # 
+    #
     rpm_sc_update: 'SecurityCenter-5.21.0-el8.x86_64.rpm'
     # 'SC-202206.1-5.x-rh8-64.tgz'
     tgz_sc: ''
@@ -99,7 +106,7 @@
         src: '{{ tmpdir }}/{{ rpm_scan_update }}'
         dest: '{{ tmpdir }}/{{ rpm_scan_update }}'
       tags: scanner
-    # Since 
+    # Since
     - name: Stop Scanner for Update
       ansible.builtin.systemd:
         name: '{{ unit_scan }}'
@@ -134,7 +141,7 @@
       shell: systemctl daemon-reload
       tags: scanner
     ###### SC #####
-    # 
+    #
     - name: Copy Update to SC
       copy:
         src: '{{ tmpdir }}/{{ rpm_sc_update }}'
