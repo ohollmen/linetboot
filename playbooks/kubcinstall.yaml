@@ -59,6 +59,7 @@
 #   - Ad hoc: ansible 'kub*' -m shell -b -a 'crictl images' -e "ansible_user=jsmith ansible_sudo_pass=..."
 # 
 # ## Refs
+# 
 # Kubernetes:
 # - How to Install Kubernetes on Ubuntu 22.04: https://phoenixnap.com/kb/install-kubernetes-on-ubuntu
 # - https://zhuanlan.zhihu.com/p/40931670 (Chinese, use Translate)
@@ -66,7 +67,7 @@
 #  - Lots of other relevant points
 # - Ubu 20.04, Nvidia and Calico: https://zhuanlan.zhihu.com/p/138554103
 # - Cherry Servers: Install .. on 22.04: https://www.cherryservers.com/blog/install-kubernetes-on-ubuntu
-# - https://monowar-mukul.medium.com/kubernetes-create-a-new-token-and-join-command-to-rejoin-add-worker-node-74bbe8774808
+# - Generating tokens, join commands: https://monowar-mukul.medium.com/kubernetes-create-a-new-token-and-join-command-to-rejoin-add-worker-node-74bbe8774808
 # - https://hbayraktar.medium.com/how-to-install-kubernetes-cluster-on-ubuntu-22-04-step-by-step-guide-7dbf7e8f5f99
 # - https://www.redswitches.com/blog/install-kubernetes-on-ubuntu/
 # - https://www.linuxtechi.com/install-kubernetes-on-ubuntu-22-04/ Calico net, lots of kudos (Also: sudo kubeadm reset cleanup-node)
