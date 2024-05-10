@@ -159,7 +159,12 @@ handled by installer (TODO: Test out and provide step-by-step example on how to 
 Ubuntu 18 version of syslinux.efi seems to support loading of kernel and initrd over http and as a result should be bootmenu
 (pxelinux.cfg/default) compatible with lpxelinux.0.
 
-## Using VirtualBox "virtual PXE boot using virtual TFTP server"
+
+--------------------------------------------------------------------------
+
+## Using Virtualization Environments to PXE Boot
+
+### Using VirtualBox "virtual PXE boot using virtual TFTP server"
 
 Less advertised feature of VirtualBox is it's ability to allow PXE boot via its Virtual TFTP server.
 There is no actual TFTP server running but only a specifically created directory layout that mimicks
@@ -189,7 +194,7 @@ cp -r /private/tftpboot/ $HOME/Library/VirtualBox/TFTP/
 # Alternatively ... Rsync from remote linux
 rsync -av $USER@myremotelinux:/var/lib/tftpboot/ $HOME/Library/VirtualBox/TFTP/
 ```
-## Configuring VirtualBox for PXE / TFTP Boot
+### Configuring VirtualBox for PXE / TFTP Boot
 
 - Machine Item (Right mouse button) => Settings => System (Icon/Tab) =>
 Boot Order
@@ -224,7 +229,26 @@ VirtualBoxVM --startvm RHEL8
 
 Info Source: https://gerardnico.com/virtualbox/pxe.
 
-## Using QEMU to Boot PXE
+### Using virt-manager to PXE Boot
+
+virt-manager differs from VirtualBox in regards to holistic PXE boot setup by:
+- It does not implement a "virtual" TFTP server of its own
+- It allows you to use existing DHCP+TFTP infra **directly** for PXE booting
+  with minimum configuration in virt-manager itself.
+
+After creating a VM "stub" (even empty, unpartitioned, unformatted disk
+is okay), you can toggle the VM to 1) be PXE bootable, 2) set boot priority
+to PXE by: Left Navigation Pane: Boot Options => Boot Device Order => NIC: ... (Bring item up / prioritize item "NIC:..." using arrow-up button)
+
+Already at the time of creating the VM (in wizard, step 1 of 5, in some versions of virt-manager, or does this depend on Non-wifi NIC being connected), there is an option
+"Choose how you would like to install the operating system:" => "Network Boot (PXE)", so you could choose PXE boot already there.
+
+Links:
+- https://blog.scottlowe.org/2015/05/11/using-pxe-with-virt-install/
+- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/virtualization_host_configuration_and_guest_installation_guide/chap-virtualization_host_configuration_and_guest_installation_guide-libvirt_network_booting
+
+
+### Using QEMU to Boot PXE
 
 QEMU also has a built-in TFTP server, whset root diretory you provide
 on comand line (as part of -netdev parameter). You also provide the
