@@ -1,9 +1,15 @@
 # ## Install GoLang Development Environment
 # 
+# Downloads full Go Develeopment installation from go.dev site and unpackages the distro under install path (e.g. /usr/local or /opt).
+# Modifies .bashrc (or e.g. .profile if overriden by var. shellconfig) to have new/modified values for $GOROOT, $GOPATH, $PATH
+# (last gets Go bin paths appended).
+# 
 # Example run:
 # ```
-# ansible-playbook golanginstall.yaml -e "host=myhost remoteuser=myuser ansible_become_pass=... gouserhome=/home/myuser"
+# # Make sure you use proper var. overrides for desired ostype (e.g. 'darwin' for Mac), cpuarch (e.g. arm64 for RPi or ARM Mac), gover
+# ansible-playbook golanginstall.yaml -e "host=myhost gouserhome=/home/myuser"
 # ```
+# Use ansible_ssh_user=... ansible_ssh_pass=... ansible_become_pass=... as needed (with -e, or preferably have these in ~/.ansible.cfg)
 - name: Install GoLang from https://go.dev/dl/
   become: yes
   hosts: '{{ host }}'
