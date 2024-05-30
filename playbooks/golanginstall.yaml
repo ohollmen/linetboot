@@ -30,7 +30,7 @@
     - debug:
         msg: 'Package name is {{pkgname}}'
     - name: Install package to installpath
-      shell: 'tar -C "{{installpath}}" {{dldestpath}}{{pkgname}}'
+      shell: 'tar -C "{{installpath}}" -zxf {{dldestpath}}{{pkgname}}'
     - name: Add GOROOT/GOPATH, Modify PATH
       lineinfile:
         path: '{{ item.path }}'
