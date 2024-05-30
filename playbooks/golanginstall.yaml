@@ -1,0 +1,43 @@
+# ## Install GoLang Development Environment
+# 
+# Example run:
+# ```
+# ansible-playbook golanginstall.yaml -e "host=myhost remoteuser=myuser ansible_become_pass=... gouserhome=/home/myuser"
+# ```
+- name: Install GoLang from https://go.dev/dl/
+  become: yes
+  hosts: '{{ host }}'
+  #serial: 1
+  gather_facts: false
+  vars:
+    ostype: 'linux'
+    cpuarch: 'amd64'
+    # TODO: SHA256 check (e.g. 1.22.3: 8920ea521bad8f6b7bc377b4824982e011c19af27df88a815e3586ea895f1b36)
+    gover: '1.22.3'
+    dlsite: 'https://go.dev/dl/'
+    dldestpath: '/tmp/'
+    gouserhome: '/home/mrsmith'
+    # .profile recommended in many places, but does not exist in Mac.
+    # Typically .profile loads/runs ("sources") $HOME/.bashrc settings
+    shellconfig: '.bashrc'
+    # Could be /opt or users homedir
+    installpath: '/usr/local/'
+    # This gets dynamically evaluated
+    pkgname: 'go{{gover}}.{{ostype}}-{{cpuarch}}.tar.gz'
+  tasks:
+    - name: Download Go (tar.gz)
+      shell: 'curl "{{dlsite}}{{pkgname}}" -o {{dldestpath}}{{pkgname}}'
+    - debug:
+        msg: 'Package name is {{pkgname}}'
+    - name: Install package to installpath
+      shell: 'tar -C "{{installpath}}" {{dldestpath}}{{pkgname}}'
+    - name: Add GOROOT/GOPATH, Modify PATH
+      lineinfile:
+        path: '{{ item.path }}'
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+      with_items:
+        - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '^export\s+GOROOT', line: 'export GOROOT={{installpath}}/go/'}
+        - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '^export\s+GOPATH', line: 'export GOPATH={{gouserhome}}/go/'}
+        # How to make this idempotent with regexp ? Consider: ':{{installpath}}/go' (Note: gouserhome must comply to strict conv.)
+        - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '', line: 'export PATH="$PATH:{{gouserhome}}/go/bin"'}
