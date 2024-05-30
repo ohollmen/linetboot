@@ -41,4 +41,4 @@
         - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '^export\s+GOROOT', line: 'export GOROOT={{installpath}}/go/'}
         - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '^export\s+GOPATH', line: 'export GOPATH={{gouserhome}}/go/'}
         # How to make this idempotent with regexp ? Consider: ':{{installpath}}/go' (Note: gouserhome must comply to strict conv.)
-        - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '', line: 'export PATH="$PATH:{{gouserhome}}/go/bin"'}
+        - {path: '{{gouserhome}}/{{shellconfig}}', regexp: '', line: 'export PATH="$PATH:{{gouserhome}}/go/bin:{{installpath}}/go/bin"'}
