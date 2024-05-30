@@ -26,7 +26,8 @@
     pkgname: 'go{{gover}}.{{ostype}}-{{cpuarch}}.tar.gz'
   tasks:
     - name: Download Go (tar.gz)
-      shell: 'curl "{{dlsite}}{{pkgname}}" -o {{dldestpath}}{{pkgname}}'
+      # MUST have -L (site has redirection)
+      shell: 'curl -L "{{dlsite}}{{pkgname}}" -o {{dldestpath}}{{pkgname}}'
     - debug:
         msg: 'Package name is {{pkgname}}'
     - name: Install package to installpath
