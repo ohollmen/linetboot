@@ -2,11 +2,27 @@
  * List Artifactory image info.
  * Model along API call examples https://jfrog.com/help/r/jfrog-rest-apis/artifactory-rest-apis
  * (Also: https://jfrog.com/help/r/how-to-use-docker-registry-api-with-artifactory-docker-repository-when-not-using-docker-client)
+ * See also: https://jfrog.com/help/r/jfrog-artifactory-documentation/browse-docker-repositories
+ * - GET /api/repositories https://jfrog.com/help/r/jfrog-rest-apis/get-repositories
+ * - https://docs.docker.com/registry/
+ *   - https://distribution.github.io/distribution/spec/manifest-v2-2/ ( https://distribution.github.io/distribution/spec/deprecated-schema-v1/ )
+ *   - OCI image manifest spec: https://github.com/opencontainers/image-spec/blob/main/manifest.md
+ * - Reg. API: https://www.baeldung.com/ops/docker-registry-api-list-images-tags
+ *   - has url -X GET my-registry.io/v2/_catalog GET my-registry.io/v2/ubuntu/tags/list GET /v2/ubuntu/nginx/manifests/latest
+ * - Note: Artifactory may only have "schemaVersion" : 1, available.
+ * - Search: Google: docker registry api
+ * - Art repos: GET /api/repositories/?packageType=Docker (In regards to Google terminology G:project == A:repo)
+ * - Compare to G.Art.Reg: curl -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    "https://us-docker.pkg.dev/v2/my-project/my-repo/my-image/tags/list" | jq ".tags" (https://cloud.google.com/artifact-registry/docs/reference/docker-api)
+      - See also: https://cloud.google.com/artifact-registry/docs/reference/rest
+        (https://cloud.google.com/artifact-registry/docs/reference/rest#rest-resource:-v1.projects.locations.repositories.dockerimages)
  * TODO: Expand to cover more apis ?
+ * - Note: It seems lot of these calls are memrely universal Docker Registry API calls
 */
 var axios = require("axios");
 var Mustache = require("mustache");
-
+var fs = require("fs");
+var async = require("async");
 
 var apiprefix = "api/docker/{{ imgrepo }}/v2/";
 var ahdr = "X-JFrog-Art-Api"; // Auth header (See Introduction ..., also Bearer token, basic w. user:token)
@@ -37,33 +53,126 @@ function mkurl(path) {
 function curl(url) {
   console.log(`curl -H '${ahdr}:${cfg.token}' '${url}'`);
 }
-function lsimgs() {
+function lsimgs(p) {
   var url = mkurl("_catalog");
-  curl(url);
-  //axios.get(url, ropts).then( (resp) => {
-  //  var d = resp.data;
-  //  console.log(JSON.stringify(d, null, 2));
-  //
-  //}).catch( (ex) => { console.log("Error requesting: "+ex); });
+  //curl(url);
+  var re = null;
+  if (cfg.excpatt) { re = new RegExp(cfg.excpatt, 'g'); }
+  var imgidx = {};
+  axios.get(url, ropts).then( (resp) => {
+    var d = resp.data;
+    if (!d.repositories) { throw "No image paths listed !!!"; }
+    if (re) { d.repositories = d.repositories.filter( (p) => { return ! p.match(re); }); }
+    console.log(JSON.stringify(d, null, 2));
+    console.log(d.repositories.length + " Items");
+    //if (!p.op == 'imgstags') { return; }
+    // Optionally continue by fetching tags for each
+    async.mapSeries(d.repositories, image_tags, function (err, ress) {
+      if (err) { var xerr = "Error iterating image paths:"+err; console.log(xerr); return;  }
+      var fn = "/tmp/docker_images_tags.json";
+      fs.writeFileSync( fn,  JSON.stringify(ress, null, 2) , {encoding: "utf8"} );
+      //console.log(imgidx);
+      console.log("Wrote to "+fn);
+    });
+  }).catch( (ex) => { console.log("Error requesting: "+ex); });
+  function image_tags(imgpath, cb) {
+    //if (!imgpath) { return cb("No imagepath", null); }
+    console.error("Querying: "+imgpath);
+    imgidx[imgpath] = 1; // TEST ()
+    var e = {imgpath: imgpath, tags: []}; // TODO
+    var url = mkurl(taglist_urlpath(imgpath));
+    axios.get(url, ropts).then( (resp) => {
+      var d = resp.data;
+      //if (d.tags != imgpath) { console.error("Warning: mismatch in imgpath"); } // assert
+      //if (!d.tags) { console.error("Warning: No tags for query"); }
+      //console.log(JSON.stringify(d, null, 2));
+      //imgidx[imgpath] = d.tags;
+      e.tags = d.tags;
+      //return cb(null, imgpath); // Simple
+      return cb(null, e);
+    }).catch( (ex) => { console.log("Error requesting: "+ex); });
+    
+  }
 }
-function lstags() {
-  // Even tail must be parametrized here. The first path part must have '/' url-escaped to '%2F'.
-  var imgpath = cfg.imgpath;
+function taglist_urlpath(imgpath, append) {
   imgpath = imgpath.replace(/\//g, '%2F');
-  var urlappend = imgpath + "/tags/list";
-  var url = mkurl(urlappend);
+  append = append || "/tags/list";
+  var urlappend = imgpath + append; // "/tags/list";
+  return urlappend;
+}
+function lstags(p) {
+  // Even tail must be parametrized here. The first path part must have '/' url-escaped to '%2F'.
+  var imgpath = p.imgpath || cfg.imgpath; // fall back to example image path from config
+  if (!imgpath) { usage("No docker image path present for tags listing.") }
+  var url = mkurl(taglist_urlpath(imgpath));
+  //curl(url);
+  axios.get(url, ropts).then( (resp) => {
+    var d = resp.data;
+    console.log(JSON.stringify(d, null, 2));
+  
+  }).catch( (ex) => { console.log("Error requesting: "+ex); });
+}
+/** List repo image manifest
+ * Note: Lots of valuable info comes in HTTP Headers (As hinted on https://distribution.github.io/distribution/spec/api/, Digest Header) !!!
+ */
+function lsmani(p) {
+  var imgpath = p.imgpath || cfg.imgpath;
+  var tag = p.tag || "latest";
+  console.log(`lsmani: imgpath=${imgpath}&tag=${tag}`);
+  var url = mkurl(taglist_urlpath(imgpath, "/manifests/"+tag)); // latest
   curl(url);
+  axios.get(url, ropts).then( (resp) => {
+    var d = resp.data;
+    console.log(resp.headers); // docker-content-digest, x-artifactory-id
+    d.cont_digest = resp.headers["docker-content-digest"]; // 64B hex
+    d.art_id = resp.headers["x-artifactory-id"]; // Only 40B (hex)
+    if (d.fsLayers && (d.fsLayers.length == 1)) { d.note = "Images with single layer are often vendor/open source project base images."; }
+    var h = history_list(d);
+    if (h) { console.log(JSON.stringify(h, null, 2)); }
+    if (p.cb) { p.cb(null, d); }
+    else { console.log(JSON.stringify(d, null, 2)); }
+  }).catch( (ex) => { console.log("Error requesting: "+ex); });
+}
+/* Parse Histori in manifest (schema 1) "history" (AoO) member.
+* Each entry (obj) is expected to be in format: {v1Compatibility}
+* Possibly support schema 2 by detecting version.
+There are multi item commands like below (join these for more info-value ?), but there is likely a more coherent
+version of same command in j.config.Cmd[0] (single item with last part of below)
+Cmd: [
+  '/bin/sh',
+  '-c',
+  '#(nop) ',
+  'CMD ["/opt/bit/scripts/postgresql-repmgr/run.sh"]'
+],
+*/
+function history_list(m) {
+  if (m.schemaVersion != 1) { console.log(`Encountered schemaVersion ${m.schemaVersion}`); return null; }
+  var h = m.history;
+  if (!Array.isArray(h)) { console.log("Manifest history is not in array !!"); return null; }
+  // consider: throwaway (true/false), j.container_config.Cmd[0] (Seems always an array of 1 item )
+  // TODO: try {} catch (ex) {}
+  return h.map( (hi) => {
+    var j = JSON.parse(hi.v1Compatibility);
+    console.log(j);
+    // Consult different member for actual simple command
+    var cmd = j.container_config.Cmd;
+    //if (cmd.length > 1) { cmd = j.config.Cmd; }
+    if (cmd.length > 1) { cmd = [cmd[cmd.length - 1]]; } // arry.slice(-1); / arry.pop();
+    return { Cmd: cmd[0], throwaway: j.throwaway };
+  });
 }
 var acts = [
   // List / GET
   {"id": "imgs",   "title": "List Images (w/o tag)",   "cb": lsimgs, },
-  {"id": "tags",   "title": "List Tags",   "cb": lstags, },
+  {"id": "tags",   "title": "List Tags",       "cb": lstags, },
+  {"id": "mani",   "title": "List Manifest",   "cb": lsmani, },
 ];
 
 var clopts = [
   // ARG+ for multiple
-  ["i", "imgrepo=ARG", "Image repo label"],
-  ["i", "imgpath=ARG", "Image path to list"],
+  ["r", "imgrepo=ARG", "Image repo label"],
+  ["p", "imgpath=ARG", "Image path to list"],
+  ["t", "tag=ARG", "Tag for the image (given by --imgpath)"],
 ];
 
 function usage(msg) {
@@ -74,6 +183,30 @@ function usage(msg) {
   clopts.forEach( (o) => { console.log("- "+o[1] + " - " + o[2]); });
   process.exit(1);
 }
+function afaimgs(req, res) {
+  var fn = cfg.storpath;
+  if (!fs.existsSync(fn)) { fn = process.env.HOME +"/.linetboot/afa/docker_images_tags.json"; }
+  var imgs = require(fn);
+  res.json({status: "ok", data: imgs});
+}
+function imgmani(req, res) {
+  var jr = {"status": "err", "msg": "Could not produce Manifest info details ! "};
+  var fn = cfg.storpath;
+  var q = req.query;
+  if (!q.imgpath) { jr.msg += "No imgpath passed"; return res.json(jr); }
+  if (!q.tag)     { jr.msg += "No tag passed"; return res.json(jr); }
+  var p = { tag: q.tag, imgpath: q.imgpath, cb: respond }; // q.imgpath / cfg.imgpath
+  //p.tag = "0.0.13"; // TEST
+  lsmani(p);
+  function respond(err, d) {
+    if (err) { return res.json(jr); }
+    return res.json({"status": "ok", "data": d});
+  }
+  //if (!fs.existsSync(fn)) { fn = process.env.HOME +"/.linetboot/afa/docker_images_tags.json"; }
+  //var imgs = require(fn);
+  //res.json({status: "ok", data: imgs});
+}
+module.exports = {init: init, afaimgs: afaimgs, imgmani: imgmani};
 
 if (process.argv[1].match("afa.js")) {
   var argv2 = process.argv.slice(2);
