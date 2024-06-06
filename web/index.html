@@ -112,7 +112,7 @@
   /* .ui-widget-header { background-color: #FF7777 !important; } */ /* BG of tabs */
   /* */
   .redhat {background-color: #FF0000; border: 5px solid #FF4444; }
-  .osicon {height: 20px; width: 20px%; float: right; }
+  .osicon {height: 20px; width: 20px; float: right; }
   /* For long-line pre use: white-space: pre-wrap; */
   .macaddr {font-family: monospace; white-space: pre;}
   .hostcell { font-weight: bold; }
@@ -312,7 +312,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <div id="helpdialog" class="" title="Help on ..."   data-info="Help Dialog" ></div>
 
 <div id="certfilesdialog" class="" title="Certificate Files ..."   data-info="Cert Files Dialog" data-dsize="580x800"></div>
-
+<div id="afaimginfodialog" title="AFA Docker Image Info" data-info="" data-dsize="800x500"></div>
 <!-- Templates -->
 <script id="singlehost" type="text/template">
 <h3>Host {{ hname }}</h3>
@@ -572,7 +572,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 <script id="loginform" type="text/template">
 <h3>Linetboot Login</h3>
 
-<p>Use your network pasword to log in:</p>
+<p>Use your network password to log in:</p>
 <form Xmethod="post" Xaction="/login">
 <label style="width: 150px;">Username</label><input type="text"     id="username" name="username" ><br>
 <label style="width: 150px;">Password</label><input type="password" id="password" name="password" minlength="8"><br>
@@ -753,6 +753,25 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
 
 <div id="certdia" title="Decoded PEM Certificate" data-info="Decoded Cert Dialog or View pane" class="cmono" class="cdleft"></div>
 <div id="certinfo" title="PEM Certificate Info Summary" data-info="PEM Certificate Info Summary" class=""></div>
+</script>
+<script id="t_afaimginfo" type="text/template" title="AFA Docker Image Info" data-info="" >
+  <h2>Image: {{{ name }}} ({{ architecture }})</h2>
+  <p>Image info manifest (per InfoSchema: {{{schemaVersion}}})</p>
+  <ul>
+  <li>Tag: {{{ tag }}}</li>
+  <li>Docker-Content-Digest: {{{ cont_digest }}}</li>
+  <li>Artif. ID: {{{ art_id }}}</li>
+  <!--<li>Architecture: {{ architecture }}</li> -->
+  <!--<li>InfoSchema: {{{schemaVersion}}}</li>-->
+  <!-- LayerCnt: {{ fsLayers.length }} -->
+  </ul>
+  <p>Layers ({{ fsLayers.length }}):</p>
+  <ul>
+  {{#fsLayers}}
+  <li>{{blobSum}}</li>
+  {{/fsLayers}}
+  </ul>
+{{#note}}<p>Note: {{ note }}</p>{{/note}}
 </script>
 </body>
 </html>

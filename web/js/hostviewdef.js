@@ -1233,6 +1233,24 @@ function riskadj_cell(val, item) {
      {"name": "subnet_flow_logs",           "title": "Flow Logs ?", "type": "text", "width": 5, },
     
    ];
+   function imgpath_cell(val, item) {
+     val += (!item.tags || !Array.isArray(item.tags)) ? "": ` (${item.tags.length})`;
+     return val;
+   }
+   function tags_cell(val, item) {
+     if (!val || !Array.isArray(val)) { return ""; }
+     var cont = "";
+     var style = "display: inline-block; color: white; background-color: #555555;border-radius: 3px;padding: 0px 5px 0px;";
+     val.forEach( (it) => {
+       //var p = "";
+       cont += `<span style="${style}" class="imgitem" data-imgpath="${item.imgpath}" data-tag="${it}">${it}</span>&nbsp;&nbsp;`;
+     });
+     return cont;
+   }
+   var fldinfo_afa_images = [
+    {"name": "imgpath",               "title": "Image Path", "type": "text", "width": 20, itemTemplate: imgpath_cell},
+    {"name": "tags",               "title": "Image Tags", "type": "text", "width": 100, itemTemplate: tags_cell, },
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1247,6 +1265,6 @@ function riskadj_cell(val, item) {
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
-      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets
+      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images
    };
    

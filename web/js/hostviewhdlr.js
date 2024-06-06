@@ -1480,3 +1480,18 @@ function certsys_uisetup(act, data, ev) {
   });
   
 }
+function afaimgs_uisetup(act, data, ev) {
+  $("[data-imgpath]").click(function (jev) {
+    var p = {imgpath: jev.target.dataset.imgpath, tag: jev.target.dataset.tag};
+    //alert("IMGPATH:"+p.imgpath+", TAG:"+p.tag);
+    // MUST search another action ???
+    var act = tabloadacts.filter((a) => { return a.path == "afaimginfo"; })[0];
+
+    axios.get("/imgmani", {params: p}).then((resp) => {
+      var d = resp.data;
+      console.log(d);
+      jev.viewdata = d.data;
+      gendialog(jev, act);
+    }).catch( (ex) => { console.log(ex); });
+  });
+}

@@ -713,6 +713,11 @@ var tabloadacts = [
      path: "tfnets", uisetup: null, dialogidXXX: "", "longload": 1},
   {"name":"Cert Decode", "elselXX": "XX", tmpl: "certdecf", "hdlr": certdecode,  url: "/certdecode", path: "certdec" },
   {"name":"Cert Sys Documentation", "elselXX": "XX", tmpl: "", "hdlr": certdoc,  url: "/certsysdoc", path: "certsysdoc" },
+  // 
+  {"name":"Artifactory Images", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/afaimgs", gridid: "jsGrid_afaimg", fsetid: "afa_images",
+    path: "afaimgs", uisetup: afaimgs_uisetup, dialogidXX: "afaimginfo", "longload": 1},
+  {"name":"Artifactory Image", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", gridid: "", fsetid: "",
+    path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
 ];
 
 function certdecode(ev, act) {
@@ -765,7 +770,7 @@ function gendialog(ev, act) {
   // Most dialogs have data ...
   var axopts = {params: null};
   if (act.pmaker) { axopts.params = act.pmaker(); } // TODO: pass ....
-  if (ev.viewdata) { return showdialog(ev.viewdata); } // sync
+  if (ev.viewdata) { return showdialog(ev.viewdata); } // Have data, synchronous
   if (!act.url) {   return; }
   axios.get(act.url).then(function (resp) {
     var d = resp.data; // data always passed "raw"
