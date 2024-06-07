@@ -1,6 +1,12 @@
 # # Expose Docker API
+# 
 # Tweak systemd Docker (Daemon) Unit file to allow API visibility.
+# API is similar to docker registry (often running on port 5000).
 # Note: expects systemd on the OS (i.e. will not work on Ubuntu 14.04 or RH/Centos 6.X)
+# ## Refs
+# - Protecting Docker daemon: https://docs.docker.com/engine/security/protect-access/ (also has client cert based access instructions)
+# - Docker Ports: https://stackoverflow.com/questions/43399998/how-does-docker-use-ports-2375-and-4243
+# 
 - name: Expose Docker API
   vars:
     # Path ok on Ubuntu 18, Centos 7

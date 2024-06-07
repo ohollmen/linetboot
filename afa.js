@@ -18,12 +18,16 @@
         (https://cloud.google.com/artifact-registry/docs/reference/rest#rest-resource:-v1.projects.locations.repositories.dockerimages)
  * TODO: Expand to cover more apis ?
  * - Note: It seems lot of these calls are memrely universal Docker Registry API calls
+ * - Registry API doc: https://docker-docs.uclv.cu/registry/spec/api/
 */
 var axios = require("axios");
 var Mustache = require("mustache");
 var fs = require("fs");
 var async = require("async");
-
+// API URL rules: https://docker-docs.uclv.cu/registry/spec/api/
+// - Shows API starting w. /v2/, <name> is the *image* name
+// - Art seems to namespace their container registry with their own prefix
+//   - imgrepo (below) is a single (non-path hier.) token ([\w\-]+, e.g. a-b-c)
 var apiprefix = "api/docker/{{ imgrepo }}/v2/";
 var ahdr = "X-JFrog-Art-Api"; // Auth header (See Introduction ..., also Bearer token, basic w. user:token)
 var cfg;
@@ -53,9 +57,10 @@ function mkurl(path) {
 function curl(url) {
   console.log(`curl -H '${ahdr}:${cfg.token}' '${url}'`);
 }
+// List images 
 function lsimgs(p) {
   var url = mkurl("_catalog");
-  //curl(url);
+  curl(url);
   var re = null;
   if (cfg.excpatt) { re = new RegExp(cfg.excpatt, 'g'); }
   var imgidx = {};
@@ -65,8 +70,8 @@ function lsimgs(p) {
     if (re) { d.repositories = d.repositories.filter( (p) => { return ! p.match(re); }); }
     console.log(JSON.stringify(d, null, 2));
     console.log(d.repositories.length + " Items");
-    //if (!p.op == 'imgstags') { return; }
-    // Optionally continue by fetching tags for each
+    if (!p.op == 'imgstags') { return; }
+    // op: 'imgstags' - Optionally continue by fetching tags for each
     async.mapSeries(d.repositories, image_tags, function (err, ress) {
       if (err) { var xerr = "Error iterating image paths:"+err; console.log(xerr); return;  }
       var fn = "/tmp/docker_images_tags.json";
@@ -75,9 +80,11 @@ function lsimgs(p) {
       console.log("Wrote to "+fn);
     });
   }).catch( (ex) => { console.log("Error requesting: "+ex); });
+  // List tags for image by it's full path (w/o tag)
+  // TODO: Place outside, but note: imgidx (imgidx[imgpath])
   function image_tags(imgpath, cb) {
     //if (!imgpath) { return cb("No imagepath", null); }
-    console.error("Querying: "+imgpath);
+    console.error("Querying tags for img: "+imgpath);
     imgidx[imgpath] = 1; // TEST ()
     var e = {imgpath: imgpath, tags: []}; // TODO
     var url = mkurl(taglist_urlpath(imgpath));
@@ -94,6 +101,8 @@ function lsimgs(p) {
     
   }
 }
+// Create a taglist URL with imgpath '/' escaped to '%2F'
+// TODO: ensure 
 function taglist_urlpath(imgpath, append) {
   imgpath = imgpath.replace(/\//g, '%2F');
   append = append || "/tags/list";
@@ -133,7 +142,7 @@ function lsmani(p) {
     else { console.log(JSON.stringify(d, null, 2)); }
   }).catch( (ex) => { console.log("Error requesting: "+ex); });
 }
-/* Parse Histori in manifest (schema 1) "history" (AoO) member.
+/* Parse History in manifest (schema 1) "history" (AoO) member.
 * Each entry (obj) is expected to be in format: {v1Compatibility}
 * Possibly support schema 2 by detecting version.
 There are multi item commands like below (join these for more info-value ?), but there is likely a more coherent
@@ -163,9 +172,16 @@ function history_list(m) {
 }
 var acts = [
   // List / GET
-  {"id": "imgs",   "title": "List Images (w/o tag)",   "cb": lsimgs, },
-  {"id": "tags",   "title": "List Tags",       "cb": lstags, },
-  {"id": "mani",   "title": "List Manifest",   "cb": lsmani, },
+  {"id": "imgs",    "title": "List Images (w/o tag)","cb": lsimgs, },
+  {"id": "imgstags","title": "List Images AND Tags", "cb": lsimgs, },
+  {"id": "tags",    "title": "List Tags",       "cb": lstags, },
+  {"id": "mani",    "title": "List Manifest",   "cb": lsmani, },
+  // {"id": "urls",   "title": "List Test URLs (curl)",   "cb": ????, },
+  {"id": "conf",   "title": "Show default imgrepo,imgpath",
+     "cb": (p) => {
+     if (!cfg) { console.error("No afa config !"); return; }
+     console.log(`imgrepo: ${cfg.imgrepo}\nimgpath: ${cfg.imgpath}\nstorpath: ${cfg.storpath}`);
+     }, },
 ];
 
 var clopts = [
