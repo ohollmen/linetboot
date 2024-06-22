@@ -313,6 +313,16 @@ initrd http://{{ httpserver }}/ubuntu24dt/casper/initrd
 # Remove: toram
 append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu24dt/ debug ip=dhcp
 
+label kubuntu24dt
+menu label Kubuntu 24 Desktop (64bit, Live)
+kernel http://{{ httpserver }}/kubuntu24dt/casper/vmlinuz
+initrd http://{{ httpserver }}/kubuntu24dt/casper/initrd
+# Keep (min): debug ip=dhcp. Check: toram ? Seems toram loads all to ram ~1 min (60/s) * ~ 100MB/sec = ~ 6GB (size of ISO)
+# Remove: toram
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu24dt/ debug ip=dhcp
+
+
+
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
 # menu label Installer Boot - Kickstart (First Disk ignored)
