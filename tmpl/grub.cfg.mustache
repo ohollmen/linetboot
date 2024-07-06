@@ -40,6 +40,12 @@
 # ./linetadm.js tftpsetup
 # ```
 # Note: grub seems to be lacking the "append" ()
+# 
+# # Note on the bootloader executable format (grubnetx64.efi.signed)
+# ```
+# file grub/grubnetx64.efi.signed
+# grub/grubnetx64.efi.signed: PE32+ executable (EFI application) x86-64 (stripped to external PDB), for MS Windows
+# ```
 set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 set default 0
@@ -52,7 +58,9 @@ set root=(http,{{ httpserver }})
 
 menuentry "Memory Test (memtest86, Live)" {
   #set root=(http,{{ httpserver }})
-  linux /gparted/live/memtest 
+  # file gparted/live/memtest
+  # gparted/live/memtest: DOS/MBR boot sector
+  linux /gparted/live/memtest
 }
 
 menuentry 'Gparted Live (Ramdisk Netboot)' {
@@ -86,7 +94,23 @@ menuentry "Ubuntu MATE 22 Desktop (64bit, Live)" {
   linux  /ubuntu22dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu22dt/ debug ip=dhcp toram
   initrd /ubuntu22dt/casper/initrd
 }
+
+menuentry "Ubuntu MATE 24 Desktop (64bit, Live)" {
+  linux  /ubuntu24dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu24dt/ debug ip=dhcp toram
+  initrd /ubuntu24dt/casper/initrd
+}
+
+menuentry "Kubuntu 24 (KDE) Desktop (64bit, Live)" {
+  linux  /kubuntu24dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu24dt/ debug ip=dhcp toram
+  initrd /kubuntu24dt/casper/initrd
+}
+
 ##################################################
+
+menuentry "Fedora Workstation 39 Live" {
+  linux  /fedora_ws/images/pxeboot/vmlinuz root=live:http://{{ httpserver }}/fedora_ws/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
+  initrd /fedora_ws/images/pxeboot/initrd.img
+}
 
 
 
@@ -119,11 +143,40 @@ menuentry "FreeDOS 1.0 (Live)" {
   #insmod memdisk
   # invalid magic number
   # harddisk c=19 h=16 s=63
+  # A file on TFTP (root)
+  # memdisk: Linux kernel x86 boot executable bzImage, version MEMDISK 6.03 20171017, RW-rootFS,
   linux16 /memdisk
   # Grub has no append
   # DOS/MBR boot sector
   #append /freedos1/fdboot.img
   initrd16 /freedos1/fdboot.img
+}
+# floppy.img image from https://memtest.org/ (From ISO images available, Linux ISO (64 bits) works)
+# https://forums.fedoraforum.org/showthread.php?326166-UEFI-and-BIOS-pxe-booting-memtest
+menuentry "Memtest v.7.00 (64-bit)" {
+  #echo "Insert memdisk,iso9660"
+  #insmod memdisk
+  #insmod iso9660
+  #insmod fat
+  
+  #echo "Boot ISO memdisk"
+  # invalid magic number
+  # harddisk c=19 h=16 s=63
+  #linux16 /memdisk
+  # Grub has no append
+  # DOS/MBR boot sector
+  #append /freedos1/fdboot.img
+  #initrd16 /freedos1/fdboot.img
+  #initrd /memtest/
+  
+  #echo "Run linuxefi"
+  #linuxefi memdisk iso raw
+  #initrdefi /mt86plus_7.00_64.iso
+  #################
+  # Working solution. 
+  #initrd /memtest/
+  # floppy.img: Linux kernel x86 boot executable bzImage, version Memtest86+ v7.00, RW-rootFS,
+  linux /memtest/boot/floppy.img
 }
 
 # http://www.ultimatedeployment.org/win7pxelinux1.html
