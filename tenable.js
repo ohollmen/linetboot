@@ -63,8 +63,10 @@ function tocurl(dn, rpara) {
     var ks = Object.keys(rpara.headers);
     ks.forEach( (k) => { bcmd += ` --header '${k}: ${rpara.headers[k]}'`; });
   }
-  if (dn.nessus) { bcmd += " -o "+dn.file; }
-  else { bcmd += " -O"; }
+  //if (dn.nessus) {
+    bcmd += " -o "+dn.file;
+  //}
+  //else { bcmd += " -O"; }
   console.log(bcmd);
   return bcmd;
 }
@@ -102,8 +104,8 @@ function usage(msg) {
 
 var acts = [
   {"id": "top",    "title": "Show API top-level entrypoints", "cb": lsitems, },
-  {"id": "sc",     "title": "Show SC download options", "cb": lsitems, },
-  {"id": "nessus", "title": "Show Nessus Download options", "cb": lsitems, },
+  {"id": "sc",     "title": "Show SC download options (Use --cmds for commands)", "cb": lsitems, },
+  {"id": "nessus", "title": "Show Nessus Download options (Use --cmds for commands)", "cb": lsitems, },
   {"id": "audit", "title": "Show Audit Download options", "cb": lsitems, },
 ];
 
