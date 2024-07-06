@@ -1145,3 +1145,16 @@ initrd http://{{ httpserver }}/talos/boot/initramfs.xz
 # Any URL:s should show as (e.g.): app.use(dyn.URL): GET (2024-03-04T05:02:28.285Z):/talos/ccccccc
 # Is plain http:// allowed here ? Use talos.dashboard.disabled=1 for troubleshoot ? Just disables dashboard, does not lead (or allow) to shell (!?)
 append talos.platform=metal panic=1000 slab_nomerge pti=on talos.config.oauth.client_idXX=abc talos.config=http://{{ httpserver }}/talos/config?mac=${mac}&osid=talos talos.dashboard.disabled=1
+
+# Finnix ( https://www.finnix.org/ )
+# Other:
+# - Finnix PXE boot #18 https://github.com/orgs/finnix/discussions/18
+# - See also: https://github.com/beta-tester/RPi-PXE-Server
+label finnix-x64
+menu label Finnix (Live) x64
+kernel http://{{httpserver}}/finnix-x64/live/vmlinuz
+initrd http://{{httpserver}}/finnix-x64/live/initrd.img
+append ip=dhcp nfsroot={{nfsserver}}:/isomnt/finnix-x64 ro netboot=nfs boot=live config
+#TEXT HELP
+#  Boot to Finnix x64 Live
+#ENDTEXT
