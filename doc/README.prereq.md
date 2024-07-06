@@ -234,6 +234,10 @@ by setting "Everyone ... Read Only" under "Users".
 
 ### Configuring NFS Server
 
+Some distributions, notably Ubuntu desktop versions ("Basic Ubuntu, Kubuntu, Xbuntu, MATE, ...), mount disrto live boot media from NFS
+(e.g. `netboot=nfs nfsroot={{ nfsserver }}:/isomnt/ubuntu24dt/` on linux pxe boot command line). For this the access to boot media
+NFS mount location on Linetboot server (or other server configured by `nfsserver`, see above) must be configured in NFS server `exports` config file.
+
 NFS filesystems to export/share are configured in `/etc/exports`.
 Because of the public and read-only nature of CDROM media, we share media
 with no restrictions (except setting it ro=read only).
@@ -241,10 +245,10 @@ with no restrictions (except setting it ro=read only).
 # Whole /isomnt/
 /isomnt/ *(ro)
 # Each ISO area one-by-one
-/isomnt/centos6  *(ro)
-/isomnt/centos7  *(ro)
-/isomnt/ubuntu16 *(ro)
-/isomnt/ubuntu18 *(ro)
+/isomnt/centos6  *(ro,no_root_squash)
+/isomnt/centos7  *(ro,no_root_squash)
+/isomnt/ubuntu16 *(ro,no_root_squash)
+/isomnt/ubuntu18 *(ro,no_root_squash)
 ```
 After edits to `/etc/exports`, run `sudo exportfs -a` to activate changes (this will signal the change to NFS server
 and request it to re-read the configuration).
