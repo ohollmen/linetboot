@@ -116,8 +116,8 @@
     # Checks on xfwm4 (Deb,RH): Deb xfce4 deps on xfdesktop4, RH: xfdesktop depends on xfwm4 (!!)
     - name: Install XFCE Base Comps. (All platforms)
       package:
-        name: {{ pkgs_xfce_uni }}
-    - name: RH: Add xfdesktop
+        name: '{{ pkgs_xfce_uni }}'
+    - name: 'RH: Add xfdesktop'
       shell: 'dnf install -y xfdesktop'
       when: ansible_os_family == "RedHat"
     ##### Fonts, addl desktop support ##############
@@ -160,30 +160,30 @@
     # Not used w. plain VNC (?)
     - name: Establish XRDP User dot-xsession
       copy:
-	content: '{{ sessionexe }}'
-	# {{ lookup("ansible.builtin.env", "HOME") }}
-	# dest: '/home/{{ xrdpuser }}/.xsession'
-	# For now assume homedir path under /home/ w/o separate homedir var.
-	dest: '/home/{{ xrdpuser }}/.xsession'
-	# MUST have +x
-	mode: a+rx
+        content: '{{ sessionexe }}'
+        # {{ lookup("ansible.builtin.env", "HOME") }}
+        # dest: '/home/{{ xrdpuser }}/.xsession'
+        # For now assume homedir path under /home/ w/o separate homedir var.
+        dest: '/home/{{ xrdpuser }}/.xsession'
+        # MUST have +x
+        mode: a+rx
       when: 1
     # May have .vnc/passwd per libexec/vncserver
     - name: Ensure presence of ~/.vnc config dir
       shell: 'mkdir -p /home/{{ xrdpuser }}/.vnc'
     - name: Create VNC User's ~/.vnc/xstartup
       copy:
-	# TODO: xfce terminal
-	#content: 'xterm -geometry 1044x810+10+10 &'
-	content: 'xfce4-terminal &'
-	dest: "/home/{{ xrdpuser }}/.vnc/xstartup"
-	mode: a+rx
+        # TODO: xfce terminal
+        #content: 'xterm -geometry 1044x810+10+10 &'
+        content: 'xfce4-terminal &'
+        dest: "/home/{{ xrdpuser }}/.vnc/xstartup"
+        mode: a+rx
     # Add user per display (e.g.): ":2=mrsmith"
     - name: Create user in /etc/tigervnc/vncserver.users
       lineinfile:
-	path: /etc/tigervnc/vncserver.users
-	regexp: '^:2='
-	line: ':{{ vnc_disp_id }}={{ xrdpuser }}'
+        path: /etc/tigervnc/vncserver.users
+        regexp: '^:2='
+        line: ':{{ vnc_disp_id }}={{ xrdpuser }}'
     # Use: /usr/lib/systemd/system/vncserver@.service
     # Executes (bash): /usr/libexec/vncsession-start , which executes (elf,20k) /usr/sbin/vncsession mrsmith :2
     # ("normally started by system service mgr")
@@ -192,5 +192,5 @@
     # Template / content OR copy, source-local
     - name: Create vncserver@2.service
       copy:
-	src: '/usr/lib/systemd/system/vncserver@.service'
-	dest: '/usr/lib/systemd/system/vncserver@{{ vnc_disp_id }}.service'
+        src: '/usr/lib/systemd/system/vncserver@.service'
+        dest: '/usr/lib/systemd/system/vncserver@{{ vnc_disp_id }}.service'
