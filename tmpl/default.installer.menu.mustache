@@ -1152,9 +1152,9 @@ append talos.platform=metal panic=1000 slab_nomerge pti=on talos.config.oauth.cl
 # - See also: https://github.com/beta-tester/RPi-PXE-Server
 label finnix-x64
 menu label Finnix (Live) x64
-kernel http://{{httpserver}}/finnix-x64/live/vmlinuz
-initrd http://{{httpserver}}/finnix-x64/live/initrd.img
-append ip=dhcp nfsroot={{nfsserver}}:/isomnt/finnix-x64 ro netboot=nfs boot=live config
+kernel http://{{ httpserver }}/finnix-x64/live/vmlinuz
+initrd http://{{ httpserver }}/finnix-x64/live/initrd.img
+append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=live config
 #TEXT HELP
 #  Boot to Finnix x64 Live
 #ENDTEXT

@@ -35,7 +35,7 @@ var creds = {};
 var ropts = {headers: {}};
 function init(_mcfg) {
     if (!_mcfg) { throw "No main config"; }
-    if (!_mcfg["afa"]) { throw "No afa config within main config"; }
+    if (!_mcfg["afa"]) { console.error("No afa config (return)"); return; } // throw "No afa config within main config";
     cfg = _mcfg["afa"];
     if (!cfg.host) { console.log( "No  config host" ); return; }
     //if (!cfg.user) { console.log( "No  config user" ); return; }
