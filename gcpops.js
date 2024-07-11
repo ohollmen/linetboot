@@ -21,7 +21,45 @@ var cproc = require("child_process"); // https://nodejs.org/api/child_process.ht
 //var gcp = require('google-cloud'); // gcp.compute
 // Hmmm (!?) gcp.
 // const computeProtos = compute.protos.google.cloud.compute.v1;
-
+// Some option items (not an exhaustive lists of options, mainly for VMs)
+var optdata = {
+  // https://cloud.google.com/compute/docs/regions-zones
+  "zonesuff": ["a", "b", "c", "d", "e", "f"], // {"id": "-a", "name": "a"}
+  "region":   ["us-east1", "us-east2", "us-east3", "us-east4",
+    "us-central1","us-central2","us-central3", "us-central4",
+    "us-west1","us-west2","us-west3", "us-west4"],
+  // https://cloud.google.com/compute/docs/machine-resource
+  // https://cloud.google.com/compute/docs/general-purpose-machines
+  "predef_types": ["highcpu", "standard", "highmem", "megamem", "hypermem", "ultramem", ], // mid-part
+  "insttype_sers": ["n2", "n4", "e2", "c2", "c3", "c4", "n4"],
+  // TODO: Procedurally ?
+  "insttype": [
+    //"e2-", // Low end, shared-core, day-to-day (e.g. u-svcs)
+    // mid-part: 
+    // for "standard" the trailing number reflects number of VCPU:s (and 4GM ram per vcpu)
+    "n2-standard-2", "n2-standard-4", "n2-standard-8", "n2-standard-16", "n2-standard-32",
+    "n2-himem-2", "n2-himem-4", "n2-himem-8", "n2-himem-16"],
+  //"": [],
+  //"": [],
+  //"": [],
+};
+function opts_init() {
+  optdata.insttype = [];
+  optdata.insttype_sers.forEach( (ser) => {
+    optdata.predef_types.forEach( (pt) => {
+      [1,4,8,16].forEach( (num) => {
+        optdata.insttype.push(`${ser}-${pt}-${num}`);
+      });
+    });
+  });
+  optdata.zonesuff = optdata.zonesuff.map( (it) => { return {id: "-"+it, name: it}; });
+  //var expandables = [ "region"]; // see above: "zonesuff",
+  optdata.region   = optdata.region.map(to_obj);
+  optdata.insttype = optdata.insttype.map(to_obj);
+  function to_obj(v) { // use with map()
+    return {id: v, name: v};
+  }
+}
 var vmcfg = {
   project: "compute-29058235482", // Note: this is longer id, not just name of project
   // gcloud config set compute/region REGION or export CLOUDSDK_COMPUTE_REGION=REGION
@@ -214,6 +252,7 @@ module.exports = {
   listInstancesOfProject: listInstancesOfProject,
   subdivide: subdivide,
   subarr_proc: subarr_proc,
+  opts_init: opts_init,
 };
   // Sub-divide / Pre-process to batches
 function subdivide(arr, sasize, opts) {
@@ -252,7 +291,7 @@ function subarr_proc(arr, sasize, proccb, opts, finalcb) {
   // Always aim to pass finalcb and capture results. There's no meaningful return value here.
 }
 
-if (process.argv[1].match("gcpops.js")) {
+function run_multiproc() {
   var gcpops = module.exports;
   // Test for now https://caolan.github.io/async/v3/docs.html
   var arr = ["bu1","bu2","bu3","bu4","bu5","bu6","bu7","bu8","bu9","bu10","bu11","bu12","bu13","bu14","bu15","bu16",];
@@ -260,7 +299,7 @@ if (process.argv[1].match("gcpops.js")) {
   function proc_item(item, cb) {
     console.log("Process: "+item);
     var cmd = "echo "+ item + "; sleep 2";
-    // opts as optional 2nd
+    // opts (obj) as optional 2nd (e.g. pwd: ...)
     cproc.exec(cmd, (err, stdout, stderr) => {
       if (err) { console.log("Error running "+cmd+" "+ err); return cb(err, null); }
       cb(null, stdout);
@@ -271,5 +310,11 @@ if (process.argv[1].match("gcpops.js")) {
   var opts = {debug: 1};
   function finalcb() { console.log("Done (main)"); }
   gcpops.subarr_proc(arr, sasize, proc_item, opts, finalcb); // finalcb (test w. null)
+  //NOT:process.exit(0);
+}
+
+if (process.argv[1].match("gcpops.js")) {
+  opts_init()
+  console.log(JSON.stringify(optdata, null, 2));
   //NOT:process.exit(0);
 }
