@@ -1,0 +1,27 @@
+# ## Create Swap file (NOT a partition)
+# ```
+# ansible-playbook makeswapfile.yaml -e "swapfilepath=/swap/swapfile swapsizemb=32000" --limit myhost-01
+# ```
+- name: Add a Swapfile (NOT a partition)
+  hosts: all
+  become: true
+  vars:
+    swapfilepath: /swapfile
+    # Megabytes (Example 16GB)
+    swapsizemb: 16000
+  tasks:
+    - name: Create swap (file space only)
+      shell:
+        cmd: 'dd if=/dev/zero of={{swapfilepath}} bs=1MB count={{swapsizemb}}'
+    - name: Format swap
+      shell:
+        cmd: 'mkswap /swapfile'
+    - name: Take swap into use (swapon)
+      shell:
+        cmd: 'swapon {{swapfilepath}}'
+    - name: Add mount entry to fstab
+      lineinfile:
+        path: '/etc/fstab'
+        line: '{{swapfilepath}} swap swap defaults 0 0'
+        regexp: '^{{swapfilepath}}\s+'
+        backup: true
