@@ -55,4 +55,4 @@
       shell: yum check-update
       ignore_errors: true
     #- name: Advise to check App Update Availabliliy
-    - debug: 'Use yum list available myapp to see that package is NOT available'
+    #- debug: 'Use yum list available myapp to see that package is NOT available'
