@@ -1,0 +1,55 @@
+# Update a YUM Repo based application
+# Example of running:
+# ```
+# ansible-playbook yumrepoappupdate.yaml -e "pkgname=myapp repofn=myapp.repo appver=" --limit mytesthost
+# ```
+# ## Notes on usage
+# 
+# - This playbook is aplicable only for a simple .repo file with single
+# repository entry in it (single [...] INI section). TODO: Add
+# detection for multple ini-sections and exit if these are found.
+# - The 
+# 
+# # Additional Info
+# A handy (python) command to output all YUM variables usable /
+# frequently used in .repo files
+# ```
+# python3 -c 'import dnf, json; db = dnf.dnf.Base(); print(json.dumps(db.conf.substitutions, indent=2))'
+# ```
+# ## TODO
+# - Support multiple packages
+# - Support repo files w. multiple repo definitions (multiple ini sections)
+- name: Update Yum Repo Based APp
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    pkgname: curl
+    repofn: curl.repo
+    repofile_basepath: /etc/yum.repos.d
+    # Default to "latest" (whatever comes with `yum update myapp`)
+    appver: ""
+  tasks:
+    # Repo file MUST exist, let this exit if not found
+    - name: Check that repo file is there
+      shell: 'test -f {{repofile_basepath}}/{{repofn}}'
+    - name: Enable Repo / App Update
+      lineinfile:
+        path: '{{repofile_basepath}}/{{repofn}}'
+	line: 'enabled = 1'
+	# Allow any value
+	regexp: '^enabled\s*=\s*\d'
+    - name: Refresh Package Meta data
+      shell: yum check-update
+    - name: Update App Package
+      shell: 'yum install {% if appver  %}{{ pkgname}}-{{appver}}{% else %}{{ pkgname}}{% endif %}'
+    - name: Disable Repo / App Update
+      lineinfile:
+        path: '{{repofile_basepath}}/{{repofn}}'
+	line: 'enabled = 0'
+	# Allow any value
+	regexp: '^enabled\s*=\s*\d'
+    - name: Refresh Package Meta data
+      shell: yum check-update
+    - name: Advise to check App Update Availabliliy
+      debug: 'Use yum list available myapp to see that package is NOT available'
