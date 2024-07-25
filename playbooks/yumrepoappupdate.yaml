@@ -29,6 +29,8 @@
     repofile_basepath: /etc/yum.repos.d
     # Default to "latest" (whatever comes with `yum update myapp`)
     appver: ""
+    # Pass upmethod=upgrade to force the (more risky and forceful) upgrade (maye remove obsolete packages)
+    upmethod: update
   tasks:
     # Repo file MUST exist, let this exit if not found
     - name: Check that repo file is there
@@ -44,7 +46,7 @@
       shell: yum check-update
       ignore_errors: true
     - name: Update App Package
-      shell: 'yum install {% if appver  %}{{ pkgname}}-{{appver}}{% else %}{{ pkgname}}{% endif %}'
+      shell: 'yum {{upmethod}} {% if appver  %}{{ pkgname}}-{{appver}}{% else %}{{ pkgname}}{% endif %}'
     - name: Disable Repo / App Update
       lineinfile:
         path: '{{repofile_basepath}}/{{repofn}}'
