@@ -41,12 +41,17 @@
         line: 'enabled = 1'
         # Allow any value
         regexp: '^enabled\s*=\s*\d'
+    # This step will increase duration of Meta Info / Cache update, but may be necessary for robust operation
+    # YUM is notorious for corrupting Meta data / Cache and as a result refusing to install package.
+    - name: Clean YUM Cache / Meta-data
+      shell: yum clean all
     # yum check-update returns exit value 100 even on success !! Thus ignore_errors
     - name: Refresh Package Meta data
       shell: yum check-update
       ignore_errors: true
     - name: Update App Package
-      shell: 'yum {{upmethod}} {% if appver  %}{{ pkgname}}-{{appver}}{% else %}{{ pkgname}}{% endif %}'
+      shell: 'yum {{upmethod}} -y {% if appver  %}{{ pkgname}}-{{appver}}{% else %}{{ pkgname}}{% endif %}'
+      ignore_errors: true
     - name: Disable Repo / App Update
       lineinfile:
         path: '{{repofile_basepath}}/{{repofn}}'
