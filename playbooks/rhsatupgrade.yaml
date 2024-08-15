@@ -37,10 +37,19 @@
 # Note also that the version number - in regards to number of digits is inconsistent.
 # E.g. Subsequent versions may be numbered 6.13.4 (no fourth digit) and 6.13.4.1 (has 4th digit).
 # See: https://access.redhat.com/articles/1365633
+#
+# ## Post update/upgrade Validations
+# 
+# ```
+# sudo hammer ping
+# sudo hammer repository list
+# # Satellite update/upgrade also updates OS packages - a restart may be needed
+# dnf needs-restarting --reboothint
+# ```
 # 
 # ## Changes
 # - Add -y to commands (to prevent interactivity from stopping unattended flow)
-# - Enable `when: minorup` tasks for "upgrade (minor version change). This needs more testing.
+# - Enable `when: minorup` tasks for "upgrade (minor version change). This needs more testing (using minorup=1).
 # - Enable optional reboot task (must issue reboot=1)
 # 
 # ## References
@@ -48,6 +57,7 @@
 - name: Upgrade RH Satellite
   hosts: '{{ host }}'
   become: yes
+  gather_facts: false
   vars:
     # Note: this could have .z at end (typically for patch version changes, i.e. "updates") - include it
     tgtver: '6.12'
@@ -99,5 +109,9 @@
       debug:
         msg: 'Change hostname: hostnamectl set-hostname {{ rhsat_host }}'
     - name: Reboot upgraded host (optional)
-      shell: reboot
+      #shell: reboot
+      reboot:
+        msg: "RH Satellite is being rebooted (just after update/upgrade)"
+        # pre_reboot_delay: 61
+        test_command: 'hostnamectl set-hostname {{ rhsat_host }}'
       when: reboot
