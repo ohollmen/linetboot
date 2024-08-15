@@ -6,11 +6,16 @@
 # # Wait for start op.
 # ansible-playbook splunkupdate.yaml -e "splunkrpm=splunk-9.1.1-64e843ea36b1.x86_64.rpm host=all startwait=90" --limit 'splunkhost*'
 # ```
-# 
+# ## Hints for Reboot
+# ```
+# ansible 'splunkhost*' -m reboot -a "msg='Reboot after update'"
+# ```
 # ## Information On (Install and) Upgrade
+# 
 # - https://docs.splunk.com/Documentation/Splunk/9.1.1/Installation/HowtoupgradeSplunk
 # - https://docs.splunk.com/Documentation/Forwarder/9.2.1/Forwarder/Upgradetheuniversalforwarder
 # - License (XML) has to be entered in Web GUI (Settings => Licensing => Add License)
+# 
 # ## Possible errors
 # - "Failed to stop Splunkd.service: Unit Splunkd.service not loaded." - the systemd unit for "Splunkd" is not found on system.
 #   - https://docs.splunk.com/Documentation/Splunk/9.2.1/Admin/RunSplunkassystemdservice
@@ -52,9 +57,11 @@
     become: true
     become_user: '{{ splunkuser }}'
   # Above start runs async ? Seems like a bit of delay here might help.
-  # OR investigate splunk utiility for sync/blocking behaviour (wait to complete)
+  # OR investigate splunk utility for sync/blocking behaviour (wait to complete)
   - name: Wait for splunk update to complete
-    shell: 'sleep {{ startwait }}'
+    #shell: 'sleep {{ startwait }}'
+    pause:
+      seconds: '{{ startwait }}'
   - name: Restart splunk service
     shell:
       cmd: 'systemctl restart Splunkd'
