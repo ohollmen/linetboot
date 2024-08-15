@@ -1,4 +1,7 @@
-# Update a YUM Repo based application
+# ## Update a YUM Repo based application
+# 
+# Assumes that repo file for app is present (in yum.repos.d) and is in somewhat standard format (with enabled = ... flag present).
+# 
 # Example of running:
 # ```
 # ansible-playbook yumrepoappupdate.yaml -e "pkgname=myapp repofn=myapp.repo appver=" --limit mytesthost
@@ -18,18 +21,23 @@
 # ```
 # ## TODO
 # - Support multiple packages
-# - Support repo files w. multiple repo definitions (multiple ini sections)
+# - Support repo files w. multiple repo definitions (multiple ini sections).
+#   Seems ansible "replace" might work (user param replace: ..., not line: ...) - check "replace" Sysnopsis before applying
+#   ("It is up to the user to maintain idempotence by ensuring that the same pattern would never match any replacements made.")
 - name: Update Yum Repo Based APp
   hosts: all
   become: true
   gather_facts: false
   vars:
+    # Package / app name (must be a complete, valid package name)
     pkgname: curl
+    # Concrete repo filename in /etc/yum.repos.d
     repofn: curl.repo
     repofile_basepath: /etc/yum.repos.d
-    # Default to "latest" (whatever comes with `yum update myapp`)
+    # Empty => Default to "latest" (whatever comes with `yum update myapp`)
+    # By giving explicit version here gives you control over which version to install.
     appver: ""
-    # Pass upmethod=upgrade to force the (more risky and forceful) upgrade (maye remove obsolete packages)
+    # Pass upmethod=upgrade to force the (more risky and forceful) upgrade (may remove obsolete packages)
     upmethod: update
   tasks:
     # Repo file MUST exist, let this exit if not found
@@ -39,6 +47,7 @@
       lineinfile:
         path: '{{repofile_basepath}}/{{repofn}}'
         line: 'enabled = 1'
+        #replace: 'enabled = 1'
         # Allow any value
         regexp: '^enabled\s*=\s*\d'
     # This step will increase duration of Meta Info / Cache update, but may be necessary for robust operation
@@ -56,6 +65,7 @@
       lineinfile:
         path: '{{repofile_basepath}}/{{repofn}}'
         line: 'enabled = 0'
+        #replace: 'enabled = 0'
         # Allow any value
         regexp: '^enabled\s*=\s*\d'
     - name: Refresh Package Meta data
