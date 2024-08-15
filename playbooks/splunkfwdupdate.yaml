@@ -74,7 +74,7 @@
           
           [target-broker:deploymentServer]
           targetUri = https://{{ splunkhost }}:{{ splunkport }}
-        #mode: 0644
+        mode: 0644
         owner: '{{splunkuser}}'
         group: '{{splunkuser}}'
     #- name: End for inspection
