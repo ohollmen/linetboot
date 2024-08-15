@@ -91,6 +91,7 @@
       shell: '{{instprefix}}/splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt'
       # Per testing this will not cause non-0 exit
       #ignore_errors: yes
+    #### Optional / conditional (based on regensysd) ######
     # ~10s. seems to be blocking
     - name: Stop forwarder for "boot-start" enablement
       shell: '{{instprefix}}/splunkforwarder/bin/splunk stop'
@@ -98,6 +99,7 @@
     - name: Delay for splunkforwarder complete stop
       pause:
         seconds: '{{delay}}'
+      when: regensysd
     # Returns non-zero for existing /etc/systemd/system/SplunkForwarder.service (e.g. rc:4)
     - name: Enable forwarder bootstart
       shell: '{{instprefix}}/splunkforwarder/bin/splunk enable boot-start -user {{ splunkuser }}'
