@@ -6,7 +6,10 @@
 # ## Checking version
 # Run before and after update
 # ```
+# # Checking an RPM based instalation
 # sudo yum list installed splunkforwarder
+# # Checking tgz based instalation
+# sudo /opt/splunkforwarder/bin/splunk version
 # ```
 # ## Additional Info
 # 
@@ -35,6 +38,8 @@
     splunkuser: root
     delay: 10
     confsubdir: local
+    # Regenerate systemd unit
+    regensysd: 0
   tasks:
     - name: Create timestamp
       shell: 'date --rfc-3339=seconds | perl -p -e "s/[\ :+]/_/g;"'
@@ -84,15 +89,22 @@
     # Avoid interactivity
     - name: Start Forwarder non-interactively (accepting license w/o prompting)
       shell: '{{instprefix}}/splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt'
-      ignore_errors: yes
+      # Per testing this will not cause non-0 exit
+      #ignore_errors: yes
+    # ~10s. seems to be blocking
     - name: Stop forwarder for "boot-start" enablement
       shell: '{{instprefix}}/splunkforwarder/bin/splunk stop'
+      when: regensysd
     - name: Delay for splunkforwarder complete stop
       pause:
         seconds: '{{delay}}'
+    # Returns non-zero for existing /etc/systemd/system/SplunkForwarder.service (e.g. rc:4)
     - name: Enable forwarder bootstart
       shell: '{{instprefix}}/splunkforwarder/bin/splunk enable boot-start -user {{ splunkuser }}'
+      when: regensysd
     - name: Reload installer generated units
-      shell: "sudo systemctl daemon-reload"
+      shell: 'systemctl daemon-reload'
+      when: regensysd
     - name: Final restart using systemd
       shell: 'systemctl restart SplunkForwarder'
+      when: regensysd
