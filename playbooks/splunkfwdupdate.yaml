@@ -1,7 +1,7 @@
 # ## Update Splunk forwarder (by a .tgz)
 # Example of running:
 # ```
-# ansible-playbook splunkfwdupdate.yaml -e 'pkg=splunkforwarder-9.2.2-d76edf6f0a15-Linux-x86_64.tgz host=all splunkhost=192.168.1.5' -l 'myhost*' 
+# ansible-playbook splunkfwdupdate.yaml -e 'pkg=splunkforwarder-9.2.2-d76edf6f0a15-Linux-x86_64.tgz host=all splunkhost=192.168.1.5 confsubdir=myapp' -l 'myhost*' 
 # ```
 # ## Checking version
 # Run before and after update
@@ -34,10 +34,10 @@
     sysdunit: SplunkForwarder
     splunkuser: root
     delay: 10
-    #confsubdir: local
+    confsubdir: local
   tasks:
     - name: Create timestamp
-      shell: 'date --rfc-3339=seconds'
+      shell: 'date --rfc-3339=seconds | perl -p -e "s/[\ :+]/_/g;"'
       register: ts_res
     - name: Copy Splunkforwarder TGZ
       copy:
@@ -48,13 +48,13 @@
       shell:
         # Legacy Only ?
         #cmd: '{{instprefix}}/splunkforwarder/bin/splunk stop'
-	cmd: 'systemctl stop SplunkForwarder'
+        cmd: 'systemctl stop SplunkForwarder'
     # Typical (compressed) 1M+
     - name: Backup old configs ($SPLUNK_HOME/etc)
       shell:
-        cmd: 'tar -zcvf splunkforwarder.config.{{ ts_res.stdout }}.tgz etc/'
-	# Alt: -C {{instprefix}}/splunkforwarder
-	chdir: '{{instprefix}}/splunkforwarder'
+        cmd: 'tar -zcf splunkforwarder.config.{{ ts_res.stdout }}.tgz etc/'
+        # Alt: -C {{instprefix}}/splunkforwarder
+        chdir: '{{instprefix}}/splunkforwarder'
     # Splunk doc "Upgradetheuniversalforwarder" (see links above) advices against moving/removing old dir.
     #- name: Remove/move old installation
     #  shell:
@@ -63,20 +63,20 @@
     #- meta: end_play
     - name: Unpack forwarder update TGZ
       shell:
-        cmd: `tar -zxvf {{pkg}}`
+        cmd: 'tar -zxf {{pkg}}'
         chdir: '{{instprefix}}'
     # https://docs.splunk.com/Documentation/Splunk/9.3.0/Admin/Deploymentclientconf
     - name: Create deploymentclient.conf
       copy:
-        dest: '{{instprefix}}/splunkforwarder/etc/apps/local/deploymentclient.conf'
+        dest: '{{instprefix}}/splunkforwarder/etc/apps/{{confsubdir}}/deploymentclient.conf'
         content: |
           [deployment-client]
           
           [target-broker:deploymentServer]
           targetUri = https://{{ splunkhost }}:{{ splunkport }}
         #mode: 0644
-	owner: '{{splunkuser}}'
-	group: '{{splunkuser}}'
+        owner: '{{splunkuser}}'
+        group: '{{splunkuser}}'
     #- name: End for inspection
     #  meta: end_play
     - name: Set SELinux Security Context
