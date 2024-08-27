@@ -4,13 +4,18 @@
 # ansible-playbook splunkfwdupdate.yaml -e 'pkg=splunkforwarder-9.2.2-d76edf6f0a15-Linux-x86_64.tgz host=all splunkhost=192.168.1.5 confsubdir=myapp' -l 'myhost*' 
 # ```
 # ## Checking version
-# Run before and after update
+# Run before and after update (commands given in ansible ad-hoc format for "check-all" a approach, add sudo if using command-part-only on individual host).
 # ```
 # # Checking an RPM based instalation
-# sudo yum list installed splunkforwarder
+# ansible 'myhost*' -m shell -b -a 'yum list installed splunkforwarder'
 # # Checking tgz based instalation
-# sudo /opt/splunkforwarder/bin/splunk version
+# ansible 'myhost*' -m shell -b -a '/opt/splunkforwarder/bin/splunk version'
 # ```
+# ## Checking effectiveness of upgrade via Splunk (Master) Server GUI
+# 
+# Navigate: Monitoring console (on left sidepane) => Forwarders => Deployment => Status Active.
+# Check that Version shows the desired version.
+# 
 # ## Additional Info
 # 
 # - Splunkforwarder update: https://docs.splunk.com/Documentation/Forwarder/9.3.0/Forwarder/Upgradetheuniversalforwarder
