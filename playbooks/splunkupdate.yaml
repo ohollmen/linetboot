@@ -1,4 +1,4 @@
-# ## Update Splunk
+# ## Update Splunk Server
 # 
 # Example of running:
 # ```
@@ -6,15 +6,26 @@
 # # Wait for start op.
 # ansible-playbook splunkupdate.yaml -e "splunkrpm=splunk-9.1.1-64e843ea36b1.x86_64.rpm host=all startwait=90" --limit 'splunkhost*'
 # ```
-# ## Hints for Reboot
+# ## Hints for Version check and Reboot
 # ```
-# ansible 'splunkhost*' -m reboot -a "msg='Reboot after update'"
+# # Checking version
+# ansible 'splunkhost*' -m shell -b -a '/opt/splunk/bin/splunk version'
+# # Reboot - should NOT be needed
+# ansible 'splunkhost*' --forks 1 -m reboot -b -a "msg='Reboot after update'"
 # ```
 # ## Information On (Install and) Upgrade
 # 
 # - https://docs.splunk.com/Documentation/Splunk/9.1.1/Installation/HowtoupgradeSplunk
 # - https://docs.splunk.com/Documentation/Forwarder/9.2.1/Forwarder/Upgradetheuniversalforwarder
 # - License (XML) has to be entered in Web GUI (Settings => Licensing => Add License)
+# - In case a (config) migration happnes, logs ,may be written in /opt/splunk/var/log/splunk/migration.log.*
+# - In case manual restart is needed: `ansible 'splunkhost*' -m shell -b -a 'systemctl restart Splunkd'`
+# 
+# ## Checking effectiveness of upgrade
+# 
+# ```
+# ansible 'splunkhost*' -m shell -b -a "yum list installed splunk"
+# ```
 # 
 # ## Possible errors
 # - "Failed to stop Splunkd.service: Unit Splunkd.service not loaded." - the systemd unit for "Splunkd" is not found on system.
@@ -22,6 +33,7 @@
 - name: Update Splunk on RHEL(8)
   hosts: '{{ host }}'
   become: true
+  gather_facts: false
   vars:
    splunkrpm: 'splunk-9.1.1-64e843ea36b1.x86_64.rpm'
    splunkbin: '/opt/splunk/bin/splunk'
@@ -50,12 +62,15 @@
   - name: Change Splunk Files to be owned by Splunk User
     shell:
       cmd: 'chown -R {{ splunkuser }}:{{ splunkgrp }} /opt/splunk'
+  # Under some circumstances (e.g. large update leap or config migration), splunk may exit w. non-0 (e.g. rc=1).
+  # Thus ignore_errors: true (otherwise start will not happen)
   - name: Run Splunk Update executable (installed earlier by RPM)
     shell:
       cmd: '{{ splunkbin }} start --accept-license --answer-yes --no-prompt'
     # Note: must have become to have become_user be effective
     become: true
     become_user: '{{ splunkuser }}'
+    ignore_errors: true
   # Above start runs async ? Seems like a bit of delay here might help.
   # OR investigate splunk utility for sync/blocking behaviour (wait to complete)
   - name: Wait for splunk update to complete
@@ -65,4 +80,4 @@
   - name: Restart splunk service
     shell:
       cmd: 'systemctl restart Splunkd'
-    ignore_errors: yes
+    ignore_errors: true
