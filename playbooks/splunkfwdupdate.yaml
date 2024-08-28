@@ -13,8 +13,8 @@
 # ```
 # ## Checking effectiveness of upgrade via Splunk (Master) Server GUI
 # 
-# Navigate: Monitoring console (on left sidepane) => Forwarders => Deployment => Status Active.
-# Check that Version shows the desired version.
+# Navigate: Settings (top bar) => Monitoring console (on left of popup) => Forwarders (gray top bar) => Forwarders:Deployment => Status Active.
+# Check that column "Version" shows the desired (3 digit, major, minor, patch numbered) version.
 # 
 # ## Additional Info
 # 
@@ -41,7 +41,7 @@
     # Unit loc (e.g.): /etc/systemd/system/SplunkForwarder.service
     sysdunit: SplunkForwarder
     splunkuser: root
-    delay: 10
+    stopdelay: 10
     confsubdir: local
     # Regenerate systemd unit
     regensysd: 0
@@ -103,7 +103,7 @@
       when: regensysd
     - name: Delay for splunkforwarder complete stop
       pause:
-        seconds: '{{delay}}'
+        seconds: '{{stopdelay}}'
       when: regensysd
     # Returns non-zero for existing /etc/systemd/system/SplunkForwarder.service (e.g. rc:4)
     - name: Enable forwarder bootstart
