@@ -2,6 +2,10 @@
 # ```
 # ansible-playbook makeswapfile.yaml -e "swapfilepath=/swap/swapfile swapsizemb=32000" --limit myhost-01
 # ```
+# Check if the swap was enabled:
+# ```
+# ansible 'myhost-01' -m shell -b -a 'swapon --show'
+# ```
 - name: Add a Swapfile (NOT a partition)
   hosts: all
   become: true
@@ -15,7 +19,7 @@
         cmd: 'dd if=/dev/zero of={{swapfilepath}} bs=1MB count={{swapsizemb}}'
     - name: Format swap
       shell:
-        cmd: 'mkswap /swapfile'
+        cmd: 'mkswap {{swapfilepath}}'
     - name: Take swap into use (swapon)
       shell:
         cmd: 'swapon {{swapfilepath}}'
