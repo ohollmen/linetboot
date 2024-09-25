@@ -471,7 +471,9 @@ function ansible_play_list(acfg, pbpath, opts) { // dirname
       if (!pb) { console.error("No 'name' for playbook ("+relname+"), must have this to be processed !!!"); process.exit(1); }
       node.playname = pb.name; // Play(book) title ?
       if (!node.playname) { node.playname = "Unnamed playbook (" + fname + ")"; }
-      node.taskcnt = pb.tasks.length;
+      // No tasks or not an array (e.g. task file of a role ?)
+      if (!pb.tasks || !Array.isArray(pb.tasks)) { console.log(`No tasks in pb ${fname} (as array)`);  return; } // process.exit(1);
+      node.taskcnt = pb.tasks.length; // TypeError: Cannot read property 'length' of null
       // Task names ?
       node.tasknames = pb.tasks.filter((t) => { return (t.name); }).map((t) => { return t.name; });
       node.vars = yf[0].vars || {}; // Play(-level) Vars
