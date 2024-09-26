@@ -1177,21 +1177,24 @@ function hostinfolist (req, res) {
   var viewtype = req.params["viewtype"] || ""; // Even "" has (default) handler !
   var datafillcb = cbs[viewtype]; // Callback to populate data
   if (!datafillcb) { res.json({ "status": "err", "msg": "No such view" }); return; }
-  // Fill-in custom props / params from inventory (TODO: treat as normal datafillcb ?)
-  function hostparainfo(hpara, h) {
+  // Fill-in / merge custom props / params from inventory (TODO: treat as normal datafillcb ?)
+  function hostparainfo(hpara, h) { // , attrs // Only certain attrs
     //h.use = hpara.use || "";
     //h.loc = hpara.loc || "";
     //h.dock = hpara.dock || "";
     // NEW: Map all custom w/o hard-assuming particular custom fields
     // TODO: Check for reserved keys (reskeys = {'hname' => 1, ...};)
+    // var mergeattrs = attrs && Array.isArray(attrs) ? attrs : Object.keys(hpara);
     Object.keys(hpara).forEach(function (k) { h[k] = hpara[k] || ""; });
+    // mergeattrs.forEach(function (k) { h[k] = hpara[k] || ""; });
   }
   var hps = global.hostparams || {};
   // Use array here (f = Host facts).
   hostarr.forEach(function (f) {
     var h = {hname: f.ansible_fqdn}; // Local generic hostlist entry (for any/all viewtype(s))
     datafillcb(f, h);
-    // Temp solution, hard-wired add
+    // Temp solution, hard-wired add. Lookup host params by hostname (h.hname)
+    // TODO: Narrow down to only select parameters.
     var hpara = hps[h.hname] || {};
     //console.log("HPARA:", hpara);
     hostparainfo(hpara, h); // Custom attrs / params
