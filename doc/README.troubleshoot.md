@@ -51,7 +51,7 @@ Any completed install creates:
 - Install log:    /var/log/installer/curtin-install.log, (N/A !!)
 - /var/log/curtin/installer.log
 
-#### 22.04 Jammy Jellyfish
+#### 22.04 Jammy Jellyfish, Server
 
 - Under /var/lib/cloud/
   - seed - JSON files about URL:s hit
@@ -359,6 +359,11 @@ Suggested separation between Installation ISO (to be loopmounted) and netboot ke
   - Use Boot menu kernel/initrd from `/isomnt/debian10net` directory
   - linux: /debian10net/debian-installer/amd64/linux
   - initrd /debian10net/debian-installer/amd64/initrd.gz
+
+Ironically for ISO containing install.amd/initrd.gz and install.amd/vmlinuz and netboot tgz containing
+amd64/initrd.gz and amd64/linux the kernel (vmlinuz and linux) are exactly same by md5sum.
+The initrd on netboot tgz is 30122K and 19169K (30%+ smaller) on ISO. Seems initrd on netboot has more network drivers on it
+(to support as much NIC hardware as possible).
 
 Lots more boot menu stored ("append") parameters are needed for actual install,
 see linetboot pxelinux and grub menus for examples.
