@@ -330,7 +330,7 @@ function on_host_click(ev, barinfo) {
     // var fdp = formData.getAll(); // get(key) / getAll(somepara)
     var fdp = formData.values(); // entries()
     var obj = {};
-    for(var pair of formData.entries()) { // entries()
+    for (var pair of formData.entries()) { // entries()
       console.log(pair[0]+ ', '+ pair[1]); 
       //console.log(pair);
       obj[pair[0]] = pair[1];
@@ -340,6 +340,7 @@ function on_host_click(ev, barinfo) {
   //console.log("Got UI FormData params:", fdp);
   
   // Form vals using serializeArray
+  // @param arrattr - form params, whose values should be put into an array
   function form_obj(sel, arrattr) {
     var ismulti = {};
     arrattr = arrattr || [];
@@ -371,14 +372,14 @@ function ansishow(ev, an) {
     hosts: datasets["hostlist"],
     groups: datasets["grps_inv"], aplays: datasets["aplays"], "aprofs": datasets["aprofs"] };
   var output = rapp.templated('ansrun', p); // , "dialog_ans"
-  if (!an) { // Dialog
+  if (!an) { // Dialog ctx
     $( "#dialog_ans" ).html(output);
     var dopts = {modal: true, width: 650, height: 600}; // See also min,max versions
     $( "#dialog_ans" ).dialog(dopts);
   }
   else {
     var tgtid = ev.routepath ? "routerdiv" : an.elsel;
-    console.log("Launching ansishow as action (tgtid): " + tgtid);
+    console.log("Launching ansishow as a non-dialog action (tgtid): " + tgtid);
     $( "#" + tgtid ).html(output);
   }
   // Hook select-reset listeners
@@ -387,7 +388,7 @@ function ansishow(ev, an) {
     $('#playprofile').change(function () { $("#playbooks").val([]);  }); // $("#playbooks:selected").removeAttr("selected");  alert("PProd");
     $('#anssend').click(ansirun);
     $('#anssend3').click(ansirun);
-    // Doc ?
+    // Playbook Doc / Help
     $('#playbooks option').dblclick(function(jev) {
       //$('#selectedOption').val(this.outerHTML);
       //alert("Hi "+ $('#selectedOption').val() ); // this.outerHTML
@@ -410,6 +411,7 @@ function ansishow(ev, an) {
       pb : "ansible-playbook -i ~/.linetboot/hosts {{{ pb }}} -l {{ hns }} -b -e '{{{ ejson }}}'",
       facts : "mkdir {{ factdir }} ; ansible {{{ hns }}} -i ~/.linetboot/hosts -b -m setup --tree {{factdir}} -e '{{{ ejson }}}'; echo 'Facts in {{factdir}}'"
     };
+    // Generate Command
     $('#anssend2').click((jev) => {
       var extra = {ansible_user: "...", ansible_sudo_pass: "...", host: null};
       var para = form_obj("#ansform", ["hostnames","hostgroups", "playbooks", ]); // "playprofile"
@@ -523,16 +525,18 @@ function ansirun(jev) {
   return false;
 }
 
-/** Wrapper handler for tabset view.
+/** Wrapper handler for tabset (multiple tabs) view.
  * Change of tab (also loading a new tabset and implicitly setting the default / first tab)
  * triggers the handler associated with the view contained by tab (!).
- * 
+ * Action parameter:
+ * - tabs - an array of tab names that refer to actions by their act.path (act.elsel ? verify)
 */
 function tabsetview(ev, act) {
-  function gettabinfo(elsel) {
-    var ti = tabloadacts.filter((it) => { return it.elsel == elsel; })[0];
-    return ti;
-  }
+  // NOT in use !!!
+  //function gettabinfo(elsel) {
+  //  var ti = tabloadacts.filter((it) => { return it.elsel == elsel; })[0];
+  //  return ti;
+  //}
   if (!act.tabs) { return alert("tabsetview: Action using tabsetview should have 'tabs'" + JSON.stringify(act)); }
   if (!Array.isArray(act.tabs)) { return alert("tabsetview: tabs for view should be an array"); }
   //alert("tabsetview: Create tabset: "+act.tabs.join(', '));

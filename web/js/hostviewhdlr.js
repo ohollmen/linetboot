@@ -1350,7 +1350,9 @@ function cmod_covcomp(data, copts) {
   copts.scales.yAxes = [];
   return copts;
 }
-
+// Each will have 2 HTML attributes to select by:
+// - name attr. per model name
+// - id attr as "w_" + name (from model)
 function form_jg(fdefs, opts) {
   opts = opts || {labelw: 120, wfactor: 0.6, };
   
@@ -1358,6 +1360,7 @@ function form_jg(fdefs, opts) {
   let cont = "";
   var idv = "";
   var wfactor = opts.wfactor || 0.6; // TODO: From params
+  if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
   fdefs.forEach((fd) => { // map ?
     var wtype = fd.wtype || "text";
     //if (!fd.visible && cfg.onlyvis) { return; }
@@ -1377,8 +1380,8 @@ function form_jg(fdefs, opts) {
       cont += `<textarea  name="w_${fd.name}" id="w_${fd.name}" rows="5" cols="33"></textarea>`
     }
     else if (wtype == 'options') {
-      // Populate options dynamically
-      cont += `<select Xtype="text" name="w_${fd.name}" id="w_${fd.name}"\"></select>`;
+      // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
+      cont += `<select Xtype="text" name="w_${fd.name}" id="w_${fd.name}"\" data-optbind="${fd.optbind}"></select>`;
     }
     else if (wtype == 'checkbox') {
       // checked=checked indeterminate / w.select()
@@ -1397,9 +1400,11 @@ function form_jg(fdefs, opts) {
       cont += `<input type="range" name=\"w_${fd.name}" id="w_${fd.name}">`;
     }
     else { cont += `<input type="text" name=\"w_${fd.name}" id="w_${fd.name}">`; }
-    cont += "<br/>";
+    cont += "<br/>\n"; // Term. form row
     
   });
+  if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // Button
+  if (opts.formid) { cont += `</form>\n`; } 
   return cont;
 }
 

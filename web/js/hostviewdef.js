@@ -1251,6 +1251,37 @@ function riskadj_cell(val, item) {
     {"name": "imgpath",               "title": "Image Path", "type": "text", "width": 20, itemTemplate: imgpath_cell},
     {"name": "tags",               "title": "Image Tags", "type": "text", "width": 100, itemTemplate: tags_cell, },
    ];
+   // No default tables like in iptables (user must name tables)
+   // https://wiki.nftables.org/wiki-nftables/index.php/Nftables_families
+   var family_hooks = {
+     "ip": ["prerouting", "input", "forward", "output", "postrouting"], // inout/output different than arp, see: https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks
+     "arp": ["input","output"],
+     // "bridge": 
+     "netdev": ["ingress", "egress"],
+   };
+   // https://thermalcircle.de/doku.php?id=blog:linux:nftables_packet_flow_netfilter_hooks_detail#hard-coded_vs_flexibility
+   var fldinfo_nft = [
+     {"name": "chaintype",   "title": "Chain Type", "type": "options", "width": 20, itemTemplate: null,
+        "opts":["filter", "route", "nat"]},
+     {"name": "prio",   "title": "Priority (-450...300)", "type": "text", "width": 20, itemTemplate: null,},
+     // Family may have multiple tables
+     {"name": "family",   "title": "Proto Family", "type": "options", "width": 20, itemTemplate: null,
+       "opts":[["ip", "IPv4"], ["ip6", "IPv6"], ["inet", "IPv4 & IPv6"], ["arp", "ARP (from arp tables)"], ["bridge", "Bridge (from ebtables)"], ["netdev", "Netdev"]]},
+     // Hooks per particular family type (all these are different, man 8 nft
+     {"name": "hook",   "title": "Hook", "type": "options", "width": 20, itemTemplate: null,
+       "opts":[]},
+     {"name": "expr",   "title": "Expression / Condition", "type": "text", "width": 20, itemTemplate: null,},
+     {"name": "stmt",   "title": "Statement/Action", "type": "option", "width": 20, itemTemplate: null,
+       "opts":["accept","drop","queue", "continue","return", // "jump","goto" // Need chain (name) as param. What are: Repeat(rep.this hook), Stop(accept,stop-proc)
+       ]
+     },
+     {"name": "tgtchain",   "title": "Jump/Goto Tgt Chain", "type": "text", "width": 20, itemTemplate: null,
+       "opts":[]}, // Only active on jump,goto statement
+     {"limit": "ratelimsize",   "title": "Limit Rate Bytes", "type": "text", "width": 20, itemTemplate: null,
+       "opts":[]}, // Note rate may have time units week/day/hour/minute/second
+     {"name": "natto",   "title": "NAT To ...", "type": "text", "width": 20, itemTemplate: null,
+       "opts":[]},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
