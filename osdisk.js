@@ -651,6 +651,18 @@ function disk_out_subiquity(parr) {
   //
   return ycont;
 }
+// Photon OS JSON disk config in reciperoot.partitions = [ ... ]
+// Map osdisk.js parts to photon.
+// Note: There is also (top-level) "partition_type": "msdos" (msdos,gpt, latter default)
+function disk_out_photon(parr) {
+  var photon_parts = parr.map( (p) => {
+    var php = {}; // Photon part mountpoint: "", size: INT, filesystem: p.fmt
+    // php.size = p.size_mb; // Photon part size unit looks like MB (128 in examples, could be GB ?)
+    //if (p.fmt ==  swap) { delete(php.mountpoint) }
+    return php;
+  });
+  return JSON.stringify(photon_parts, null, 2);
+}
 module.exports = {
   init: init,
   disk_params: disk_params,

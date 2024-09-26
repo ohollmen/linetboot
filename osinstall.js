@@ -114,6 +114,8 @@ var recipes = [
   {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "defosid": "fcos", "pp": pp_fcos}, // TODO: ign.mustache
   // Talos Matchbox server uses paths like /assets/controlplane.yaml /assets/worker.yaml
   {"url":"/talos/config",       "ctype":"talos", "tmpl":"talos.config.yaml.mustache", "defosid": "talos",} // Separate controlplane, worker ? or figure out at server osinstall runtime (Inventory) ?
+  // Photon OS
+  //{"url":"/photon_ks.json",       "ctype":"photon", "tmpl":"photon_ks.json.mustache", "defosid": "talos",} // OR "pp": pp_photon
 ];
 
 function user_passwd_crypted(user) {
@@ -125,6 +127,7 @@ function user_passwd_crypted(user) {
     return sha512crypt.b64_sha512crypt(user.password, salt);
     //return hashedpass;
 }
+// Subiquity YAML
 function pp_subiquity(out, d) {
   var out2 = out;
   var y;
@@ -245,6 +248,20 @@ function pp_fcos(out, d) {
       }
     });
   }
+}
+// Photon OS JSON recipe (aka ks). https://vmware.github.io/photon/docs-v4/user-guide/working-with-kickstart/
+function pp_photon(out, d) {
+  var j = {};
+  if (out) { j = JSON.parse(out); }
+  else {} // Stub data ? hostname: d.xxx, password: {crypted: false, text: user.password}, disk: "/dev/"+ "sda",
+  // postinstall: [], // Complete snippets
+  // "search_path": ["/path/one", "/path/two"],
+  // postinstallscripts: [], // Script names to be found in "search_path": "..."
+  // public_key: "",
+  //  "network": { "type": "dhcp" } // type:static requires ip_addr: "", netmask: "", gateway: "", nameserver: "", vlan_id: "" (last optional)
+  // release_version: "4.0"
+  var pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  j.public_key = pubkey;
 }
 var recipes_idx = {};
 

@@ -435,7 +435,7 @@ append priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1
 # (First Disk ignored)
 #append initrd=ubuntu-installer/amd64/initrd.gz root=/dev/sda1
 
-# System76 PopOS
+# System76 PopOS (WIP)
 # Example gotten from (ISO): popos22/isolinux/isolinux.cfg
 # See: https://github.com/netbootxyz/netboot.xyz
 # https://tech-docs.system76.com/models/addw1/setup-specs.html
@@ -1158,3 +1158,22 @@ append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=l
 #TEXT HELP
 #  Boot to Finnix x64 Live
 #ENDTEXT
+
+# Photon OS (VMWare)
+# Phtoton 1.0
+# - PXE Boot (General): https://vmware.github.io/photon/assets/files/html/1.0-2.0/PXE-boot.html
+# - Kickstart JSON support: https://vmware.github.io/photon/assets/files/html/1.0-2.0/kickstart.html
+# Photon 4
+# - https://vmware.github.io/photon/docs-v4/user-guide/setting-up-network-pxe-boot/
+# - https://vmware.github.io/photon/docs-v4/user-guide/working-with-kickstart/
+# - Per (above) PXE-boot.html, there is a JSON-KS example in /mnt/photon-iso/isolinux/sample_ks.cfg (on ISO)
+# - Image downloads (raw dir listings): https://packages.vmware.com/photon/  https://packages.vmware.com/photon/4.0/Rev2/iso/
+# Initial cut boots quite far, but crashes w. reboot (not getting stuck) to bios screen around watchdog messages.
+label photon4
+menu label Photon OS 4
+kernel http://{{ httpserver }}/photon4/isolinux/vmlinuz
+initrd http://{{ httpserver }}/photon4/isolinux/initrd.img
+# 
+# Example from ISO: append root=/dev/ram0 ks=cdrom:/isolinux/my_ks.cfg loglevel=3
+# TODO: ks=http://{{ httpserver }}/photon_ks.json?osid=photon4
+append root=/dev/ram0  loglevel=3
