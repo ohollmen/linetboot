@@ -91,7 +91,11 @@ var apieps = [
   // For upgrade Internal API has
   //{"id":"upx", "url": "cspm/servlet/ConfigUpgradeServlet/action=apply&fileName={{{ filename }}}", "m": "POST"},
   // Payload: action=apply&fileName=CAPAM_4.1.6.01.p.bin (In url, body CL: 0)
-  {"id": "up2",    "url":"cspm/rest/config/upgrade/reboot/{{{ filename }}}", "m": "PUT"}, // CL: 0
+  {"id": "up2",    "url": "cspm/rest/config/upgrade/reboot/{{{ filename }}}", "m": "PUT"}, // CL: 0 // Internal ?
+  {"id": "version", "url": "system/version.json", "m": "GET"},
+  // Staged
+  //get /api.php/v1/ List staged files
+  {"id": "staged", "url": "system/upgrade/staged.json", "m": "GET"},
   // Resp: {"data":"","success":true,"total":0,"message":null}
   //{"id":"reboot", "url": "cspm/rest/config/power/reboot", "m": "POST"}, // (CL:0)
   // Polling for system-up
@@ -105,8 +109,8 @@ var apieps = [
   {"id": "config",    "url": "cspm/ext/rest/configProperties", }, // Also "m": "PUT" for Update
   // "cspm/rest/config/upgrade/applianceInfo?_dc=1711675152146&orderby=name&desc=false"
   // Maint mode:
-  // /cspm/servlet/ConfigDiagnosticsServlet?action=configSystemModes&aactrl=&maintenance=false&cluster=&remotedebug=&dateTime=&scheduledState=0 POST
-  // /cspm/servlet/ConfigDiagnosticsServlet?action=maintenancemode&_dc=1711678329984 GET
+  // {"id":"maint", "url": "/cspm/servlet/ConfigDiagnosticsServlet?action=configSystemModes&aactrl=&maintenance=false&cluster=&remotedebug=&dateTime=&scheduledState=0", "m": "POST"},
+  // {"id":"maint_q", "url": "/cspm/servlet/ConfigDiagnosticsServlet?action=maintenancemode&_dc=1711678329984", "m": "GET"},
   // Dashboard
   //{"id":"siteinfo", "url": "cspm/ext/rest/dashboard/clusterSiteInfo", "m": "GET"}
 ];
@@ -264,6 +268,7 @@ var osacct = '';
 var cfg = {};
 var creds = "";
 
+// TODO: Add ability to load local rsrc profiles (from separate file, OoOo...).
 function init(_mcfg) {
   if (!_mcfg) { throw "No main config"; }
   if (!_mcfg["sympam"]) { throw "No sympam config within main config"; }
@@ -272,7 +277,8 @@ function init(_mcfg) {
   if (!cfg.user) { console.log( "No sympam config user" ); return; }
   if (!cfg.pass) { console.log( "No sympam config pass" ); return; }
   if (!cfg.pass) { console.log( "No sympam config pass" ); return; }
-  cfg.storepath = cfg.storepath || process.env["HOME"] + "/.linetboot/sympam/";
+  var subdir = cfg.idlbl ? cfg.idlbl : "sympam";
+  cfg.storepath = cfg.storepath || process.env["HOME"] + "/.linetboot/"+subdir+"/";
   process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
   creds = cfg.user+":"+cfg.pass;
 }
@@ -289,9 +295,12 @@ function fullurl(ep, opts) {
   // TODO: See if we have to move ?limit... here
   if (ep.addp) { urlpath += "&"+ep.addp; }
   // if (cfg.limit) { urlpath += "?limit=" + cfg.limit + '&'; }
-  var host = cfg.host;
-  if (opts && opts.hostidx) { host = cfg.clushosts[opts.hostidx-1]; } // E.g. 1 for primary, cont to index by -1
+  var host = ""; //cfg.host;
+  // OLD: cfg.clushosts[opts.hostidx-1]
+  if (opts && opts.hostidx) { host = cfg.nodeips[opts.hostidx-1]; } // E.g. 1 for primary, cont to index by -1
   else if (opts && opts.host) { host = opts.host; }
+  // NOTE: Default host as first / primary host
+  if (!host) { host = cfg.nodeips[0]; } // opts.hostidx-1
   var finurl = "https://"+host+"/"+apiprefix+"/"+urlpath;
   // cspm URLs are missing the apiprefix
   if (ep.url.match(/^cspm/)) { finurl = "https://"+host+"/"+urlpath; }
@@ -301,6 +310,7 @@ function fullurl(ep, opts) {
  * Matching can be done by upatt:
  * - exact sting, against id
  * - RegExp in URL
+ * Internally detects if id or RegExp was passed.
  */
 function getep(upatt) {
   var ep;
@@ -338,6 +348,7 @@ function apps(opts) {
   // Load devices
   var devs = require(cfg.storepath + "devices.json");
   if (!devs) { usage("No devices found (for app loading) !"); }
+  console.log(`Loaded ${devs.devices.length} Devices (from path '${cfg.storepath}').`);
   // Revised to elim trailing slash for devices fetch reuse
   //var urlprefix = "https://"+cfg.host+"/"+apiprefix+"/devices.json";
   var ropts = { auth: {username: cfg.user, password: cfg.pass} }; // headers: { 'Authorization': + basicAuth }
@@ -360,7 +371,7 @@ function apps(opts) {
     axios.get(url, ropts).then( (resp) => {
       console.log("DATA ("+d.deviceId+"):", resp.data);
       var apps = resp.data; // should be an array
-      if (!Array.isArray(apps)) { console.error("apps not in array for device "+ d.deviceId); return; }
+      if (!Array.isArray(apps)) { console.error("ERROR: apps not in array for device "+ d.deviceId); return; }
       if (opts.save ) { // && (opts.save == 'default')
         var bn = `dev.${d.deviceId}.apps.json`;
         //var fn = opts.save == 'default' ? cfg.storepath + "/tgtapps/" + bn : opts.save;
@@ -368,6 +379,7 @@ function apps(opts) {
         fs.writeFileSync( fn,  JSON.stringify(apps, null, 2) , {encoding: "utf8"} );
         //console.log("Should be saving\n"); return;
       }
+      else { console.log(`SUCCESS: Fetching apps for device: ${d.deviceId} (${d.deviceName})`); }
       // cb(null, apps);
     }).catch( (ex) => {
       console.log("Error fetching ("+d.deviceId+"/"+d.deviceName+"): "+ex);
@@ -396,8 +408,8 @@ function accts(opts) {
     var id = d.deviceId;
     var appfn = cfg.storepath+"/tgtapps/"+`dev.${id}.apps.json`; // App (read-only)
     if (!fs.existsSync(appfn)) { console.log("No app file "+appfn+" for dev "+id); return; }
-    var apps = require(appfn);
-    if (!apps) { console.log("No apps loaded for dev: "+id); return; }
+    var apps = require(appfn); // NOTE: mroot *IS* an array (not object w. subproperty valued to array)
+    if (!apps) { console.log(`No apps loaded for dev: ${id}`); return; }
     console.log(apps.length + " apps for DevId: "+id);
     // Inject parent dev id to app already here (app must be exclusively on one device, not shared !)
     //ALREADYIN, assert:
@@ -437,7 +449,7 @@ function accts(opts) {
   }
 }
 
-////////////////////////////////// Generic GET / POST /////////////////////////////////////////////////////
+////////////////////////////////// Generic GET (getany) / POST (mkany) /////////////////////////////////////////////////////
 
 function getany(opts) { // getany
   var ep = getep(opts.etype);
@@ -472,7 +484,7 @@ function getany(opts) { // getany
 // Types: devs, svs, apps, accts, pols
 function mkany(opts, cb) {
   if (!cb) { cb = cb_nop; }
-  var et = opts.etype; // Use et ONLY for API info lookup
+  var et = opts.etype; // Use "et" ONLY for API info lookup
   if (et == 'svs') { et = "svs_new"; }
   if (et == 'apps') { et = "apps_new"; }
   if (et == 'accts') { et = "accts_new"; }
@@ -523,7 +535,7 @@ function mkany(opts, cb) {
     // These seem to be returning plain quoted string id for ent (as JSON, numeric inside quotes)
     var d = resp.data;
     // Shows most often as '"1234"' (stringify serializes back the rec'd string)
-    console.log(`Create-Response for type${opts.etype}:\n`+JSON.stringify(d, null, 2));
+    console.log(`Create-Response for type ${opts.etype}:\n`+JSON.stringify(d, null, 2));
     opts._id = d; // Store id for related ents (to follow)
     // Allow using as async CB
     return cb(null, d); // if (cb) {  } // String most of time
@@ -557,21 +569,37 @@ function tocl(opts) {
 // Hotfix
 
 /////////////////// Update ///////////
+// Run this on site/cluster *only* after cluster deactivate (CLI: clusteroff)
 // e.g. --fname CAPAM_4.1.6.01.p.bin  CAPAM_4.1.7.p.bin 
-function update(opts) {
+// Running this blocked (shell) for ~ 5mins. Response: empty. Console Stop/Start.
+// Note: Starting this operation does not bring PAM (server) fully down, e.g. it's possible to still log in (duration: 5-7 mins).
+// After the command stops blocking, the PAM server will come up in 2.5-3 minutes.
+function swupdate(opts) {
   if (!opts.fname) { usage("Missing --fname"); }
   //var ep = getep("up");
   console.log("Upgrade w. file: "+opts.fname+" Host idx: "+ opts.hostidx);
-  var urlt = fullurl(getep("up"));
+  var urlt = fullurl(getep("up")); // opts.opid
   var url = Mustache.render(urlt, { filename: opts.fname });
-  var ropts = { auth: {username: cfg.user, password: cfg.pass} };
+  // May need to add Content-Type: application/json 'Accept: application/json' despite BOTH bodies (req, res) being CL=0 !!!
+  var ropts = { auth: {username: cfg.user, password: cfg.pass},
+    headers: {"Content-Type": "application/json", "Accept": "application/json", }, // NEW "Content-length": "0"
+  }; // 
   var para = {filename: opts.fname};
-  console.log("Call by: ", para);
+  //var para = ""; //  // update. NOTE: The body MUST have CL=0 (empty)
+
+  var ep = getep("up"); //var m = ep.m.
+  console.log(`Call SW update ('${url}') by: `, para);
   axios.post(url, para, ropts).then( (resp) => {
     var d = resp.data;
-    console.log("Response: ", d);
 
-  }).catch( (ex) => { console.log("Failed update: "+ex); }); // (ex) => {exhdlr(ex, resp)}
+    console.log("Response: ", d); // "Response:\n" // (None)
+    console.log("Resp-code: "+resp.status); // Expect: 204 (No Content)
+    //if (resp.status == 204) { console.log("Got expected HTTP response code 204. Try logging to PAM or issuing furter API calls."); }
+  }).catch( (ex) => { // Exception: E.g. Error 400 (typical)
+    console.log("Failed update: "+ex);
+    var resp = ex.response;
+    console.log(resp.data);
+  }); // (ex) => {exhdlr(ex, resp)}
   //// Exceptions
   function exhdlr(ex, resp) {
     console.log("Failed update by file: "+opts.fname+": "+ex);
@@ -580,6 +608,7 @@ function update(opts) {
   }
 }
 // NOTE: Cluster on/off ops must be executed on Replication leader/primary node
+// See also: "Unlock CSPM" API: clustering => /cspm/ext/rest/config/clustering/unlock
 function cluster_set(opts) {
   var wop = opts.op == "clusteron" ? "activate" : "deactivate";
   //var hidx = opts.hostidx || 1;
@@ -600,6 +629,7 @@ function cluster_info(opts) {
   console.log("Node IPs: "+cfg.nodeips.join(", "));
   console.log("Cluster API account: "+cfg.user);
 }
+// Monitor the state of cluster / nodes ()
 function nodesup(opts) {
   var url = fullurl(getep("nodesup"), opts);
   var ropts = { auth: {username: cfg.user, password: cfg.pass} };
@@ -608,7 +638,7 @@ function nodesup(opts) {
   // 
   axios.get(url, ropts).then( (resp) => {
     var d = resp.data;
-    console.log(`Response(${url}): `, JSON.stringify(d, null, 2));
+    console.log(`Response(${url}):\n`, JSON.stringify(d, null, 2));
   }).catch( (ex) => { console.log(`Error(${url}): `+ ex); });
 }
 // Get PAM Configuration (k-v) settings.
@@ -666,12 +696,12 @@ var acts = [
   {"id": "mkaccts", "title": "Create Account","cb": mkany, "etype": "accts", "colla": "",  "nattr": "accountName"},
   {"id": "mkpols", "title": "Create policy",  "cb": mkany, "etype": "pols", "colla": "",  "nattr": ""}, // No name attr
   //////////// Maint. Operations Update SW
-  {"id": "update",  "title": "Update SW by applying a patch/update file (--fname ...)", "cb": update, },
+  {"id": "update",  "title": "Update SW by applying a patch/update file (--fname ...)", "cb": swupdate, "opid": "up"},
   // Config
   {"id": "config",  "title": "Show Global Configuration ", "cb": config, },
   // cluster_set
-  {"id": "clusteron",  "title": "Turn Cluster On", "cb": cluster_set, },
-  {"id": "clusteroff",  "title": "Turn Cluster Off", "cb": cluster_set, },
+  {"id": "clusteron",  "title": "Turn Cluster On", "cb": cluster_set, }, // "": "activate"
+  {"id": "clusteroff",  "title": "Turn Cluster Off", "cb": cluster_set, }, // deactivate
   {"id": "nodesup",  "title": "Check cluster nodesup status (\"data\": true => Cluster is fully running)", "cb": nodesup, },
   {"id": "clusterinfo",  "title": "Cluster Infon", "cb": cluster_info, },
 ];
