@@ -722,6 +722,8 @@ var tabloadacts = [
     path: "afaimgs", uisetup: afaimgs_uisetup, dialogidXX: "afaimginfo", "longload": 1},
   {"name":"Artifactory Image", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", gridid: "", fsetid: "",
     path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
+  {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "", gridid: "", fsetid: "nft", fldinfo: fldinfo,
+    path: "fwform", uisetup: null, dialogid: "afaimginfodialog", "optcoll": opts_nft, },
 ];
 
 function certdecode(ev, act) {

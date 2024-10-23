@@ -1353,6 +1353,7 @@ function cmod_covcomp(data, copts) {
 // Each will have 2 HTML attributes to select by:
 // - name attr. per model name
 // - id attr as "w_" + name (from model)
+// Options: btitle,bid, labelw, wfactor,formid
 function form_jg(fdefs, opts) {
   opts = opts || {labelw: 120, wfactor: 0.6, };
   
@@ -1361,68 +1362,122 @@ function form_jg(fdefs, opts) {
   var idv = "";
   var wfactor = opts.wfactor || 0.6; // TODO: From params
   if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
+  var arr = [];
   fdefs.forEach((fd) => { // map ?
     var wtype = fd.wtype || "text";
     //if (!fd.visible && cfg.onlyvis) { return; }
     if (fd.ispkey) {
-      //DONOT:cont += `<input type="hidden" name=\"w_${fd.name}" id="w_${fd.name}" class="pkey">`;
+      //DONOT:cont += `<input type="hidden" name=\"w_${fd.name}" id="w_${fd.name}" class="pkey">`; // hideid ?
       return; } // Pkey, hide (transmit to up a diff. way)
     // TODO: (fctx/cfg, fd)
-    cont += `<label style="width: ${labelw}px" for="w_${fd.name}">${fd.title}</label>`;
-    // TODO: Choice of w. (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
+    //cont +=
+    var typetag = fd.dtype ? `data-type="${fd.dtype}"` : "";
+    var lw = {label: `<label style="width: ${labelw}px" for="w_${fd.name}">${fd.title}</label>`};
+    // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     // TODO: Call callbacks w. (fd, opts)
     if (wtype == 'text') {
       //  type="number" (min/max)
       var sizeinfo = Math.round(fd.width * wfactor) || 20;
-      cont += `<input type="text" name=\"w_${fd.name}" id="w_${fd.name}" size="${sizeinfo}">`;
+      lw.widget = `<input type="text" name="${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`;
     }
-    else if (wtype == 'textarea') {
-      cont += `<textarea  name="w_${fd.name}" id="w_${fd.name}" rows="5" cols="33"></textarea>`
-    }
+    else if (wtype == 'textarea') { lw.widget = `<textarea  name="${fd.name}" id="w_${fd.name}" rows="5" cols="33"></textarea>`; }
+    // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
     else if (wtype == 'options') {
-      // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
-      cont += `<select Xtype="text" name="w_${fd.name}" id="w_${fd.name}"\" data-optbind="${fd.optbind}"></select>`;
+      var bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
+      lw.widget = `<select Xtype="text" name="${fd.name}" id="w_${fd.name}"\" data-optbind="${bl}" ${typetag}></select>`;
     }
-    else if (wtype == 'checkbox') {
-      // checked=checked indeterminate / w.select()
-      cont += `<input type="checkbox" name=\"w_${fd.name}" id="w_${fd.name}">`;
-    }
-    else if (wtype == 'radiobutton') {
-      // checked=checked indeterminate / w.select()
-      cont += `<input type="radiobutton" name=\"w_${fd.name}" id="w_${fd.name}">`;
-    }
-    else if (wtype == 'date') {
-      // min / max required pattern (re)
-      cont += `<input type="date" name=\"w_${fd.name}" id="w_${fd.name}">`;
-    }
-    else if (wtype == 'slider') {
-      // min / max / step required 
-      cont += `<input type="range" name=\"w_${fd.name}" id="w_${fd.name}">`;
-    }
-    else { cont += `<input type="text" name=\"w_${fd.name}" id="w_${fd.name}">`; }
-    cont += "<br/>\n"; // Term. form row
-    
+    // checked=checked indeterminate / w.select()
+    else if (wtype == 'checkbox') { lw.widget = `<input type="checkbox" name="${fd.name}" id="w_${fd.name}">`; }
+    // checked=checked indeterminate / w.select()
+    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${fd.name}" id="w_${fd.name}">`; }
+    // min / max required pattern (re)
+    else if (wtype == 'date') { lw.widget = `<input type="date" name="${fd.name}" id="w_${fd.name}">`; }
+    // min / max / step required. typetag still valid for number/int
+    else if (wtype == 'slider') { lw.widget = `<input type="range" name="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else { lw.widget = `<input type="text" name="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    arr.push(lw);
   });
+  // Lay out (TODO: Provide flexible, configurable layout facility)
+  arr.forEach( (lw) => { cont += `${lw.label}<span>${lw.widget}</span><br/>`; });
   if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // Button
   if (opts.formid) { cont += `</form>\n`; } 
   return cont;
 }
-
+/** Action handler for jgrid grid-def based form.
+* Action must have following properties filled out:
+* - fsetid (string) - field set id for field defs (currently relies on global  fldinfo too. TODO: config)
+* - fldinfo (object) - Field info (OoAoO) structure holding field definitions
+* - formid (string) - Form id for form to generate
+* - optcoll (object) - Option collection (OoA) to use for option population.
+* - uisetup (CB) - Optional Callback to call after form is placed into view (similar to other rapp handlers)
+* - formtmpl (string) - Outer/Wrapping mustache template for the HTML form (e.g. w. heading (at start), submit button (at end)),
+*   should have member "cont" for the form content part.
+*/ 
 function jgrid_form(ev, act) {
   var tgtid = act.elsel || "routerdiv"; // ev.routepath ? "routerdiv" : ;
   var fsid = act.fsetid;
-  if (!fsid) { toastr.error("No basis to create form 1\n"); return; }
-  var fdefs = fldinfo[fsid];
-  if (!fdefs) { toastr.error("No basis to create form 2\n"); return; }
-  let cont = form_jg(fdefs, {labelw: act.labelw});
+  if (!fsid) { toastr.error("No fieldset id to create form\n"); return; }
+  console.log(`Looking up fsetid by ${fsid}`);
+  var fi = act.fldinfo || window.fldinfo; // app.fldinfo ?
+  if (!fi) { toastr.error("No field info structure to get field defs from\n"); return; }
+  var fdefs = fi[fsid];
+  if (!fdefs) { toastr.error("No field set to create form\n"); return; }
+  let cont = form_jg(fdefs, {labelw: act.labelw, formid: act.formid}); // Gen
   
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
   // 
   //datasets["testform"]
+  if (!rapp.dcache) { console.error("rapp.dcache was uninitialized (e.g. to {}) !"); rapp.dcache = {}; } // Avoid null-dref !
   rapp.dcache["testform"] = `<h1>{{{ name }}}</h1><form id="eform">\n{{{ cont }}}\n<input type="button" id="savebutt" value="Save" /></form>`;
+  if (act.tmplid) {} // TODO: Review rapp.templated and see what tmplid could come from (rapp.dcache, DOM-id, ...)
   rapp.templated("testform", {name: act.name, cont: cont}, tgtid);
+  delete rapp.dcache["testform"]; // Should be OK to delete-after-use
+  let formid = act.formid;
+  if (!act.formid)  { toastr.error("No formid (for selector purposes on action)\n"); return; }
+  if (!act.optcoll) { toastr.error("No optcoll (for options population)\n"); return; }
+  if (typeof act.optcoll != 'object') { toastr.error("Options (optcoll) not stored in object\n"); return; }
+  // Prepare the *very common* UI setup tasks here
+  form_options_setup(formid, act.optcoll); // formid, optcoll
+  
+  // Do similar bind-probe on autocomplete
+  //var acw = document.querySelectorAll("[data-ac]");
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
+}
+
+/** Setup option fields on a form (by its id) from single option collection.
+* Option collection is a single OoA structure may be static on client side or coming from server sie
+* or be a mix of the two. However it must be fully poppulated before passing it here (e.g. wait async calls to complete).
+* @param formid - ID of the form element (to select option input fields with data-optbind attribute)
+* @param optcoll - Option collection in OoA format (See notes on array internal formats)
+* @param entvals - Default values (on new entry) or values to set (on update ui) for option fields in simple OoS (S=scalar) format
+* @return none
+* NOTE: Below ONLY in context of the form (get from act.formid ? .formsel ?)
+* TODO: probe debug mode from params (rather not) or namespace of ui toolkit
+*/
+function form_options_setup(formid, optcoll, entvals) {
+  var debug = 0;
+  console.log(`Got: '${formid}', '${optcoll}'`);
+  if (!optcoll) { console.log("No options collection passed !"); return; }
+  if (!formid) { console.error("Warning: formid not passed (but w-selection should work with it too)"); }
+  var obs = `${formid} [data-optbind]`; // Option bind selector
+  var optw = document.querySelectorAll(obs); // NodeList. to array: [...optw]
+  console.log(`Got ${optw.length} elems to bind by selector '${obs}'`); // for (const el of optw) {}
+  [...optw].forEach( (el) => {
+    console.log(el);
+    // OLD: act.optcoll. Redundant w. check on top (optcoll && ...)
+    if ( el.dataset && el.dataset.optbind) {
+      // Lookup and probe array inner format
+      var oa = optcoll[el.dataset.optbind];
+      if (!oa) { console.log(`Options could not be looked up for ${el.name}!`); return; }
+      // AoA - Map to AoO
+      if (Array.isArray(oa[0]))     { oa = oa.map( (e) => { return {id: e[0], name: e[1]}; } ); }
+      // AoS (str or scalar) - Map to AoO
+      if (typeof oa[0] == "string") { oa = oa.map( (e) => { return {id: e,    name: e}; } ); }
+      // Else assume (correct) AoO (w, id,name)
+      webview.addoptions( oa, el );
+    }
+  });
 }
 
 // See handler simplegrid_url

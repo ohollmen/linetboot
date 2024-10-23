@@ -1259,28 +1259,30 @@ function riskadj_cell(val, item) {
      // "bridge": 
      "netdev": ["ingress", "egress"],
    };
+   var opts_nft = {
+     // Prefix (e.g.) "nft.chaintype"
+     "chaintype": ["filter", "route", "nat"],
+     "family": [["ip", "IPv4"], ["ip6", "IPv6"], ["inet", "IPv4 & IPv6"], ["arp", "ARP (from arp tables)"], ["bridge", "Bridge (from ebtables)"], ["netdev", "Netdev"]],
+     "stmt": ["accept","drop","queue", "continue","return", "jump","goto"], // 
+     "hook": ["prerouting", "input", "forward", "output", "postrouting"], // Note: Depends on family (not just simple list)
+   };
    // https://thermalcircle.de/doku.php?id=blog:linux:nftables_packet_flow_netfilter_hooks_detail#hard-coded_vs_flexibility
    var fldinfo_nft = [
-     {"name": "chaintype",   "title": "Chain Type", "type": "options", "width": 20, itemTemplate: null,
-        "opts":["filter", "route", "nat"]},
+     {"name": "chaintype",   "title": "Chain Type", "type": "options", "width": 20, itemTemplate: null, "wtype": "options", "optbind": "chaintype"},
      {"name": "prio",   "title": "Priority (-450...300)", "type": "text", "width": 20, itemTemplate: null,},
      // Family may have multiple tables
-     {"name": "family",   "title": "Proto Family", "type": "options", "width": 20, itemTemplate: null,
-       "opts":[["ip", "IPv4"], ["ip6", "IPv6"], ["inet", "IPv4 & IPv6"], ["arp", "ARP (from arp tables)"], ["bridge", "Bridge (from ebtables)"], ["netdev", "Netdev"]]},
+     {"name": "family",   "title": "Proto Family", "type": "options", "width": 20, itemTemplate: null, "wtype": "options", "optbind": "family"},
      // Hooks per particular family type (all these are different, man 8 nft
-     {"name": "hook",   "title": "Hook", "type": "options", "width": 20, itemTemplate: null,
-       "opts":[]},
-     {"name": "expr",   "title": "Expression / Condition", "type": "text", "width": 20, itemTemplate: null,},
-     {"name": "stmt",   "title": "Statement/Action", "type": "option", "width": 20, itemTemplate: null,
-       "opts":["accept","drop","queue", "continue","return", // "jump","goto" // Need chain (name) as param. What are: Repeat(rep.this hook), Stop(accept,stop-proc)
-       ]
-     },
-     {"name": "tgtchain",   "title": "Jump/Goto Tgt Chain", "type": "text", "width": 20, itemTemplate: null,
-       "opts":[]}, // Only active on jump,goto statement
-     {"limit": "ratelimsize",   "title": "Limit Rate Bytes", "type": "text", "width": 20, itemTemplate: null,
-       "opts":[]}, // Note rate may have time units week/day/hour/minute/second
-     {"name": "natto",   "title": "NAT To ...", "type": "text", "width": 20, itemTemplate: null,
-       "opts":[]},
+     {"name": "hook",   "title": "Hook", "type": "options", "width": 20, itemTemplate: null, "wtype": "options", "optbind": "hook"},
+     {"name": "expr",   "title": "Expression / Condition", "type": "text", "width": 40, itemTemplate: null,},
+     // // Need chain (name) as param. What are: Repeat(rep.this hook), Stop(accept,stop-proc)
+     {"name": "stmt",   "title": "Statement/Action", "type": "option", "width": 20, itemTemplate: null, "wtype": "options", "optbind": "stmt" },
+     // Only active on jump,goto statement
+     {"name": "tgtchain",   "title": "Jump/Goto Tgt Chain", "type": "text", "width": 20, itemTemplate: null, // "wtype": "options",
+     }, 
+     // // Note rate may have time units week/day/hour/minute/second
+     {"limit": "ratelimsize",   "title": "Limit Rate Bytes", "type": "text", "width": 20, itemTemplate: null,},
+     {"name": "natto",   "title": "NAT To ... (IP)", "type": "text", "width": 20, itemTemplate: null, },
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
@@ -1296,6 +1298,7 @@ function riskadj_cell(val, item) {
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
-      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images
+      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
+      "nft": fldinfo_nft
    };
    
