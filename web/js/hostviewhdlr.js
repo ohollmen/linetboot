@@ -1350,16 +1350,25 @@ function cmod_covcomp(data, copts) {
   copts.scales.yAxes = [];
   return copts;
 }
-// Each will have 2 HTML attributes to select by:
-// - name attr. per model name
-// - id attr as "w_" + name (from model)
-// Options: btitle,bid, labelw, wfactor,formid
+/** Generate a form based on jg field definitions (enhanced w. some extra info).
+* Each widget will have 2 HTML attributes to select by:
+* - name attr. per model name
+* - id attr as "w_" + name (from model)
+* Options for form generation:
+* - btitle (str) - Button Title
+* - bid (str) - Button ID (to e.g. hook listener by)
+* - labelw (int) - Label Width (default: 120 px),
+* - wfactor (number) - Widget field size factor (to multiply field def "width" by to set widget size, default: 0.6)
+* - formid (str) - Form element id - passing this will trigger generating the form tags around form widgets (no default).
+* @param fdefs (array) - Field definitions as AoO (with name, label, extra info)
+* @param opts (object) - Options for form generation
+*/
 function form_jg(fdefs, opts) {
   opts = opts || { wfactor: 0.6, }; // labelw: 120,
   
   var labelw = opts.labelw; // || 120;
   let cont = "";
-  var idv = "";
+  //var idv = ""; // Not used.
   var wfactor = opts.wfactor || 0.6; // TODO: From params
   if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
   var arr = [];
@@ -1372,11 +1381,12 @@ function form_jg(fdefs, opts) {
     // TODO: (fctx/cfg, fd)
     //cont +=
     var typetag = fd.dtype ? `data-type="${fd.dtype}"` : "";
+
     var lws = labelw ? `style="width: ${labelw}px"` : "";
     var lw = {label: `<label ${lws} for="w_${fd.name}">${fd.title}</label>`};
     var prefix = opts.nprefix || ""; // Must have trailing dot
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
-    // TODO: Call callbacks w. (fd, opts)
+    // TODO: Call widget gen. callbacks w. (fd, opts)
     if (wtype == 'text') {
       //  type="number" (min/max)
       let sizeinfo = Math.round(fd.width * wfactor) || 20;
@@ -1427,7 +1437,7 @@ function jgrid_form(ev, act) {
   if (!fi) { toastr.error("No field info structure to get field defs from\n"); return; }
   var fdefs = fi[fsid];
   if (!fdefs) { toastr.error("No field set to create form\n"); return; }
-  let cont = form_jg(fdefs, {labelw: act.labelw, formid: act.formid}); // Gen
+  let cont = form_jg(fdefs, { labelw: act.labelw, formid: act.formid }); // Generate form content
   console.log("FORM:"+cont);
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
@@ -1444,7 +1454,7 @@ function jgrid_form(ev, act) {
   if (!act.optcoll) { toastr.error("No optcoll (for options population)\n"); return; }
   if (typeof act.optcoll != 'object') { toastr.error("Options (optcoll) not stored in object\n"); return; }
   // Prepare the *very common* UI setup tasks here
-  form_options_setup(formid, act.optcoll); // formid, optcoll
+  form_options_setup(formid, act.optcoll); // formid, optcoll. TODO: 
   
   // Do similar bind-probe on autocomplete
   //var acw = document.querySelectorAll("[data-ac]");
@@ -1467,13 +1477,15 @@ function form_options_setup(formid, optcoll, entvals) {
   if (!optcoll) { console.log("No options collection passed !"); return; }
   if (!formid) { console.error("Warning: formid not passed (but w-selection should work with it too)"); }
   var obs = `#${formid} [data-optbind]`; // Option bind selector
+  // This query should produce only "select" elements.
   var optw = document.querySelectorAll(obs); // NodeList. to array: [...optw]
   console.log(`Got ${optw.length} elems to bind by selector '${obs}'`); // for (const el of optw) {}
+  // var oba = "optbind"; // ???
   [...optw].forEach( (el) => {
     console.log(el);
     // OLD: act.optcoll. Redundant w. check on top (optcoll && ...)
-    if ( el.dataset && el.dataset.optbind) {
-      // Lookup and probe array inner format
+    if ( el.dataset && el.dataset.optbind) { // el.dataset[oba] // <= option bind attribute
+      // Lookup and probe array inner format, turn into universal format supported by addoptions()
       var oa = optcoll[el.dataset.optbind];
       if (!oa) { console.log(`Options could not be looked up for ${el.name}!`); return; }
       // AoA - Map to AoO
