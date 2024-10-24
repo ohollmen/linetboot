@@ -1355,9 +1355,9 @@ function cmod_covcomp(data, copts) {
 // - id attr as "w_" + name (from model)
 // Options: btitle,bid, labelw, wfactor,formid
 function form_jg(fdefs, opts) {
-  opts = opts || {labelw: 120, wfactor: 0.6, };
+  opts = opts || { wfactor: 0.6, }; // labelw: 120,
   
-  var labelw = opts.labelw || 120;
+  var labelw = opts.labelw; // || 120;
   let cont = "";
   var idv = "";
   var wfactor = opts.wfactor || 0.6; // TODO: From params
@@ -1372,33 +1372,38 @@ function form_jg(fdefs, opts) {
     // TODO: (fctx/cfg, fd)
     //cont +=
     var typetag = fd.dtype ? `data-type="${fd.dtype}"` : "";
-    var lw = {label: `<label style="width: ${labelw}px" for="w_${fd.name}">${fd.title}</label>`};
+    var lws = labelw ? `style="width: ${labelw}px"` : "";
+    var lw = {label: `<label ${lws} for="w_${fd.name}">${fd.title}</label>`};
+    var prefix = opts.nprefix || ""; // Must have trailing dot
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     // TODO: Call callbacks w. (fd, opts)
     if (wtype == 'text') {
       //  type="number" (min/max)
-      var sizeinfo = Math.round(fd.width * wfactor) || 20;
-      lw.widget = `<input type="text" name="${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`;
+      let sizeinfo = Math.round(fd.width * wfactor) || 20;
+      lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag} class="${fd.css}">`;
     }
-    else if (wtype == 'textarea') { lw.widget = `<textarea  name="${fd.name}" id="w_${fd.name}" rows="5" cols="33"></textarea>`; }
+    else if (wtype == 'textarea') {
+      let sizeinfo = Math.round(fd.width * wfactor) || 20;
+      var ht = fd.ht || 5;
+      lw.widget = `<textarea  name="${prefix}${fd.name}" id="w_${fd.name}" rows="${ht}" cols="${sizeinfo}"></textarea>`; }
     // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
     else if (wtype == 'options') {
-      var bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
-      lw.widget = `<select Xtype="text" name="${fd.name}" id="w_${fd.name}"\" data-optbind="${bl}" ${typetag}></select>`;
+      let bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
+      lw.widget = `<select Xtype="text" name="${prefix}${fd.name}" id="w_${fd.name}"\" data-optbind="${bl}" ${typetag} class="${fd.css}"></select>`;
     }
     // checked=checked indeterminate / w.select()
-    else if (wtype == 'checkbox') { lw.widget = `<input type="checkbox" name="${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'checkbox') { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
     // checked=checked indeterminate / w.select()
-    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
     // min / max required pattern (re)
-    else if (wtype == 'date') { lw.widget = `<input type="date" name="${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'date') { lw.widget = `<input type="date" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
     // min / max / step required. typetag still valid for number/int
-    else if (wtype == 'slider') { lw.widget = `<input type="range" name="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
-    else { lw.widget = `<input type="text" name="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else if (wtype == 'slider') { lw.widget = `<input type="range" name="${prefix}${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else { lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" ${typetag}>`; }
     arr.push(lw);
   });
   // Lay out (TODO: Provide flexible, configurable layout facility)
-  arr.forEach( (lw) => { cont += `${lw.label}<span>${lw.widget}</span><br/>`; });
+  arr.forEach( (lw) => { cont += `${lw.label}<span>${lw.widget}</span><br/>\n`; });
   if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // Button
   if (opts.formid) { cont += `</form>\n`; } 
   return cont;
@@ -1423,13 +1428,14 @@ function jgrid_form(ev, act) {
   var fdefs = fi[fsid];
   if (!fdefs) { toastr.error("No field set to create form\n"); return; }
   let cont = form_jg(fdefs, {labelw: act.labelw, formid: act.formid}); // Gen
-  
+  console.log("FORM:"+cont);
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
   // 
   //datasets["testform"]
   if (!rapp.dcache) { console.error("rapp.dcache was uninitialized (e.g. to {}) !"); rapp.dcache = {}; } // Avoid null-dref !
-  rapp.dcache["testform"] = `<h1>{{{ name }}}</h1><form id="eform">\n{{{ cont }}}\n<input type="button" id="savebutt" value="Save" /></form>`;
+  // <form id="eform">
+  rapp.dcache["testform"] = `<h1>{{{ name }}}</h1>\n{{{ cont }}}\n<input type="button" id="savebutt" value="Save" />`; // </form>
   if (act.tmplid) {} // TODO: Review rapp.templated and see what tmplid could come from (rapp.dcache, DOM-id, ...)
   rapp.templated("testform", {name: act.name, cont: cont}, tgtid);
   delete rapp.dcache["testform"]; // Should be OK to delete-after-use
@@ -1460,7 +1466,7 @@ function form_options_setup(formid, optcoll, entvals) {
   console.log(`Got: '${formid}', '${optcoll}'`);
   if (!optcoll) { console.log("No options collection passed !"); return; }
   if (!formid) { console.error("Warning: formid not passed (but w-selection should work with it too)"); }
-  var obs = `${formid} [data-optbind]`; // Option bind selector
+  var obs = `#${formid} [data-optbind]`; // Option bind selector
   var optw = document.querySelectorAll(obs); // NodeList. to array: [...optw]
   console.log(`Got ${optw.length} elems to bind by selector '${obs}'`); // for (const el of optw) {}
   [...optw].forEach( (el) => {
