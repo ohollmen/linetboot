@@ -109,8 +109,8 @@ gridder.js_grid_filter = js_grid_filter;
 // TODO: new Gridder(), expose gridopts, db, allow setting by opts() (override any) before calling showgrid()
 function showgrid (divid, griddata, fields, act) {
   // toastr.error
-  if (!divid || typeof divid != 'string') { return toastr.error("showgrid: Div id not passed !"); }
-  if (!Array.isArray(griddata)) { toastr.error("No Grid data " + divid); return; }
+  if (!divid || typeof divid != 'string') { return toastr.error("showgrid: Div id not passed (or is not a string)!"); }
+  if (!Array.isArray(griddata)) { toastr.error("No Grid data (as array)" + divid); return; }
   if (!Array.isArray(fields)) { toastr.error("No fields data " + divid); return; }
   console.log("showgrid: Generating grid into div (id): " + divid + " w. "+griddata.length+" items.");
   // "#jsGrid"

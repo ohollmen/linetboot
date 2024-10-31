@@ -1366,6 +1366,7 @@ function cmod_covcomp(data, copts) {
 * - formid (str) - Form element id - passing this will trigger generating the form tags around form widgets (no default).
 * @param fdefs (array) - Field definitions as AoO (with name, label, extra info)
 * @param opts (object) - Options for form generation
+* See http://js-grid.com/docs/ for documentation. Note: Using `"visible": false` (See: Configuration => fields) allows setting up custom or to-do fields.
 */
 function form_jg(fdefs, opts) {
   opts = opts || { wfactor: 0.6, }; // labelw: 120,
@@ -1418,6 +1419,7 @@ function form_jg(fdefs, opts) {
     else if (wtype == 'slider')  {
       let mms = ( fd.mms && typeof fd.mms == 'string') ? fd.mms.split(/\s*,\s*/) : [0, 10, 1];
       lw.widget = `<input type="range" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag} min="${mms[0]}" max="${mms[1]}" step="${mms[2]}" >`; }
+    // Note: this *could* be triggered by fd.visible property, but for now must have explicit fd.wtype == 'hidden'
     else if (wtype == 'hidden')  { lw.widget = `<input type="hidden" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
     else { return; } //  lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`; } // Should not be needed !
     arr.push(lw);
@@ -1511,7 +1513,42 @@ function form_options_setup(formid, optcoll, entvals) {
     }
   });
 }
-
+function jgrid_fielddefs(ev, act) {
+  let fldinfo = act.fldinfo;
+  let viewid = act.viewid || "routerdiv";
+  let keys = Object.keys(fldinfo);
+  console.log(`${keys.length} fldinfo specs.`);
+  var fldinfo_fldinfo = [
+     {"name": "name",   "title": "Field Label", "type": "text", "width": 20, itemTemplate: null, }, // "wtype": "options", "optbind": "chaintype"
+     {"name": "title",   "title": "Field Display Name", "type": "text", "width": 20, itemTemplate: null, },
+     {"name": "type",   "title": "Field Type", "type": "text", "width": 20, itemTemplate: null, },
+     {"name": "width",   "title": "Width (chars)", "type": "text", "width": 20, itemTemplate: null, },
+     {"name": "visible",   "title": "Visible", "type": "text", "width": 20, itemTemplate: null, },
+     {"name": "itemTemplate",   "title": "Field CB", "type": "text", "width": 20, itemTemplate: (val, item) => { return val ? "CB" : ""; }, },
+  ];
+  let cont = "";
+  // Must create content (onto view) first !!
+  keys.forEach( (k) => { let griddivid = `jsGrid_flddef_${k}`; cont += `<h3>Grid definition ${k}</h3>\n<div id="${griddivid}" ></div>\n`; });
+  $("#" + viewid).html(cont);
+  keys.forEach( (k) => {
+    //if (cont) { return; } // TEST/DEBUG
+    let fsc = fldinfo[k];
+    // if (act.skipself && (k == 'fldinfo')) {}
+    if (!Array.isArray(fsc)) { console.log("FSC not in array format"); return; }
+    let griddivid = `jsGrid_flddef_${k}`;
+    //cont += `<h3>Grid definition ${k}</h3>\n<div id="${griddivid}" ></div>\n`;
+    // TODO: Consider making this lighterweight grid as there will never be many pages, fldinfo_fldinfo is fixed, etc.
+    //gridder.showgrid(griddivid, fldinfo[k], fldinfo_fldinfo);
+    let mydb = {datakey: griddivid, filterdebug: 1,  uisruncnt: 0}; // loadData: js_grid_filter,
+    mydb[griddivid] = fsc;
+    let gridopts = {data: fsc, fields: fldinfo_fldinfo, controller: mydb,
+      width: "100%", // pageSize: 100, sorting: true, paging: true, filtering: true, // height: "100%",
+      }; // gridder.showgrid_opts() ?
+    $("#" + griddivid).jsGrid(gridopts);
+    console.log(`Added (to div ${griddivid}) data as grid: `, fldinfo[k]);
+  });
+  
+}
 // See handler simplegrid_url
 function ghprojs_uisetup(act, data) {
   var k = "ghorgs"; // 

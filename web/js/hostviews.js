@@ -643,6 +643,8 @@ var tabloadacts = [
     path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "", gridid: "", fsetid: "nft", fldinfo: fldinfo,
     path: "fwform", uisetup: null, dialogid: "afaimginfodialog", "optcoll": opts_nft, },
+  {"name":"Grid Defs", "elselXX": "XX", tmpl: "", "hdlr": jgrid_fielddefs,   fldinfo: fldinfo, // url: "", gridid: "", fsetid: "",
+    path: "fielddefs", uisetup: null, viewid: 'routerdiv' }, // dialogid: "", "optcoll": opts_nft,
 ];
 
 function certdecode(ev, act) {
