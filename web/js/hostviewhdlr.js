@@ -7,6 +7,10 @@ var webview;
 var rmgmt_data;
 var on_host_click;
 var docIndex;
+var vis;
+var location;
+var tabloadacts; // hostviews
+var window;
 //import {Spinner} from 'spin.js';
 // OS/Version view ?
 function osview_guisetup() {
@@ -80,6 +84,7 @@ function simplegrid_url(ev, an) {
     rapp.templated(an.tmpl, an, ttgt); // Initial templating
     var fsetid = an.fsetid;
     if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW
+    //TODO: let fldinfo = an.fldinfo || window.fldinfo;
     showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
@@ -593,8 +598,7 @@ function recipes(ev, act) {
     // href=\""+val+"?ip="+item.ipaddr+"\"
     //var ccont = val; // ORIG
     var ccont = "<i class=\"glyphicon glyphicon-play\"></i>"; // Icon !
-    return "<a class=\"recipecell\" data-hn=\""+item.hname+"\" data-ip=\""+item.ipaddr+"\" data-rname=\""+val+"\" title=\""+val+" for "+item.hname+"\">"
-      +ccont+"</a>";
+    return "<a class=\"recipecell\" data-hn=\""+item.hname+"\" data-ip=\""+item.ipaddr+"\" data-rname=\""+val+"\" title=\""+val+" for "+item.hname+"\">"+ccont+"</a>";
   }
   axios.get("/recipes").then(function (resp) {
     var d = resp.data;
@@ -1055,9 +1059,9 @@ function mkrepo_uisetup(act, data) {
       if (!infoel) { console.log("No mkrepo_usage (id) element !"); return; }
       var remname = "myrepo"; // TODO: parametrize from GUI
       var text = `# Clone empty repo and fill it out\ngit clone ${d.data.repourl}\n`;
-      text += `# Add newly created repo as remote and push to it\ngit remote add ${remname} ${d.data.repourl}\ngit push ${remname} master\n`
+      text += `# Add newly created repo as remote and push to it\ngit remote add ${remname} ${d.data.repourl}\ngit push ${remname} master\n`;
       text += `# Push and set as default upstream repo\ngit push --set-upstream ${remname} master`; // TODO: Only set as upstream (not push)
-      infoel.innerHTML = text
+      infoel.innerHTML = text;
     }).catch((ex) => {
       toastr.error("Problems with Deployment: "+ex);
     }).finally(() => {  spinner.stop(); }); // spinner &&
@@ -1372,6 +1376,7 @@ function form_jg(fdefs, opts) {
   var wfactor = opts.wfactor || 0.6; // TODO: From params
   if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
   var arr = [];
+  let idprefix = 'w_';
   fdefs.forEach((fd) => { // map ?
     var wtype = fd.wtype || "text";
     //if (!fd.visible && cfg.onlyvis) { return; }
@@ -1390,28 +1395,36 @@ function form_jg(fdefs, opts) {
     if (wtype == 'text') {
       //  type="number" (min/max)
       let sizeinfo = Math.round(fd.width * wfactor) || 20;
-      lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag} class="${fd.css}">`;
+      lw.widget = `<input type="text" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag} class="${fd.css ? fd.css : ''}" ${readonly(fd)}>`;
     }
     else if (wtype == 'textarea') {
       let sizeinfo = Math.round(fd.width * wfactor) || 20;
       var ht = fd.ht || 5;
-      lw.widget = `<textarea  name="${prefix}${fd.name}" id="w_${fd.name}" rows="${ht}" cols="${sizeinfo}"></textarea>`; }
+      lw.widget = `<textarea  name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" rows="${ht}" cols="${sizeinfo}"></textarea>`; }
     // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
     else if (wtype == 'options') {
       let bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
-      lw.widget = `<select Xtype="text" name="${prefix}${fd.name}" id="w_${fd.name}"\" data-optbind="${bl}" ${typetag} class="${fd.css}"></select>`;
+      lw.widget = `<select  name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}""></select>`;
     }
     // checked=checked indeterminate / w.select()
-    else if (wtype == 'checkbox') { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'checkbox')   { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
     // checked=checked indeterminate / w.select()
-    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
     // min / max required pattern (re)
-    else if (wtype == 'date') { lw.widget = `<input type="date" name="${prefix}${fd.name}" id="w_${fd.name}">`; }
-    // min / max / step required. typetag still valid for number/int
-    else if (wtype == 'slider') { lw.widget = `<input type="range" name="${prefix}${fd.name}" id="w_${fd.name}" ${typetag}>`; }
-    else { lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else if (wtype == 'date')    { lw.widget = `<input type="date" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
+    // min / max / step required (give as triplet "0:10:1"?). typetag still valid for number/int (Example: min="0" max="100" value="90" step="10")
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/range
+    // https://www.smashingmagazine.com/2021/12/create-custom-range-input-consistent-browsers/
+    else if (wtype == 'slider')  {
+      let mms = ( fd.mms && typeof fd.mms == 'string') ? fd.mms.split(/\s*,\s*/) : [0, 10, 1];
+      lw.widget = `<input type="range" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag} min="${mms[0]}" max="${mms[1]}" step="${mms[2]}" >`; }
+    else if (wtype == 'hidden')  { lw.widget = `<input type="hidden" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else { return; } //  lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`; } // Should not be needed !
     arr.push(lw);
   });
+  function readonly(fd) { return fd.ro ? 'readonly="readonly"' : ''; }
+  let wtrans = {"slider": "range", "options": "select"};
+  //function startw(fd) { let cont = "<"+(wtrans[fd.wtype] ? wtrans[fd.wtype] : wtype); cont += ` name="" `; }
   // Lay out (TODO: Provide flexible, configurable layout facility)
   arr.forEach( (lw) => { cont += `${lw.label}<span>${lw.widget}</span><br/>\n`; });
   if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // Button
@@ -1437,7 +1450,8 @@ function jgrid_form(ev, act) {
   if (!fi) { toastr.error("No field info structure to get field defs from\n"); return; }
   var fdefs = fi[fsid];
   if (!fdefs) { toastr.error("No field set to create form\n"); return; }
-  let cont = form_jg(fdefs, { labelw: act.labelw, formid: act.formid }); // Generate form content
+  // Generate form content
+  let cont = form_jg(fdefs, { labelw: act.labelw, formid: act.formid });
   console.log("FORM:"+cont);
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
@@ -1549,7 +1563,7 @@ function certsys_uisetup(act, data, ev) {
     if (!act) { console.log("No Action"); return; }
     var url = act.url + "?systype=" + idlbl;
     axios.get(url).then((resp) => {
-      e = resp.data.data;
+      let e = resp.data.data;
       // Set data to event, Call dialog hdlr(ev, act) gendialog(ev, act)
       jev.viewdata = e;
       gendialog(jev, act);
