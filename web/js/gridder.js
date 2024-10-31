@@ -1,4 +1,8 @@
+var rapp;
+var gridder = {};
+
 // NOT in use ? (w. new showgrid_*)
+/*
 var db = {
   datakey: "hosts",
   filterdebug: 1,
@@ -6,7 +10,7 @@ var db = {
   // this here is the db
   loadData: js_grid_filter
 };
-var gridder = {};
+*/
 /// Template for default options (to dclone())
 var gridopts_std = {
     // TODO: Eliminating 100% makes 2 latter tabs out of 3 not show !
@@ -41,9 +45,10 @@ function showgrid_opts(divid, griddata, fields) {
   //NOT: gridopts.controller = db; // Global
   return gridopts;
 }
+gridder.showgrid_opts = showgrid_opts;
 
-
-/** Filter items in JSGrid.
+/** Filter items in JSGrid by a filter (k=v) object.
+ * The controller / "db" object(of gridopts)  gets applied as "this" here.
  * See showgrid
  */
 function js_grid_filter (filter) {
@@ -80,7 +85,7 @@ function js_grid_filter (filter) {
   }); // filter
   if (debug) { console.log("After filter:" + arr.length + " items"); }
   return arr;
-  // Create matchers by *actual* (in-effect) filter keys.
+  // Create regexp matchers by *actual* (in-effect) filter keys.
   function filter_matchers(filter, fkeys) {
     var matchers = {};
     if (!Array.isArray(fkeys)) { return null; }
@@ -94,7 +99,7 @@ function js_grid_filter (filter) {
     return matchers;
   }
 }
-
+gridder.js_grid_filter = js_grid_filter;
 // $("#jsGrid").jsGrid("sort", field);
 // NOTE: The new showgrid_opts() makes the controller short-lifetime, per grid instance (no global interference)
 // http://js-grid.com/docs/#callbacks
@@ -134,12 +139,13 @@ function showgrid (divid, griddata, fields, act) {
   $("#" + divid).jsGrid(gridopts);
   // Emit (done divid) !
   //ee.emit("on_"+divid+"_done", { msg: "Hello!", divid: divid }); // New: Disabled
-  // Re-run uisetup on refreshed grid
+  
+  // Re-run uisetup on refreshed grid (based on gridevent description)
   function onRefreshed(gridev) {
     //console.log("Grid-refreshed: ", gridev);
     var grid = gridev.grid; // Has e.g. _sortOrder, onPageChanged (itself), _validation, paging: false
-    var ctrl = grid.controller;
-    var data = grid.data;
+    var ctrl = grid.controller; // controller / db object w. act object (and thus act.uisetup callback), uisruncnt (ui setup run count)
+    var data = grid.data; // AoO for grid data
     //console.log("Grid-refreshed controller: ", ctrl);
     //$(".hostcell").click(() => { alert("Re-hooked"); }); // Test: Works !
     // Note: can use 1) closure act coming to showgrid() IFF onRefreshed() is inside it ... OR 2) attach act to controller
@@ -153,3 +159,4 @@ function showgrid (divid, griddata, fields, act) {
     ctrl.uisruncnt++; // Inc number of act.uisetup() calls run.
   }
 }
+gridder.showgrid = showgrid;
