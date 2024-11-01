@@ -1283,6 +1283,12 @@ function riskadj_cell(val, item) {
      // // Note rate may have time units week/day/hour/minute/second
      {"limit": "ratelimsize",   "title": "Limit Rate Bytes", "type": "text", "width": 20, itemTemplate: null,},
      {"name": "natto",   "title": "NAT To ... (IP)", "type": "text", "width": 20, itemTemplate: null, },
+     // Test for st
+     {"name": "rules",   "title": "Rules", "type": "array", dtype: "fwrule", visible: false, "width": 20, },
+   ];
+   var fldinfo_fwrule = [
+     {"name": "rulename",   "title": "Rule Name", "width": 20, itemTemplate: null,},
+     {"name": "ruleexpr",   "title": "Rule Expression", "width": 20, itemTemplate: null,},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
@@ -1299,6 +1305,6 @@ function riskadj_cell(val, item) {
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
       "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
-      "nft": fldinfo_nft
+      "nft": fldinfo_nft, "fwrule": fldinfo_fwrule,
    };
    

@@ -1354,6 +1354,8 @@ function cmod_covcomp(data, copts) {
   copts.scales.yAxes = [];
   return copts;
 }
+
+
 /** Generate a form based on jg field definitions (enhanced w. some extra info).
 * Each widget will have 2 HTML attributes to select by:
 * - name attr. per model name
@@ -1371,13 +1373,14 @@ function cmod_covcomp(data, copts) {
 function form_jg(fdefs, opts) {
   opts = opts || { wfactor: 0.6, }; // labelw: 120,
   
+  
+  // Generate widgets (and subtype panes)
+  //function form_wgen(fdefs, opts) {
   var labelw = opts.labelw; // || 120;
-  let cont = "";
-  //var idv = ""; // Not used.
   var wfactor = opts.wfactor || 0.6; // TODO: From params
-  if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
   var arr = [];
-  let idprefix = 'w_';
+  let idprefix = opts.idprefix != undefined ? opts.idprefix : 'w_';
+  let prefix = opts.nprefix || ""; // Must have trailing dot
   fdefs.forEach((fd) => { // map ?
     var wtype = fd.wtype || "text";
     //if (!fd.visible && cfg.onlyvis) { return; }
@@ -1389,8 +1392,11 @@ function form_jg(fdefs, opts) {
     var typetag = fd.dtype ? `data-type="${fd.dtype}"` : "";
 
     var lws = labelw ? `style="width: ${labelw}px"` : "";
-    var lw = {label: `<label ${lws} for="w_${fd.name}">${fd.title}</label>`};
-    var prefix = opts.nprefix || ""; // Must have trailing dot
+    let lw = {};
+    // Subtypes (allow array and object ?)
+    if (!fd.visible && fd.type == 'array') { arr.push({ wtype: "subtypepane", subtype: `${fd.dtype}`, memname: `${fd.name}`} ); return; }
+    lw = { wtype: wtype, label: `<label ${lws} for="w_${fd.name}">${fd.title}</label>` };
+    
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     // TODO: Call widget gen. callbacks w. (fd, opts)
     if (wtype == 'text') {
@@ -1424,14 +1430,53 @@ function form_jg(fdefs, opts) {
     else { return; } //  lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`; } // Should not be needed !
     arr.push(lw);
   });
+  fdefs.forEach((fd) => { if (fd.type == 'array' && !fd.visible) { } });
   function readonly(fd) { return fd.ro ? 'readonly="readonly"' : ''; }
   let wtrans = {"slider": "range", "options": "select"};
-  //function startw(fd) { let cont = "<"+(wtrans[fd.wtype] ? wtrans[fd.wtype] : wtype); cont += ` name="" `; }
+  //function startw(fd) { let wcont = "<"+(wtrans[fd.wtype] ? wtrans[fd.wtype] : wtype); wcont += ` name="" `; }
+  
   // Lay out (TODO: Provide flexible, configurable layout facility)
-  arr.forEach( (lw) => { cont += `${lw.label}<span>${lw.widget}</span><br/>\n`; });
-  if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // Button
-  if (opts.formid) { cont += `</form>\n`; } 
+  // function form_layout(warr, opts) {
+  let cont = "";
+  if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
+  // Note: put 1:many items to seq-location where declared
+  if (opts.layout == 'rowform') { cont += `<tr>`; }
+  arr.forEach( (lw) => {
+    
+    if (lw.wtype == 'hidden') { cont += `${lw.widget}`; return; } // hidden - wideget only, no label (but present on form)
+    // NOT: fd.type == 'array' && !fd.visible. Use subtype, memname
+    // Q: Why is concrete HTML creation postponed to layout stage on subtypepane ? Can we gen earlier ?
+    if (lw.wtype == 'subtypepane') { cont += `<div data-memname="${lw.memname}" data-subtype="${lw.subtype}" class="stp" style="display: none;"></div>\n`; return; }
+    if (opts.layout == 'rowform')  { cont += `<td>${lw.widget}</td>`; }
+    else { cont += `${lw.label}<span>${lw.widget}</span><br/>\n`; }
+    
+  });
+  if (opts.layout == 'rowform') { cont += `<tr>`; }
+  if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // End-of-form Button
+  if (opts.formid) { cont += `</form>\n`; }
+  //}
   return cont;
+}
+/** Populate (template) the subtype divs */
+function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll()
+  opts = opts || {};
+  if (!opts.fldinfo) { console.error("subtype: No field info passed (not able to access potential subtypes)"); return; }
+  let fldinfo = opts.fldinfo;
+  // Use fdefs or widget-array here ?
+  let stws = document.querySelectorAll("[data-memname]");
+  if (!stws) { console.log("No subtypes found in DOM."); return; }
+  for (ste of stws) {
+    var ds = ste.dataset;
+    console.log(`Found container for mem: ${ds.memname} st: ${ds.subtype}`);
+    let stfi = fldinfo[ds.subtype];
+    if ( ! stfi) { console.log(`No subtype ${ds.subtype} found in fldinfo !`); continue; }
+    console.log("Found ", stfi);
+    // Need to mimick action here {name: } ?
+    // nprefix: `${ds.memname}.`
+    let opts2 = { layout: "rowform", nprefix: "", }; // What should nprefix have ?
+    let cont = form_jg(stfi, opts2);
+    ste.innerHTML = `<h3>Entity ${ds.subtype}</h3>\n<table>${cont}</table>`;
+  }
 }
 /** Action handler for jgrid grid-def based form.
 * Action must have following properties filled out:
@@ -1453,8 +1498,9 @@ function jgrid_form(ev, act) {
   var fdefs = fi[fsid];
   if (!fdefs) { toastr.error("No field set to create form\n"); return; }
   // Generate form content
-  let cont = form_jg(fdefs, { labelw: act.labelw, formid: act.formid });
-  console.log("FORM:"+cont);
+  let opts = { labelw: act.labelw, formid: act.formid, subtypes: act.subtypes }; // subtypes needed here at all ?
+  let cont = form_jg(fdefs, opts);
+  if (act.debug) { console.log("FORM:"+cont); }
   // nest into datasets to have available for rapp.templated. TODO: semi-random local name, delete-after ?
   // On submission by FormData() https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio
   // 
@@ -1471,7 +1517,7 @@ function jgrid_form(ev, act) {
   if (typeof act.optcoll != 'object') { toastr.error("Options (optcoll) not stored in object\n"); return; }
   // Prepare the *very common* UI setup tasks here
   form_options_setup(formid, act.optcoll); // formid, optcoll. TODO: 
-  
+  if (act.subtypes) { opts.fldinfo = act.fldinfo; form_subtypes(fdefs, opts); }
   // Do similar bind-probe on autocomplete
   //var acw = document.querySelectorAll("[data-ac]");
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
@@ -1527,9 +1573,10 @@ function jgrid_fielddefs(ev, act) {
      {"name": "itemTemplate",   "title": "Field CB", "type": "text", "width": 20, itemTemplate: (val, item) => { return val ? "CB" : ""; }, },
   ];
   let cont = "";
-  // Must create content (onto view) first !!
+  // Must create content (onto view) first (jsGrid must be able to address the elem w. griddivid in DOM)
   keys.forEach( (k) => { let griddivid = `jsGrid_flddef_${k}`; cont += `<h3>Grid definition ${k}</h3>\n<div id="${griddivid}" ></div>\n`; });
   $("#" + viewid).html(cont);
+  // Pass 2: Setup gridopts + data, let .jsGrid() bind to dom.
   keys.forEach( (k) => {
     //if (cont) { return; } // TEST/DEBUG
     let fsc = fldinfo[k];
