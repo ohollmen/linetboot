@@ -1282,13 +1282,14 @@ function riskadj_cell(val, item) {
      }, 
      // // Note rate may have time units week/day/hour/minute/second
      {"limit": "ratelimsize",   "title": "Limit Rate Bytes", "type": "text", "width": 20, itemTemplate: null,},
-     {"name": "natto",   "title": "NAT To ... (IP)", "type": "text", "width": 20, itemTemplate: null, },
+     {"limit": "ratelimunit",   "title": "Limit Rate Unit", "type": "text", "width": 20, itemTemplate: null,},
+     {"name": "natto",   "title": "NAT To ... (IP Address)", "type": "text", "width": 20, itemTemplate: null, },
      // Test for st
      {"name": "rules",   "title": "Rules", "type": "array", dtype: "fwrule", visible: false, "width": 20, },
    ];
    var fldinfo_fwrule = [
-     {"name": "rulename",   "title": "Rule Name", "width": 20, itemTemplate: null,},
-     {"name": "ruleexpr",   "title": "Rule Expression", "width": 20, itemTemplate: null,},
+     {"name": "rulename",   "title": "Rule Name", "width": 30, itemTemplate: null,},
+     {"name": "ruleexpr",   "title": "Rule Expression", "width": 80, itemTemplate: null,},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

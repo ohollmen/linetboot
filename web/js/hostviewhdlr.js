@@ -1459,7 +1459,7 @@ function form_jg(fdefs, opts) {
 }
 /** Populate (template) the subtype divs */
 function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll()
-  opts = opts || {};
+  opts = opts || {debug: 0};
   if (!opts.fldinfo) { console.error("subtype: No field info passed (not able to access potential subtypes)"); return; }
   let fldinfo = opts.fldinfo;
   // Use fdefs or widget-array here ?
@@ -1468,15 +1468,20 @@ function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll(
   for (ste of stws) {
     var ds = ste.dataset;
     console.log(`Found container for mem: ${ds.memname} st: ${ds.subtype}`);
+    let mement = fdefs.find( (fd) => { return fd.name == ds.memname; }); // 4 name
+    let collname = mement && mement.title ? mement.title : null; // `Entity ${ds.subtype}`
+    if (!collname) { console.error(`No coll name for ${ds.memname}`); collname = `Entity ${ds.subtype}`; }
     let stfi = fldinfo[ds.subtype];
     if ( ! stfi) { console.log(`No subtype ${ds.subtype} found in fldinfo !`); continue; }
-    console.log("Found ", stfi);
+    console.log("Found subtype info", stfi);
     // Need to mimick action here {name: } ?
     // nprefix: `${ds.memname}.`
-    let opts2 = { layout: "rowform", nprefix: "", }; // What should nprefix have ?
+    let opts2 = { layout: "rowform", nprefix: "", }; // What should nprefix have ? In v-templating situation ent loop item name (e.g. u)
     let cont = form_jg(stfi, opts2);
-    ste.innerHTML = `<h3>Entity ${ds.subtype}</h3>\n<table>${cont}</table>`;
+    let hdrc = stfi.map( (fd) => { return `<th>${fd.title}</th>`; }).join('');
+    ste.innerHTML = `<h3>${collname}</h3>\n<table><tr>${hdrc}</tr>${cont}</table>`;
   }
+  var celems = document.querySelectorAll('.stp'); for (e of celems) { e.style.display = 'block'; }
 }
 /** Action handler for jgrid grid-def based form.
 * Action must have following properties filled out:
