@@ -32,7 +32,7 @@ let cfg = {
   //// Read config ////
   yaml_path: [], // Must set
   //// Write config ////
-  yaml_root: ""; // Must set
+  yaml_root: "", // Must set
   url2fs: {}, // Name Mapping from URL-to-FS
   uel2fs_cb: null, // CB called with URL
   
