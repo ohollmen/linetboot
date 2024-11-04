@@ -11,30 +11,32 @@
 *   - Find yaml file by URL/basename from the set of paths (cfg.yaml_path)
 * - Write (in order of preference / trying)
 *   - member "ofn" in JSON coming from frontend, append this to cfg.yaml_root
-*   - uel2fs_cb callback function (called with (url, cfg)) and returning fs path to save to
-*   - url2fs (string-to-string object) mapping from cfg.url2fs[url] with value indicating fs path to save to. Note: URLs must be exact
+*   - uel2fs_cb callback function (called with (url, cfg)) and returning fs path to save to (See path notes below)
+*   - url2fs (string-to-string object) mapping from cfg.url2fs[url] with value indicating fs path to save to (See path notes below). Note: URLs must be exact 
 *   - Use URL path appending it to cfg.yaml_root
 *   - TODO: explicit query-string parameter in URL (req.query) or URL path param (req.params), append to cfg.yaml_root
 * 
 * Client can (to some degree) mix/alternate these strategies by e.g. providing explicit ofn in some cases and leave it out in others.
 * 
-* Note that the uel2fs_cb callback strategy function will be executed
-* in caller / cb definition context, which makes it easy to have access
+* Note that the uel2fs_cb callback strategy function will be executed in caller / cb definition context, which makes it easy to have access
 * to variables affecting path mapping decision.
-* 
+* ### Notes on paths returned/looked up by uel2fs_cb and url2fs.
+* The paths returned / looked up (for YAML writing) can be:
+* - absolute / starting with '/' in which case path is used as absolute as-is path
+* - relative, NOT starting w. '/' in which case they are appended to cfg.yaml_root to get the final filename.
 * ## TODO
 * 
 */
 var fs = require("fs");
 var path = require("path");
-
+var yaml = require('js-yaml');
 let cfg = {
   //// Read config ////
   yaml_path: [], // Must set
   //// Write config ////
   yaml_root: "", // Must set
   url2fs: {}, // Name Mapping from URL-to-FS
-  uel2fs_cb: null, // CB called with URL
+  url2fs_cb: null, // CB called with URL
   
 };
 module.exports.cfg = cfg; // Keep in sync in cfg
@@ -89,12 +91,19 @@ function setfsyaml(req, res) {
   // How to get intermediate path - allow few (flexible) options ? Allow even ofn to be configurable ?
   let fn; // TODO: Extract path.dirname(ofn), append with URL ?
   if (j.ofn) { fn = `${wpath}/${j.ofn}`; } // Append intermediate path to wpath (req.params ???)
-  else if (uel2fs_cb && (typeof uel2fs_cb == "function") && uel2fs_cb(url)) { fn = uel2fs_cb(url, cfg); } // TODO: launch once only
-  else if (url2fs && url2fs[url]) { fn = url2fs[url]; }
+  else if (cfg.url2fs_cb && (typeof cfg.url2fs_cb == "function") && cfg.url2fs_cb(url)) {
+    fn = cfg.url2fs_cb(url, cfg);
+    if (!fn.match(/$\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+  } // TODO: launch once only
+  else if (cfg.url2fs && cfg.url2fs[url]) {
+    fn = cfg.url2fs[url];
+    // Test relative / absolute
+    if (!fn.match(/$\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+  }
   else { fn = `${wpath}/${req.url}`; }
   // TODO: Create intermediate directories !!!
   let dn = path.dirname(fn);
-  if ( ! fs.existsSync(`${dn}`) ) { }
+  if ( ! fs.existsSync(`${dn}`) ) { fs.mkdirSync(`${dn}`, { recursive: true }); console.log(`Created (missing) dir path '${dn}' for '${fn}'`); }
   try { fs.writeFileSync(fn ,yc, {encoding: "utf8"} ); console.log(`Wrote '${req.url}' (URL) to filesys: '${fn}'`); }
   catch (ex) { console.error(`Failed to write YAML to ${fn}: ${ex}`); };
   console.log("## YAML-to-save:\n"+yc+"\n# "+fn);
