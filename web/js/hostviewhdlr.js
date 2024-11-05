@@ -465,22 +465,25 @@ function dockerimg_show(ev, act) {
 function showdocindex (ev, act) {
   // Mimick flow from docindex_main.js
   //var tgtid = ev.routepath ? "routerdiv" : act.elsel;
-  if (ev.routepath) { rapp.templated("docs", null, "routerdiv"); }
+  let tmplid = act.tmplid || "docs";
+  if (ev.routepath) { rapp.templated(tmplid, null, "routerdiv"); }
   var cfg = new docIndex({acc: 0, linkproc: "post", pagetitleid: "dummy", debug: 1, nosidebarhide: 1 });
   docIndex.ondocchange = function (docurl) {
     console.log("DOC-CHANGE: "+docurl);
     // location.hash = '#nop';
   };
-  var url = act.idxurl || act.url || "/docindex.json";
+  var url = act.idxurl || act.url || "docindex.json";
   //if () {}
   //console.log("Staring load: "+ url);
+  /*
   $.getJSON(url).done(function (d) {
     //console.log("Completed load: "+ url);
     //console.log(d);
     cfg.initdocs(d);
   })
   .fail(function (jqXHR, textStatus, errorThrown) { toastr.error("Failed to load item: "+textStatus); });
-  // axios.get(url).then((resp) => { cfg.initdocs(resp.data); }).catch((ex) => { toastr.error("Error loading docs");});
+  */
+  axios.get(url).then((resp) => { cfg.initdocs(resp.data); }).catch((ex) => { toastr.error("Error loading docindex config:"+ex);});
 }
 /** Show Boot Options and allow set boot target (Boot / OS Install) on host(s).
  * 
