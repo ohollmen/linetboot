@@ -1398,38 +1398,38 @@ function form_jg(fdefs, opts) {
     let lw = {};
     // Subtypes (allow array and object ?)
     if (!fd.visible && fd.type == 'array') { arr.push({ wtype: "subtypepane", subtype: `${fd.dtype}`, memname: `${fd.name}`} ); return; }
-    lw = { wtype: wtype, label: `<label ${lws} for="w_${fd.name}">${fd.title}</label>` };
+    lw = { wtype: wtype, label: `<label ${lws} for="${idprefix}${fd.name}">${fd.title}</label>` };
     
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     // TODO: Call widget gen. callbacks w. (fd, opts)
     if (wtype == 'text') {
       //  type="number" (min/max)
       let sizeinfo = Math.round(fd.width * wfactor) || 20;
-      lw.widget = `<input type="text" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag} class="${fd.css ? fd.css : ''}" ${readonly(fd)}>`;
+      lw.widget = `<input type="text" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" size="${sizeinfo}" ${typetag} class="${fd.css ? fd.css : ''}" ${readonly(fd)}>`;
     }
     else if (wtype == 'textarea') {
       let sizeinfo = Math.round(fd.width * wfactor) || 20;
       var ht = fd.ht || 5;
-      lw.widget = `<textarea  name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" rows="${ht}" cols="${sizeinfo}"></textarea>`; }
+      lw.widget = `<textarea  name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" rows="${ht}" cols="${sizeinfo}"></textarea>`; }
     // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
     else if (wtype == 'options') {
       let bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
-      lw.widget = `<select  name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}""></select>`;
+      lw.widget = `<select  name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}"></select>`;
     }
+    // checked=checked indeterminate / w.select(). For Vue this will automatically emit true/false (bool) values. Optional: true-value="..." false-value="..."
+    else if (wtype == 'checkbox')   { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}">`; }
     // checked=checked indeterminate / w.select()
-    else if (wtype == 'checkbox')   { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
-    // checked=checked indeterminate / w.select()
-    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'radiobutton') { lw.widget = `<input type="radiobutton" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}">`; }
     // min / max required pattern (re)
-    else if (wtype == 'date')    { lw.widget = `<input type="date" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}">`; }
+    else if (wtype == 'date')    { lw.widget = `<input type="date" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}">`; }
     // min / max / step required (give as triplet "0:10:1"?). typetag still valid for number/int (Example: min="0" max="100" value="90" step="10")
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/range
     // https://www.smashingmagazine.com/2021/12/create-custom-range-input-consistent-browsers/
     else if (wtype == 'slider')  {
       let mms = ( fd.mms && typeof fd.mms == 'string') ? fd.mms.split(/\s*,\s*/) : [0, 10, 1];
-      lw.widget = `<input type="range" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag} min="${mms[0]}" max="${mms[1]}" step="${mms[2]}" >`; }
+      lw.widget = `<input type="range" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" ${typetag} min="${mms[0]}" max="${mms[1]}" step="${mms[2]}" >`; }
     // Note: this *could* be triggered by fd.visible property, but for now must have explicit fd.wtype == 'hidden'
-    else if (wtype == 'hidden')  { lw.widget = `<input type="hidden" name="${prefix}${fd.name}" v-model="${fd.name}" id="w_${fd.name}" ${typetag}>`; }
+    else if (wtype == 'hidden')  { lw.widget = `<input type="hidden" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" ${typetag}>`; }
     else { return; } //  lw.widget = `<input type="text" name="${prefix}${fd.name}" id="w_${fd.name}" size="${sizeinfo}" ${typetag}>`; } // Should not be needed !
     arr.push(lw);
   });
@@ -1443,7 +1443,14 @@ function form_jg(fdefs, opts) {
   let cont = "";
   if (opts.formid) { cont += `<form id="${opts.formid}">\n`; }
   // Note: put 1:many items to seq-location where declared
-  if (opts.layout == 'rowform') { cont += `<tr>`; }
+  let bindmod = ""; // (opts.ui == 'vue') ?  : "";
+  // let svar;
+  // TODO: Must pass the unique attr/prop name
+  if (opts.mvar && opts.unip) { // && opts.ui == 'vue'
+    let svar = getshortvar(opts.mvar);
+    let uprop = opts.unip; // || 'id'; // uniprop. Also (below) :key="item.id" => :key="${svar}.${uprop}"
+    bindmod = `v-for="${svar} in ${opts.mvar}" :id="\`${opts.mvar}-\$\{${svar}.${uprop}\}\`"`; }
+  if (opts.layout == 'rowform') { cont += `<tr ${bindmod}>`; } // Start else { cont += `<div ${bindmod}><h3>{{ ${svar}.???}}</h3>`;}
   arr.forEach( (lw) => {
     
     if (lw.wtype == 'hidden') { cont += `${lw.widget}`; return; } // hidden - wideget only, no label (but present on form)
@@ -1454,13 +1461,20 @@ function form_jg(fdefs, opts) {
     else { cont += `${lw.label}<span>${lw.widget}</span><br/>\n`; }
     
   });
-  if (opts.layout == 'rowform') { cont += `<tr>`; }
+  
+  if (opts.layout == 'rowform') { cont += `</tr>`; } // Term. else { cont += `</div>`;}
   if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // End-of-form Button
   if (opts.formid) { cont += `</form>\n`; }
   //}
   return cont;
+  function getshortvar(lvar) {
+    let m; return (m = lvar.match(/^(\w)/)) ? m[1] : ""; //if (!mvar) { return; }
+  }
 }
-/** Populate (template) the subtype divs */
+/** Populate (template) the subtype divs
+ * @param fdefs (array) - fdefs of current parent type
+ * @opts (object) - Options object w.  fldinfo (for lookup), layout: rowform/entform
+*/
 function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll()
   opts = opts || {debug: 0};
   if (!opts.fldinfo) { console.error("subtype: No field info passed (not able to access potential subtypes)"); return; }
@@ -1471,20 +1485,36 @@ function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll(
   for (ste of stws) {
     var ds = ste.dataset;
     console.log(`Found container for mem: ${ds.memname} st: ${ds.subtype}`);
-    let mement = fdefs.find( (fd) => { return fd.name == ds.memname; }); // 4 name
+    let mement = fdefs.find( (fd) => { return fd.name == ds.memname; }); // 4 name ()
     let collname = mement && mement.title ? mement.title : null; // `Entity ${ds.subtype}`
     if (!collname) { console.error(`No coll name for ${ds.memname}`); collname = `Entity ${ds.subtype}`; }
+    // Extract short var name for type
+    //let m; let mvar = (m = ds.memname.match(/^(\w)/)) ? m[1] : ""; if (!mvar) { return; }
+    let svar = getshortvar(ds.memname);
+    if (!svar) { console.error(`Short var extract of ${ds.memname} failed`); }
+    if (opts.debug) { console.log(`svar of ${ds.memname} => ${svar} (for nprefix '${svar}.')`); }
     let stfi = fldinfo[ds.subtype];
     if ( ! stfi) { console.log(`No subtype ${ds.subtype} found in fldinfo !`); continue; }
     console.log("Found subtype info", stfi);
-    // Need to mimick action here {name: } ?
+    // Need to mimick action here {name: } ? A: No
     // nprefix: `${ds.memname}.`
-    let opts2 = { layout: "rowform", nprefix: "", }; // What should nprefix have ? In v-templating situation ent loop item name (e.g. u)
-    let cont = form_jg(stfi, opts2);
-    let hdrc = stfi.map( (fd) => { return `<th>${fd.title}</th>`; }).join('');
+    // OLD: layout: "rowform"
+    // nprefix - set to sname of mement + "."
+    let opts2 = { layout: "rowform", nprefix: `${svar}.`, }; // What should nprefix have ? In v-templating situation ent loop item name (e.g. u)
+    if (!opts2.layout) { opts2.layout = "rowform"; }
+    opts2.mvar = ds.memname; // TEST
+    opts2.unip = mement.unip; // par flddef, mem prop, unip of child
+    if (!mement.unip) { console.log("Warning: missing unip for subtype. Binding form (w. data) may fail ..."); }
+    let cont = form_jg(stfi, opts2); // Delegate to form_jg()
+    if (opts.debug) { console.log(`subtype form (in cont, ${cont.length} bytes):\n${cont}`); }
+    // TODO: Oly display select fields (while allowing binding to hold whole model)
+    let hdrc = stfi.map( (fd) => { return `<th style="padding-right: 10px;">${fd.title}</th>`; }).join('');
     ste.innerHTML = `<h3>${collname}</h3>\n<table><tr>${hdrc}</tr>${cont}</table>`;
   }
   var celems = document.querySelectorAll('.stp'); for (e of celems) { e.style.display = 'block'; }
+  function getshortvar(lvar) {
+    let m; return (m = lvar.match(/^(\w)/)) ? m[1] : ""; //if (!mvar) { return; }
+  }
 }
 /** Action handler for jgrid grid-def based form.
 * Action must have following properties filled out:
@@ -1523,9 +1553,13 @@ function jgrid_form(ev, act) {
   if (!act.formid)  { toastr.error("No formid (for selector purposes on action)\n"); return; }
   if (!act.optcoll) { toastr.error("No optcoll (for options population)\n"); return; }
   if (typeof act.optcoll != 'object') { toastr.error("Options (optcoll) not stored in object\n"); return; }
+  
+  // Should check presence of act.fldinfo. Also this should always happen before form_options_setup() to have it happen to subtypes.
+  if (act.subtypes) { opts.fldinfo = act.fldinfo; form_subtypes(fdefs, opts); }
+  
   // Prepare the *very common* UI setup tasks here
   form_options_setup(formid, act.optcoll); // formid, optcoll. TODO: 
-  if (act.subtypes) { opts.fldinfo = act.fldinfo; form_subtypes(fdefs, opts); }
+  
   // Do similar bind-probe on autocomplete
   //var acw = document.querySelectorAll("[data-ac]");
   if (act.uisetup) { act.uisetup(act, {}); } // Pass container of bound UI vals (that will live with form) ?
@@ -1536,14 +1570,14 @@ function jgrid_form(ev, act) {
 * or be a mix of the two. However it must be fully poppulated before passing it here (e.g. wait async calls to complete).
 * @param formid - ID of the form element (to select option input fields with data-optbind attribute)
 * @param optcoll - Option collection in OoA format (See notes on array internal formats)
-* @param entvals - Default values (on new entry) or values to set (on update ui) for option fields in simple OoS (S=scalar) format
+* OLD:  entvals - Default values (on new entry) or values to set (on update ui) for option fields in simple OoS (S=scalar) format
 * @return none
 * NOTE: Below ONLY in context of the form (get from act.formid ? .formsel ?)
 * TODO: probe debug mode from params (rather not) or namespace of ui toolkit
 */
-function form_options_setup(formid, optcoll, entvals) {
+function form_options_setup(formid, optcoll) {
   var debug = 0;
-  console.log(`Got: '${formid}', '${optcoll}'`);
+  console.log(`opt_setup: Got: fid: '${formid}'`, optcoll);
   if (!optcoll) { console.log("No options collection passed !"); return; }
   if (!formid) { console.error("Warning: formid not passed (but w-selection should work with it too)"); }
   var obs = `#${formid} [data-optbind]`; // Option bind selector
