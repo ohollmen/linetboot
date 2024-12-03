@@ -37,7 +37,9 @@ let cfg = {
   yaml_root: "", // Must set
   url2fs: {}, // Name Mapping from URL-to-FS
   url2fs_cb: null, // CB called with URL
-  
+  eemod: "", // Use event emitter module ? If yes, make sure this is installed and returns a handle to EventEmitter.
+  // See: wolfy87-eventemitter, eventemitter2, eventemitter3, event-emitter, ...
+  ee: null,
 };
 module.exports.cfg = cfg; // Keep in sync in cfg
 
@@ -45,6 +47,8 @@ module.exports.cfg = cfg; // Keep in sync in cfg
 // default and override one by one. 
 function init(cfg_p) {
   if (cfg_p) { module.exports.cfg = cfg = cfg_p; } // Keep in sync !
+  // Use Event emitter ?
+  if (cfg.eemod) { let EventEmitter = require(cfg.eemod);cfg.ee = EventEmitter(); }
   // Validate that:
   // - paths in yaml_path are actually dirs ? 
   // yaml_root
@@ -67,11 +71,13 @@ function getfsyaml(req, res) {
   let cont = fs.readFileSync(fname, 'utf8');
   let j = yaml.load(cont); // safeLoad() deprecated !!
   if (!j) { jr.msg += "Failed to parse YAML !"; console.log(`${jr.msg}`); return res.json(jr); }
-  // CB per URL ?
+  // Preproc CB per URL or common (single/shared) cb ? Similar to set...()
+  if (cfg.precb_r && typeof cfg.precb_r == 'function') { cfg.precb_r(j, fname); }
   //res.json({status: "ok"});
   //res.json(cont); // YAML
   res.json(j);
   console.log("## YAML to send as JSON:\n"+cont+"\n#"+fname);
+  // if (cfg.postcb_r && typeof cfg.postcb_r == 'function') { cfg.postcb_r(j); } // would be fairly meaningless
 }
 
 // Set incoming JSON as yaml (POST)
@@ -84,7 +90,8 @@ function setfsyaml(req, res) {
   var jr = {status: "err", msg: "Could not save JSON to YAML file. "}
   var j = req.body;
   if (!j) { jr.msg += "No JSON body received"; res.json(jr); }
-  // CB per URL ?
+  // Preproc CB per URL or common (single/shared) cb ? Modify data (in j) in-place. For now keep the cb interface simple (no errors, no rejections)
+  if (cfg.precb_w && typeof cfg.precb_w == 'function') { cfg.precb_w(j); }
   var ycfg = { 'styles': { '!!null': 'canonical' }, }; // lineWidth: 200
   var yc = yaml.dump(j, ycfg); // Deprecated: yaml.safeDump()
   let wpath = cfg.yaml_root; // TODO: ???? Esp. intermediate paths !!!
@@ -105,8 +112,12 @@ function setfsyaml(req, res) {
   let dn = path.dirname(fn);
   if ( ! fs.existsSync(`${dn}`) ) { fs.mkdirSync(`${dn}`, { recursive: true }); console.log(`Created (missing) dir path '${dn}' for '${fn}'`); }
   try { fs.writeFileSync(fn ,yc, {encoding: "utf8"} ); console.log(`Wrote '${req.url}' (URL) to filesys: '${fn}'`); }
-  catch (ex) { console.error(`Failed to write YAML to ${fn}: ${ex}`); };
+  catch (ex) { jr.msg += `Failed to write YAML to ${fn}: ${ex}`; console.error(jr.msg); return res.json(jr); };
   console.log("## YAML-to-save:\n"+yc+"\n# "+fn);
+  res.json({status: "ok", data: yc, });
+  // Elswhere to receive ee.on("yaml-set", (jdata) => {})
+  if (cfg.ee) { ee.emit("yaml-set", j); } // j = data from client. Only when cfg.eemod loaded, cfg.ee instantiated !!
+  if (cfg.postcb_w && typeof cfg.postcb_w == 'function') { cfg.postcb_w(j, fn); }
 }
 
 module.exports = {
