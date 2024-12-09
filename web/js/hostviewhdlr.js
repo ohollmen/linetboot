@@ -473,6 +473,7 @@ function showdocindex (ev, act) {
     // location.hash = '#nop';
   };
   var url = act.idxurl || act.url || "docindex.json";
+  docIndex.converter.setOption('tables', true);
   //if () {}
   //console.log("Staring load: "+ url);
   /*
@@ -1414,7 +1415,10 @@ function form_jg(fdefs, opts) {
     // Populate options dynamically / separately (TODO: conv. autobind to data-autobind="" / data-optbind)
     else if (wtype == 'options') {
       let bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
-      lw.widget = `<select  name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}"></select>`;
+      let multi = (fd.multi) ? `multiple="multiple"` : "";
+      // TODO: Add optional v-for="" for hyper-dynamic options (options from self-data) based on ...
+      //if (fd.optdatamem) { vf = `v-for="it in this.${fd.optdatamem}"`; forcont = "<option value="${}">${}</option>"; }
+      lw.widget = `<select  name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}" ${multi}></select>`;
     }
     // checked=checked indeterminate / w.select(). For Vue this will automatically emit true/false (bool) values. Optional: true-value="..." false-value="..."
     else if (wtype == 'checkbox')   { lw.widget = `<input type="checkbox" name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}">`; }
@@ -1465,10 +1469,14 @@ function form_jg(fdefs, opts) {
   });
   
   if (opts.layout == 'rowform') {
-    if (opts.mvar && opts.unip) { cont += `<td><button @click="delentry(${svar}.${opts.unip})">X</button></td>`; } // ${svar}
+    let symdel = `<i class="glyphicon glyphicon-minus small"></i>`; // "X" glyphicon-remove
+    if (opts.mvar && opts.unip) { cont += `<td><button @click="delentry('${opts.mvar}', ${svar}.${opts.unip})">${symdel}</button></td>`; } // ${svar}
     cont += `</tr>`;
   } // Term. else { cont += `</div>`;}
-  if (opts.btitle && opts.bid) { cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}">\n`; } // End-of-form Button
+  if (opts.btitle && opts.bid) {
+    let vact = opts.mvar ? `@click="send()"` : "";
+    cont += `<input type="button" value="${opts.btitle}" id="${opts.bid}" ${vact}>\n`;
+  } // End-of-form Button
   if (opts.formid) { cont += `</form>\n`; }
   //}
   return cont;
@@ -1488,6 +1496,7 @@ function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll(
   let stws = document.querySelectorAll("[data-memname]");
   if (!stws) { console.log("No subtypes (divs for subtypes) found in DOM."); return; }
   for (ste of stws) {
+    // Func for single ?
     var ds = ste.dataset; // w. memname, subtype
     console.log(`Found container for mem: ${ds.memname} st: ${ds.subtype}`);
     let mement = fdefs.find( (fd) => { return fd.name == ds.memname; }); // 4 name ()
@@ -1512,10 +1521,11 @@ function form_subtypes(fdefs, opts) { // fdefs or warr or just querySelectorAll(
     if (!mement.unip) { console.log("Warning: missing unip for subtype. Binding form (w. data) may fail ..."); }
     let cont = form_jg(stfi, opts2); // Delegate to form_jg()
     if (opts.debug) { console.log(`subtype form (in cont, ${cont.length} bytes):\n${cont}`); }
-    // TODO: Oly display select fields (while allowing binding to hold whole model)
-    let hdrc = stfi.map( (fd) => { return `<th style="padding-right: 10px;">${fd.title}</th>`; }).join('');
-     let subcont = `<h3>${collname}</h3>\n<table><tr>${hdrc}</tr>${cont}</table>`;
-     subcont += `<button @click.prevent="addentry('${ds.memname}')">+</button>`; // ${svar}.${opts.unip}
+    // TODO: Oly display select fields (while allowing binding to hold whole model) style="padding-right: 10px;"
+    let hdrc = stfi.map( (fd) => { return `<th >${fd.title}</th>`; }).join('');
+     let subcont = `<h3>${collname}</h3>\n<table class="tbform"><tr>${hdrc}</tr>${cont}</table>`;
+     let symadd = `<small class="smallicon"><i class="glyphicon glyphicon-plus small"></i></small>`; // "+"
+     subcont += `<button @click.prevent="addentry('${ds.memname}')">${symadd}</button>`; // ${svar}.${opts.unip}
      ste.innerHTML = subcont;
   } // for
   var celems = document.querySelectorAll('.stp'); for (e of celems) { e.style.display = 'block'; }
@@ -1597,28 +1607,52 @@ function form_options_setup(formid, optcoll) {
   [...optw].forEach( (el) => {
     console.log(el);
     // OLD: act.optcoll. Redundant w. check on top (optcoll && ...)
-    if ( el.dataset && el.dataset.optbind) { // el.dataset[oba] // <= option bind attribute
-      // Lookup and probe array inner format, turn into universal format supported by addoptions()
-      var oa = optcoll[el.dataset.optbind];
-      if (!oa) { console.log(`Options could not be looked up for ${el.name}!`); return; }
-      // AoA - Map to AoO
-      if (Array.isArray(oa[0]))     { oa = oa.map( (e) => { return {id: e[0], name: e[1]}; } ); }
-      // AoS (str or scalar) - Map to AoO
-      if (typeof oa[0] == "string") { oa = oa.map( (e) => { return {id: e,    name: e}; } ); }
-      // Else assume (correct) AoO (w, id,name)
-      webview.addoptions( oa, el );
-    }
+    optel_setup(el, optcoll);
   });
 }
+// Setup single select options element.
+// Sep'd out to be able to address an exception-case select e.g. when callback based
+// (non-array) options (myopt: () => {...}) are extracted from the form data itself and
+// the second pass must be post-poned for data to be available.
+function optel_setup(el, optcoll) {
+  if ( el.dataset && el.dataset.optbind) { // el.dataset[oba] // <= option bind attribute
+    // Lookup and probe array inner format, turn into universal format supported by addoptions()
+    var oa = optcoll[el.dataset.optbind];
+    if (!oa) { console.log(`Options could not be looked up for ${el.name}!`); return; }
+    // Function ? Dispatch func oa, replace with returned array. TODO: Pass ... ?
+    if (typeof oa == 'function') { oa = oa(); }
+    // By now oa should be array - if not, log it and skip it.
+    if (!Array.isArray(oa)) { console.log(`Warning: options (for ${el.dataset.optbind}) not in array (Got: ${typeof oa}) - skipping.`); return; }
+    // AoA - Map/Fix to AoO
+    if (Array.isArray(oa[0]))     { oa = oa.map( (e) => { return {id: e[0], name: e[1]}; } ); }
+    // AoS (str or scalar) - Map/Fix to AoO
+    if (typeof oa[0] == "string") { oa = oa.map( (e) => { return {id: e,    name: e}; } ); }
+    // Else assume (correct) AoO (w, id,name)
+    webview.addoptions( oa, el );
+  }
+  // Fallback try looking for V-related ... and create V-code for options (binds options 2-way). Here or in 
+  
+  // 
+  else { console.log("optel_setup: Elem dataset or dataset.optbind missing!"); }
+}
+
 function jgrid_fielddefs(ev, act) {
   let fldinfo = act.fldinfo;
   let viewid = act.viewid || "routerdiv";
   let keys = Object.keys(fldinfo);
   console.log(`${keys.length} fldinfo specs.`);
+  function wtype_cell(val, item) {
+    if (val == 'options') { return `${val} (${item.optbind})`;}
+    return val;
+  }
   var fldinfo_fldinfo = [
      {"name": "name",   "title": "Field Label", "type": "text", "width": 20, itemTemplate: null, }, // "wtype": "options", "optbind": "chaintype"
      {"name": "title",   "title": "Field Display Name", "type": "text", "width": 20, itemTemplate: null, },
      {"name": "type",   "title": "Field Type", "type": "text", "width": 20, itemTemplate: null, },
+
+     {"name": "dtype",   "title": "Data Type", "type": "text", "width": 20, itemTemplate: null, },
+     {"name": "wtype",   "title": "Widget Type", "type": "text", "width": 20, itemTemplate: wtype_cell, },
+
      {"name": "width",   "title": "Width (chars)", "type": "text", "width": 20, itemTemplate: null, },
      {"name": "visible",   "title": "Visible", "type": "text", "width": 20, itemTemplate: null, },
      {"name": "itemTemplate",   "title": "Field CB", "type": "text", "width": 20, itemTemplate: (val, item) => { return val ? "CB" : ""; }, },
