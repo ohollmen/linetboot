@@ -10,7 +10,7 @@
 * - Read (fs to client)
 *   - Find yaml file by URL/basename from the set of paths (cfg.yaml_path)
 * - Write (in order of preference / trying)
-*   - member "ofn" in JSON coming from frontend, append this to cfg.yaml_root
+*   - OLD: member "ofn" in JSON coming from frontend, append this to cfg.yaml_root
 *   - uel2fs_cb callback function (called with (url, cfg)) and returning fs path to save to (See path notes below)
 *   - url2fs (string-to-string object) mapping from cfg.url2fs[url] with value indicating fs path to save to (See path notes below). Note: URLs must be exact 
 *   - Use URL path appending it to cfg.yaml_root
@@ -47,8 +47,8 @@ module.exports.cfg = cfg; // Keep in sync in cfg
 // default and override one by one. 
 function init(cfg_p) {
   if (cfg_p) { module.exports.cfg = cfg = cfg_p; } // Keep in sync !
-  // Use Event emitter ?
-  if (cfg.eemod) { let EventEmitter = require(cfg.eemod);cfg.ee = EventEmitter(); }
+  // Use Event emitter ? Node.js native: const EventEmitter = require('node:events');
+  if (cfg.eemod) { let EventEmitter = require(cfg.eemod); cfg.ee = EventEmitter(); }
   // Validate that:
   // - paths in yaml_path are actually dirs ? 
   // yaml_root
@@ -62,7 +62,20 @@ function findinpath(fn, paths) {
   console.log(`Got path: '${p}'  for file '${fn}'`);
   return p ? `${p}/${fn}` : null;
 }
+// Helper to extract YAML ctx info:
+// - basename of gotten/set file
+// - fn embedded "kind" (first dot-delimited part of file basename)
 
+// 
+function yaml_ctx(fn) {
+  let ctx = {};
+  ctx.bn = path.basename(fn);
+  if (!ctx.bn) { return null; }
+  let m = ctx.bn.match(/^(\w+)\./); // .(.+)$
+  if (!m) { return null; }
+  ctx.kind = m[1];
+  return ctx;
+}
 // Fetch YAML file as JSON (GET)
 function getfsyaml(req, res) {
   var jr = {status: "err", msg: "Could convert/send YAML as JSON. "}
@@ -71,6 +84,7 @@ function getfsyaml(req, res) {
   let cont = fs.readFileSync(fname, 'utf8');
   let j = yaml.load(cont); // safeLoad() deprecated !!
   if (!j) { jr.msg += "Failed to parse YAML !"; console.log(`${jr.msg}`); return res.json(jr); }
+  cfg.debug && console.log(`Loaded YAML from ${fname}: `+JSON.stringify(j));
   // Preproc CB per URL or common (single/shared) cb ? Similar to set...()
   if (cfg.precb_r && typeof cfg.precb_r == 'function') { cfg.precb_r(j, fname); }
   //res.json({status: "ok"});
@@ -97,25 +111,32 @@ function setfsyaml(req, res) {
   let wpath = cfg.yaml_root; // TODO: ???? Esp. intermediate paths !!!
   // How to get intermediate path - allow few (flexible) options ? Allow even ofn to be configurable ?
   let fn; // TODO: Extract path.dirname(ofn), append with URL ?
-  if (j.ofn) { fn = `${wpath}/${j.ofn}`; } // Append intermediate path to wpath (req.params ???)
-  else if (cfg.url2fs_cb && (typeof cfg.url2fs_cb == "function") && cfg.url2fs_cb(url)) {
+  let fnmethod = "";
+  // Do NOT take from ofn !!!
+  //if (j.ofn) { fn = `${wpath}/${j.ofn}`; } // Append intermediate path to wpath (req.params ???)
+  //else
+  if (cfg.url2fs_cb && (typeof cfg.url2fs_cb == "function") && cfg.url2fs_cb(url)) {
     fn = cfg.url2fs_cb(url, cfg);
     if (!fn.match(/$\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+    fnmethod = 'cb';
   } // TODO: launch once only
   else if (cfg.url2fs && cfg.url2fs[url]) {
     fn = cfg.url2fs[url];
     // Test relative / absolute
     if (!fn.match(/$\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+    fnmethod = 'name-mapping';
   }
-  else { fn = `${wpath}/${req.url}`; }
+  else { fn = `${wpath}/${req.url}`; fnmethod = 'name-from-url';}
   // TODO: Create intermediate directories !!!
   let dn = path.dirname(fn);
   if ( ! fs.existsSync(`${dn}`) ) { fs.mkdirSync(`${dn}`, { recursive: true }); console.log(`Created (missing) dir path '${dn}' for '${fn}'`); }
-  try { fs.writeFileSync(fn ,yc, {encoding: "utf8"} ); console.log(`Wrote '${req.url}' (URL) to filesys: '${fn}'`); }
+  try { fs.writeFileSync(fn ,yc, {encoding: "utf8"} ); console.log(`Wrote '${req.url}' (URL) to filesys: '${fn}' (Method: ${fnmethod})`); }
   catch (ex) { jr.msg += `Failed to write YAML to ${fn}: ${ex}`; console.error(jr.msg); return res.json(jr); };
   console.log("## YAML-to-save:\n"+yc+"\n# "+fn);
-  res.json({status: "ok", data: yc, });
-  // Elswhere to receive ee.on("yaml-set", (jdata) => {})
+  let r = {status: "ok", data: j, };
+  // if (cfg.rdatafmt == 'yaml') { r.data = yc; }
+  res.json(r);
+  // Elswhere to receive ee.on("yaml-set", (jdata) => { ... })
   if (cfg.ee) { ee.emit("yaml-set", j); } // j = data from client. Only when cfg.eemod loaded, cfg.ee instantiated !!
   if (cfg.postcb_w && typeof cfg.postcb_w == 'function') { cfg.postcb_w(j, fn); }
 }
@@ -123,6 +144,7 @@ function setfsyaml(req, res) {
 module.exports = {
   init: init,
   findinpath: findinpath,
+  yaml_ctx: yaml_ctx,
   // Web handlers to 
   getfsyaml: getfsyaml,
   setfsyaml: setfsyaml,
