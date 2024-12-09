@@ -20,9 +20,10 @@
 # - License (XML) has to be entered in Web GUI (Settings => Licensing => Add License)
 # - In case a (config) migration happnes, logs ,may be written in /opt/splunk/var/log/splunk/migration.log.*
 # - In case manual restart is needed: `ansible 'splunkhost*' -m shell -b -a 'systemctl restart Splunkd'`
+# - If your cluster has heavy forwarder hosts, upgrade those first (master then). 
 # 
 # ## Checking effectiveness of upgrade
-# 
+# Check which version of RPM package is installed on the system:
 # ```
 # ansible 'splunkhost*' -m shell -b -a "yum list installed splunk"
 # ```
