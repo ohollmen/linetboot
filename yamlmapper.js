@@ -80,7 +80,7 @@ function yaml_ctx(fn) {
 function getfsyaml(req, res) {
   var jr = {status: "err", msg: "Could convert/send YAML as JSON. "}
   var fname = findinpath(req.url, cfg.yaml_path); // module: yaml_path
-  if (!fname) { jr.msg += `Failed find YAML file from configured paths (${cfg.modelpath.length}) !`; console.log(`${jr.msg}`); return res.json(jr); }
+  if (!fname) { jr.msg += `Failed find YAML file from configured paths (${cfg.yaml_path.length}) !`; console.log(`${jr.msg}`); return res.json(jr); }
   let cont = fs.readFileSync(fname, 'utf8');
   let j = yaml.load(cont); // safeLoad() deprecated !!
   if (!j) { jr.msg += "Failed to parse YAML !"; console.log(`${jr.msg}`); return res.json(jr); }
