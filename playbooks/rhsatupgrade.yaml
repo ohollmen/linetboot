@@ -4,7 +4,7 @@
 # Example run for patch version (Example scenarios: patch (by pattern): 6.11.z, minor upgrade to exact version 6.12:
 # ```
 # # Patch upgrade ("update")
-# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.11.z" --syntax-check
+# ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.11.z reboot=true" --syntax-check
 # # Minor upgrade ("upgrade")
 # ansible-playbook rhsatupgrade.yaml -l rhsatellite-01.corp.com -e "host=all rhsat_host=rhsatellite-01.corp.com tgtver=6.12 minorup=1" --syntax-check
 # Minor upgrade with explicit passing of repos (MUST use JSON params)
@@ -108,6 +108,11 @@
     - name: Advise to fix hostname to RHSat preferred hostname at next reboot
       debug:
         msg: 'Change hostname: hostnamectl set-hostname {{ rhsat_host }}'
+    #- name: Generate a shell script to fix up the hostname
+    #  copy:
+    #    content: "hostnamectl set-hostname {{ rhsat_host }}\nexit 0"
+    #     dest: /root/hostname_fix.sh
+    #      mode: "ug+x"
     - name: Reboot upgraded host (optional)
       #shell: reboot
       reboot:
