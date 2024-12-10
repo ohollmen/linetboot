@@ -1417,6 +1417,7 @@ function form_jg(fdefs, opts) {
       let bl = fd.optbind ? fd.optbind : ""; // Bind label. Do not allow interpolation to "undefined"
       let multi = (fd.multi) ? `multiple="multiple"` : "";
       // TODO: Add optional v-for="" for hyper-dynamic options (options from self-data) based on ...
+      // let vf = ''; let forcont = '';
       //if (fd.optdatamem) { vf = `v-for="it in this.${fd.optdatamem}"`; forcont = "<option value="${}">${}</option>"; }
       lw.widget = `<select  name="${prefix}${fd.name}" v-model="${prefix}${fd.name}" id="${idprefix}${fd.name}" data-optbind="${bl}" ${typetag} class="${fd.css ? fd.css : ''}" ${multi}></select>`;
     }
@@ -1620,7 +1621,7 @@ function optel_setup(el, optcoll) {
     var oa = optcoll[el.dataset.optbind];
     if (!oa) { console.log(`Options could not be looked up for ${el.name}!`); return; }
     // Function ? Dispatch func oa, replace with returned array. TODO: Pass ... ?
-    if (typeof oa == 'function') { oa = oa(); }
+    if (typeof oa == 'function') { console.log(`Options for ${el.name} configured by CB.`); oa = oa(); }
     // By now oa should be array - if not, log it and skip it.
     if (!Array.isArray(oa)) { console.log(`Warning: options (for ${el.dataset.optbind}) not in array (Got: ${typeof oa}) - skipping.`); return; }
     // AoA - Map/Fix to AoO
