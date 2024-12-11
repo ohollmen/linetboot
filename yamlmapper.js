@@ -60,6 +60,7 @@ function init(cfg_p) {
 function findinpath(fn, paths) {
   var p = paths.find( (p) => { return fs.existsSync(`${p}/${fn}`); } );
   console.log(`Got path: '${p}'  for file '${fn}'`);
+  //if (!p) { console.error(`Warning: path for ${fn} not resolved (this will lead to problems if caller is not checking returned value)!`); }
   return p ? `${p}/${fn}` : null;
 }
 // Helper to extract YAML ctx info:
@@ -133,12 +134,17 @@ function setfsyaml(req, res) {
   try { fs.writeFileSync(fn ,yc, {encoding: "utf8"} ); console.log(`Wrote '${req.url}' (URL) to filesys: '${fn}' (Method: ${fnmethod})`); }
   catch (ex) { jr.msg += `Failed to write YAML to ${fn}: ${ex}`; console.error(jr.msg); return res.json(jr); };
   console.log("## YAML-to-save:\n"+yc+"\n# "+fn);
-  let r = {status: "ok", data: j, };
+  let r = { status: "ok", data: j, };
   // if (cfg.rdatafmt == 'yaml') { r.data = yc; }
-  res.json(r);
+  
   // Elswhere to receive ee.on("yaml-set", (jdata) => { ... })
   if (cfg.ee) { ee.emit("yaml-set", j); } // j = data from client. Only when cfg.eemod loaded, cfg.ee instantiated !!
-  if (cfg.postcb_w && typeof cfg.postcb_w == 'function') { cfg.postcb_w(j, fn); }
+  if (cfg.postcb_w && typeof cfg.postcb_w == 'function') {
+    let ro = cfg.postcb_w(j, fn, r);
+    if (!ro || (typeof ro != 'object') ) { return res.json(r); } // none or non-object
+    else { Object.keys(ro).forEach( (k) => { r[k] = ro[k]; }); return res.json(r); } // Merge
+  } // Added r
+  else { return res.json(r); }
 }
 
 module.exports = {
