@@ -1400,7 +1400,7 @@ function form_jg(fdefs, opts) {
     let lw = {};
     // Subtypes (allow array and object ?)
     if (!fd.visible && fd.type == 'array') { arr.push({ wtype: "subtypepane", subtype: `${fd.dtype}`, memname: `${fd.name}`} ); return; }
-    let ltitle = opts.lpopup ? `${idprefix}${fd.name}` : ""; // WIP: Label title (popup)
+    let ltitle = opts.lpopup ? `title="${idprefix}${fd.name}"` : ""; // WIP: Label title (popup)
     lw = { wtype: wtype, label: `<label ${lws} for="${idprefix}${fd.name}" ${ltitle}>${fd.title}</label>` };
     
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
