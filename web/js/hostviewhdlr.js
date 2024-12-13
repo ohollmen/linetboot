@@ -1370,6 +1370,7 @@ function cmod_covcomp(data, copts) {
 * - labelw (int) - Label Width (default: 120 px),
 * - wfactor (number) - Widget field size factor (to multiply field def "width" by to set widget size, default: 0.6)
 * - formid (str) - Form element id - passing this will trigger generating the form tags around form widgets (no default).
+* - lpopup - Label popup (WIP, todo: bool, function)
 * @param fdefs (array) - Field definitions as AoO (with name, label, extra info)
 * @param opts (object) - Options for form generation
 * See http://js-grid.com/docs/ for documentation. Note: Using `"visible": false` (See: Configuration => fields) allows setting up custom or to-do fields.
@@ -1399,7 +1400,8 @@ function form_jg(fdefs, opts) {
     let lw = {};
     // Subtypes (allow array and object ?)
     if (!fd.visible && fd.type == 'array') { arr.push({ wtype: "subtypepane", subtype: `${fd.dtype}`, memname: `${fd.name}`} ); return; }
-    lw = { wtype: wtype, label: `<label ${lws} for="${idprefix}${fd.name}">${fd.title}</label>` };
+    let ltitle = opts.lpopup ? `${idprefix}${fd.name}` : ""; // WIP: Label title (popup)
+    lw = { wtype: wtype, label: `<label ${lws} for="${idprefix}${fd.name}" ${ltitle}>${fd.title}</label>` };
     
     // TODO: Choice of widget (derive from ... ? "wtype"/"uitype"). How to differentiate ac (also: create another hidden for value ...)
     // TODO: Call widget gen. callbacks w. (fd, opts)
