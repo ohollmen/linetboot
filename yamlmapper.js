@@ -36,7 +36,7 @@ let cfg = {
   //// Write config ////
   yaml_root: "", // Must set
   url2fs: {}, // Name Mapping from URL-to-FS
-  url2fs_cb: null, // CB called with URL
+  url2fs_cb: null, // CB called with URL, jdata and ymcfg. Return rel path under yaml_root to use as save-to-fn.
   eemod: "", // Use event emitter module ? If yes, make sure this is installed and returns a handle to EventEmitter.
   // See: wolfy87-eventemitter, eventemitter2, eventemitter3, event-emitter, ...
   ee: null,
@@ -116,9 +116,11 @@ function setfsyaml(req, res) {
   // Do NOT take from ofn !!!
   //if (j.ofn) { fn = `${wpath}/${j.ofn}`; } // Append intermediate path to wpath (req.params ???)
   //else
-  if (cfg.url2fs_cb && (typeof cfg.url2fs_cb == "function") && cfg.url2fs_cb(url)) {
-    fn = cfg.url2fs_cb(url, cfg);
-    if (!fn.match(/$\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+  if (cfg.url2fs_cb && (typeof cfg.url2fs_cb == "function") ) { // && cfg.url2fs_cb(url) ???
+    fn = cfg.url2fs_cb(url, j, cfg);
+    //if (!fn.match(/^\//)) { fn = `${wpath}/${fn}`; } // relative fn, prefix cfg.yaml_root
+    // Initial simple & "secure" implementation: Always force save under ${wpath} (whether prefixed with '/' or not)
+    fn = `${wpath}/${fn}`;
     fnmethod = 'cb';
   } // TODO: launch once only
   else if (cfg.url2fs && cfg.url2fs[url]) {

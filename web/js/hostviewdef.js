@@ -25,7 +25,11 @@ var gridplug = {
     return val.join(", ");
   },
   open_as_page: (val, item) => {
-    
+     return `<a href="${val}" target="_blank" rel="noreferrer noopener">${val}</a>`;
+  },
+  as_yaml: (val, item) => {
+    if (!windows.jsyaml) { return `<pre><small>${JSON.stringify(val, null, 2)}</small></pre>`; }
+    return(`<pre><small>${jsyaml.dump(val)}</small></pre>`);
   }
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
