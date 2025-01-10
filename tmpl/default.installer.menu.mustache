@@ -1177,3 +1177,27 @@ initrd http://{{ httpserver }}/photon4/isolinux/initrd.img
 # Example from ISO: append root=/dev/ram0 ks=cdrom:/isolinux/my_ks.cfg loglevel=3
 # TODO: ks=http://{{ httpserver }}/photon_ks.json?osid=photon4
 append root=/dev/ram0  loglevel=3
+
+# Kali Linux
+# https://github.com/BeeHiveCyberSecurity/KnowledgeBase/blob/web/operating-systems/kali-linux/installation/deploying-kali-over-network-pxe-ipxe-install.md
+# Get the netboot kernel / initrd (like Debian)
+# wget https://http.kali.org/kali/dists/kali-rolling/main/installer-amd64/current/images/netboot/netboot.tar.gz
+# -P /tftpboot/
+# https://www.kali.org/docs/installation/network-pxe/
+# Unpack netboot.tar.gz and see *.cfg for hints on boot options
+# - Info on PXE Live mode: https://0day.work/how-to-configure-pxe-network-booting-for-kali-linux/
+label kali_live
+menu label Kali Linux 2024.4 (Live)
+kernel http://{{ httpserver }}/kali/live/vmlinuz
+initrd http://{{ httpserver }}/kali/live/initrd.img
+# theme=dark rescue/enable=true priority=low (not full auto) "auto=true priority=critical"
+# vga=788
+# Live mode 
+# - https://forums.kali.org/archived/showthread.php?50378-PXE-boot-Kali-2020-2-over-network
+# - https://0day.work/how-to-configure-pxe-network-booting-for-kali-linux/
+# - Seems live mode is only supported with "kali light" / Live Boot
+# (OLD: kali-linux-light-YYYY.M-amd64.iso, NEW kali-linux-YYYY.M-live-amd64.iso)
+# union=overlay domain=config
+# username=root (pw toor does not work). vga=ask triggesr interact. mode
+append boot=live  components  hostname=kali  fetch=http://{{ httpserver }}/kali/live/filesystem.squashfs -- vga=788 splash
+# append vga=788 theme=dark
