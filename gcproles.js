@@ -17,6 +17,8 @@ function init(_mcfg) {
   // NOTE: "expected a single document in the stream, but found more" - Must use loadAll on multi-document YAML.
   rarr = jsyaml.loadAll(cont);
   if (!rarr || ! Array.isArray(rarr)) { throw "Roles (in YAML) could not be loaded/parsed !"; }
+  if (!cfg.rolepermspath) { cfg.rolepermspath = `${process.env["HOME"]}/.linetboot/gcproleperms`; }
+  if (!fs.existsSync(cfg.rolepermspath)) {console.log(`Role perms path ${cfg.rolepermspath} does not exist !`);  }
 }
 // Load Role list with "title" values (line oriented text).
 function rlist_load(fn) {
@@ -84,11 +86,14 @@ function rres_fmt(rres) {
 
 let acts = [
   //"search":
-  {"id": "search", "title": "Search a (single) role.", cb: searchrole},
+  {"id": "search", "title": "Search a (single) role by title.", cb: searchrole},
   //"searchlist":
-  {"id": "searchlist", "title": "Search by search list (file, pass as first arg.)", cb: searchlist},
+  {"id": "searchlist", "title": "Search by a role search list (file, pass as first arg.)", cb: searchlist},
+  // Cache
+  {"id": "cache", "title": "Cache perms of a role / role list.", cb: cacheroleperms},
 ];
 
+// node gcproles.js searchlist myroles.txt badroles.txt
 function searchlist(opts) {
   ////////////// R-List //////////////
   //let rlistfn = process.argv[2];
@@ -107,6 +112,7 @@ function searchlist(opts) {
   let rres = rlist_search(rlist, exact);
   //console.log(JSON.stringify(rres, null, 2));
   console.log(`Found ${rres.res.length} roles for original ${rlist.length} (exact=${exact}).`);
+  if (opts.retres) { return rres; }
   rres_fmt(rres);
 }
 function searchrole(opts) {
@@ -129,7 +135,16 @@ function searchrole(opts) {
   console.log(`Results for search by '${skw}'`);
   rres_fmt({res: res});
 }
-
+// Cache role permissions gotten from (e.g.) `gcloud iam roles describe roles/editor`
+function cacheroleperms(opts) {
+  opts.retres = 1;
+  rres = searchlist(opts); // (Re-)use CL handler
+  console.log(rres);
+  rres.res.forEach( (ri) => {
+    let dum_rn = ri.name.split(/\//);
+    console.log(`gcloud iam roles describe ${ri.name} > ${cfg.rolepermspath}/${dum_rn[1]}.json`);
+  });
+}
 function usage(msg) {
   if (msg) { console.log(msg); }
   console.log("Subcommands ");
@@ -139,9 +154,6 @@ function usage(msg) {
   process.exit(1);
 }
 
-// node gcproles.js myroles.txt badroles.txt
-// TODO:
-// Subcommands: search (single by description)
 // - Cache role-perms files based on rolelist to cfg.rolepermpath (gen cmds first)
 if (process.argv[1].match("gcproles.js")) {
   init();
