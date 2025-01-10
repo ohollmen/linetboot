@@ -25,7 +25,7 @@
 * - absolute / starting with '/' in which case path is used as absolute as-is path
 * - relative, NOT starting w. '/' in which case they are appended to cfg.yaml_root to get the final filename.
 * ## TODO
-* 
+* - Allow sending custom-wrapped response (driven by config)
 */
 var fs = require("fs");
 var path = require("path");
