@@ -247,7 +247,11 @@ if (process.argv[1].match("terraform.js")) {
   ops[op](); // Dispatch
   //console.log("EXIT");
 }
-
+// Note: sample of json-schema.org schema: Jenkins path: /manage/configuration-as-code/schema
+// Tentative: store(map): sampled.types, NOT: sampled.cnt, sampled.false, sampled.null
+// todo: Sample single entry, pass schema
+// Note: Schema keeps track of "integer" vs. "number" (float)
+// On type: o, there is always properties
 function introspect(arr) {
   var mm = {}; // Top: attrs
   arr.forEach((e) => {
@@ -255,19 +259,27 @@ function introspect(arr) {
     ks.forEach((k) => {
       // Note also: o.hasOwnProperty('myProperty'), typeof myVariable === 'undefined'
       if (!mm[k]) { mm[k] = {types: { "null": 0, "undefined": 0}, lens: {} }; } // Val types
+      //let mmk = mm[k]; // TODO: use mmk
       var t = typeof e[k];
       // Special values
-      if (e[k] === null)        { mm[k].types.null++; return; }
-      if (e[k] === undefined)   { mm[k].types.undefined++; return; }
+      if (e[k] === null)        { mm[k].types.null++; return; } // Det. null (as typeof null === 'object')
+      if (e[k] === undefined)   { mm[k].types.undefined++; return; } // .toString() N/A
       if (Array.isArray(e[k]) ) { mm[k].types.array = mm[k].types.array || 0; mm[k].types.array++; return; } // ++ on non-existing sets null
       if (isobj(e[k])) { mm[k].types.object = mm[k].types.object || 0; mm[k].types.object++; return; } // TODO: ...
-      if (!mm[k].types[t]) { mm[k].types[t] = 0; } // Init to 0
+      if (!mm[k].types[t]) { mm[k].types[t] = 0; } // Init count of type to 0 (Also: !mm[k].types.hasOwnProperty(t); )
       if (t == 'string') { mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k].length); }
       // Same with number
-      if (t == 'number') { mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k]); }
+      if (t == 'number') {
+         mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k]);
+         if ( mm[k].toString().match(/^\d+$/) ) { typecnt_init(mm[k], 'integer'); mm[k].types.integer++; return; } // Be exclusive w. number
+      }
+      //if (t == 'boolean') { mm[k].lens[t] = mm[k].lens[t] || 0; } // Already handled, no need to enable
       mm[k].types[t] += 1;
     });
   });
+  function typecnt_init(mmk, t) {
+    if (!mmk.types[t]) { mmk.types[t] = 0; }
+  }
   function isobj(o) {
     return typeof o === 'object' && !Array.isArray(o) && o !== null;
   }
