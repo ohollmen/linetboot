@@ -76,7 +76,7 @@ function confluence_index(req, res) {
     else if (cfg.token) {
       opts.headers.Authorization = "Bearer "+cfg.token;
     }
-    else { throw "Neither Basic or Bearer auth credentials were configured"; }
+    else { throw "Neither Basic or Bearer auth credentials were configured by config keys "+Object.keys(cfg).join(','); }
     return;
   } // add_basic_creds
 
