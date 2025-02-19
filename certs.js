@@ -129,7 +129,7 @@ function foo() {
       cproc.exec(cmd, function (err, stdout, stderr) {
         //console.log("Ran shell: "+err);
         // console.log("Ran shell out: "+stdout);
-        if (err) { return cb(err, null); }
+        if (err) { let em = `Error running ${cmd}: ${err} (cmd error: ${stderr})`; return cb(err, null); }
         
         // ci.processed = 1;
         var m; // match
@@ -441,14 +441,14 @@ function certdec(req, res) {
 
   var fn = "/tmp/cert_"+Date.now()+".crt";
   console.log("FN:"+fn);
-  // try {
-  fs.writeFileSync(fn, cont, {encoding: "utf8"});
-  //} catch (ex) { }
+  try {
+    fs.writeFileSync(fn, cont, {encoding: "utf8"});
+  } catch (ex) { console.log("Failed to save Certificate content for decoding: "+ex); }
   // Create wrapper suitable for infoex(ci, cb). See loadfiles() for what should init. be there.
   // NOTE: Indicate wantraw: 1 to capture raw stdout.
   var ci = {fname: fn, bfname: path.basename(fn), cont: cont, type: "cert", wantraw: 1}; // fname, bfname(optional), cont, type: "cert"
   infoex(ci, (err, ci) => {
-    if (err) { jr += "Error in details extraction\n"; return res.json(jr); }
+    if (err) { jr.msg += `Error in details extraction: ${err}`; return res.json(jr); }
     try { fs.unlinkSync(fn); } catch(ex) { console.log("Could not remove any temporarily stored cert. " + ex.toString()); return res.json(jr); }
     console.log(ci.raw);
     res.json({status: "ok", data: ci, }); // msg: "Wrote: "+fn
