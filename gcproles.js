@@ -4,10 +4,14 @@
 * 
 */
 let fs = require("fs");
-let jsyaml = require("js-yaml");
+let jsyaml  = require("js-yaml");
+let sqlite3 = require('sqlite3').verbose(); // Package node-sqlite3, npm install sqlite3
+let cproc   = require('child_process');
 let cfg = {};
 let rarr = [];
 let exlist = null; // signify absence
+let db = null;
+
 function init(_mcfg) {
   cfg = (_mcfg && _mcfg["gcproles"]) ? _mcfg["gcproles"] : _mcfg;
   if (!cfg) { cfg = {}; }
@@ -19,6 +23,18 @@ function init(_mcfg) {
   if (!rarr || ! Array.isArray(rarr)) { throw "Roles (in YAML) could not be loaded/parsed !"; }
   if (!cfg.rolepermspath) { cfg.rolepermspath = `${process.env["HOME"]}/.linetboot/gcproleperms`; }
   if (!fs.existsSync(cfg.rolepermspath)) {console.log(`Role perms path ${cfg.rolepermspath} does not exist !`);  }
+  // Experimental DB support: CREATE TABLE principal_perms (id INTEGER PRIMARY KEY, ptype VARCHAR(128) NOT NULL, pname VARCHAR(128) NOT NULL, role VARCHAR(128) NOT NULL);
+  // TODO: projectid VARCHAR(128) NOT NULL
+  if (!cfg.roledb) { cfg.roledb = `${process.env["HOME"]}/.linetboot/gcproles.sqlite`; }
+  if (fs.existsSync(cfg.roledb)) {
+    //sqlite3.verbose();
+    let mode = sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE | sqlite3.OPEN_FULLMUTEX;
+    db = new sqlite3.Database(cfg.roledb, mode, function (err) {
+      if (err) { console.error(`Error: Opening DB ${cfg.roledb} failed: ${err}`); process.exit(1); }
+      console.log(`# Opened connection to: ${cfg.roledb}`);
+    }); // ':memory:'
+
+  }
 }
 // Load Role list with "title" values (line oriented text).
 function rlist_load(fn) {
@@ -27,6 +43,7 @@ function rlist_load(fn) {
   let lines = cont.split(/\n/);
   lines = lines.map( (l) => { return l.trim(); });
   lines = lines.filter( (l) => { return l && ( ! l.match(/^\s+$/) ); });
+  lines = lines.filter( (l) => { return  ! l.match(/^#/); });
   return lines;
 }
 // Search items in role list. Use mod-global rarr to search from.
@@ -35,6 +52,7 @@ function rlist_search(rlist, exact) {
   let arr = []; // Output / Res
   let notfound = [];
   let ambiguous = [];
+  //console.log(`EXLIST: ${exlist.length}`);
   rlist.forEach( (rdn) => { // role descriptive name
     // name (e.g. roles/iam.roleAdmin),
     // title (e.g. Role Administrator)
@@ -53,7 +71,7 @@ function rlist_search(rlist, exact) {
       return;
     }
     if (exlist && exlist.includes(fres[0].title)) {
-      console.log(`Warning: Role to be excluded: ${fres[0].title}`); fres[0].exclude = 1;
+      console.log(`Warning: Role to be marked excluded: ${fres[0].title}`); fres[0].exclude = 1;
     }
     arr.push(fres[0]);
   });
@@ -81,9 +99,23 @@ function rres_fmt(rres) {
     console.log(`Roles that had many matches: ${rres.ambiguous.join(', ')}`);
   }
   let i = 1;
-  rres.res.forEach( (ri) => { console.log(`${i} ${ri.name}  "${ri.title}"`); i++; });
+  rres.res.forEach( (ri) => { console.log(`${i} ${ri.name}  "${ri.title}"  ${ri.exclude ? "EXCLUDE" : "ok"}`); i++; });
 }
-
+function rlist_perms(rres, opts) {
+  let perms = {};
+  rres.res.forEach( (ri) => {
+    let pfn = ri.name.split(/\//)[1] + ".json";
+    let apfn = `${cfg.rolepermspath}/${pfn}`;
+    if (!fs.existsSync(apfn)) { throw `roleperm list '${apfn}' does not exist`; return; }
+    let cont  = fs.readFileSync(apfn, 'utf8');
+    let rinfo = JSON.parse(cont);
+    console.log(`Got ${rinfo.includedPermissions.length} Perms for "${rinfo.title}" (${rinfo.name})`); ri.permcnt = rinfo.includedPermissions.length;
+    rinfo.includedPermissions.forEach( (perm) => {  if (typeof perms[perm] != 'number') { perms[perm] = 0; } perms[perm]++;  });
+  });
+  console.log(`Aggregared perms from ${rres.res.length} roles: ${Object.keys(perms).length}`);
+  if (opts.retres) { return perms; }
+  //console.log(perms);
+}
 let acts = [
   //"search":
   {"id": "search", "title": "Search a (single) role by title.", cb: searchrole},
@@ -91,6 +123,12 @@ let acts = [
   {"id": "searchlist", "title": "Search by a role search list (file, pass as first arg.)", cb: searchlist},
   // Cache
   {"id": "cache", "title": "Cache perms of a role / role list.", cb: cacheroleperms},
+  // Store
+  {"id": "store", "title": "Store roles for a user/group/sa.", cb: store},
+  // Output r2p
+  {"id": "output", "title": "Output roles-to-members transformed structure.", cb: rolestruct},
+  // Roles Aggr. perms
+  {"id": "rolesperms", "title": "Aggregated permissions of a role list.", cb: rolesperms},
 ];
 
 // node gcproles.js searchlist myroles.txt badroles.txt
@@ -99,26 +137,28 @@ function searchlist(opts) {
   //let rlistfn = process.argv[2];
   let rlistfn = opts.args[0];
   let rlist;try { rlist = rlist_load(rlistfn); } catch (ex) { console.error("No role list passed as (first) argument."); process.exit(1); }
-  console.log(`Loaded role-search items (${rlist.length})`);
+  console.log(`Loaded role-search items (${rlistfn}, ${rlist.length} roles)`);
   console.log(JSON.stringify(rlist, null, 2));
   //////////// Ex-list ////////////
   let exlistfn = opts.args[1]; //process.argv[3];
   if (exlistfn) {
     exlist = rlist_load(exlistfn); // Mod global
-    console.log(JSON.stringify(exlist, null, 2));
+    console.log(`Exclude list: ${JSON.stringify(exlist, null, 2)}`);
   }
   ////// Search //////
   let exact = 1; // TODO: from --exact
   let rres = rlist_search(rlist, exact);
   //console.log(JSON.stringify(rres, null, 2));
-  console.log(`Found ${rres.res.length} roles for original ${rlist.length} (exact=${exact}).`);
+  console.log(`Found ${rres.res.length} roles for original ${rlist.length} (exact=${exact}, num excludes=${exlist ? exlist.length : 0}).`);
   if (opts.retres) { return rres; }
   rres_fmt(rres);
+  //let rres = rlist_search(rlist, exact);rlist_perms(rres);
 }
 function searchrole(opts) {
   //let skw = process.argv[2]; // OLD: 2
   let skw = opts.args[0];
   let oper = ""; let mkw = null;
+  // if (opts.oper && opts.oper.match(/^\S+$/)) { opts.oper = ""; } // Only single token (!) - cancel AND / OR that need multiple operands
   // if (oper) {
   //   mkw = skw.split(/\s+/); // mkw = Multi Keyword
   //   if (mkw.length < 2 ) { console.log("Multiple KW:s expected, but found only single search KW"); }
@@ -140,10 +180,74 @@ function cacheroleperms(opts) {
   opts.retres = 1;
   rres = searchlist(opts); // (Re-)use CL handler
   console.log(rres);
+  // Default: ~/.linetboot/gcproleperms/
+  if (!cfg.rolepermspath) { console.log("No roleperms cache path configured"); return; }
+  if (!fs.existsSync(cfg.rolepermspath)) { throw `Configured roleperms Cache path (${cfg.rolepermspath}) does not exist.`; return; }
+  let arr = [];
+  console.log(`# Using input ${opts.args}`);
   rres.res.forEach( (ri) => {
     let dum_rn = ri.name.split(/\//);
-    console.log(`gcloud iam roles describe ${ri.name} > ${cfg.rolepermspath}/${dum_rn[1]}.json`);
+    let ofn = `${cfg.rolepermspath}/${dum_rn[1]}.json`;
+    let ccmd = `gcloud iam roles describe ${ri.name} --format json`; // > ${ofn}
+    console.log(ccmd);
+    //arr.push({cmd: ccmd, ofn: ofn, });
+    store_rp(ccmd, ofn);
   });
+  function store_rp(cmd, ofn) {
+    cproc.exec(cmd, function (err, stdout, stderr) {
+      if (err) { console.log(`Error executing ${cmd}`); return; }
+      fs.writeFileSync( ofn,  stdout , {encoding: "utf8"} );
+      console.log(`Wrote: ${ofn}`);
+    });
+  }
+}
+
+function store(opts) {
+  // Search 
+  opts.retres = 1;
+  let rres = searchlist(opts);
+  if (process.env['ROLE_PRICIPAL']) { opts.principal = process.env['ROLE_PRICIPAL']; }
+  if (!opts.principal) { console.log("Missing principal for storing principal roles."); process.exit(1);}
+  if (!db) { console.log("No DB Connection\n"); }
+  console.log(`Storing pricipal/role info to ${cfg.roledb}`);
+  rres.res.forEach( (ri) => {
+    if (ri.exclude) { console.log(`# SKIP Role to exclude: ${ri.title}`); return; }
+    let vals = ['group', opts.principal, ri.name];
+    let qi = `INSERT INTO principal_perms (ptype, pname, role) VALUES (?, ?, ?);`;
+    console.log(`${qi}\nVALUES:${vals.join(',')}`);
+    db.run(qi, vals, function (err) {
+      if (err) { console.log(`Error: Failed INSERTING: ${err}`); }
+      console.log(`Inserted by id=${this.lastID}.`);
+    });
+  });
+}
+function rolestruct(opts) {
+  // Could do distinct or https://stackoverflow.com/questions/1960473/get-all-unique-values-in-a-javascript-array-remove-duplicates
+  //function onlyuniq(value, index, array) {return array.indexOf(value) === index; }
+  db.all("SELECT * FROM principal_perms", function (err, rows) {
+    if (err) { console.log("Error querying principal roles\n"); process.exit(1); }
+    let cnts = {all: rows.length};
+    let r2p = {};
+    let hcl = 1;
+    rows.forEach( (pr) => { r2p[pr.role] = []; }); // Wastefully OR rows.map( (pr) => { return pr.role; }).filter(onlyuniq);
+    // or: arr = [...new Set(arr)];
+    cnts.unirole = Object.keys(r2p).length;
+    rows.forEach( (pr) => { r2p[pr.role].push(`${pr.ptype}:${pr.pname}`); });
+    let rs = JSON.stringify(r2p, null, 2);
+    if (hcl) { rs = rs.replace(/":\ *\[/g, '" = ['); rs = rs.split(/\n/).map( (l) => { return `  ${l}`;}).join("\n"); }
+    console.log(`# Role assignments: ${cnts.all}, Unique Roles: ${cnts.unirole}.`);
+    console.log(`rolemems = `+rs);
+  });
+}
+
+
+function rolesperms(opts) {
+  //let exact = 1;
+  opts.retres = 1;
+  let rres = searchlist(opts);
+  rres.res = rres.res.filter( (ri) => { return !ri.exclude; });
+  let perms = rlist_perms(rres, {retres: 1});
+  console.log(perms);
 }
 function usage(msg) {
   if (msg) { console.log(msg); }
@@ -156,18 +260,20 @@ function usage(msg) {
 
 // - Cache role-perms files based on rolelist to cfg.rolepermpath (gen cmds first)
 if (process.argv[1].match("gcproles.js")) {
-  init();
-  console.log(`Loaded all-roles file (${rarr.length} roles) w. success`);
+  
+  
   var argv2 = process.argv.slice(2);
   var op = argv2.shift();
   if (!op) { usage("No subcommand"); }
   var opnode = acts.find( (an) => { return an.id == op;  });
   if (!opnode) { usage(`Subcommand '${op}' not supported.`); }
   let opts = { args: argv2 };
-  console.log(opnode, opts);
+  //console.log(opnode, opts); // DEBUG !!!
+  init();
+  //console.log(`Loaded all-roles file (${rarr.length} roles) w. success`);
   var rc = opnode.cb(opts) || 0;
   //console.log(rarr);
   //searchlist();
   //searchrole();
-  process.exit(rc); // synchr. !
+  //process.exit(rc); // synchr. ONLY !
 }
