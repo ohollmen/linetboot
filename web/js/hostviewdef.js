@@ -1295,6 +1295,12 @@ function riskadj_cell(val, item) {
      {"name": "rulename",   "title": "Rule Name", "width": 30, itemTemplate: null,},
      {"name": "ruleexpr",   "title": "Rule Expression", "width": 80, itemTemplate: null,},
    ];
+   var fldinfo_hcliusage = [
+     {"name": "varname",   "title": "Var. Name", "width": 20, itemTemplate: null,},
+     {"name": "description",   "title": "Description", "width": 30, itemTemplate: null,},
+     {"name": "type",   "title": "Type", "width": 12, itemTemplate: null,},
+     {"name": "cnt",   "title": "Usage", "width": 7, itemTemplate: null,},
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1310,6 +1316,6 @@ function riskadj_cell(val, item) {
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
       "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
-      "nft": fldinfo_nft, "fwrule": fldinfo_fwrule,
+      "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
    };
    

@@ -290,9 +290,11 @@ function iacrepos_vars_stat(opts) {
 }
 // Web handler to 
 function hdl_tfmod_usage(req, res) {
-  let js = { status: "err", "msg": "Error fetching module usage statistics. " };
+  let jr = { status: "err", "msg": "Error fetching module usage statistics. " };
+  if (!ustats || !Array.isArray(ustats)) { jr.msg += `No module stats avail as an array (Set docs for 'varstorepath')`; return res.json(jr); }
   // Lookup module specific info from ustats. transform module vars to AoO
   let modname = req.query.modname;
+  if (!modname) { jr.msg += `No module name passed`; return res.json(jr); }
   let modnode = ustats.find( (modnode) => { return modnode.modname == modname; });
   if (!modnode) { jr.msg += `Could not find module '${modname}'`; return res.json(jr); }
   let inputvars = modnode.vars; // OoAoO

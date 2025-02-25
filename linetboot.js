@@ -69,6 +69,7 @@ var certs    = require("./certs.js");
 var htpasswd = require("./htpasswd.js");
 var jira     = require("./jira.js");
 var afa      = require("./afa.js");
+var hclparse = require("./hclparse.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -134,6 +135,7 @@ function app_init() { // global
   htpasswd.init(global);
   jira.init(global);
   afa.init(global);
+  hclparse.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
@@ -364,6 +366,7 @@ function app_init() { // global
   app.get("/yaml/nets", yaml_show);
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
+  app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
