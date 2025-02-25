@@ -5,9 +5,13 @@
 let hcl  = require("hcl2-parser");
 let fs   = require("fs");
 let path = require("path");
+
 // let hclparse = require('hclparse.js');
 // let stats = {};
-let cfg = {modroot: "",  moddirpatt: "", iacreposroot: "", iacrepopatt: ""};
+let cfg = { modroot: "",  moddirpatt: "", iacreposroot: "", iacrepopatt: "", varstorepath: "", };
+let inited = 0;
+let usagecnt = 0;
+let ustats = null;
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 
 // console.log(process.argv);
@@ -15,6 +19,13 @@ function init(_mcfg) {
   // Do not mandate config
   if (_mcfg && _mcfg.hclparse) { cfg = _mcfg.hclparse; }
   else if (_mcfg) { cfg = _mcfg; }
+  module.exports.cfg = cfg;
+  cfg.webstats = 1;
+  let fns = `${cfg.varstorepath}/allmods.vars.stats.json`;
+  if (fs.existsSync(fns) && cfg.webstats) {
+    ustats = require(fns);
+  }
+  inited++;
 }
 /** Parse HCL (TG or TF) file.
 * Parsing by hcl.parseToObject() produces an array w. [{}, null],
@@ -59,7 +70,7 @@ function ftw (dir, callback, udata)  {
 // function tg_lsr(dirname) {} // redundant
 
 /** Create linear array of TG files from a dir tree.
-* Loads all files by name TG standard name.
+* Loads all files by TG standard name.
 */
 function tgset_fromtree(dirname, opts) { // opts: cb, udata, exc,
   let dopts = { mpatt: '/([a-z\-]+)/+\.?$' }; // {5,}
@@ -81,18 +92,19 @@ function tgset_fromtree(dirname, opts) { // opts: cb, udata, exc,
     let tfb = Array.isArray(tg.terraform) ? tg.terraform[0] : null;
     if (tfb && tfb.source) { // && conf.addmod / src
       let m = tfb.source.match(modpatt); // /\/(NNNNN-[\w-]+)/);
-      if (m) { tg.mod = m[1]; }
+      if (m) { tg.mod = m[1]; } // modname
     }
+    tg.afn = `${fp}`;
     udata.tgmods.push( tg );
   };
   ftw(dirname, cb, udata);
   return udata.tgmods; // udata.tgfiles;
 }
 /** Add single repo (w. path) to statistics */
-function stats_add_repo(stats, dpath, mods) {
+function iacrepos_add_repo(iacrepos, dpath, mods) {
   let rn = path.basename(dpath);
-  let n = { reponame: rn, modules: mods, };
-  stats.push(n);
+  let n = { reponame: rn, repopath: dpath, modules: mods, };
+  iacrepos.push(n);
   return n;
 }
 
@@ -104,25 +116,25 @@ function subdirs_list_bypatt(droot, rnpatt) {
   fnames = fnames.filter( (n) => { return n.match(rnpatt); }); // item.isDirectory()
   return fnames;
 }
-/** Load all cloned repositories (likely git repos) into repo stats structure
+/** Parse / Load all cloned repositories (likely git repos) into repo stats structure
  * Repo stats has: 
  * @todo opts (e.g. with optional dirs: [])
  */
 function iacrepos_all_load(droot, rnpatt) {
   let fnames = subdirs_list_bypatt(droot, rnpatt);
   // Separate ?
-  let stats = []; // reset (global)
+  let iacrepos = []; // reset (global)
   fnames.forEach( (dn) => {
     let dpath = `${droot}/${dn}`;
     let tgfiles = tgset_fromtree(dpath);
-    stats_add_repo(stats, dpath, tgfiles);
+    iacrepos_add_repo(iacrepos, dpath, tgfiles);
   });
-  //console.log(stats);
-  return stats;
+  //console.log(iacrepos);
+  return iacrepos;
 }
 
 ////////////////// vars /////////////////
-function hclvars_all_load(droot, rnpatt) {
+function hclvars_all_extract(droot, rnpatt) {
   let fnames = subdirs_list_bypatt(droot, rnpatt);
   let varm = [];
   fnames.forEach( (dn) => {
@@ -162,54 +174,149 @@ function hclvars_save(varm, vfpath, opts) {
   return cnt;
 }
 //// idx & stats ////
+// Create module-keyed var index.
 function vidx_create(varm) {
   let vidx = { vararr: varm, modidx: {}, unknown: {}, debug: 0 };
   // Populate (fast-lookup) modidx
   varm.forEach( (mod) => { vidx.modidx[mod.modname] = mod; });
   return vidx;
 }
+/* Add to statistics bookkeeping */
 function vidx_mod_var_inc(vidx, mod, varn) {
   let midx = vidx.modidx;
   if (!midx) { return; }
   if (!midx[mod]) { console.log(`No module ${mod} in modidx for inc.`); return; }
   // vars => inputs
   let varnode = null;
-  // Catch deref problems
-  try { varnode = midx[mod].vars[varn]; } catch (ex) { console.error(`Error looking up var node ${mod}.${varn}`); }
+  //console.log("mod-node: ", midx[mod]); // DEBUG
+  // Catch deref problems.
+  // NOTE: The parser (weirdly) wraps var spec in Array, thus ..[0]
+  try { varnode = midx[mod].vars[varn][0]; } catch (ex) { console.error(`Error looking up var node ${mod}.${varn}`); }
   // No varnode (!) - Place to unknown vars
   if (!varnode) {
-    console.log(`No varnode for ${mod}.${varn}`);
+    console.log(`No varnode (spec) for ${mod}.${varn}`); // TODO: Output filename for fixing.
     //NOT: varnode = midx[mod].vars[varn] = {}; // Create ?
     vidx.unknown[`${mod}.${varn}`] = vidx.unknown[`${mod}.${varn}`] ? vidx.unknown[`${mod}.${varn}`] + 1 : 1;
-  } 
+    return; // Must ...
+  }
+  if (Array.isArray(varnode)) { console.log(`Error: varnode is an ARRAY !!!`); }
   if (!varnode.cnt) { varnode.cnt = 0; } // ... Does not exist
-  varnode.cnt += 1;
+  varnode.cnt += 1; // usagecnt++;
+  //console.log(`Found varnode for var ${mod}.${varn}`, varnode);
   // Detect default value, make a special note on it: varnode.defcnt++.
   return;
 }
-// Statistify a set of inputs.
+/** Statistify a set of inputs.
 // module name (mod) is kept as separate param to allow flexiblity on structure (topology, member names).
+// vars.forEach( (m) => {});
 // TODO: Also consider if value is set to default value (make a special note on it) ?
+*/
 function vidx_inputs_stat(vidx, mod, inputs) {
   if (!(typeof inputs == 'object')) { console.log(`Input vars not in an object (module ${mod}) !!`); return; }
-  if (!mod) { console.log(`Module name not present for inputs statistification !!`); return; }
-  Object.keys(inputs).forEach( (k) => { vidx_mod_var_inc(vidx, mod, ); });
+  if (!mod) { // console.log(`Module name not present for inputs statistification !!`);
+     return; } // Var-only TG
+  // Add statistics of module usage (1st phase: inline)
+  if (vidx.modidx[mod]) {
+    if (!vidx.modidx[mod].cnt) { vidx.modidx[mod].cnt = 0; }
+    vidx.modidx[mod].cnt++;
+  }
+  //cfg.debug && console.log(`Module ${mod} w. ${Object.keys(inputs).length} inputs`);
+  Object.keys(inputs).forEach( (k) => {
+    //usagecnt++;
+    vidx_mod_var_inc(vidx, mod, k);
+  });
 }
 
 ///////// (default) cli-handlers ///////
 
+// Collect / Extract variables
 function varstat_gen(opts) {
-  
-}
+  opts = opts || {};
+  let mcfg = cfg;
+  let hclparse = module.exports;
+  // console.log(Object.keys(hclparse)); // DEBUG
+  let vars = hclparse.hclvars_all_extract(mcfg.modroot, mcfg.moddirpatt);
 
+  let vfcnt = hclparse.hclvars_save(vars, mcfg.varstorepath, { force: 1, single: 1 });
+  console.log(`Saved var defs for ${vfcnt} TF modules.`);
+
+  let vidx = hclparse.vidx_create(vars);
+  if (opts.ret) { return vidx; }
+}
+// Load IAC repos from root directory pointer by "iacreposroot" (by pattern)
+// Store all repos in a file named in "iacstorefn".
+function iacrepos_extract_store(opts) {
+  opts = opts || {};
+  let mcfg = cfg;
+  let hclparse = module.exports;
+  // Load IAC (to sample)
+  let iacs = hclparse.iacrepos_all_load(mcfg.iacreposroot, mcfg.iacrepopatt);
+  let fn = mcfg.iacstorefn;
+  fs.writeFileSync(fn, JSON.stringify(iacs, null, 2), {encoding: "utf8"} );
+  console.log(`Stored IAC repos extraction into single file '${fn}'`);
+}
+function iacrepos_vars_stat(opts) {
+  opts = opts || {};
+  let mcfg = cfg;
+  let hclparse = module.exports;
+  let iacs = require(mcfg.iacstorefn);
+  if (!iacs) { console.error(`IAC Repos not parsed/loaded ('${mcfg.iacstorefn}')`); return; }
+  if (!Array.isArray(iacs)) { console.log(`IAC Repos not in an array (from '${mcfg.iacstorefn}') !!!`); return; }
+  console.log(`Parse/loaded ${iacs.length} IAC Repos (from '${mcfg.iacstorefn}')`);
+  opts.ret = 1;
+  let vidx = hclparse.varstat_gen(opts); // CLI handler returning vidx (typ. 1-5s.)
+  if (!vidx) { console.error(`Could not parse/load vars and produce variable index (by cli-handler) !`); return; }
+  console.log(`Starting to collect var stats`);
+  iacs.forEach( (repo) => {
+    if (!Array.isArray(repo.modules)) { console.error(`Modules not in array for repo ${repo.reponame}`); return; }
+    console.log(`Repo ${repo.reponame} (${repo.modules.length} TG files)`);
+    //console.log(repo.modules); // array, DEBUG
+    //process.exit(0); // DEBUG
+    
+    repo.modules.forEach( (tg) => {
+      //console.log(tg); process.exit(0); // DEBUG
+      // Variable-only TG w/o module association.
+      if (typeof tg.inputs != 'object') { console.error(`module ${tg.mod} inputs are not in object (${typeof tg.inputs})`); return; }
+
+      hclparse.vidx_inputs_stat(vidx, tg.mod, tg.inputs);
+    });
+  });
+  // Stats collected to var defs in vidx.vararr In format of mcfg.varstorepath (def. single allmods.vars.json)
+  if (!vidx.vararr) { console.error(`Nothing to store as var usage statistics!!!`); return; }
+  let fn = `${mcfg.varstorepath}/allmods.vars.stats.json`;
+  fs.writeFileSync(fn, JSON.stringify(vidx.vararr, null, 2), {encoding: "utf8"} );
+  console.error(`Statistified ${iacs.length} IAC repos, saved '${fn}'.`);
+  //console.log(`Usage cnt ${usagecnt}`); // DEBUG
+}
+// Web handler to 
+function hdl_tfmod_usage(req, res) {
+  let js = { status: "err", "msg": "Error fetching module usage statistics. " };
+  // Lookup module specific info from ustats. transform module vars to AoO
+  let modname = req.query.modname;
+  let modnode = ustats.find( (modnode) => { return modnode.modname == modname; });
+  if (!modnode) { jr.msg += `Could not find module '${modname}'`; return res.json(jr); }
+  let inputvars = modnode.vars; // OoAoO
+  // Transform
+  let varusages = Object.keys(inputvars).map( (vk) => { inputvars[vk][0].varname = vk; return inputvars[vk][0]; });
+  res.json(varusages);
+}
 if (process.argv[1].match(/\bhclparse.js$/)) {
   console.log("For now - load as library using require() !");
 }
 
 module.exports = {
   cfg: cfg,
-  hcl_parse: hcl_parse, tgset_fromtree: tgset_fromtree, iacrepos_all_load: iacrepos_all_load,
-  hclvars_all_load: hclvars_all_load, hclvars_save: hclvars_save,
+  init: init,
+  hcl_parse: hcl_parse,
+  tgset_fromtree: tgset_fromtree, iacrepos_all_load: iacrepos_all_load,
+  hclvars_all_extract: hclvars_all_extract, hclvars_save: hclvars_save,
   // cli
-  varstat_gen: varstat_gen, 
+  varstat_gen: varstat_gen,
+  iacrepos_extract_store: iacrepos_extract_store,
+  iacrepos_vars_stat: iacrepos_vars_stat,
+  // 
+  vidx_create: vidx_create,
+  vidx_inputs_stat: vidx_inputs_stat,
+  // Web
+  hdl_tfmod_usage: hdl_tfmod_usage,
 };
