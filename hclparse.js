@@ -20,6 +20,8 @@ function init(_mcfg) {
   if (_mcfg && _mcfg.hclparse) { cfg = _mcfg.hclparse; }
   else if (_mcfg) { cfg = _mcfg; }
   module.exports.cfg = cfg;
+  if (typeof cfg.moddirpatt == 'string')  { cfg.moddirpatt  = new RegExp(cfg.moddirpatt); }
+  if (typeof cfg.iacrepopatt == 'string') { cfg.iacrepopatt = new RegExp(cfg.iacrepopatt); }
   cfg.webstats = 1;
   let fns = `${cfg.varstorepath}/allmods.vars.stats.json`;
   if (fs.existsSync(fns) && cfg.webstats) {
