@@ -2,20 +2,26 @@
 * Find GCP roles (for "name") by display name ("title").
 * The "full catalog" of roles is extractable by: `gcloud iam roles list` (populate gcproles.yaml w. this).
 * 
+* ## List or roles and list of perms
+* - List of roles (default): ~/.linetboot/gcproles.yaml
+* - Lists of perms of roles stored in (default): ~/.linetboot/gcproleperms/
+*   - File names (e.g.): 'roles/compute.admin' (role) => compute.admin.json
+* ## Refs
+* - https://cloud.google.com/iam/docs/understanding-roles
 */
 let fs = require("fs");
 let jsyaml  = require("js-yaml");
 let sqlite3 = require('sqlite3').verbose(); // Package node-sqlite3, npm install sqlite3
 let cproc   = require('child_process');
 let cfg = {};
-let rarr = [];
-let exlist = null; // signify absence
-let db = null;
+let rarr = []; // AoO w. roles info (from )
+let exlist = null; // signify absence (should be AoS)
+let db = null; // SQLite
 
 function init(_mcfg) {
   cfg = (_mcfg && _mcfg["gcproles"]) ? _mcfg["gcproles"] : _mcfg;
   if (!cfg) { cfg = {}; }
-  let fn = `${process.env["HOME"]}/.linetboot/gcproles.yaml`;
+  let fn = `${process.env["HOME"]}/.linetboot/gcproles.yaml`; // TODO: Also try .json
   if (!fs.existsSync(fn)) { throw "GCP role config does not exist";  }
   let cont = fs.readFileSync(fn, 'utf8');
   // NOTE: "expected a single document in the stream, but found more" - Must use loadAll on multi-document YAML.
@@ -36,7 +42,8 @@ function init(_mcfg) {
 
   }
 }
-// Load Role list with "title" values (line oriented text).
+// Load Role plain text list with "title" values (line oriented text).
+// @return array of lines parsed from file (comment lines and empty lines eliminated)
 function rlist_load(fn) {
   if (!fs.existsSync(fn)) { throw `role list '${fn}' does not exist`;  }
   let cont  = fs.readFileSync(fn, 'utf8');
@@ -46,7 +53,9 @@ function rlist_load(fn) {
   lines = lines.filter( (l) => { return  ! l.match(/^#/); });
   return lines;
 }
-// Search items in role list. Use mod-global rarr to search from.
+// Search/Lookup items in role list. Use mod-global rarr to search from.
+// For now uses global exlist (exclude list, AoS)
+// @return An object with res ([], AoO), notfound ([], AoS) and ambiguous ([], AoS)
 function rlist_search(rlist, exact) {
   if (!rlist) { throw "No rlist passed for search."; }
   let arr = []; // Output / Res

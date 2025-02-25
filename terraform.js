@@ -259,7 +259,7 @@ function introspect(arr) {
     ks.forEach((k) => {
       // Note also: o.hasOwnProperty('myProperty'), typeof myVariable === 'undefined'
       if (!mm[k]) { mm[k] = {types: { "null": 0, "undefined": 0}, lens: {} }; } // Val types
-      //let mmk = mm[k]; // TODO: use mmk
+      //let mmk = mm[k]; // TODO: use mmk - single key
       var t = typeof e[k];
       // Special values
       if (e[k] === null)        { mm[k].types.null++; return; } // Det. null (as typeof null === 'object')
