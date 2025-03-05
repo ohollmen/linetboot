@@ -81,7 +81,11 @@ function simplegrid_url(ev, an) {
     if (an.dprep) { an.dprep(an, arr, ev); } // New: ev
     //var an2 = rapp.dclone(an);
     // contbytemplate(an.tmpl, an, ttgt);
-    rapp.templated(an.tmpl, an, ttgt); // Initial templating
+    // TODO: dclone an and Merge 1) data info (arr) 2) params info (from event ev)
+    let tpara = an; // Default: Use as-is
+    // Allow tpcb - Template parameter callback to mutate copy of an (e.g. add params from ev)
+    if (an.tpcb && (typeof an.tpcb == 'function')) { tpara = rapp.dclone(an); an.tpcb(tpara, arr, ev); } // Pass copy of an
+    rapp.templated(an.tmpl, tpara, ttgt); // Initial templating
     var fsetid = an.fsetid;
     if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW
     //TODO: let fldinfo = an.fldinfo || window.fldinfo;

@@ -645,7 +645,47 @@ var tabloadacts = [
     path: "fwform", uisetup: null, dialogid: "afaimginfodialog", "optcoll": opts_nft, },
   {"name":"Grid Defs", "elselXX": "XX", tmpl: "", "hdlr": jgrid_fielddefs,   fldinfo: fldinfo, // url: "", gridid: "", fsetid: "",
     path: "fielddefs", uisetup: null, viewid: 'routerdiv' }, // dialogid: "", "optcoll": opts_nft,
+  {"name":"TF Var Usage", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,   fldinfo: fldinfo, url: "/tfmodusage", gridid: "jsGrid_hcliusage", fsetid: "hcliusage",
+    path: "hcliusage", uisetup: hcliusage_uisetup, urlpara: hcliusage_urlpara, tpcb: hcliusage_tpcb, }, // viewid: 'routerdiv'
 ];
+
+function hcliusage_urlpara(ev, an) {
+  var dcfn;var ds = ev.target.dataset;
+  if (ds && ds.dcfn) { dcfn = ds.dcfn; }
+  if (!dcfn && datasets.cfg.hclmodnames) { dcfn = datasets.cfg.hclmodnames[0]; } // datasets.cfg.docker.files[0];
+  console.log(`urlpara: Add ${dcfn}`);
+  //return "fn="+dcfn; // OLD: params only
+  return an.url + `?modname=${dcfn}`; // NEW: Resp. for whole URL
+}
+function hcliusage_tpcb(an, arr, ev) {
+  // Start with pattern of urlpara-cb
+  var dcfn;var ds = ev.target.dataset;
+  if (ds && ds.dcfn) { dcfn = ds.dcfn; }
+  if (!dcfn && datasets.cfg.hclmodnames) { dcfn = datasets.cfg.hclmodnames[0]; }
+  console.log(`tpcb: Got subname: ${dcfn}, rowcnt: ${arr.length} => tmpl: ${an.tmpl}`);
+  // Add params
+  an.rowcnt = arr.length; // # rows
+  an.subname = dcfn || 'unknown'; // modname to generic subname (from .xui)
+  $(".sghead").html(`${an.name} - ${dcfn} (${arr.length})`); // Works (but this cb is supposed to only set params in an/tpara)
+  return an; // Should not be needed
+}
+function hcliusage_uisetup(act, data, ev) { // 
+  //var fs = datasets.cfg.docker.files;
+  var fs = datasets.cfg.hclmodnames; // ["sp","sa","vm","gke", "vpc"];
+  var cont = "";
+  // toastr.info(fs);
+  fs.forEach((name) => { cont += `<span class="vmglink mpointer" data-dcfn="${name}">${name}</span>\n`; });
+  $(".xui").html(cont);
+  $(".xui").show();
+  // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
+  $(".vmglink").click(function (jev) {
+    //let ds = jev.target.dataset; let dcfn = ds.dcfn;
+    //$(".sghead").html(`${act.name} - ${dcfn} - len?`); // Too early for most recent data !!!
+    //console.error("uisetup (closure): Click on .vmglink. ev: "+Object.keys(jev));
+    // TODO: Grab this from original act ? act.hdlr
+    simplegrid_url(jev, act);
+  });
+} // uisetup
 
 function certdecode(ev, act) {
   rapp.templated(act.tmpl, act, "routerdiv");

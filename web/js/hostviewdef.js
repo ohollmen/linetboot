@@ -1298,8 +1298,8 @@ function riskadj_cell(val, item) {
    var fldinfo_hcliusage = [
      {"name": "varname",   "title": "Var. Name", "width": 20, itemTemplate: null,},
      {"name": "description",   "title": "Description", "width": 30, itemTemplate: null,},
-     {"name": "type",   "title": "Type", "width": 12, itemTemplate: null,},
-     {"name": "cnt",   "title": "Usage", "width": 7, itemTemplate: null,},
+     {"name": "type",   "title": "Value Type", "width": 12, itemTemplate: null,},
+     {"name": "cnt",   "title": "Usage (Cnt)",  "width": 7, itemTemplate: null,}, // "type": "text",
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,

@@ -2034,6 +2034,7 @@ function config_send(req, res) {
   var gh   = global.github;
   var gl   = global.gitlab;
   var cfl  = global.confluence;
+  var hclparse = global.hclparse;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
@@ -2068,6 +2069,7 @@ function config_send(req, res) {
   if (gl && gl.org && Array.isArray(gl.org)) { cfg.glorgs = gl.org; }
   if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
   cfg.kubimap = (kubi && (kubi.kubimap) ) ? kubi.kubimap : [];
+  if (hclparse && hclparse.modnames) { cfg.hclmodnames = hclparse.modnames; }
   res.json(cfg);
 }
 
