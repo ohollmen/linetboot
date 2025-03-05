@@ -71,9 +71,13 @@ function test_bool() {
 function test_merge() {
   let boolops = module.exports;
   let testset = [
-    [{a: 1, b: 2, c:3}, { c: 33, d: 44}]
+    ["merge_missing", {a: 1, b: 2, c:3}, { c: 0, d: 44}],
+    ["merge_falsy", {a: 1, b: 2, c:0}, { c: 0, d: 44}],
   ];
-  console.log( boolops.merge_missing(testset[0][0], testset[0][1]) );
+  //console.log( boolops.merge_missing(testset[0][0], testset[0][1]) );
+  testset.forEach( (ts) => {
+    console.log( boolops[ts[0]](ts[1], ts[2]) );
+  });
 }
 
 // Additional utilities
@@ -101,12 +105,15 @@ function merge_force(o1, o2) {
   return o1;
 }
 // Merge object properies with "falsy" value in o1 from o2 to o1.
+// Note: (for now) even falsy values from o2 are merged to o2 (this
+// can be okay and meaninful, e.g. replace null with numberic 0 or "") !
 function merge_falsy(o1, o2) {
   if (typeof o1 != 'object') { return null; }
   if (typeof o2 != 'object') { return null; }
   Object.keys(o2).forEach( (k) => {
     if (!o1[k]) { o1[k] = o2[k]; }
   });
+  return o1;
 }
 module.exports = {
   union: union,
