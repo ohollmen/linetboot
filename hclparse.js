@@ -34,11 +34,16 @@ function init(_mcfg) {
 * but by default this returns only first (object) element of it
 * (todo: explicit option to return original array)
 */
-function hcl_parse(fn) {
+function hcl_parse(fn, opts) {
   if (!fn) { throw "hcl_parse: Need filename for parsing HCL/TG."; }
   if (!fs.existsSync(fn)) { throw `TG/TF file '${fn}' not found`;  }
-  let cont = fs.readFileSync(fn);
+  opts = opts || { stats: 0 };
+  let cont = fs.readFileSync(fn, 'utf8');
   if (!cont) { throw `No content from ${fn}`; }
+  
+  if (opts.stats) {
+    console.log(`Type of cont from ${fn} (cont.length B) is: ${typeof cont}`);
+    let len = cont.split("\n").length; console.log(`${fn}: ${len} lines.`); }
   let o = hcl.parseToObject(cont);
   // Detect what kind of array got returned
   let isarr = Array.isArray(o);
@@ -73,24 +78,32 @@ function ftw (dir, callback, udata)  {
 
 /** Create linear array of TG files from a dir tree.
 * Loads all files by TG standard name.
+* Parameter opts can contain:
+* - mpatt - module pattern to capture (default: ([a-z\-]+)/+\.?$)
+ - udata - User data (with exclude: [...filenames...]
+  @return tg module objects (udata.tgmods). Note if opts.udata (obj) was passed, it will contain member "failedfns" for filenames of "failed-to-parse" files.
 */
 function tgset_fromtree(dirname, opts) { // opts: cb, udata, exc,
-  let dopts = { mpatt: '/([a-z\-]+)/+\.?$' }; // {5,}
+  let dopts = { mpatt: '/([a-z\-]+)/+\.?$', debug: 0}; // {5,}
   opts = opts || dopts;
   let modpatt = new RegExp(opts.mpatt) || new RegExp(dopts.mpatt);
   opts.debug && console.log(`Created "mod": ${modpatt}`);
   // Collect tg files
   //NONEED: let arr = tg_lsr(dirname);
-  let udata = { root: dirname, tgfiles: [], tgmods: [], exclude: [".git"], errcnt: 0 };
-  // ftw callback for handling single file item
+  // root: dirname, - (would be) only needed for  path.relative() - which does not work as expected.
+  // Also deprecated as these will be procedurally / forcefully inited here: tgfiles: [], tgmods: [], failedfns: []
+  let udata = opts.udata || {   exclude: [".git"],   }; // errcnt: 0, <= use failedfns.length
+  udata.tgfiles = []; udata.tgmods = []; udata.failedfns = []; // Init/Set fresh
+  // default ftw callback for handling single file item
   let cb = (fp, stats, udata) => {
     //if (stats.isDirectory()) { console.log(`DIR ...`); } // redundant - cb never gets dirs
     if (path.basename(fp) != 'terragrunt.hcl') { return; }
-    console.log(fp);
+    opts.debug && console.log(fp);
     // let rfn = path.relative(fp, udata.root); // Scores (e.g.) '../../../../..' (!?)
     //udata.tgfiles.push(fp); // fp (abs), rfn (rel)
     let tg = hcl_parse(fp);
-    if (!tg) { console.error(`Failed to parse HCL: '${fp}'`); udata.errcnt++; return; } // process.exit();
+    // TODO: Leave a stub of failed-to-parse HCL ?
+    if (!tg) { console.error(`Failed to parse HCL: '${fp}'`); udata.failedfns.push(fp); return; } // process.exit(); // udata.errcnt++;
     let tfb = Array.isArray(tg.terraform) ? tg.terraform[0] : null;
     if (tfb && tfb.source) { // && conf.addmod / src
       let m = tfb.source.match(modpatt); // /\/(NNNNN-[\w-]+)/);
@@ -100,14 +113,17 @@ function tgset_fromtree(dirname, opts) { // opts: cb, udata, exc,
     udata.tgmods.push( tg );
   };
   ftw(dirname, cb, udata);
+  if (udata.errcnt) { console.log(`Failed to parse ${udata.failedfns.length} HCL files (${udata.failedfns.join(", ")}).`); }
   return udata.tgmods; // udata.tgfiles;
 }
 /** Add single repo (w. path) to statistics */
 function iacrepos_add_repo(iacrepos, dpath, mods) {
   let rn = path.basename(dpath);
-  let n = { reponame: rn, repopath: dpath, modules: mods, };
-  iacrepos.push(n);
-  return n;
+  let repo = { reponame: rn, repopath: dpath, modules: mods, };
+  // Add more props, stats here !!!
+  
+  iacrepos.push(repo);
+  return repo;
 }
 
 // List sub-directory names by name pattern form a "directory root" passed as param.
@@ -122,13 +138,16 @@ function subdirs_list_bypatt(droot, rnpatt) {
  * Repo stats has: 
  * @todo opts (e.g. with optional dirs: [])
  */
-function iacrepos_all_load(droot, rnpatt) {
-  let fnames = subdirs_list_bypatt(droot, rnpatt);
+function iacrepos_all_load(droot, rnpatt, opts) {
+  
+  let dnames = subdirs_list_bypatt(droot, rnpatt);
+  if (opts && opts.dnames) { dnames = opts.dnames; }
   // Separate ?
-  let iacrepos = []; // reset (global)
-  fnames.forEach( (dn) => {
+  let iacrepos = [];
+  
+  dnames.forEach( (dn) => {
     let dpath = `${droot}/${dn}`;
-    let tgfiles = tgset_fromtree(dpath);
+    let tgfiles = tgset_fromtree(dpath, opts);
     iacrepos_add_repo(iacrepos, dpath, tgfiles);
   });
   //console.log(iacrepos);
@@ -178,7 +197,8 @@ function hclvars_save(varm, vfpath, opts) {
 //// idx & stats ////
 // Create module-keyed var index.
 function vidx_create(varm) {
-  let vidx = { vararr: varm, modidx: {}, unknown: {}, debug: 0 };
+  let vidx = { vararr: varm, modidx: {}, unknown: {}, debug: 0,
+    cnts: {  inputs: 0, iacrepos: 0, hcls: 0, unimodtot: 0, },  }; // unimods:0,
   // Populate (fast-lookup) modidx
   varm.forEach( (mod) => { vidx.modidx[mod.modname] = mod; });
   return vidx;
@@ -217,6 +237,9 @@ function vidx_inputs_stat(vidx, mod, inputs) {
   if (!(typeof inputs == 'object')) { console.log(`Input vars not in an object (module ${mod}) !!`); return; }
   if (!mod) { // console.log(`Module name not present for inputs statistification !!`);
      return; } // Var-only TG
+  // Add mod to cnt stats
+  //vidx.cnts.mods++;
+  vidx.cnts.hcls++;
   // Add statistics of module usage (1st phase: inline)
   if (vidx.modidx[mod]) {
     if (!vidx.modidx[mod].cnt) { vidx.modidx[mod].cnt = 0; }
@@ -225,13 +248,14 @@ function vidx_inputs_stat(vidx, mod, inputs) {
   //cfg.debug && console.log(`Module ${mod} w. ${Object.keys(inputs).length} inputs`);
   Object.keys(inputs).forEach( (k) => {
     //usagecnt++;
+    vidx.cnts.inputs++;
     vidx_mod_var_inc(vidx, mod, k);
   });
 }
 
 ///////// (default) cli-handlers ///////
 
-// Collect / Extract variables
+// CLI: Collect / Extract variables
 function varstat_gen(opts) {
   opts = opts || {};
   let mcfg = cfg;
@@ -245,10 +269,10 @@ function varstat_gen(opts) {
   let vidx = hclparse.vidx_create(vars);
   if (opts.ret) { return vidx; }
 }
-// Load IAC repos from root directory pointer by "iacreposroot" (by pattern)
+// CLI: Load IAC repos from root directory pointer by "iacreposroot" (by pattern)
 // Store all repos in a file named in "iacstorefn".
 function iacrepos_extract_store(opts) {
-  opts = opts || {};
+  opts = opts || { udata: { exclude: ['.git']} };
   let mcfg = cfg;
   let hclparse = module.exports;
   // Load IAC (to sample)
@@ -269,12 +293,19 @@ function iacrepos_vars_stat(opts) {
   let vidx = hclparse.varstat_gen(opts); // CLI handler returning vidx (typ. 1-5s.)
   if (!vidx) { console.error(`Could not parse/load vars and produce variable index (by cli-handler) !`); return; }
   console.log(`Starting to collect var stats`);
+  // https://stackoverflow.com/questions/1960473/get-all-unique-values-in-a-javascript-array-remove-duplicates
+  function onlyUnique(value, index, array) { return array.indexOf(value) === index; }
   iacs.forEach( (repo) => {
     if (!Array.isArray(repo.modules)) { console.error(`Modules not in array for repo ${repo.reponame}`); return; }
     console.log(`Repo ${repo.reponame} (${repo.modules.length} TG files)`);
     //console.log(repo.modules); // array, DEBUG
     //process.exit(0); // DEBUG
+    vidx.cnts.iacrepos++;
+    // Unique modules - 
+    repo.unimods = repo.modules.map( (tg) => { return tg.mod; }).filter(onlyUnique);
+    repo.unimodcnt = repo.unimods.length;
     
+    vidx.cnts.unimodtot += repo.unimodcnt; // For avg. (hcls/this)
     repo.modules.forEach( (tg) => {
       //console.log(tg); process.exit(0); // DEBUG
       // Variable-only TG w/o module association.
@@ -288,21 +319,26 @@ function iacrepos_vars_stat(opts) {
   let fn = `${mcfg.varstorepath}/allmods.vars.stats.json`;
   fs.writeFileSync(fn, JSON.stringify(vidx.vararr, null, 2), {encoding: "utf8"} );
   console.error(`Statistified ${iacs.length} IAC repos, saved '${fn}'.`);
-  //console.log(`Usage cnt ${usagecnt}`); // DEBUG
+  console.log(`Usage cnt stats: `, vidx.cnts); // DEBUG
 }
-// Web handler to 
+// Web handler for var usage
 function hdl_tfmod_usage(req, res) {
   let jr = { status: "err", "msg": "Error fetching module usage statistics. " };
   if (!ustats || !Array.isArray(ustats)) { jr.msg += `No module stats avail as an array (Set docs for 'varstorepath')`; return res.json(jr); }
   // Lookup module specific info from ustats. transform module vars to AoO
   let modname = req.query.modname;
-  if (!modname) { jr.msg += `No module name passed`; return res.json(jr); }
+  if (!modname && cfg.defmodname) { modname = cfg.defmodname; }
+  if (!modname) { jr.msg += `No module name passed (or no 'defmodname' configured)`; return res.json(jr); }
   let modnode = ustats.find( (modnode) => { return modnode.modname == modname; });
   if (!modnode) { jr.msg += `Could not find module '${modname}'`; return res.json(jr); }
   let inputvars = modnode.vars; // OoAoO
   // Transform
   let varusages = Object.keys(inputvars).map( (vk) => { inputvars[vk][0].varname = vk; return inputvars[vk][0]; });
   res.json(varusages);
+}
+
+function hdl_tfmods(req, res) {
+   
 }
 if (process.argv[1].match(/\bhclparse.js$/)) {
   console.log("For now - load as library using require() !");
@@ -312,6 +348,7 @@ module.exports = {
   cfg: cfg,
   init: init,
   hcl_parse: hcl_parse,
+  ftw: ftw,
   tgset_fromtree: tgset_fromtree, iacrepos_all_load: iacrepos_all_load,
   hclvars_all_extract: hclvars_all_extract, hclvars_save: hclvars_save,
   // cli
