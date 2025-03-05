@@ -13,6 +13,7 @@ let fs = require("fs");
 let jsyaml  = require("js-yaml");
 let sqlite3 = require('sqlite3').verbose(); // Package node-sqlite3, npm install sqlite3
 let cproc   = require('child_process');
+let hcl     = require('hcl2-parser'); // exp. hcl extension
 let cfg = {};
 let rarr = []; // AoO w. roles info (from )
 let exlist = null; // signify absence (should be AoS)
@@ -138,8 +139,72 @@ let acts = [
   {"id": "output", "title": "Output roles-to-members transformed structure.", cb: rolestruct},
   // Roles Aggr. perms
   {"id": "rolesperms", "title": "Aggregated permissions of a role list.", cb: rolesperms},
+  // 
+  {"id": "exroles", "title": "Extract User/Principal perms (name, not title or desc.). Pass --attr", cb: huserroles},
 ];
+// node gcproles.js exroles /my/path/a.hcl my_r_u a.b@c.com
+function huserroles(opts) {
+  //let attr = opts.attr || "role_users"; // w. real opts
+  let fnh = opts.args[0];
+  let attr = opts.args[1];
+  let pstr = opts.args[2];
+  if (!fnh) { usage("Must pass file as first arg."); }
+  if (!attr) { usage("Must pass attr as 2nd arg."); }
+  if (!pstr) { usage("Must pass principal (match) string as first arg."); }
 
+  let o;
+  try { o = hp(fnh); } catch (ex) { console.error(`Error loading or parsing primary file ${ex}`); }
+  //console.log(JSON.stringify(o, null, 2));
+  
+  let roles = proles_get(o, pstr);
+  console.log(`# ${roles.length} roles:\n`+roles.join("\n"));
+  // Transfer roles ? Assume same attr
+  let fnh_dest = opts.args[3];
+  let pstr2 = opts.args[4] || "NNNNN";
+  if (!fnh_dest) { return; }
+  let o2;
+  try { o2 = hp(fnh_dest); } catch (ex) { console.error(`Error loading or parsing secondary file ${ex}`); }
+  let rstruct = proles_set(o2, pstr2, roles);
+  console.log(`New total roles ${Object.keys(rstruct).length}`);
+  let ser = JSON.stringify(rstruct, null, 2);
+  rs = ser.replace(/":\s*\[/g, '" = [');
+  rs = rs.split(/\n/).map( (l) => { return `  ${l}`;}).join("\n");
+  console.log("NEW:"+rs);
+  function proles_get(o, pstr) {
+    if (!o[attr]) { usage(`${attr} - no such attribute in innards of hcl.`); }
+    let rp = o[attr];
+    console.log(`Total roles ${Object.keys(rp).length}`);
+    //console.log(JSON.stringify(rp, null, 2));
+    //let roles = [];
+    // Auto-unique (on object) sign: roles = (rp, pstr)
+     let roles = Object.keys(rp).filter( (k) => { if (rp[k].includes(pstr)) { return k; }});
+     console.log(`Has ${roles.length} roles`);
+     return roles;
+  }
+  // Ret whole structure w. roles added to pstr.
+  function proles_set(o, pstr, rarr) {
+    if (!pstr) { usage(`No pstr to add`); }
+    if (!o[attr]) { usage(`${attr} - no such attribute in innards of hcl.`); }
+    let rp = o[attr];
+    // Should Drive by union of rp and 
+    //Object.keys(rp)
+    rarr.forEach( (k) => {
+      //if (!rarr.includes(k)) { return; } // Not a role to include - Ignore / leave as-is
+      // Consider role (must add)
+      if (!Array.isArray(rp[k])) { rp[k] = []; } // Init empty. OLD: console.error(`R: ${k} - value not array`); return;
+      else if (rp[k].includes(pstr)) { return; } // Already there - Ignore
+      rp[k].push(pstr); // Add !
+    });
+    return rp;
+  }
+  function hp (fnh) {
+    let cont = fs.readFileSync(fnh, 'utf8');
+    let o = hcl.parseToObject(cont);
+    o = o[0] ? o[0].inputs : null;
+    if (!o) { usage(`Failed to parse HCL file (${fnh}).`); }
+    return o;
+  }
+}
 // node gcproles.js searchlist myroles.txt badroles.txt
 function searchlist(opts) {
   ////////////// R-List //////////////
