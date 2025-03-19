@@ -1301,6 +1301,15 @@ function riskadj_cell(val, item) {
      {"name": "type",   "title": "Value Type", "width": 12, itemTemplate: null,},
      {"name": "cnt",   "title": "Usage (Cnt)",  "width": 7, itemTemplate: null,}, // "type": "text",
    ];
+   // e.g. gcproles.yaml (Ignore "etag")
+   // Tope level "All Roles" file does not have "includedPermissions".
+   var fldinfo_gcprole = [
+     {"name": "name",      "title": "Role ID", "type":"text", "width": 15, itemTemplate: null,},
+     {"name": "title",     "title": "Short Title", "type":"text", "width": 18, itemTemplate: null,},
+     {"name": "description","title": "Description", "type":"text", "width": 25, itemTemplate: null,},
+     {"name": "stage",     "title": "Stage", "type":"text", "width": 5, itemTemplate: null,},
+     {"name": "includedPermissions", "title": "Perms.", "type": "text", "width": 5, visible: 0, itemTemplate: null,}, // In detail file only (isArray)
+   ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,

@@ -80,7 +80,15 @@ function test_merge() {
   });
 }
 
-// Additional utilities
+// Additional utilities.
+// Note: If values are nested data, only shallow copy is assigned.
+function subobject(o, attrs) {
+  if (!Array.isArray(attrs)) { return null; }
+  let subo = {};
+  attrs.forEach( (k) => { if (k in o) { subo[k] = o[k]; } });
+  return subo;
+}
+////////// Merge ////////
 
 // Merge object properies missing in o1 from o2 to o1.
 // For now the merged values are shallow copies.

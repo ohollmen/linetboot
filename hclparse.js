@@ -65,7 +65,7 @@ function ftw (dir, callback, udata)  {
     let stats = fs.statSync(filepath);
     let bn = path.basename(filepath); // Add to stats ?
     // Block dir
-    if (udata && Array.isArray(udata.exclude) && udata.exclude.includes(bn) ) { console.log(`Exclude: ${bn}`); return; }
+    if (udata && Array.isArray(udata.exclude) && udata.exclude.includes(bn) ) {  return; } // console.log(`Exclude: ${bn}`);
     if (stats.isDirectory()) { ftw(filepath, callback, udata); }
     else if (stats.isFile()) {  callback(filepath, stats, udata); }
   });
@@ -79,7 +79,7 @@ function ftw (dir, callback, udata)  {
 /** Create linear array of TG files from a dir tree.
 * Loads all files by TG standard name.
 * Parameter opts can contain:
-* - mpatt - module pattern to capture (default: ([a-z\-]+)/+\.?$)
+* - mpatt - module pattern to capture (default: ([a-z\-]+)/+\.?$). Pattern MUST have single RE capture parens to capture module.
  - udata - User data (with exclude: [...filenames...]
   @return tg module objects (udata.tgmods). Note if opts.udata (obj) was passed, it will contain member "failedfns" for filenames of "failed-to-parse" files.
 */
@@ -93,21 +93,23 @@ function tgset_fromtree(dirname, opts) { // opts: cb, udata, exc,
   // root: dirname, - (would be) only needed for  path.relative() - which does not work as expected.
   // Also deprecated as these will be procedurally / forcefully inited here: tgfiles: [], tgmods: [], failedfns: []
   let udata = opts.udata || {   exclude: [".git"],   }; // errcnt: 0, <= use failedfns.length
-  udata.tgfiles = []; udata.tgmods = []; udata.failedfns = []; // Init/Set fresh
+  udata.tgfiles = []; udata.tgmods = []; udata.failedfns = []; udata.failedmod = []; // Init/Set fresh
   // default ftw callback for handling single file item
   let cb = (fp, stats, udata) => {
     //if (stats.isDirectory()) { console.log(`DIR ...`); } // redundant - cb never gets dirs
     if (path.basename(fp) != 'terragrunt.hcl') { return; }
     opts.debug && console.log(fp);
     // let rfn = path.relative(fp, udata.root); // Scores (e.g.) '../../../../..' (!?)
-    //udata.tgfiles.push(fp); // fp (abs), rfn (rel)
+    //OLD:udata.tgfiles.push(fp); // fp (abs), rfn (rel)
     let tg = hcl_parse(fp);
     // TODO: Leave a stub of failed-to-parse HCL ?
     if (!tg) { console.error(`Failed to parse HCL: '${fp}'`); udata.failedfns.push(fp); return; } // process.exit(); // udata.errcnt++;
     let tfb = Array.isArray(tg.terraform) ? tg.terraform[0] : null;
+    // Consider module: 
     if (tfb && tfb.source) { // && conf.addmod / src
       let m = tfb.source.match(modpatt); // /\/(NNNNN-[\w-]+)/);
       if (m) { tg.mod = m[1]; } // modname
+      else { udata.failedmod.push(fp); } // Has "source" but no value matched (Note: var-only file would not have "source")!
     }
     tg.afn = `${fp}`;
     udata.tgmods.push( tg );
@@ -340,8 +342,16 @@ function hdl_tfmod_usage(req, res) {
 function hdl_tfmods(req, res) {
    
 }
+// Parse single hcl file (passed as first real arg)
+function simpleparse(opts) {
+  let fn = process.argv[3];
+  let o = hclparse.hcl_parse(fn);
+  if (!o) { console.log(`TG/TF file '${fn}' not parsed`); process.exit(1); }
+  console.log(JSON.stringify(o, null, 2));
+}
 if (process.argv[1].match(/\bhclparse.js$/)) {
   console.log("For now - load as library using require() !");
+
 }
 
 module.exports = {
@@ -360,4 +370,6 @@ module.exports = {
   vidx_inputs_stat: vidx_inputs_stat,
   // Web
   hdl_tfmod_usage: hdl_tfmod_usage,
+  // CLI
+  simpleparse: simpleparse,
 };
