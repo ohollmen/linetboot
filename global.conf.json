@@ -264,9 +264,14 @@
     "host": "jira.mycomp.com",
     "user": "",
     "pass": "",
+    "project": "MYPROJECT",
     "query": "",
     "isspatt": "[A-Z]+\\-\\d{3,6}",
-    "apiprefix": ""
+    "apiprefix": "",
+    "debug": 0,
+    "jqps": {
+      "mytasks": "project = {{ project }} AND assignee = {{ curruser }} AND resolution = Unresolved"
+    }
   },
   "tenable": {
     "apiurl": "https://www.tenable.com/downloads/api/v2/pages",
