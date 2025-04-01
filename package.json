@@ -10,7 +10,7 @@
     "body-parser": "1.18.3",
     "digest-fetch": "^1.2.1",
     "dns": "0.2.2",
-    "express": "4.16.4",
+    "express": "4.17.3",
     "express-session": "1.17.1",
     "hcl2-parser": "^1.0.3",
     "ini": "^4.1.1",
