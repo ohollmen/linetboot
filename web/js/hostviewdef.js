@@ -763,10 +763,12 @@ function ibip_cell(val, item) {
      //{"name": "component",         "title": "Component", type: "number", width: 20, },
      //{"name": "component",         "title": "Component", type: "number", width: 20, },
    ];
-   // Jenkins Jobs
+   // Jenkins Jobs (Is this same as stuff from wfapi/runs ?) /job/master/wfapi/runs?since=%2385&fullStages=true&_=1743445XXXXX
    var fldinfo_jjobs = [
-     //{"name": "name", "title": "Job Name",  type: "text", width: 40},
-     //{"name": "url", "title": "Job URL",  type: "text", width: 80}, // url
+     // Also "id" in /runs?
+     //{"name": "name",   "title": "Job Name",  type: "text", width: 40}, // runs: #85
+     //{"name": "status", "title": "Status"}, // SUCCESS (in /runs?)
+     //{"name": "url",    "title": "Job URL",  type: "text", width: 80}, // url not in /runs? But has (complex): "_links" (_links.self.href=/job/.../85/wfapi/describe)
      // color
    ];
    function deplydest_cell(val, item) {
