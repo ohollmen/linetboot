@@ -150,28 +150,53 @@ Node.js and Node package manager from distro sources:
 
 Generic linux tar Download (e.g. for 10.14.2):
 ```
+# Look for version and CPU/OS architecture choices under: https://nodejs.org/dist/
 wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
 
 ```
 See https://github.com/nodejs/help/wiki/Installation for installing under /usr/local/lib/nodejs
 (Some tweaks to shell run-config and environment needed).
 
+Unpack/Uncompress step needed for any of the later install forms:
+
+```
+cd /tmp
+wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
+tar -Jxvf node-v10.14.2-linux-x64.tar.xz
+```
 Alternative rsync install (directly) under /usr/local/ (no need to
 tweak shell run-config files like .bashrc):
-
-    cd /tmp
-    wget https://nodejs.org/dist/v10.14.2/node-v10.14.2-linux-x64.tar.xz
-    tar -Jxvf node-v10.14.2-linux-x64.tar.xz
-    # Go to root of binary install tree after unpackaging
-    cd node-v10.14.2-linux-x64
-    echo -e "CHANGELOG.md\nLICENSE\nREADME.md\nexclude.txt" > exclude.txt
-    # test: --dry-run
-    sudo rsync -av  --exclude-from exclude.txt ./ /usr/local/
-    # Or plain cp command (no rsync):
-    # cp -r .  /usr/local
-    # re-cache executables in $PATH
-    hash -r
-
+```
+# cd to root of install tree after unpackaging
+cd node-v10.14.2-linux-x64
+echo -e "CHANGELOG.md\nLICENSE\nREADME.md\nexclude.txt" > exclude.txt
+# Rsync (by excluding info files)
+# for test: --dry-run
+sudo rsync -av  --exclude-from exclude.txt ./ /usr/local/
+hash -r
+```
+Plain copy (cp) install (w/o dependency to rsync)
+```
+cd node-v10.14.2-linux-x64
+# plain cp command (no rsync):
+cp -r .  /usr/local
+# re-cache executables in $PATH
+hash -r
+```
+Variation of previous with "separation on node.js" (as in "separation
+of concerns") from other files and directores by using symlinks:
+```
+# Switch to root ?
+# After download and uncompression steps (see above, do not cd to dir created by unpack/uncompression:
+sudo cp -r node-v10.14.2-linux-x64/ /usr/local/
+# change to /user/local/bin (always included in $PATH) and create few essential symlinks
+cd /usr/local
+sudo ln -s node-v10.14.2-linux-x64/ node
+sudo -- sh -c 'cd bin && ln -s ../node/bin/node node && ln -s ../node/bin/npm npm && ln -s ../node/bin/npx npx'
+sudo -- sh -c 'cd lib && ln -s ../node/lib/node_modules node_modules'
+# Recommended: Additional step if you plan to install/compile modules with C/C++ bindings
+sudo -- sh -c 'cd include && ln -s ../node/include/node node'
+```
 
 The generic Node binaries install from nodejs.org may become handy:
 - with an outdated RH/Centos system where Node.js is not available as OS/distro package or would be way outdated that way
