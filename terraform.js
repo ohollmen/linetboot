@@ -86,7 +86,7 @@ Notes on fields
 * ```
 */
 var fs = require("fs");
-
+var Getopt   = require("node-getopt");
 var tflistfn = "tf.list.txt";
 var ignorekeys = ["google_client_config"];
 
@@ -223,16 +223,31 @@ function tfmodel_create(fnarr) {
   });
   return { rscidx: rscidx, farr: farr};
 };
-
+let clopts = [
+  ["t", "toptoarr", "Coerce Top object (of OoO) to array to introspect"],
+];
 /// CLI. Perform same (datamodel) init as webapp
 if (process.argv[1].match("terraform.js")) {
-  var ops = {idx: idx, farr: farr, types: types, stats: stats};
+  var ops = {
+    idx: {cb: idx},
+    farr: {cb: farr},
+    types: {cb: types},
+    stats: {cb: stats},
+    introspect: {cb: cli_introspect},
+    data: {cb: cli_introspect},
+  };
   
   var op = process.argv.splice(2, 1)[0];
+  console.log(`ARG now: `, process.argv);
   // console.log(op);
   if (!op) { console.log("No op given. Use one of: "+Object.keys(ops).join(', ')); process.exit(1); }
   if (!ops[op]) { console.log("No op '"+op+" available"); process.exit(1); }
-  
+  // Parse args
+  let opts = {};
+  var getopt = new Getopt(clopts);
+  var opt = getopt.parse(process.argv);
+  opts = opt.options;  
+  opts.op = op;
   function farr()  { console.log( JSON.stringify(tf.farr, null, 2) ); }
   function idx()   { console.log( JSON.stringify(tf.rscidx, null, 2) ); }
   function types() { console.log( JSON.stringify(Object.keys(tf.rscidx), null, 2) ); }
@@ -244,7 +259,7 @@ if (process.argv[1].match("terraform.js")) {
   }
   init();
   console.log("Creating model from: "+tfpath);
-  ops[op](); // Dispatch
+  ops[op].cb(opts); // Dispatch
   //console.log("EXIT");
 }
 // Note: sample of json-schema.org schema: Jenkins path: /manage/configuration-as-code/schema
@@ -265,7 +280,11 @@ function introspect(arr) {
       if (e[k] === null)        { mm[k].types.null++; return; } // Det. null (as typeof null === 'object')
       if (e[k] === undefined)   { mm[k].types.undefined++; return; } // .toString() N/A
       if (Array.isArray(e[k]) ) { mm[k].types.array = mm[k].types.array || 0; mm[k].types.array++; return; } // ++ on non-existing sets null
-      if (isobj(e[k])) { mm[k].types.object = mm[k].types.object || 0; mm[k].types.object++; return; } // TODO: ...
+      if (isobj(e[k])) {
+        mm[k].types.object = mm[k].types.object || 0; mm[k].types.object++;
+	// // TODO: ...
+	return;
+      } 
       if (!mm[k].types[t]) { mm[k].types[t] = 0; } // Init count of type to 0 (Also: !mm[k].types.hasOwnProperty(t); )
       if (t == 'string') { mm[k].lens[t] = mm[k].lens[t] || 0; mm[k].lens[t] = Math.max(mm[k].lens[t], e[k].length); }
       // Same with number
@@ -330,3 +349,33 @@ module.exports = {
   init: init,
   rsctype_show: rsctype_show
 };
+function usage(msg) {
+  if (msg) { console.error(`${msg}`); }
+  console.error(`CLI options:`+clopts.map( (o) => { return `- ${o[1]} - ${o[2]}`}).join("\n") + "\n");
+  process.exit(1);
+}
+// CLI Introspect
+// test w. ./terraform.js introspect ~/.zoom/data/Emojis/emoji.json --toptoarr
+function cli_introspect(opts) {
+  let jfn = process.argv[2];
+  if (!jfn) { usage(`Need JSON files (to introspect) as first pos. argument.`); }
+  if (!jfn.match(/\.json$/)) { usage(`For now only JSON files (*.json) are supported !`); }
+  let arr = require(jfn);
+  // Transform keys of top (OoO) to AoO
+  if (opts.toptoarr && (typeof arr == 'object')) {
+    let arr2 = [];
+    Object.keys(arr).forEach( (k) => {
+      // Only if obj
+      if (typeof arr[k] == 'object') { arr[k]._id = k; arr2.push(arr[k]); }
+      arr = arr2;
+    });
+  }
+  if (!Array.isArray(arr)) { usage(`Data from JSON not in array !`); }
+  let o = null;
+  if (opts.op == 'data') { o = arr; }
+  else {
+    o = introspect(arr);
+    if (!o) { usage(`No information extracted !`); }
+  }
+  console.log(JSON.stringify(o, null, 2));
+}
