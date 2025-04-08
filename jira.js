@@ -13,6 +13,19 @@
 - See also (GET): /rest/api/2/issue/createmeta?projectKeys=QA&...
 - Seems body (POST,PUT) request types must have the "schema indicator" in URL (e.g. issue => /rest/api/2/issue/)
 
+## JIRA Result sets
+
+Every Jira result set starts with following result set meta data. Note startAt index/offset is entry cound, not page count (!).
+```
+{
+  "maxResults": 50,
+  "startAt": 0,
+  "total": 7,
+  "isLast": true,
+  "values": [
+    ...
+```
+
 ## Refs:
 - https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/
 - API URL: /issue/createmeta/{projectIdOrKey}/issuetypes for discovering sub-task issue types (Proj. id: /^\d+$/, key (typ.): /^[A-Z]$/)
@@ -29,6 +42,7 @@ TODO
 - Need Accept: application/json (like alt impl.)
 */
 
+let fs     = require("fs");
 var axios  = require("axios");
 var cfl    = require("./confluence.js"); // add_basic_creds()
 var Getopt = require("node-getopt");
@@ -66,12 +80,31 @@ function body_opts(opts, m) {
   }
   opts.headers.accept = "application/json";
 }
+// https://stackoverflow.com/questions/11893083/convert-normal-date-to-unix-timestamp
+//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
+function time_within(ts, ts1, ts2) {
+  // Date.prototype.toISOString() let d = new Date(0); d.toISOString(); // always in Z
+  // date.toLocaleDateString("fa-IR")
+  // try {
+  let t = Date.parse(ts);
+  let t1 = Date.parse(ts);
+  let t2 = Date.parse(ts);
+  //} catch (ex) { console.error(`Error parsing times`); return null; }
+  // TODO: Re-order t1, t2 if diven in non asc. order
+  // .getTime() Creates ms time (not s) from EPOC, but does not matter for CMP. Can be neg on e.g. 1969
+  // Also: valueOf() - functional equivalent
+  if ( (t.getTime() > t1.getTime()) && (t.getTime() < t2.getTime()) ) {
+    // console.error(`Seems time t ${t.getTime()} is between ${t1.getTime()}..${t2.getTime()}  `);
+    return 1; }
+  return 0;
+}
+////////////////////////////////// JIRA related //////////////////////
+// Web handler for JIRA query (GET)
+// Accepts params jql (JQL query) or jqp (query profile)
 // Note initial behavior: Errors 405, 400 gotten when param "jql" passed in GET (q-param) or POST (json)
 // Assign web handler by (e.g.) `app.get("/isslist", jira.jira_query);`.
 function jira_query(req, res) {
   var jr = {status: "err", msg: "Failed to query JIRA. "};
-  
-
   var q = (req && req.query) ? req.query : {};
   if (!q) { jr.msg += "No query URL"; return res.json(jr); }
   // Jira Issue from Query
@@ -82,6 +115,34 @@ function jira_query(req, res) {
     res.json(data); // {status: "ok", data: data, url: url}
   });
 }
+// Show sprints (by pattern).
+// For now show sprints from (simple AoO) JSON file, filtering them by pattern, as most JIRA servers return
+// only small set (50) of entries in single "paged" result set.
+function jira_sprints(req, res) {
+  var jr = {status: "err", msg: "Failed to load (or filter) sprints. "};
+  let fn = cfg.sprintfn || `${process.env.HOME}/.linetboot/my_sprints.json`;
+  //if (!fn) { jr.msg += `No sprints file found by config (or default fn).`; return res.json(jr); }
+  if (!fs.existsSync(fn)) { jr.msg += `sprints file ${fn} does not exist.`; return res.json(jr); }
+  var cont = fs.readFileSync(fn, 'utf8');
+  if (!cont) { jr.msg += `No data in sprints file.`; return res.json(jr); }
+  let d = JSON.parse(cont);
+  if (!Array.isArray(d)) { jr.msg += `sprints file data not in array !`; return res.json(jr); }
+  // Filter ?
+  let pflen = d.length; let olap = {};
+  if (cfg.sfre) {
+    let re = new RegExp(cfg.sfre); // throws ?
+    if (!re) { jr.msg += `sprints file filter RE is faulty!`; return res.json(jr); }
+    d = d.filter( (s) => { return s.name.match(re); });
+    //d = d.sort( (a, b) => { return a.startDate.localeCompare(b.startDate); }); // name, startDate
+  }
+  // Overlap count
+  d.forEach( (s) => {
+    if (olap[s.name]) { s.isdup = olap[s.name]+1; olap[s.name]++; }
+    else {olap[s.name] = 1; }
+  });
+  res.json({status: "ok", pfcnt: pflen, cnt: d.length, data: d});
+}
+
 function jira_query_opts(q, cb) {
   // Single-query: GET /rest/api/2/issue/$issuekey . Also has option expand=names  
   var url = `https://${cfg.host}${apiprefix}search`;
@@ -127,6 +188,7 @@ var clopts = [
   ["c", "jqp=ARG", "JIRA query profile ('canned query' name)"],
   ["d", "debug",   "Turn on debugging"],
   ["p", "project=ARG", "Project to add to query (to override 'project' in config)"],
+  ["p", "boardid=ARG", "Board id for getting sprints (Use subcmd boards to get available boardids)"],
 ];
 var ops = {
   "query":   {cb: jira_query_cli, desc: "Query entries by query profile () or JQL ()", },
@@ -139,6 +201,7 @@ var ops = {
 module.exports = {
   init: init,
   jira_query: jira_query,
+  jira_sprints: jira_sprints,
   cfg: cfg,
 };
 
@@ -173,7 +236,7 @@ function jira_query_mod_cli(opts) {
       if (e.duedate != '2025-04-28') { return; } // Example
       console.log(`Ent.duedate: ${e.duedate}, Ent.cf = ${e.customfield_10000}`);
       let upmsg = {"fields": {}}; let up = upmsg.fields;
-      up.customfield_10000 = "246904"; //   Denali_CY25Q2_Sprint2. int and str not treated as equals: 'Number value expected as the nnnnn id.'
+      up.customfield_10000 = "246904"; //  int and str not treated as equals: 'Number value expected as the nnnnn id.'
       let url = `https://${cfg.host}${apiprefix}issue/${ent.key}`;
       console.log(`Operate on ${url} (PUT)`);
       console.log(` - Send msg: ${JSON.stringify(upmsg, null, 0)}`);
@@ -190,22 +253,45 @@ function jira_query_mod_cli(opts) {
 // List Sprints (by board)
 // How to get boards: /rest/agile/1.0/board
 function sprints_get(opts) {
-  let boardid = "000"; // opts.boardid || cfg.boardid || "000";
+  let boardid = opts.boardid || cfg.boardid || 0;
   // Also: /rest/agile/1.0/board?projectKeyOrId=UN => 
-  let url = `https://${cfg.host}${apiprefix_ag}board/${boardid}/sprint`; // Note special api prefix
-  let url_b = `https://${cfg.host}${apiprefix_ag}board?projectKeyOrId=${cfg.project}`; // 
+  // (!opts.boardid) && (!cfg.boardid)
+  let maxres = 50;
+  if ((opts.op == 'sprints') && !boardid) { usage(`Must have 'boardid' from cli or cfg.boardid to list sprints`); }
+  let url = `https://${cfg.host}${apiprefix_ag}board/${boardid}/sprint?maxResults=${maxres}&startAt=`; // sprints Note special api prefix
+  let url_b = `https://${cfg.host}${apiprefix_ag}board?projectKeyOrId=${cfg.project}`; // boards
   if (opts.op == 'boards') { url = url_b; }
   var ropts = {};
   cfl.add_basic_creds(cfg, ropts); // try {  } catch (ex) {}
   body_opts(ropts, "post");
-  console.log(`Query (GET): ${url}`);
-  axios.get(url, ropts).then( (resp) => { // Should get "204 No content"
+  console.error(`Query (GET): ${url}`);
+  let darr = []; let didx = -1;
+  new Promise( (r,j) => { value_set_fetch(r,j); }).then( (d) => { console.log(JSON.stringify(darr, null, 2)); console.error(`then: ${darr.length} Items`); } )
+  .catch( (ex) => { console.error(`Error handling promise: ${ex}`);}); // url, opts
+  function dynurl() { didx += 1; return url + (didx*maxres); }
+  // await here: await is only valid in async functions and the top level bodies of modules
+  function value_set_fetch(resolve, reject) { // url, opts
+    let url_u = (opts.op == 'boards') ? url_b : dynurl();
+  axios.get(url_u, ropts).then( (resp) => { // Should get "204 No content"
     //if (resp.status == 204) { console.log(`Success with JIRA mod (${url})`); }
     //else { console.log(`Semi-success: No exception, but no 204 status either (???)`); }
-    console.log(JSON.stringify(resp.data, null, 2));
+    if (!resp.data || !resp.data.values) { usage(`No data or data.values in result`); }
+    //console.log(JSON.stringify(resp.data, null, 2));
+    if (opts.op == 'boards') { resp.data.values.forEach( (b) => { console.log(`- ${b.id} - ${b.name}`); }); }
+    if (opts.op == 'sprints' && !resp.data.isLast) { darr = darr.concat(resp.data.values); value_set_fetch(resolve,reject); }
+    else {
+      // Both board and sprint results seem to have .values (array)
+      console.error(`${resp.data.values.length} items listed.`);
+      return resolve(resp.data.values);
+    }
   })
   // Example ex.response: data: { errorMessages: [ 'Number value expected as the Sprint id.' ], errors: {} }
-  .catch( (ex) => { console.error(`Error getting JIRA sprints ${url} (status: ${ex.response.status}): ${ex}`); console.error(ex.response.data); });
+  .catch( (ex) => {
+    console.error(`Error getting JIRA sprints ${url} (status: ${ex.response}): ${ex}`); // .status
+    console.error(ex.response.data);
+    return reject(ex);
+  });
+  }
 }
 function usage(msg) {
   if (msg) { console.error(`${msg}`); }
@@ -218,6 +304,7 @@ if (process.argv[1].match("jira.js")) {
   mc.mainconf_process(mcfg);
   //console.log(mcfg);
   var mod = init(mcfg);
+  if (!mod) { console.error("Init problem"); process.exit(1); }
   // CLI
   var op = process.argv.splice(2, 1)[0]; // var op = process.argv[2];
   if (!op) { usage("No op passed (as first arg)."); }
@@ -226,9 +313,9 @@ if (process.argv[1].match("jira.js")) {
   var getopt = new Getopt(clopts);
   var opt = getopt.parse(process.argv); // argv2 = process.argv.slice(2);var op = argv2.shift();
   let opts = opt.options;
-  if (!mod) { console.log("Init problem"); process.exit(1); }
-  console.log(`${op}: '${ops[op].desc}' w. opts: `+JSON.stringify(opts)); // Query JIRA (CLI)
-  console.log();
+  opts.op = op;
+  console.error(`${op}: '${ops[op].desc}' w. opts: `+JSON.stringify(opts)); // Query JIRA (CLI)
+  //console.log();
   //jira_query_cli(opts);
   //jira_query_mod_cli(opts);
   //sprints_get(opts);
