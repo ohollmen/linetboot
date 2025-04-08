@@ -771,6 +771,7 @@ function ibip_cell(val, item) {
      //{"name": "url",    "title": "Job URL",  type: "text", width: 80}, // url not in /runs? But has (complex): "_links" (_links.self.href=/job/.../85/wfapi/describe)
      // color
    ];
+
    function deplydest_cell(val, item) {
      if (!val) { return ""; }
      if (!Array.isArray(val)) { return "???"; }
@@ -1227,6 +1228,21 @@ function riskadj_cell(val, item) {
     //{"name": "",               "title": "", "type": "text", "width": 30, },
     //{"name": "",               "title": "", "type": "text", "width": 30, },
    ];
+   var fldinfo_jirasprint = [
+    {"name": "id",            "title": "ID", "type": "text", "width": 7, itemTemplate: null},
+    {"name": "state",               "title": "State", "type": "text", "width": 9, },
+    {"name": "name",               "title": "Name", "type": "text", "width": 15, },
+    {"name": "startDate",               "title": "Start Date", "type": "text", "width": 20, },
+    {"name": "endDate",               "title": "End Date", "type": "text", "width": 30, },
+    //{"name": "completeDate",               "title": "", "type": "text", "width": 20, },
+    //{"name": "activatedDate",               "title": "", "type": "text", "width": 30, },
+    {"name": "originBoardId",               "title": "Board", "type": "text", "width": 7, },
+    //{"name": "goal",               "title": "", "type": "text", "width": 30, },
+    //{"name": "synced",               "title": "", "type": "text", "width": 30, },
+    //{"name": "autoStartStop",               "title": "", "type": "text", "width": 30, },
+    {"name": "isdup",               "title": "", "type": "text", "width": 30, }, // NON-STD
+    //{"name": "",               "title": "", "type": "text", "width": 30, },
+   ];
    // TF Net definitions
    var fldinfo_tfnets = [
      {"name": "subnet_name",               "title": "Subnet Name", "type": "text", "width": 9, },
@@ -1326,7 +1342,7 @@ function riskadj_cell(val, item) {
       "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
-      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
+      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
    };
    

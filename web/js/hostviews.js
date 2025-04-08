@@ -629,7 +629,8 @@ var tabloadacts = [
      path: "vulnlist", uisetup: null, dialogidXXX: ""},
   {"name":"Images authorized for Use", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/authimg", gridid: "jsGrid_authimg", fsetid: "authimg", 
      path: "authimg", uisetup: null, dialogidXXX: ""},
-  {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist?jqp=fr", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
+  // ?jqp=fr
+  {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
      path: "jiraiss", uisetup: null, dialogidXXX: "", "longload": 1},
 
   {"name":"TF Nets", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/yaml/nets", gridid: "jsGrid_tfnets", fsetid: "tfnets", 
@@ -647,6 +648,8 @@ var tabloadacts = [
     path: "fielddefs", uisetup: null, viewid: 'routerdiv' }, // dialogid: "", "optcoll": opts_nft,
   {"name":"TF Var Usage", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,   fldinfo: fldinfo, url: "/tfmodusage", gridid: "jsGrid_hcliusage", fsetid: "hcliusage",
     path: "hcliusage", uisetup: hcliusage_uisetup, urlpara: hcliusage_urlpara, tpcb: hcliusage_tpcb, }, // viewid: 'routerdiv'
+  {"name":"Jira Sprints", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/sprints", gridid: "jsGrid_jirasprint", fsetid: "jirasprint",
+    path: "jirasprints", uisetup: null, dialogid: ""},
 ];
 
 function hcliusage_urlpara(ev, an) {

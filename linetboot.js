@@ -363,6 +363,7 @@ function app_init() { // global
   app.get("/certsysdoc", certs.certsysdoc);
   app.get("/vulnlist", vulnlist);
   app.get("/isslist", jira.jira_query);
+  app.get("/sprints", jira.jira_sprints);
   app.get("/yaml/nets", yaml_show);
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
