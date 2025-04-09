@@ -70,6 +70,34 @@ dnsmasq allows also advanced differentiation of PXE Boot clients (not tested w. 
 Read `man dnsmasq` carefully to use these options (See also `pxe-prompt` and `pxe-service`).
 See also dnsmasq `dhcp-match` directive and combining it with `dhcp-boot` (as another way for paramerizing boot process).
 
+For EFI HTTP Boot (part of the UEFI specification) the (EFI) Boot server should send DHCP Option 60
+(Vendor Class) value set to 'HTTPClient' and set Options 66 (Boot
+Server IP - IP only ?) and 67 (Boot File Name - relative path to root
+of server) - the Boot loader program path accordingly. Seems vendos
+implementing EFI boot standard support NBP as either EFI boot loader
+or bootable ISO image (!).
+
+There is also info on setting option 6 (67?) in a following way:
+```
+# Boot file URI (example had boot.efi). Placing file in e.g. /isomnt
+# (set as one of the docroots) should work (Could setup a symlink too).
+# Some examples suggest detecting (option 93, set tags are arbitrary
+# strings used in tag:... conditionals later, have as many of these as needed):
+# Orig. example tag: X86-64_EFI_HTTP
+dhcp-match=set:efi64_http,option:client-arch,16
+# PXE Boot Arch Field DHCP Option 93 (dnsmasq "client-arch")
+# From: https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture
+# - 0x00 0x0f x86 uefi boot from http - 15
+# - 0x00 0x10 x64 uefi boot from http - 16
+# This is a simple example, sets boot file unconditionally (usually unacceptable for heterogenous PXE clients)
+# Try path: /usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed, may also need /usr/lib/shim/shimx64.efi.signed
+## dhcp-option=67,http://192.168.1.10/grubnetx64.efi.signed
+# Force required vendor class in the response, even if not requested
+dhcp-option-force=tag:arch_x64,option:vendor-class,HTTPClient
+# Try building a complete dhcp-boot record for any HTTP Client (is the last IP even needed):
+dhcp-boot=tag:efi64_http,http://192.168.1.10/grubnetx64.efi.signed,192.168.1.10
+```
+
 Other good info on configring dnsmasq:
 
 - [dnsmasq author's manual](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)
@@ -85,6 +113,11 @@ Other good info on configring dnsmasq:
 - [Sonicwall table of DHCP Option codes](http://help.sonicwall.com/help/sw/eng/6800/26/2/3/content/Network_DHCP_Server.042.12.htm)
 - [Dealing with Option 93 / vendor-class-identifier](https://www.syslinux.org/archives/2014-October/022683.html)
 - https://forums.fogproject.org/topic/8726/advanced-dnsmasq-techniques
+- Google: efi http boot dhcp option
+- https://serverfault.com/questions/1156567/set-up-dnsmasq-as-a-dhcp-proxy-for-uefi-https-boot
+- https://stackoverflow.com/questions/58921055/pxe-boot-arch-field-dhcp-option-93
+  - https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture
+
 
 Reload dnsmasq server config by `sudo kill -HUP $DNSMASQ_PID` (Use `ps -ef | grep dnsmasq` to find out pid).
 
