@@ -611,3 +611,15 @@ scutil --dns
 - https://stackoverflow.com/questions/8504065/ubuntu-preseed-file-installation-hanging
 - https://stackoverflow.com/questions/27201419/automate-ubuntu-install-via-packer-stuck-at-welcome-screen
 - https://www.experts-exchange.com/questions/28918859/Debian-Preseed-Installation-process-stuck-at-18-at-finishing-installation.html
+
+# Wireshark troubleshooting
+
+Example capture filter (Note: remember capture qand display filters
+are a different concepts, focus on capture filter, at least initially):
+```
+port 67 and port 68 and port 80
+```
+Example display filter
+```
+tcp.port == 443 || udp.port == 67 || udp.port == 68 && ip.dst == 192.168.1.0/24
+```

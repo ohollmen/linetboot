@@ -3,9 +3,15 @@
 Independent of which particular kind of DHCP Server your environment is using you have to configure it to
 send following configuration information to the hosts that you want to include in the auto-installation setup:
 
-- Boot Image / NBP (Network Boot Program, DHCP Option 67) name (e.g. Linux standard "pxelinux.0" or "lpxelinux.0")
 - The TFTP server, aka "Next-Server" (separate from DHCP server itself, DHCP Option 66) from which the above Boot Image / NBP is available using the simple TFTP
   - ISC DHCP calls this descriptively  "next-server" in it's configuration
+- Boot Image / NBP (Network Boot Program, aka "boot file" DHCP Option 67) name (e.g. Linux standard "pxelinux.0" or "lpxelinux.0")
+- Every PXE Client will send a vendor-class option 60 (e.g. `Apr  8 21:49:59 dnsmasq-dhcp[1595]: 2066705588 vendor class:PXEClient:Arch:00007:UNDI:003016`),
+  that has essential components to apply conditional logic on (See
+  also
+https://serverfault.com/questions/1130222/what-is-option-60-vendor-class-identifier-used-for-in-dhcpv4).
+This is also related to options 93 (client architecture), 94 (UNDI
+version, option 93 is also remotely related server resp. option 43)
 
 Examples of configuring this in various DHCP servers:
 
@@ -16,9 +22,9 @@ In a subnet block include (among other options)
     ...
     # Range of network booting machines to apply this config to
     range dynamic-bootp 10.1.10.50 10.1.10.70;
-    # TFTP Server to fetch NBP (Network boot program) from
+    # TFTP Server to fetch NBP (Network boot program, option 66) from
     next-server 10.1.10.5;
-    # NBP Filename (assumed to be at root dir of TFTP server)
+    # NBP Filename (option 67, assumed to be relative to root dir of TFTP server w. plain filename being at the root of the server)
     filename "lpxelinux.0";
 
 To make DHCP Server assign constant/fixed ip address ("pseudo-static") by MAC address create blocks similar to floowing for each PXE bootable host: 
@@ -98,6 +104,28 @@ dhcp-option-force=tag:arch_x64,option:vendor-class,HTTPClient
 dhcp-boot=tag:efi64_http,http://192.168.1.10/grubnetx64.efi.signed,192.168.1.10
 ```
 
+On UEFI HTTP Boot the vendor class will look like: `Apr 10 21:16:36 dnsmasq-dhcp[658789]: 4072894984 vendor class: HTTPClient:Arch:00016:UNDI:003016`
+Note: next-server (IP) cannot be http url, as following will result:
+No IPv4 address found for http://192.168.1.141
+
+Example error when booting as "HTTPClient" (with AMI Bios, this may be
+hard to capture as these may stay on screen for very a very short time):
+```
+# Plain http. When entering explicit URL in BIOS, the (AMI) BIOS
+# reveals that "ERROR: Unsupported URI! Only supports HTTPS", but on DHCP retrieved
+# http URLs no proper error message is shown.
+Start HTTP Boot over IPv4....
+Station IP address is 192.168.1.165
+Error: Invalid URI address.
+Error: Could not retrieve NBP file size from HTTP server.
+Error: Unexpected network error.
+
+# ... with HTTPS enabled (using DHCP opt 66 or URL entered in BIOS)
+URI: https://linetboot/grub/grubnetx64.efi.signed
+Error: Could not retrieve NBP file size from HTTP server.
+Error: Remote boot cancelled
+```
+
 Other good info on configring dnsmasq:
 
 - [dnsmasq author's manual](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)
@@ -117,7 +145,7 @@ Other good info on configring dnsmasq:
 - https://serverfault.com/questions/1156567/set-up-dnsmasq-as-a-dhcp-proxy-for-uefi-https-boot
 - https://stackoverflow.com/questions/58921055/pxe-boot-arch-field-dhcp-option-93
   - https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture
-
+- Goodbye PXE, Hello HTTP Boot (Dong Wei, HP):https://uefi.org/sites/default/files/resources/FINAL%20Pres4%20UEFI%20HTTP%20Boot.pdf
 
 Reload dnsmasq server config by `sudo kill -HUP $DNSMASQ_PID` (Use `ps -ef | grep dnsmasq` to find out pid).
 
