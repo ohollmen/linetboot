@@ -42,8 +42,10 @@ function hcl_parse(fn, opts) {
   if (!cont) { throw `No content from ${fn}`; }
   
   if (opts.stats) {
-    console.log(`Type of cont from ${fn} (cont.length B) is: ${typeof cont}`);
-    let len = cont.split("\n").length; console.log(`${fn}: ${len} lines.`); }
+    let len = cont.split("\n").length;
+    console.log(`Type of cont from ${fn} (${cont.length} B) type: ${typeof cont} ${len} lines.`);
+    // console.log(`${fn}: ${len} lines.`);
+  }
   let o = hcl.parseToObject(cont);
   // Detect what kind of array got returned
   let isarr = Array.isArray(o);

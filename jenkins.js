@@ -3,6 +3,10 @@
  * https://www.jenkins.io/doc/book/using/remote-access-api/
  * https://www.jenkins.io/doc/book/system-administration/authenticating-scripted-clients/
  * https://stackoverflow.com/questions/45472604/get-jenkins-job-build-id-from-queue-id
+ * 
+ * # Config job profiles
+ * - jobs (obj) - name (key) mapped to partial Jenkins build URL that should be part of full URL: http://jenk-serv/job/${PARTIAL_URL}/build
+ *    (Note: no starting or trailing '/' in partial url)
  */
 let fs      = require('fs');
 let path    = require('path');
@@ -44,7 +48,7 @@ function jenkins_build(job, xpara) {
   else { url += 'build'; } // ?delay=0sec - No parameters !
   url += `?delay=0sec`;
   console.log(`RPARA`, rpara);
-  console.log("Concluded URL: "+ url);
+  console.log(`Concluded POST URL: ${url}`);
   //return;
   // resp has: servel, message, url, status (HTTP status)
   // message: 'No valid crumb was included in the request',
@@ -68,26 +72,34 @@ function jenkins_build(job, xpara) {
 // let pstr_g = "KEY1=VAL1";
 
 // Parse line oriented k=v object
-function getparams(pstr) {
+function getparams(pstr, sep) {
+  sep = sep || "\n";
   pstr = pstr.trim();
-  let p = {};
-  pstr.split("\n").forEach( (l) => { let kv = l.split('='); p[kv[0]] = kv[1]; });
+  let p = {}; // "\n" VVV
+  pstr.split(sep).forEach( (l) => { let kv = l.split('='); p[kv[0]] = kv[1]; });
+  if (!Object.keys(p).length) { return null; }
   return p;
 }
 
 module.exports = { init: init, jenkins_build: jenkins_build };
-
+//var ops = {
+//  "run": 
+//};
 var clopts = [
   // ARG+ for multiple
   ["f", "paramfn=ARG", "Parameter filename (json, yaml or txt)"], // 
   ["p", "path=ARG", "Path fragment of Jenkins build URL (/job/{PATH}/build or /job/{PATH}/buildWithParameters)"], // 
+  ["", "prof=ARG", "Job profile label"],
   //["a", "acctype=ARG", "Access Type (SSH, RDP, WEB)"],  // For ...
   ["d", "debug", "Turn on debugging (for more verbose output)"],
+  ["", "params=ARG", "Build parameters as string of form 'k1=v1&k2=v2'"],
 ];
-var acts = [];
+var acts = [
+  { id: "run", "title": "Run Jenkins job (by profile (first arg), with or w/o params by --params or --paramfn)", cb: jjob_run},
+];
 function usage(msg) {
   if (msg) { console.log(msg); }
-  console.log("Subcommands ");
+  console.log("Subcommands:");
   acts.forEach( (a) => { console.log("- " + a.id + " - " + a.title ); });
   console.log("Options (each may apply to only certain subcommand)");
   clopts.forEach( (o) => { console.log("- "+o[1] + " - " + o[2]); });
@@ -101,21 +113,38 @@ function build_param_parse(fn) {
   if (fn.match(/\.txt$/)) { let pstr = fs.readFileSync(fn, 'utf8'); p = getparams(pstr); }
   return p;
 }
+
+function jjob_run(opts) {
+  let p = opts.params;
+  if (p && (typeof p != 'object')) { usage(`Params not in object (got ${typeof p}) !`); }
+  if (!opts.prof) { usage(`No job profile passed (as 1st arg) from CLI.`); }  
+  if (!cfg.jobs || (typeof cfg.jobs != 'object')) { usage(`Job profiles not available`); }
+  if (!cfg.jobs[opts.prof]) { usage(`Job profile '${opts.prof}' not available`); }  
+  console.log('PARAMS:', JSON.stringify(p, null, 2));
+  jenkins_build(cfg.jobs[opts.prof], p);
+}
 if (process.argv[1].match("jenkins.js")) {
   
   let mcfg_fn = `${process.env['HOME']}/.linetboot/global.conf.json`;
   let mcfg = require(mcfg_fn);
   init(mcfg);
-  
-  // let p = getparams(pstr_g); // early/experimental
-  let fnbpara = process.argv[3] || `${process.env['HOME']}/.linetboot/build_params.txt`;
-  if (!fnbpara) { console.log(`No build params (filename) passed from CLI`); }  
-  let p = build_param_parse(fnbpara); // || {}
-  let bprof = process.argv[2];  // any profile from cfg.jobs = {...}
-  if (!bprof) { usage(`No job profile passed (as 1st arg) from CLI.`); }  
-  if (!cfg.jobs || (typeof cfg.jobs != 'object')) { usage(`Job profiles not available`); }
-  if (!cfg.jobs[bprof]) { usage(`Job profile '${bprof}' not available`); }  
-  console.log(JSON.stringify(p, null, 2));
-  jenkins_build(cfg.jobs[bprof], p);
+  let opts = {};
+  var argv2 = process.argv.slice(2);
+  var op = argv2.shift();
+  if (!op) { usage(`No subcommand given`); }
+  let opn = acts.find( (a) => { return a.id == op; });
+  if (!opn) { usage(`No subcommand found by '${op}'`); }
+  var getopt = new Getopt(clopts);
+  var opt = getopt.parse(argv2);
+  opts = opt.options;
+  let p = null; // getparams(pstr_g); // early/experimental
+  let fnbpara = opts.paramfn; // process.argv[3] || `${process.env['HOME']}/.linetboot/build_params.txt`;
+  if (!fnbpara) { console.log(`No build params (filename) passed from CLI`); }
+  if (fnbpara && fs.existsSync(fnbpara)) { p = build_param_parse(fnbpara); }// || {}
+  else if (opts.params) { p = getparams(opts.params, '&'); }
+  //let bprof = process.argv[2];  // any profile from cfg.jobs = {...}
+  // Override original CLI or file originated string params
+  if (p) { opts.params = p; }
+  opn.cb(opts);
   //jenkins_build(jobpath, {}); // Job may not have params (?)
 }
