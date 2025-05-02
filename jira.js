@@ -147,12 +147,14 @@ function jira_query_opts(q, cb) {
   // Single-query: GET /rest/api/2/issue/$issuekey . Also has option expand=names  
   var url = `https://${cfg.host}${apiprefix}search`;
   // Jira Query from Exp. query (GET query)
-  //if (q.jql) { url+= "?jql=" + q.jql; } // disabled for now (GET only)
-
+  var rbody = {}; // JIRA POST Request Body params for query
+  // TODO: Let the CLI entered JQL prevail !!!
+  //if (q.jql) { url+= "?jql=" + q.jql; } // disabled for now (GET only). TODO: POST !!!
+  // else ...}
   url += "?startAt=2&maxResults=2"; // For GET and POST
   //else {  url += "?jql=assignee%20%3D%20currentUser%28%29"; }
   //else {  url += "?jql=assignee%3D"+process.env["USER"];  }
-  var rbody = {}; // JIRA POST Request Body params for query
+
   rbody.jql = `project = ${cfg.project} AND assignee = ${process.env["USER"]} AND resolution = Unresolved`; // POST (Default)
   //var qstr = "?jql="+encodeURIComponent(rbody.jql); console.log("QSTR: "+ qstr); // NOT Used (GET only)
   // Query from query profiles (passed in q.jqp)
@@ -189,6 +191,8 @@ var clopts = [
   ["d", "debug",   "Turn on debugging"],
   ["p", "project=ARG", "Project to add to query (to override 'project' in config)"],
   ["p", "boardid=ARG", "Board id for getting sprints (Use subcmd boards to get available boardids)"],
+  // TODO / WIP
+  ["u", "update=ARG", "(Bulk) Update for each entry in (JQL define) resultset."]
 ];
 var ops = {
   "query":   {cb: jira_query_cli, desc: "Query entries by query profile () or JQL ()", },
@@ -226,7 +230,10 @@ function jira_query_mod_cli(opts) {
     var ropts = {};
     cfl.add_basic_creds(cfg, ropts); // try {  } catch (ex) {}
     body_opts(ropts, "post");
-    // Iterate / Formulate modification (set)
+    // Formulate modification (const from CLI)
+    if (!opts.update) { console.error(`No --update parameter to update (the ${data.data.length}) entries.`); return; }
+    let up = opts.update; // if (typeof up != 'object') { console.error(`Update not in an (JSON originated) object !`); return; }
+    // Iterate /  (set)
     data.data.forEach( (ent) => {
       let e = ent.fields;
       //let url_up = `${apriprefix}${ent.key}`; // PUT (for mod/up)
@@ -234,15 +241,15 @@ function jira_query_mod_cli(opts) {
       // Complex: issuetype(id(int,10001),name(Story), subtaks:true/false),priority(name),status(name),assignee(name=> username,displlayName),reporter(See:assignee)
       // Date fields: created, duedate, resolutiondate, lastViewed, updated
       if (e.duedate != '2025-04-28') { return; } // Example
-      console.log(`Ent.duedate: ${e.duedate}, Ent.cf = ${e.customfield_10000}`);
-      let upmsg = {"fields": {}}; let up = upmsg.fields;
-      up.customfield_10000 = "246904"; //  int and str not treated as equals: 'Number value expected as the nnnnn id.'
+      //console.log(`Ent.duedate: ${e.duedate}, Ent.cf = ${e.customfield_10000}`);
+      let upmsg = {"fields": {}}; upmsg.fields = up; // let upf = upmsg.fields;
+      //upf.customfield_10000 = "246904"; //  int and str not treated as equals: 'Number value expected as the nnnnn id.'
       let url = `https://${cfg.host}${apiprefix}issue/${ent.key}`;
       console.log(`Operate on ${url} (PUT)`);
-      console.log(` - Send msg: ${JSON.stringify(upmsg, null, 0)}`);
+      console.log(` - Send up-msg: ${JSON.stringify(upmsg, null, 0)}`);
       //return;
       axios.put(url, upmsg, ropts).then( (resp) => { // Should get "204 No content"
-        if (resp.status == 204) { console.log(`Success with JIRA mod (${url})`); }
+        if (resp.status == 204) { console.log(`Success (204) with JIRA mod (${url})`); }
         else { console.log(`Semi-success: No exception, but no 204 status either (???)`); }
       })
       // Example ex.response: data: { errorMessages: [ 'Number value expected as the Sprint id.' ], errors: {} }
@@ -313,7 +320,9 @@ if (process.argv[1].match("jira.js")) {
   var getopt = new Getopt(clopts);
   var opt = getopt.parse(process.argv); // argv2 = process.argv.slice(2);var op = argv2.shift();
   let opts = opt.options;
-  opts.op = op;
+  // --update should parse as JSON - parse here. Should validate as single-level (?) Object
+  if (opts.update) { opts.update = JSON.parse(opts.update); }
+  opts.op = op; // Add op
   console.error(`${op}: '${ops[op].desc}' w. opts: `+JSON.stringify(opts)); // Query JIRA (CLI)
   //console.log();
   //jira_query_cli(opts);
