@@ -1,9 +1,12 @@
 /** @file
  * Kubernetes Info (kubi)
+ * ## Kubernetes connectivity by kubeconfig (~/.kube/config)
  */
  
 var fs    = require("fs");
 var axios = require("axios");
+let jsyaml = require("js-yaml");
+
  // List of linetboot server side data (info) set name:s (OLD: URL:s)
   // Most (v1) apis work the same with trailing slash or w/o. leave out here
   var urlmap = [
@@ -19,9 +22,20 @@ var axios = require("axios");
   ];
   
 var cfg = null; // null ?
+let kubecfgfn = `${process.env.HOME}/.kube/config`;
+let kubecfg = null;
+
 function init(mcfg) {
   cfg = (mcfg && mcfg.k8s) ? mcfg.k8s : mcfg ;
   if (!cfg) { console.error("No k8s config passed !"); return; }
+  // Try loading kubecfg
+  if (fs.existsSync(kubecfgfn)) {
+    console.error(`Found ${kubecfgfn} - loading it ...`);
+    var cont = fs.readFileSync(kubecfgfn, 'utf8');
+    kubecfg = jsyaml.load(cont);
+    // Try getting part of config ...
+    
+  }
   return module.exports;
 }
 /** Get K8S Pods (and other) info from Kubernetes (or Minikube, "/kubinfo").
@@ -131,7 +145,11 @@ module.exports = {
   //kubimap: kubimap,
   kube_info: kube_info
 };
-var ops = {listpods: listpods_all, };
+var ops = {
+  listpods: listpods_all,
+  dumpkubecfg: () => { console.log(JSON.stringify(kubecfg, null, 2)); },
+  dumpcfg: () => { console.log(JSON.stringify(cfg, null, 2)); },
+};
 function listpods_all() {
   var podlist = cluster_lists_merge(cfg.clusters, cfg.podlistpath);
   console.log(JSON.stringify(podlist, null, 2));
