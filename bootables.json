@@ -147,7 +147,7 @@
       "initrd": "fdboot.img"
     },
     {
-      "name":"Ubuntu 20.04 Mate Desktop LTS",
+      "name":"Ubuntu 20.04 MATE Desktop LTS",
       "note":"TODO: test",
       "url":"http://cdimage.ubuntu.com/ubuntu-mate/releases/20.04/release/ubuntu-mate-20.04.3-desktop-amd64.iso",
       "md5sum" : "bbf62e9abd1ad8cdde4e8789dd17ef46",
@@ -155,6 +155,27 @@
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
     },
+    {
+      "name":"Ubuntu 24.04 MATE Desktop LTS",
+      "note":"Broken DNS in live mode. Fix by (e.g.) perl -pi -e 's/^nameserver\\s+\\S+$/nameserver 192.168.1.53/' /etc/resolv.conf",
+      "url":"http://cdimage.ubuntu.com/ubuntu-mate/releases/noble/release/ubuntu-mate-24.04.2-desktop-amd64.iso",
+      "md5sum" : "",
+      "sha256sum": "ec1399cf90678c29ee1f80055826b21a3d90f59d50d154e5ea70b1931ce909c9",
+      "lbl":"ubuntu20dt",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    {
+      "name":"Kubuntu 24.04 Desktop LTS",
+      "note":"TODO: test",
+      "url":"http://cdimage.ubuntu.com/kubuntu/releases/noble/release/kubuntu-24.04.2-desktop-amd64.iso",
+      "md5sum" : "",
+      "sha256sum": "e84c3cb8a9e91504fabbc4763adaacfee0ebd27ef988529dadafb9c53276fb4b",
+      "lbl":"kubuntu24dt",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+
     {
       "name":"Arch Linux",
       "note":"Image dirs are 'cycling' very radidly and old versions disappear quickly on mirrors.",
