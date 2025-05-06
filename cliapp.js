@@ -56,7 +56,7 @@ cliapp.prototype.dump = function () {
 }
 
 cliapp.prototype.usage = function (msg) {
-  if (msg) { console.error(); }
+  if (msg) { console.error(msg); }
   console.error("Use one of the subcommands:");
   // Arrow-f allows this to be this in deeper scope
   console.error( this.ops.map( (opn) => { return `${opn[this.attrs.id]} - ${opn[this.attrs.id]}`; }).join("\n") );
