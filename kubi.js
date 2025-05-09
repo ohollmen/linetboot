@@ -35,6 +35,7 @@ function init(mcfg) {
     kubecfg = jsyaml.load(cont);
     // Try getting part of config ...
     
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
   return module.exports;
 }
