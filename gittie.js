@@ -60,6 +60,7 @@ function gcred_load(fn, hn) {
 // Add (new) PUT: https://${p.githost}/orgs/${p.orgname}/teams/TEAM_SLUG/memberships/${p.username}  -d '{"role":"maintainer"}' // TEAM_SLUG
 //  - Note: teamslug ("slug") is usually same as teamname ("name"), except slug is always forced lowercase: slug = t.name.toLowerCase()
 function gh_team_members(opts) {
+  if (!opts.orgname) { console.log(`Op ${opts.op}: Must have --orgname`); return; }
   let apiurl = `https://${cfg.url}${apiprefix}`; let apiurl1 = apiurl;
   apiurl1 += `/orgs/${opts.orgname}/teams`;
   let apiurl2 = `/orgs/${opts.orgname}/teams/`;
@@ -69,22 +70,25 @@ function gh_team_members(opts) {
   // Use slug in the result
   axios.get(apiurl1, rpara).then( (resp) => {
     let d = resp.data;
-    console.log(JSON.stringify(d, null, 2));
+    if (opts.op == 'teams') { console.log(`ALL-TEAMS-RES(${d.length}): `+JSON.stringify(d, null, 2)); return; }
     //let t = d.find( (t) => { return t.slug == opts.teamname; }); // 
-    let teams = d.filter( (t) => { return t.slug.match(opts.teamname); });
-    console.log("RES:"+JSON.stringify(teams, null, 2));
-    if ((teams.length > 1) || (teams.length < 1)) { console.log(`Not a unique group (to extract mems from) - stopping here`); return; }
+    let teams = d.filter( (t) => { return t.slug.match(opts.teamname); }); // Match "slub"
+    console.log(`TEAM-RES (after unique filter by ${opts.teamname}):`+JSON.stringify(teams, null, 2));
+    if ((teams.length > 1) || (teams.length < 1)) { console.log(`Not a unique team/group (to extract mems from) - stopping here`); return; }
     let memurl = teams[0].members_url;
     memurl = memurl.replace(/\{[^}]+\}/, ""); // rm param'z portion (of advised URL)
-    if (!memurl || !opts.destteamname) { console.log(`dest team name (or memurl) Missing (for ${memurl}). Stopping here`); return; }
-    if (!opts.destteamname.match(/^\d+$/)) { console.log(`Destination team must be given as teamid (number).`); return; }
+    if (opts.destteamname && !opts.destteamname.match(/^\d+$/)) { console.log(`Destination team must be given as teamid (number).`); return; }
     axios.get(memurl+`?per_page=100`, rpara).then( (resp) => {
       let d = resp.data;
-      //console.log(d);
       if (!Array.isArray(d)) { console.log(`Not an array of members`); return; }
+      console.log(`MEMBERS-RES(${d.length}):`+ JSON.stringify(d, null, 2));
+      if ( opts.op == 'team') { return; } // Stopping here (only list team and members)`);
+      // Only opts.op == 'team_mem_copy' remains
+      if (!memurl || !opts.destteamname) { console.log(`dest team name (or memurl) Missing (for ${memurl}).`); return; }
       let mems = d.map( (mn) => { return mn.login;  }); // return {login: mn.login};
       console.log(`${mems.length} members:`, mems);
       if (opts.dryrun) { console.error(`dryrun-mode: Should add ${mems.length} mems to ${opts.destteamname}`); return; }
+      // Async for each member
       async.map(mems, gh_addmem, function (err, ress) {
         if (err) { console.log(`Error running (some of ${mems.length}) member additions: ${err}`); return; }
         console.log(`${mems.length} Members added to destination group ${opts.destteamname}`);
@@ -110,7 +114,7 @@ function gh_team_members(opts) {
   function gh_mkrepo(p, gc, cb) {
     if (!p.githost || !p.gitorg || !p.reponame) { let m = `Some of parameters (githost, gitorg, gitrepo) missing for GH repo creation !`; console.log(m); return cb(m, null); }
     // GH E API URL. See public github  OLD: /api/v3
-    let apiurl = `https://${p.githost}${apiprefx}/orgs/${p.gitorg}/repos`; // post See also auto_init
+    let apiurl = `https://${p.githost}${apiprefix}/orgs/${p.gitorg}/repos`; // post See also auto_init
     let ghm = {"name": p.reponame,"description":`Git repo ${p.reponame}`,"homepage":"","private":true,"has_issues":false,"has_projects":false,"has_wiki":false}; // auto_init
     console.log(`Send (${apiurl}):`, ghm);
     // "Accept: application/vnd.github+json" // 'content-type': 'application/json',
@@ -133,6 +137,8 @@ function gh_team_members(opts) {
       return cb(`Error creating repo ${ex} (see dump above)`, null);
     });
   }
+  // Add a remote definition for repo locally.
+  // For things to work remote should have the same root commit as local repo. 
   function rem_add_local(p, cb) {
     let rtmpl = {"ssh": "git@{{ githost }}:{{ gitorg }}/{{ reponame }}.git", "http": "https://{{ githost }}/{{ gitorg }}/{{ reponame }}"};
     let conntype = p.conntype || 'ssh'; if (!rtmpl[conntype]) { conntype = 'ssh'; } // Prefer SSH
@@ -148,11 +154,27 @@ function gh_team_members(opts) {
     });
   }
 
-// Create repo on GitHub/GitLab
+// Create repo on GitHub (GitLab ?)
 // Pass: gitorg, reponame
-function repo_create(host, p) {
+function repo_create(opts) { // OLD: host, p
+  if (!opts.orgname) { usage(`No orgname given for a new repo.`); }
+  if (!opts.reponame) { usage(`No reponame given for a new repo.`); }
   //if (p.desc) { ghm.description = p.desc; }
   // Similar for: has_issues, has_projects, has_wiki ?
+  let gc = gcred_load(null, cfg.url); // For now "url" => "host"
+  console.log("GC: ", gc);
+
+  let p = { githost: cfg.url, gitorg: opts.orgname, reponame: opts.reponame,
+    // 'conntype': 'ssh', cwd: ${cfg.root} // Unused (2)
+  };
+  console.log("P: ", p);
+  // Adds p.projid (number) to p
+  gh_mkrepo(p, gc, on_mkrepo_complete);
+  function on_mkrepo_complete (err, p) {
+    if (err) { usage(`Error creating Git Project ${err}`); return; }
+    if (!p.projid) { usage(`Error: No error reported for repo creation, but projid was not received back !!!`); return; }
+    console.log(`Created repo successfully (w. projid ${p.projid})`);
+  }
 }
 
 module.exports = {
@@ -164,7 +186,14 @@ module.exports = {
   
 };
 let acts = [
-  {id: "team", title: "List teams", cb: gh_team_members, }
+  // node gittie.js team --orgname myorg --teamname myteam
+  // node gittie.js team --orgname myorg --teamname myteam --destteamname 12345
+  {id: "teams", title: "List all teams. Use --orgname for the org under which to list teams", cb: gh_team_members, },
+  {id: "team", title: "List a team and members. Use --orgname, --teamname to identify team",  cb: gh_team_members, },
+  
+  {id: "team_mem_copy", title: "Copy team members. Use --orgname, --teamname (as in 'team') to indicate source team plus use --destteamname "+
+   "(actually team number, see this in team dump .nnn) to copy members to a new team in same org", cb: gh_team_members, },
+  {id: "mkrepo", title: "Create repo (in org by --orgname, reponame --reponame)", cb: repo_create, },
 ];
 var clopts = [
   // ARG+ for multiple
@@ -172,6 +201,7 @@ var clopts = [
   ["t", "teamname=ARG", "Team Name"],
   ["", "destteamname=ARG", "Destination team for member push"],
   ["", "dryrun", "Dry-Run mode (do not actually modify)"],
+  ["", "reponame=ARG", "Target repo name for op. (e.g. repo name to create for mkrepo)"],
 ];
 function usage(msg) {
   if (msg) { console.error(`${msg}`); }
@@ -195,6 +225,7 @@ if (process.argv[1].match("gittie.js")) {
   var getopt = new Getopt(clopts);
   var opt = getopt.parse(argv2);
   let opts = opt.options;
+  opts.op = op; // Add subcomm op
   console.log(opts);
   var rc = opnode.cb(opts) || 0;
 }
