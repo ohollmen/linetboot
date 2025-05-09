@@ -5,6 +5,11 @@ var gridplug = {
     if (!val || (typeof val != 'string')) { return ""; }
     return "<span title=\""+val+"\">"+val.substr(0, 10)+"<span>";
   },
+  unix2iso: (val, item) => {
+    if (!val) { return ""; }
+    if (typeof val != 'number') { return "???"; }
+    new Date(val * 1000).toISOString();
+  },
   csum_short: (val, item) => {
     if (!val || (typeof val != 'string')) { return ""; }
     return "<span title=\""+val+"\">"+val.substr(0, 4)+"..."+val.substr(-4, 4)+"<span>";
@@ -1327,6 +1332,25 @@ function riskadj_cell(val, item) {
      {"name": "description","title": "Description", "type":"text", "width": 25, itemTemplate: null,},
      {"name": "stage",     "title": "Stage", "type":"text", "width": 5, itemTemplate: null,},
      {"name": "includedPermissions", "title": "Perms.", "type": "text", "width": 5, visible: 0, itemTemplate: null,}, // In detail file only (isArray)
+   ];
+   var fldinfo_artihub = [
+    // Also: normalized_name
+    {"name": "name",        "title": "Name", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "description", "title": "Description", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "category",    "title": "Category", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "stars",       "title": "Stars", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "version",     "title": "Pack. Version", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "app_version", "title": "App Version", "type":"text", "width": 15, itemTemplate: null,},
+    //{"name": "has_values_schema",      "title": "ValsSchema(?)", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "license",     "title": "License", "type":"text", "width": 15, itemTemplate: null,},
+    {"name": "deprecated",  "title": "Deprecated", "type":"text", "width": 15, itemTemplate: null,},
+    // production_organizations_count
+    {"name": "ts",          "title": "Updated at (TS)", "type":"text", "width": 15, itemTemplate: gridplug.unix2iso,}, // TODO: trans
+    //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
+    //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
+    //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
+    //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
+    //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
    ];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
