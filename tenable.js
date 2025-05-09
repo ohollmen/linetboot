@@ -1,4 +1,15 @@
 // Tenable Install/Updates availability
+// ## Nessus Host API
+// - API (shows as a HTML webpage) https://localhost:8834/api
+// - https://localhost:8834/server/status (in JSON code: 503)
+// - https://localhost:8834/server/properties
+// 
+// # Refs:
+// - https://github.com/LimberDuck/nessus-cheat-sheet/blob/main/nessus-cheat-sheet.adoc#api
+// - https://developer.tenable.com/reference/io-v3-access-control-permission-create
+// - https://community.tenable.com/s/article/An-introduction-to-the-Nessus-API-generating-session-tokens-and-API-keys?language=en_US
+// - Export scan: https://community.tenable.com/s/article/Use-the-Nessus-API-to-Export-a-Scan?language=en_US
+
 
 var axios = require("axios");
 var Getopt = require("node-getopt");
