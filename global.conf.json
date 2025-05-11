@@ -286,6 +286,12 @@
       
     ]
   },
+  "ollama": {
+    "host": "localhost:11434",
+    "sec": 0,
+    "modelX": "llama3.2",
+    "model": "llama3.2:latest"
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
