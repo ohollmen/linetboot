@@ -1201,3 +1201,43 @@ initrd http://{{ httpserver }}/kali/live/initrd.img
 # username=root (pw toor does not work). vga=ask triggesr interact. mode
 append boot=live  components  hostname=kali  fetch=http://{{ httpserver }}/kali/live/filesystem.squashfs -- vga=788 splash
 # append vga=788 theme=dark
+
+# unRAID OS
+# Google: unraid os pxe boot example pxelinux configuration with kernel and initrd
+# https://forums.unraid.net/topic/26400-how-to-pxe-booting-unraid/
+#label unraidos
+#menu label unRAID OS (4GB RAM Limit)
+#kernel http://{{ httpserver }}/unraid/bzimage
+#initrd http://{{ httpserver }}/unraid/bzroot
+#append mem=4095M
+# LibreELEC 12 (previously: OpenELEC)
+# https://forums.unraid.net/topic/39700-guide-pxe-boot-openelec-in-a-kvm-vm/
+# (also some virtualbox xml configs)
+# N/A: http://openelec.tv/get-openelec
+# https://wiki.libreelec.tv/configuration/network-boot
+# All versions available from: https://archive.libreelec.tv/archive/
+# Look for x86 files w. LibreELEC-Generic.x86_64- (download .img.gz,
+# see below for info)
+# ```
+# file LibreELEC-Generic.x86_64-12.0.2.img 
+# LibreELEC-Generic.x86_64-12.0.2.img: DOS/MBR boot sector; partition 1:
+# ID=0xee, start-CHS (0x0,0,2), end-CHS (0x3ff,255,63), startsector 1, 1124351 sectors
+# sudo fdisk -l LibreELEC-Generic.x86_64-12.0.2.img
+# # offset=$(($(<start_sector> * <sector_size>)))
+# offset=$((8192 * 512)); echo $offset
+# # In case of LE use fs type vfat for part 1 (offset 4194304), ext4 for part 2 (offset 541065216)
+# # Actually part 2 ext4 is empty part w. empty file .please_resize_me - do not mount it
+# # Actually with $offset passed correctly linux auto-detects the
+# filesystem type making the -t ... redundant 
+# sudo mount -o loop,offset=$offset -t vfat LibreELEC.img /isomnt/libreelec12
+# ```
+# Gemini: How do I mount libreelec .img file as a linux loop device ?
+label libreelec12
+menu label LibreELEC 12.0.2 OS
+kernel http://{{ httpserver }}/libreelec12/KERNEL
+# Note: The file libreelec/SYSTEM exists and is a squashfs image. How does LE know to load it ?
+# N/A initrd http://{{ httpserver }}/libreelec12/SYSTEM
+# Note: seems disk=... is media Also option (flag) overlay
+# boot=NFS=... and disk=NFS=... may append NFS version, e.g. ../storage,vers=4.2
+# Example disk=NFS=.../HTPCPLAYRM
+append ip=dhcp boot=NFS={{nfsserver}}:/isomnt/libreelec12 disk=NFS={{nfsserver}}:/isomnt/libreelec_data ssh
