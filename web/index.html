@@ -781,5 +781,27 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   </ul>
 {{#note}}<p>Note: {{ note }}</p>{{/note}}
 </script>
+
+<script d="t_ollama" type="text/template" title="Ollama AI Chat Form" data-info="">
+<form>
+  <div>
+    <label for="modelId">Model</label>
+    <select name="model" id="modelId"></select>
+    <button type="button" id="preload">Preload</button>
+    <button type="button" id="unload">Unload</button>
+  </div>
+  <div>
+    <label for="promptId">Prompt Text</label>
+    <textarea name="prompt" id="promptId"></textarea>
+  </div>
+  <div>
+    <input type="checkbox" name="ctx" id="ctxId">
+    <label for="ctxId">Contextual chat</label>
+  </div>
+  <button type="button" id="send">Send</button>
+  <button type="reset" id="reset">Reset Context</button>
+</form>
+</script>
+
 </body>
 </html>
