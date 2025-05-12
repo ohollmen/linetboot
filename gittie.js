@@ -22,6 +22,7 @@ let async    = require("async");
 //const { cpuUsage } = require('process');
 var Getopt   = require("node-getopt");
 //const { getAllExtensions } = require('showdown');
+let cliapp = require('./cliapp');
 
 let cfg = {};
 let apiprefix = `/api/v3`; // Even this url returns a JSON w. large number of sub-urls !
@@ -32,7 +33,22 @@ function init(_mcfg) {
   // Check mems ?
   if (!cfg.ghapiver) { cfg.ghapiver = "2022-11-28"; }
 }
-
+let bodymeth = { post: true, put: true, patch: true };
+function curlify(meth, url, data, rpara) {
+  cmd = `curl -X ${meth.toUpperCase()} `;
+  hdrs = rpara.headers;
+  bmeth = bodymeth[meth.toLowerCase()]  ? true : false;
+  ["Accept","Content-Type","Authorization"].forEach( (hk) => {
+    if (hdrs[hk]) {  cmd += `-H '${hk}: ${hdrs[hk]}' `; }
+  });
+  let body = ""; // null ?
+  if (bmeth) { body = data; }
+  // Is typeof null an object ?
+  if ( ( typeof body == 'object' ) || ( Array.isArray(body) ) ) { body = JSON.stringify(body); }
+  cmd += `-d '${body}' `;
+  cmd += `'${url}'`
+  return cmd
+}
 // Load credentials for a Git server host from .git-credentials file.
 // @return credentials (object) w. username and password on success, null
 // on failure to find host.
@@ -71,6 +87,7 @@ function gh_team_members(opts) {
   axios.get(apiurl1, rpara).then( (resp) => {
     let d = resp.data;
     if (opts.op == 'teams') { console.log(`ALL-TEAMS-RES(${d.length}): `+JSON.stringify(d, null, 2)); return; }
+    if (!opts.teamname) { console.error(`Must have --teamname`); return; }
     //let t = d.find( (t) => { return t.slug == opts.teamname; }); // 
     let teams = d.filter( (t) => { return t.slug.match(opts.teamname); }); // Match "slub"
     console.log(`TEAM-RES (after unique filter by ${opts.teamname}):`+JSON.stringify(teams, null, 2));
@@ -91,7 +108,7 @@ function gh_team_members(opts) {
       // Async for each member
       async.map(mems, gh_addmem, function (err, ress) {
         if (err) { console.log(`Error running (some of ${mems.length}) member additions: ${err}`); return; }
-        console.log(`${mems.length} Members added to destination group ${opts.destteamname}`);
+        console.log(`${mems.length} Members copied from source '${opts.teamname}' to destination group '${opts.destteamname}'.`);
       });
       
     }).catch( (ex) => { console.error(`Error fetching members for group ${teams[0].slug}: ${ex}`); })
@@ -108,7 +125,44 @@ function gh_team_members(opts) {
     .catch( (ex) => { console.error(`Error adding member (${uname}): ${ex}`, ex.response); return cb(ex, null); });
   }
 }
-
+// Create team or Update team
+// https://docs.github.com/en/enterprise-cloud@latest/rest/teams/teams?apiVersion=2022-11-28
+// Update (PATCH): append opts.teamname
+// Note: update does not allow repo_names: ["org/repo"] (like create).
+// In GitHub GUI: POST https://HOST/ORG/REPO/members w. (authen...token ~ csrfToken https://github.com/github/eslint-plugin-github/blob/main/docs/rules/authenticity-token.md)
+// authenticity_token=lb24...aECJMOk_Sr5B_G6i3M7es8x_0n92E...jskKhoolw&guidance_task=&member=team%2F1234&role=pull
+function gh_teamadd(opts) {
+  if (!opts.orgname) { console.log(`Op ${opts.op}: Must have --orgname`); return; }
+  if (!opts.teamname) { console.error(`Must have --teamname`); return; }
+  let url = `https://${cfg.url}${apiprefix}/orgs/${opts.orgname}/teams`; // POST
+  let rpara = { headers: { "Authorization": `Bearer ${cfg.token}`, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":`${cfg.ghapiver}` } };
+  rpara.headers['Content-type'] = "application/json";
+  // Also: maintainers: ["","", ...], repo_names: ["org/repo",""].
+  // privacy: secret/closed, permission: pull/push, parent_team_id: num
+  let p = {"name": `${opts.teamname}`, privacy: "closed", permission: "push",
+    //description: ``,
+  };
+  if (!opts.reponame) { console.error(`No orphan teams allowed for now. Pass --reponame`); return; }
+  if (opts.reponame) {
+    // NOT: if (!opts.reponame.includes('/')) { console.error(`reponame not in org/repo format`); return; }
+    p.repo_names = [`${opts.orgname}/${opts.reponame}`];
+  }
+  if (opts.desc) { p.description = opts.desc; }
+  console.log(`Add team: `, JSON.stringify(p, null, 2));
+  //let gc = gcred_load(null, cfg.url); // For now "url" => "host"
+  //if (!gc) { console.error(`No creds gotten !`); return; }
+  let meth = (opts.op == 'upteam') ? 'patch' : 'post';
+  // Also parent_team_id (int or null)
+  if (meth == 'patch') { delete p.name; url += `/${opts.teamname}`; } // No way to update repos !
+  console.log(`Calling ${meth.toUpperCase()} ${url}`, rpara);
+  console.log( curlify(`${meth}`, url, p, rpara) );
+  
+  return;
+  axios[meth](url, p, rpara).then( (resp) => {
+    let d = resp.data;
+    console.log(`Created repo w. response:`+JSON.stringify(d, null, 2));
+  }).catch( (ex) => { console.error(`Error: Failed repo creation: ${ex}`, ex.response); });
+}
 // Create new GitHub repository.
 // Must pass githost, gitorg, gitrepo (optionally ghapiver)
   function gh_mkrepo(p, gc, cb) {
@@ -177,6 +231,28 @@ function repo_create(opts) { // OLD: host, p
   }
 }
 
+// Send / upload SSH key
+function ssh_key_send(opts) {
+  let url = `https://${cfg.url}${apiprefix}/user/keys`; // GET: list POST: send
+  // let url = `https://${cfg.url}${apiprefix}/user/keys`; // list
+  let kfn = process.env.HOME + `/.ssh/id_rsa.pub`;
+  if (opts.keyfn) { kfn = opts.keyfn; }
+  console.log(`Loading key ${kfn}`);
+  let cont = fs.readFileSync(kfn, 'utf8');
+  if (!cont) { console.error(`No key content !`); return; }
+  cont = cont.trim();
+  // getTimezoneOffset() 
+  // let iso = new Date().toISOString().substring(0, 10);
+  let iso = new Date().toLocaleString( 'sv').substring(0, 10);
+  let p = { title: `SSH Key ${iso}`, key: `${cont}` };
+  console.log(p);
+  return;
+  axios.post(url, p, {headers: hdrs}).then( (resp) => {
+    let d = resp.data;
+    console.log(``);
+  }).catch( (ex) => { console.log(``); });
+}
+
 module.exports = {
   init: init,
   gcred_load: gcred_load,
@@ -194,6 +270,9 @@ let acts = [
   {id: "team_mem_copy", title: "Copy team members. Use --orgname, --teamname (as in 'team') to indicate source team plus use --destteamname "+
    "(actually team number, see this in team dump .nnn) to copy members to a new team in same org", cb: gh_team_members, },
   {id: "mkrepo", title: "Create repo (in org by --orgname, reponame --reponame)", cb: repo_create, },
+  {id: "mkteam", title: "Create team (in org by --orgname, team by --teamname, reponame --reponame, also --desc supported)", cb: gh_teamadd, },
+  {id: "upteam", title: "Update team (in org by --orgname, team by --teamname, reponame --reponame, also --desc supported)", cb: gh_teamadd, },
+  {id: "sendsshkey", title: "Send SSH Key to GH for easy auth.", cb: ssh_key_send, },
 ];
 var clopts = [
   // ARG+ for multiple
@@ -202,6 +281,7 @@ var clopts = [
   ["", "destteamname=ARG", "Destination team for member push"],
   ["", "dryrun", "Dry-Run mode (do not actually modify)"],
   ["", "reponame=ARG", "Target repo name for op. (e.g. repo name to create for mkrepo)"],
+  ["", "desc=ARG", "Description for entity (e.g. team or repo to create)"],
 ];
 function usage(msg) {
   if (msg) { console.error(`${msg}`); }
@@ -213,7 +293,7 @@ if (process.argv[1].match("gittie.js")) {
   let mcfg = require(cfgfn);
   if (!mcfg) { usage(`No config loaded`); }
   init(mcfg);
-  console.error(`Loaded config ${cfgfn}`,cfg);
+  // console.error(`Loaded config ${cfgfn}`,cfg);
   // CLI Processing
   var argv2 = process.argv.slice(2);
   var op = argv2.shift();
@@ -225,6 +305,7 @@ if (process.argv[1].match("gittie.js")) {
   var getopt = new Getopt(clopts);
   var opt = getopt.parse(argv2);
   let opts = opt.options;
+  Object.keys(opts).forEach( (k) => { if (k.length == 1) { delete opts[k]; }});
   opts.op = op; // Add subcomm op
   console.log(opts);
   var rc = opnode.cb(opts) || 0;
