@@ -2343,12 +2343,16 @@ function media_listing (req, res) {
   var list2 = [];
   list.forEach(function (subdir) {
     
-    var subpath = path + slash + subdir;
+    var subpath = `${path}${slash}${subdir}`;
+    // Check
+    if (!fs.existsSync(subpath)) { return; }
     // Should succeeed as we just got item (ownership/access problems ?)
-    var stats = fs.statSync(subpath);
-    if (!stats.isDirectory()) { return; } // File - Skip !
+    var stats = null;
+    try { stats = fs.statSync(subpath); } catch (ex) { return; } // e.g. core_tinycore.gz
+    if (stats && !stats.isDirectory()) { return; } // File - Skip !
     var e = { path: subpath, filecnt: 0 };
-    var sublist = fs.readdirSync(subpath);
+    var sublist = null;
+    try { sublist = fs.readdirSync(subpath); } catch (ex) { return; }
     e.filecnt = sublist.length;
     //e.sublist = sublist;
     // return e; // map
