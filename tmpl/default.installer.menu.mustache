@@ -1233,7 +1233,7 @@ append boot=live  components  hostname=kali  fetch=http://{{ httpserver }}/kali/
 # ```
 # Gemini: How do I mount libreelec .img file as a linux loop device ?
 label libreelec12
-menu label LibreELEC 12.0.2 OS
+menu label LibreELEC 12.0.2 OS (Live)
 kernel http://{{ httpserver }}/libreelec12/KERNEL
 # Note: The file libreelec/SYSTEM exists and is a squashfs image. How does LE know to load it ?
 # N/A initrd http://{{ httpserver }}/libreelec12/SYSTEM
@@ -1241,3 +1241,22 @@ kernel http://{{ httpserver }}/libreelec12/KERNEL
 # boot=NFS=... and disk=NFS=... may append NFS version, e.g. ../storage,vers=4.2
 # Example disk=NFS=.../HTPCPLAYRM
 append ip=dhcp boot=NFS={{nfsserver}}:/isomnt/libreelec12 disk=NFS={{nfsserver}}:/isomnt/libreelec_data ssh
+# Zorin OS (version 17.3 based on Ubuntu 22.04 LTS)
+# - PXE Info: https://forum.zorin.com/t/how-to-install-zorinos-16-over-lan/34010
+# - Image Download: https://distro.ibiblio.org/zorinos/17/Zorin-OS-17.3-Core-64-bit-r1.iso
+label zorin17
+menu label Zorin 17.3 CORE (Live)
+# Note: On ISO there is separate /boot/grub/ with EFI bootloader files)
+kernel http://{{ httpserver }}/zorin17/casper/vmlinuz
+# This used to be .lz4 (ver 16), now .zstd (ver 17)
+initrd http://{{ httpserver }}/zorin17/casper/initrd.zstd
+append ip=dhcp root=/dev/ram0 ramdisk_size=1048576 netboot=url url={{ httpserver }}/Zorin-OS-17.3-Core-64-bit-r1.iso
+
+# Elementary OS 8.0.1
+# https://elementaryos.stackexchange.com/questions/776/is-there-a-netboot-install-for-elementary
+label elementaryos80
+menu label Elementary OS 8.0.1 (Live)
+kernel http://{{ httpserver }}/elementaryos80/casper/vmlinuz
+initrd http://{{ httpserver }}/elementaryos80/casper/initrd.lz
+# Also: ro (read-only) Auto-inst: file=/cdrom/preseed/elementary.seed
+append ip=dhcp vga=normal boot=casper netboot=nfs nfsroot={{nfsserver}}:/isomnt/elementaryos80 locale=en_US --
