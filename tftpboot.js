@@ -103,7 +103,7 @@ function bootlabels(fn) {
   }
   return m;
 }
-/** Menu Default Boot Item Label.
+/** Detect Boot Menu Default Boot Item Label.
  * @param fn {string} - Menu Filename
  * @return Boot label string
  */
@@ -135,14 +135,22 @@ function bootlbl2bootitem(bootlbl, tcfg) {
   if (!bootitem) { throw "No Boot Item found from menu by " + bootlbl; }
   return bootitem;
 }
+
+
 /** Parse (PXELinux) menu file in stateful manner.
  * Aim to produce Grub menu based on this info.
  * @param fn {string} - filename for menu file.
  * @return Array of boot items
  */
+
 function menufile_parse(fn) {
   if (!fs.existsSync(fn)) { return null; }
   var cont = fs.readFileSync(fn, 'utf8');
+  return menufile_parse_cont(cont);
+}
+
+function menufile_parse_cont(cont) {
+  if (!cont) { console.error(`No menu content parse !`); return null; }
   var lines = cont.split("\n");
   var arr = [];
   var known = {label: 1, 'menu label':1, kernel: 1, linux: 1, initrd: 1, append:1, sysappend: 1};
@@ -258,19 +266,26 @@ var cproc   = require('child_process');
  Common: sudo losetup /dev/loop3 (But requires sudo on RH ! ... or ugo+s)
  * @param loopdev {string} - Loop device name (e.g. /dev/loop6)
  * @param cb {function} - Function to call after resolving image
+ * TODO: Return object: {dev: "loopN", img: ""}
 */
-function getlosetup(loopdev, cb) { // TODO: (loopdev, cb)
+function getlosetup(loopdev, cb) {
   //console.log("Continue by loopdev: " + loopdev);
   //var cmd = "losetup --list --noheadings -O BACK-FILE "+ loopdev;
   var cmd = "losetup "+ loopdev;
   var legpatt = /\(([^)]+)\)/; // Legacy (compatible) output pattern
   //0 &&
   cproc.exec(cmd, function (err, stdout, stderr) {
-    if (err) { return cb("Failed losetup: " + err, null); }
+    if (err) {
+      // Seems losetup errors on loopN devs with nothing mounted.
+      // Suppress errors from losetup, filter failed at caller.
+      //return cb("Failed losetup: " + err, null);
+      return cb(null, ""); // {dev: loopdev, img: ""}
+    }
     var m = stdout.match(legpatt);
     if (!m) { return cb("No Image matched in "+stdout, null); }
+    console.log(`${loopdev} => ${m[1]}`);
     //imgfull = m[1]; // Suppress
-    return cb(null, m[1]);
+    return cb(null, m[1]); // {dev: loopdev, img: m[1]}
   });
 }
 
@@ -290,3 +305,85 @@ module.exports = {
   // Boot Media
   getlosetup: getlosetup
 };
+
+// Parse menu and output in (near) "bootables" format.
+function cli_pm(opts) {
+  let app = opts.self;
+  let mfn = process.argv[3];
+  if (!fs.existsSync(mfn)) { console.error(`No menu file passed`); return; }
+  
+  var tmpl = fs.readFileSync(mfn, 'utf8');
+  // var g = dclone(global); // MUST Copy (to change below) !
+  // g.tftp.menudef = bootlbl;
+  let cont = Mustache.render(tmpl, opts.mcfg);
+  
+  let d = menufile_parse_cont(cont);
+  d.forEach( (bi) => {
+    let kernel = bi.kernel || bi.linux; //  || "http://foo/";
+    bi._kernel = parsepath(kernel);
+    // let uk = kernel && kernel.match(/^http/) ? new URL(kernel) : null;
+    // bi._kernel = uk ? uk.pathname : "NONE";
+    // if (bi.initrd && bi.initrd.includes(" ")) {} // Multiple initrd
+    // else if (bi.initrd && bi.initrd.match(/^http/)) { let ui = new URL(bi.initrd); bi._initrd = ui.pathname; }
+    bi._initrd = parsepath(bi.initrd);
+  });
+  console.log(JSON.stringify(d, null, 2));
+  console.log(`${d.length} Boot items listed.`);
+  function parsepath(u) {
+    if (!u) { return ""; }
+    if (!u.match(/https?/)) { return ""; } // See arch for exceptions (missing http:// on one of images ?)
+    if (u.match(',')) { return parsepath_multi(u); } // Hope to catch multi-initrd
+    let url = new URL(u);
+    if (!url) { return ""; }
+    let up = url.pathname;
+    if (!up) { return ""; }
+    up = up.replace(/^\//, "");
+    return up;
+    function parsepath_multi(mus) {
+      let musarr = mus.split(/,/);
+      console.error(`MULTI-SPLIT (): `, musarr);
+      if (!musarr) { return "MULTI???"; }
+      // Call parsepath(us) recursively to parse single 
+      musarr = musarr.map( (us) => { return parsepath(us); });
+      return musarr.join(',');
+    }
+  }
+}
+
+function cli_loopmnt(opts) {
+  // Read names of all /dev/loop\d+
+  var files = fs.readdirSync("/dev/", {});
+  files = files.filter( (dfn) => { return dfn.match(/loop\d+/) ? true : false; });
+  files = files.map( (dfn) => { return `/dev/${dfn}`; });
+  console.log(files);
+  let async = require("async");
+  async.map(files, getlosetup, function (err, ress) {
+    // Failed losetup: Error: Command failed: losetup /dev/loop6
+    // For loop devices that have nothing mounted ?
+    if (err) { console.error(`Error resolving loop device info: ${err}`); return; }
+    console.log(ress);
+  });
+  
+}
+
+let ops = [
+  {id: "parsemenu", "label": "Parse menu file (pass fn as first arg) and dump as JSON.", cb: cli_pm},
+  {id: "loopdev_list", "label": "List loop mounts on current machine.", cb: cli_loopmnt},
+  
+];
+let cliopts = [
+  //["","=ARG",""],
+];
+if (process.argv[1].match("tftpboot.js")) {
+  let cliapp = require("./cliapp");
+  let app = new cliapp.cliapp(ops, cliopts, {});
+  var cfgfn = process.env.HOME + "/.linetboot/global.conf.json";
+  var mcfg = require(cfgfn);
+  // console.log(mcfg);
+  if (!mcfg) { app.usage("No config !"); }
+  let opn = app.parse({ addself: true });
+  // console.log(app);
+  app.opts.mcfg = mcfg;
+  let rc  = opn.cb(app.opts);
+  
+}
