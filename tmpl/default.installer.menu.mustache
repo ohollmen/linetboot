@@ -1072,7 +1072,7 @@ append -B smartos=true,console=text,root_shadow='$5$2HOHRnK3$NvLlm.1KQBbB0WjoP7x
 # - Live Booting: https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/ - coreos.live.rootfs_url
 #     https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/
 label fcos
-menu label Fedora CoreOS 36
+menu label Fedora CoreOS 36 (Server, Install by Ign.)
 # fedora-coreos-32.20200726.3.1-live-kernel-x86_64
 kernel http://{{ httpserver }}/fcos/images/pxeboot/vmlinuz
 # initrd from example fedora-coreos-32.20200726.3.1-live-initramfs.x86_64.img, fedora-coreos-32.20200726.3.1-live-rootfs.x86_64.img
@@ -1260,3 +1260,49 @@ kernel http://{{ httpserver }}/elementaryos80/casper/vmlinuz
 initrd http://{{ httpserver }}/elementaryos80/casper/initrd.lz
 # Also: ro (read-only) Auto-inst: file=/cdrom/preseed/elementary.seed
 append ip=dhcp vga=normal boot=casper netboot=nfs nfsroot={{nfsserver}}:/isomnt/elementaryos80 locale=en_US --
+
+# Manjaro and endevaour OS
+# Gemini: Id like to discuss booting Arch Linux based live desktop
+# distributions in PXE boot mode - without full installaation. Can
+# Manjaro or Endeavour distibutions be pxe live booted ?
+# Notes for linux universal parameters:
+# - rw - rw root
+# - root=/dev/nfs or similar for network-based roots.
+# Download page: https://manjaro.org/products/download/x86
+# Download: https://download.manjaro.org/xfce/25.0.1/manjaro-xfce-25.0.1-250508-linux612.iso
+# Checksum: https://download.manjaro.org/xfce/25.0.1/manjaro-xfce-25.0.1-250508-linux612.iso.sha256
+# https://forum.manjaro.org/t/installing-off-pxeboot-server/64602/4
+# https://forum.manjaro.org/t/ipxe-boot-over-http-kernel-errors/116597
+# Also try Arch linux (Gem) advised (note trailing slash):
+# archiso_http_srv=http://<your_http_server_ip>/<path/to/iso_or_airootfs_directory>/
+# For Manjaro+HTTP Use: miso_http_srv=... misobasedir=manjaro misolabel=manjaro
+# NOTE: Leave out manjaro dir - "Then miso_http_srv= has to point to the parent directory of manjaro."
+label manjaro
+menu label Manjaro XFCE  (Live, NFS or HTTP)
+kernel http://{{httpserver}}/manjaro/boot/vmlinuz-x86_64
+# Must have 3 nfs:// items (as of 2021 forum)
+initrd http://{{httpserver}}/manjaro/boot/amd_ucode.img,http://{{httpserver}}/manjaro/boot/intel_ucode.img,http://{{httpserver}}/manjaro/boot/initramfs-x86_64.img
+# NFS (livefs.sfs 69MB, desktopfs.sfs 1.6GB, rootfs.sfs 922MB)
+# Difficulties, mount req. does not reach server. No mount.nfs on initrd.
+# append ip=dhcp rw root=/dev/nfs nfsroot={{nfsserver}}:/isomnt/manjaro/
+# manjaro/x86_64/livefs.sfs
+# HTTP (Like Arch archiso_http_srv=http://server/...)
+# NOTE: Possible path pickyness. see http server logs. Below works !
+append ip=dhcp miso_http_srv={{httpserver}}/manjaro/ misobasedir=manjaro misolabel=manjaro
+# ipxe from forum:
+# imgargs vmlinuz-x86_64 initrd=initramfs-x86_64.img misobasedir=manjaro
+# miso_nfs_srv=${server}:${nfs_path} misolabel=manjaro nouveau.modeset=1
+# i915.modeset=1 radeon.modeset=1 logo.nologo nonfree=no showopts ip=dhcp
+
+
+##### Ubuntu (and other root over NFS root=/dev/nfs
+# nfsroot=${serverip}:/...) Network boot: ####
+# https://www.hamishmb.com/howto-pxe-network-booting/a
+# https://forum.pine64.org/showthread.php?tid=6814
+
+# Endeavour OS
+#label endeavour
+#menu label EndeavourOS Live (NFS - Tentative)
+#kernel http://{{httpserver}}/endeavour/boot/vmlinuz-linux
+#initrd http://{{httpserver}}/endeavour/boot/initramfs-linux.img
+#append ip=dhcp rw root=/dev/nfs nfsroot={{nfsserver}}:/endeavour/live/rootfs
