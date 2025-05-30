@@ -177,7 +177,7 @@ kernel http://{{ httpserver }}/tinycore/boot/vmlinuz
 #initrd http://{{ httpserver }}/tinycore/boot/core.gz
 initrd http://{{ httpserver }}/core_tinycore.gz
 
-# Debian MATE. Boots up to installer, but installer obscesses about CD/DVD being present (!)
+# Debian MATE. Boots up to installer, but installer obscesses about having CD/DVD present (!)
 # Need preseed like basic Ubuntu desktop ? e.g. boot=casper live-media-path=
 #label debian10mate
 #menu label Debian 10 MATE Live
@@ -446,12 +446,25 @@ append priority=critical auto=true interface=auto DEBCONF_DEBUG=5 ipv6.disable=1
 # What all (kernel CLI) options does pop-os support (besides live-media-path, hostname, username) ? There's very little doc on that. Would > 4GB RAM help ?
 # https://superuser.com/questions/1682713/pop-os-setting-kernel-parameters-boot-loader-options-permanently-is-not-wor
 label popos22
-menu label PopOS 22.04 Live - WIP
+menu label PopOS 22.04 (Live, HTTP+ISO)
 kernel http://{{ httpserver }}/popos22/casper/vmlinuz.efi
 initrd http://{{ httpserver }}/popos22/casper/initrd.gz
 # /popos22/casper_pop-os_22.04_amd64_intel_debug_717/filesystem.squashfs
 # initrd=/casper_pop-os_22.04_amd64_intel_debug_717/initrd.gz
-append boot=casper live-media-path=http://{{ httpserver }}/popos22/casper hostname=pop-os username=pop-os noprompt
+# Note live-media-path=... does not seem to have any effect
+# append ip=dhcp boot=casper live-media-path=http://{{ httpserver }}/popos22/casper hostname=pop-os username=pop-os noprompt nosplash
+# Gem: What are the kernel, initrd and append settings for pxe booting popos linux (from system76) ?
+# Could not find the ISO ... (even if same url is downloadbale by wget)
+# NOTE: Zorin (also based on Ubu 22.04) does not use part "http://", uses netboot=url url=server/pat/to/img.iso
+# HTTP + ISO
+# append ip=dhcp boot=casper iso-scan/filename=http://{{ httpserver}}/pop-os_22.04_amd64_intel_38.iso
+# Works OK (Note: w/o http:// in URL, Zorin-style) !! 1.04 GB mem used, SM-GUI 4.9GB
+# Install PopOS is not responding
+append ip=dhcp boot=casper netboot=url url={{ httpserver}}/pop-os_22.04_amd64_intel_38.iso
+# HTTP and nfs w. netboot
+# append ip=dhcp boot=casper netboot=http url=http://{{httpserver}}/popos22/casper/filesystem.squashfs nosplash
+# Works OK (Ubuntu style NFS root, shows NFS mounted on /cdrom !!,1.1GB mem used, SM-GUI: 2.3 GB)
+# append ip=dhcp boot=casper netboot=nfs nfsroot={{nfsserver}}:/isomnt/popos22/ nosplash
 
 # Centos 8
 label centos8
@@ -1151,7 +1164,7 @@ append talos.platform=metal panic=1000 slab_nomerge pti=on talos.config.oauth.cl
 # - Finnix PXE boot #18 https://github.com/orgs/finnix/discussions/18
 # - See also: https://github.com/beta-tester/RPi-PXE-Server
 label finnix-x64
-menu label Finnix (Live) x64
+menu label Finnix (Live Server) x64
 kernel http://{{ httpserver }}/finnix-x64/live/vmlinuz
 initrd http://{{ httpserver }}/finnix-x64/live/initrd.img
 append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=live config
@@ -1159,8 +1172,8 @@ append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=l
 #  Boot to Finnix x64 Live
 #ENDTEXT
 
-# Photon OS (VMWare)
-# Phtoton 1.0
+# Photon OS (VMWare, RH Based)
+# Photon 1.0
 # - PXE Boot (General): https://vmware.github.io/photon/assets/files/html/1.0-2.0/PXE-boot.html
 # - Kickstart JSON support: https://vmware.github.io/photon/assets/files/html/1.0-2.0/kickstart.html
 # Photon 4
@@ -1170,7 +1183,7 @@ append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=l
 # - Image downloads (raw dir listings): https://packages.vmware.com/photon/  https://packages.vmware.com/photon/4.0/Rev2/iso/
 # Initial cut boots quite far, but crashes w. reboot (not getting stuck) to bios screen around watchdog messages.
 label photon4
-menu label Photon OS 4
+menu label Photon OS 4 (WIP)
 kernel http://{{ httpserver }}/photon4/isolinux/vmlinuz
 initrd http://{{ httpserver }}/photon4/isolinux/initrd.img
 # 
@@ -1187,7 +1200,7 @@ append root=/dev/ram0  loglevel=3
 # Unpack netboot.tar.gz and see *.cfg for hints on boot options
 # - Info on PXE Live mode: https://0day.work/how-to-configure-pxe-network-booting-for-kali-linux/
 label kali_live
-menu label Kali Linux 2024.4 (Live)
+menu label Kali Linux 2024.4 (Live Desktop)
 kernel http://{{ httpserver }}/kali/live/vmlinuz
 initrd http://{{ httpserver }}/kali/live/initrd.img
 # theme=dark rescue/enable=true priority=low (not full auto) "auto=true priority=critical"
@@ -1202,7 +1215,7 @@ initrd http://{{ httpserver }}/kali/live/initrd.img
 append boot=live  components  hostname=kali  fetch=http://{{ httpserver }}/kali/live/filesystem.squashfs -- vga=788 splash
 # append vga=788 theme=dark
 
-# unRAID OS
+# unRAID OS - Commercial OS for NAS by Lime Technology (based on Slackware)
 # Google: unraid os pxe boot example pxelinux configuration with kernel and initrd
 # https://forums.unraid.net/topic/26400-how-to-pxe-booting-unraid/
 #label unraidos
@@ -1210,6 +1223,36 @@ append boot=live  components  hostname=kali  fetch=http://{{ httpserver }}/kali/
 #kernel http://{{ httpserver }}/unraid/bzimage
 #initrd http://{{ httpserver }}/unraid/bzroot
 #append mem=4095M
+
+# Slackware
+# https://docs.slackware.com/slackware:pxe_install
+# https://mirrors.slackware.com/slackware/slackware-iso/slackware-15.0-iso/
+# Boots to console, not live desktop. Does not seem to be able to mount NFS.
+# Ping to local net IP => ping: sendto: Network is unreachable
+# IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready ... IPv6 only ???
+# Running dhcpcd second time works for setting up ipv4 address / if.
+# Note: ipv6.disable=1 improves dhcpcd run by not getting ipv6 address.
+# Also NFS mount with -o nolock works after having netif.
+label slackware15
+menu label Slackware 15 (Live Root Console + Interactive Install)
+# Same kernel (checked md5sum) also in kernels/huge.s/bzimage
+kernel http://{{ httpserver }}/slackware15/EFI/BOOT/huge.s
+# below: 49MB works for getting console.
+initrd http://{{ httpserver }}/slackware15/EFI/BOOT/initrd.img
+# 61 MB, This panics w. Unable to mount root fs ...
+# initrd http://{{ httpserver }}/slackware15/usb-and-pxe-installers/usbboot.img
+# initrd=initrd.img. Stripped rw
+append ipv6.disable=1 load_ramdisk=1 prompt_ramdisk=0  printk.time=0 nomodeset SLACK_KERNEL=huge.s root=/dev/nfs nfsroot={{nfsserver}}:/isomnt/slackware15/,nolock ip=dhcp ro
+
+# Slackware Live Desktop
+# https://download.liveslak.org/slackware64-15.0-live/slackware64-live-15.0.iso
+# Boot params for Live: http://docs.slackware.com/slackware:liveslak#boot_parameters_explained
+label slackware15live
+menu label Slackware 15 (Live Desktop WIP)
+kernel http://{{ httpserver }}/slackware15live/EFI/BOOT/huge.s
+initrd http://{{ httpserver }}/slackware15live/EFI/BOOT/initrd.img
+append ipv6.disable=1 load_ramdisk=1 prompt_ramdisk=0  printk.time=0 nomodeset SLACK_KERNEL=huge.s root=/dev/nfs nfsroot={{nfsserver}}:/isomnt/slackware15live/,nolock ip=dhcp ro
+
 # LibreELEC 12 (previously: OpenELEC)
 # https://forums.unraid.net/topic/39700-guide-pxe-boot-openelec-in-a-kvm-vm/
 # (also some virtualbox xml configs)
@@ -1287,7 +1330,8 @@ initrd http://{{httpserver}}/manjaro/boot/amd_ucode.img,http://{{httpserver}}/ma
 # append ip=dhcp rw root=/dev/nfs nfsroot={{nfsserver}}:/isomnt/manjaro/
 # manjaro/x86_64/livefs.sfs
 # HTTP (Like Arch archiso_http_srv=http://server/...)
-# NOTE: Possible path pickyness. see http server logs. Below works !
+# NOTE: Possible path pickyness. see http server logs. Below works, but requires for working DNS:
+# echo "nameserver 192.168.1.230" | sudo tee /etc/resolv.conf
 append ip=dhcp miso_http_srv={{httpserver}}/manjaro/ misobasedir=manjaro misolabel=manjaro
 # ipxe from forum:
 # imgargs vmlinuz-x86_64 initrd=initramfs-x86_64.img misobasedir=manjaro
@@ -1302,7 +1346,27 @@ append ip=dhcp miso_http_srv={{httpserver}}/manjaro/ misobasedir=manjaro misolab
 
 # Endeavour OS
 #label endeavour
-#menu label EndeavourOS Live (NFS - Tentative)
+#menu label EndeavourOS Live (NFS - WIP)
 #kernel http://{{httpserver}}/endeavour/boot/vmlinuz-linux
 #initrd http://{{httpserver}}/endeavour/boot/initramfs-linux.img
 #append ip=dhcp rw root=/dev/nfs nfsroot={{nfsserver}}:/endeavour/live/rootfs
+
+# Gallium OS (Chrome OS replacement w. XFCE)
+# Seems to need netboot=nfs nfsroot=... - but still has problems
+# (network n/a, lsmod not on initramfs)
+#label galliumos
+#menu label GalliumOS (Live, WIP)
+#kernel http://{{ httpserver }}/galliumos/casper/vmlinuz
+#initrd http://{{ httpserver }}/galliumos/casper/initrd.img
+# Keep (min): debug ip=dhcp. Check: toram ? Seems toram loads all to ram ~1 min (60/s) * ~ 100MB/sec = ~ 6GB (size of ISO)
+# Remove: toram
+# Seems to need: netboot=nfs nfsroot={{ nfsserver }}:/isomnt/galliumos/
+# Examples from galliumos ISO: EFI/BOOT/grub.cfg OR boot/grub/grub.cfg
+# Autoinstall: file=/cdrom/preseed/galliumos.seed only-ubiquity
+# Note about autoinstall: "file=/cdrom/preseed/galliumos.seed" ONLY
+# (w/o only-ubiquity) would still support Live mode w/o install (per examples)
+# Other: "S" = single user mode
+# Note: Is http://{{httpserver}}/galliumos/casper/filesystem.squashfs needed ? (packages, 1.1 GB)
+# Before(i.e. w/o) nfsroot=...: "Unable to find a medium containing a live file system"
+# Gemini:  Trying to force GalliumOS onto a non-Chromebook is likely to be a frustrating experience with a low chance of success.
+#append ip=dhcp boot=casper acpi_osi=Linux tpm_tis.interrupts=0 galliumos_hwspec=haswell nosplash debug netboot=nfs rootNN=/dev/nfs nfsroot={{ nfsserver }}:/isomnt/galliumos/
