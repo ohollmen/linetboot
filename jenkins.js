@@ -14,6 +14,8 @@ let axios   = require("axios");
 let jsyaml  = require("js-yaml");
 var Getopt  = require("node-getopt");
 var cfl     = require("./confluence.js"); // For http helper
+var async   = require("async");
+
 let cfg = {};
 function init(_mcfg) {
   if (_mcfg.jenkins) { cfg = _mcfg.jenkins; }
@@ -93,9 +95,14 @@ var clopts = [
   //["a", "acctype=ARG", "Access Type (SSH, RDP, WEB)"],  // For ...
   ["d", "debug", "Turn on debugging (for more verbose output)"],
   ["", "params=ARG", "Build parameters as string of form 'k1=v1&k2=v2'"],
+  // Multi
+  ["", "multiconf=ARG", "Multi-Job config file"],
 ];
 var acts = [
   { id: "run", "title": "Run Jenkins job (by profile (first arg), with or w/o params by --params or --paramfn)", cb: jjob_run},
+  // 
+  { id: "runmulti", "title": "Run Multiple Jenkins job (by profile (first arg), with or w/o params by --params or --paramfn)", cb:
+jjob_run_multi},
 ];
 function usage(msg) {
   if (msg) { console.log(msg); }
@@ -123,6 +130,29 @@ function jjob_run(opts) {
   console.log('PARAMS:', JSON.stringify(p, null, 2));
   jenkins_build(cfg.jobs[opts.prof], p);
 }
+
+let mj_serv = `https://`;
+let mj_ex = [
+  {"url": `${mj_serv}/`, "params": {}},
+  {"url": ``, "params": {}},
+  
+]
+function jjob_run_multi(opts) {
+  let p = opts.params;
+  if (p && (typeof p != 'object')) { usage(`Params not in object (got ${typeof p}) !`); }
+  //if (!opts.prof) { usage(`No job profile passed (as 1st arg) from CLI.`); }
+  let mulcfg = require(`${opts.multiconf}`);
+  if (!Array.isArray(mulcfg)) { usage(`Must have multiconfig as array !`); } // Got
+  console.log(`Process ${mulcfg.length} jobs.`);
+  //async.map(mulcfg, );
+  //function jb(job, cb) {
+  //  // Pass to existing ...
+  //  jenkins_build(cfg.jobs[opts.prof], p, cb);
+  //}
+  
+}
+
+
 if (process.argv[1].match("jenkins.js")) {
   
   let mcfg_fn = `${process.env['HOME']}/.linetboot/global.conf.json`;
