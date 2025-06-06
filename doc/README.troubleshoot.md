@@ -446,6 +446,12 @@ The problem with PXE Boot error messages are that they remain on screen for a ve
 - PXE-E18 Server Response Timeout
 - PXE-E61: Media Test Failure, Check Cable
 
+Newer DELL w. Forced signing of Boot loader (Choose IPv4 PXE):
+Operating System has no signature. Incompatible with SecureBoot. All
+bootable devices failed Secure Boot verification.
+
+Solution: Choose security setting that does not actually require signature verifications.
+
 # Bootloader Errors (various stages after Firmware PXE)
 
 ## PXELinux
