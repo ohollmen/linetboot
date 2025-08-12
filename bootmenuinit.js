@@ -1,10 +1,11 @@
 #!/usr/bin/node
 // Boot media helper.
 // Implements or should implement (command generation for ...):
-// - ISO Media Download
+// - ISO Media Download from distro source
 // - ISO Media mounting (generate mount commands or generate /etc/fstab)
 // - Menu generation or initialization
-// - Validate loop mounted ISO:s, presence of initrd, kernel
+// - Validate loop mounted ISO:s, presence of initrd, kernel on local system
+// - Validate downloadability of initrd, kernel (HTTP HEAD request)
 // - Validate Checksums of images
 
 var Mustache = require("mustache");
@@ -22,7 +23,7 @@ function validate_ki () {
     var it = cfg.items[i];
     var absname_k = cfg.mountpath + "/" + it.lbl + "/" + it.kernel;
     var absname_i = cfg.mountpath + "/" + it.lbl + "/" + it.initrd;
-    var stat = {"kernel": "OK", "initrd":"OK"};
+    var stat = {"kernel": "OK", "initrd": "OK"};
     var fns  = {"kernel": absname_k, "initrd": absname_i};
     //var status = "OK";
     console.log("Media: " + it.lbl + " (" + it.img_bn + ")"); // 
@@ -46,11 +47,13 @@ function genmenu() {
   var cont = "";
   for (var i in cfg.items) {
     var it = cfg.items[i];
+    // Last-minute fix-ups here ... (e.g. append version ?)
     //if () {}
     // -O path.basen
     cont += Mustache.render(tmpl, it);
   }
   console.log(cont);
+  //return cont;
 }
 
 function download() {
@@ -82,7 +85,7 @@ function mount() {
 /**
 List images and extract version number(s)
 Version numbers are extracted with nested RegExp, where outer parens match **whole** version
-number and the inner parts of it (major, minor, patch)
+number and the inner parts of it (major, minor, patch). These should be coming from config.
 */
 function images_list() {
   let isopath = `${mcfg.isopath}` || "/isomnt"; // Also: ${cfg.core.maindocroot}
@@ -131,8 +134,14 @@ function images_list() {
 // Init bootables item so that predictable props are present
 function bootables_init(cfg) {
   cfg.items.forEach( (di) => {
-    if (!di.img_bn) { di.img_bn = path.basename(di.url); }
+    if (!di.img_bn) { di.img_bn = path.basename(di.url); } // Populate bn
     // Attrs from regexp: if (!di.rekeys) { di.rekeys = cfg.rekeys; }
+    // Embed regular expression by its type (sv2, ...) sv=Semantic version, 2=2 components
+    if (di.url && di.url.match(/\{/) && di.url.match(/\}/)) {
+      di.url = Mustache.render(di.url, cfg.matchers);
+      console.log(`Embedded RE: ${di.url}`);
+    }
+    // Consider sv3 the standard method of versioning, for others 
   });
 }
 var ops = {
@@ -151,6 +160,8 @@ function usage(msg) {
   console.log("Available ops/subcommands:\n"+ Object.keys(ops).map( (k) => { return `- ${k} - ${ops[k].desc}`; }).join('\n'));
   process.exit(rc);
 }
+
+
 if (process.argv[1].match("bootmenuinit.js")) {
   // TODO: take httpserver, mountpath, imgpath from main config (unless overriden)!
   let mcfgfn = `${process.env.HOME}/.linetboot/global.conf.json`;
