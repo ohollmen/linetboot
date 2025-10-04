@@ -24,22 +24,25 @@
       "url_get_redir":    "https://downloads.sourceforge.net/gparted/gparted-live-0.31.0-1-amd64.iso",
       "url":    "https://downloads.sourceforge.net/gparted/gparted-live-0.31.0-1-amd64.iso",
       "md5sum" : "0b277dc939440198d6ff1845ded786aa",
-      "imgpatt": "gparted-live-0.31.0-1-amd64.iso",
+      "imgpatt": "gparted-live-(\\d+).(\\d+).(\\d+)-1-amd64.iso",
+      "mntpatt": "gparted",
       "lbl":     "gparted",
       "kernel": "live/vmlinuz",
       "initrd": "live/initrd.img"
     },
     {
-      "name": "System Rescue CD (8.05)",
+      "name": "System Rescue CD (8.05, Arch-based)",
       "vertype": "sv2",
       "baseurl": "https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/",
       "note" : "Based on Arch on versions >=6.X ",
       "url":   "https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/8.05/systemrescue-8.05-amd64.iso/download",
       "img_bn" : "systemrescue-8.05-amd64.iso",
-      "md5sum":"35684a4d6b725ca7ebfb84d1892a65c4",
+      "md5sum": "35684a4d6b725ca7ebfb84d1892a65c4",
+      "imgpatt": "systemrescuecd-((\\d+).(\\d+).(\\d+)).iso",
+      "mntpatt": "sysresccd",
       "lbl":   "sysresccd",
       "kernel":"sysresccd/boot/x86_64/vmlinuz",
-      "initrd":"(3x)"
+      "initrd":"boot/intel_ucode.img, boot/intel_ucode.img, boot/intel_ucode.img"
     },
     {
       "name":"Clonezilla (Ramdisk Netboot)",
@@ -49,6 +52,8 @@
       "url_final" : "https://phoenixnap.dl.sourceforge.net/project/clonezilla/clonezilla_live_stable/2.6.3-7/clonezilla-live-2.6.3-7-amd64.iso",
       "img_bn" : "clonezilla-live-2.6.3-7-amd64.iso",
       "md5sum" : "b394e85c3a5df70a39569f4be966114a",
+      "imgpatt": "clonezilla-live-((\\d+).(\\d+).(\\d+))-(?:\\d+)-amd64.iso",
+      "mntpatt": "clzilla",
       "lbl":     "clonezilla",
       "kernel": "live/vmlinuz",
       "initrd": "live/initrd.img"
@@ -63,10 +68,24 @@
       "initrd": "dban-2.3.0_i586.iso"
     },
     {
+      "name":"Finnix 126 (Debian mini distro)",
+      "vertypeXX": "sv3r",
+      "note" : "Small mem-footprint debian distro booting to console. From: https://www.finnix.org/. ~550 MB. Only versions <= 109 avail. in 32 bit.",
+      "url":    "https://www.finnix.org/releases/250/finnix-250.iso",
+      "md5sum" : "",
+      "imgpatt": "finnix-(\\d+).iso",
+      "mntpatt": "finnix{{major}}",
+      "lbl":     "finnix126",
+      "kernel": "live/vmlinuz",
+      "initrd": "live/initrd.img"
+    },
+    {
       "name":  "Ubuntu 14.04 LTS Server",
       "url":   "http://old-releases.ubuntu.com/releases/14.04.5/ubuntu-14.04.5-server-amd64.iso",
       "md5sum" : "dd54dc8cfc2a655053d19813c2f9aa9f",
-      "imgpatt": "ubuntu-14.04.5-server-amd64.iso",
+      "imgpatt_basic_ok": "ubuntu-(\\d+).(\\d+).(\\d+)-server-amd64.iso",
+      "imgpatt": "ubuntu-((\\d+).(\\d+)(.(\\d+))?)-server-amd64.iso",
+      "mntpatt": "ubuntu{{major}}",
       "lbl":     "ubuntu1404",
       "lbltmpl": "ubuntu{{major}}{{minor}}",
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
@@ -101,12 +120,24 @@
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
     },
     
+    {
+      "name":"Ubuntu 20.04 + LTS Live Server (subiquity live-server)",
+      "note":"live-server Distro",
+      "url": "https://releases.ubuntu.com/noble/ubuntu-24.04.3-live-server-amd64.iso",
+      "md5sum": "",
+      "imgpatt": "ubuntu-((\\d+).(\\d+)(.(\\d+))?)-live-server-amd64.iso",
+      "mntpatt":    "ubuntu{{major}}",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
     
     {
       "name": "Debian 10.7.0 (Buster)",
       "baseurl": "https://cdimage.debian.org/cdimage/",
       "note": "Must get netboot.tar.gz 6d39746f551d7cdecdf1d75abb6027bb separately, must be matched to exact (point) version. http://ftp.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/netboot.tar.gz",
       "url":  "https://cdimage.debian.org/cdimage/archive/10.7.0/amd64/iso-dvd/debian-10.7.0-amd64-DVD-1.iso",
+      "imgpatt": "debian-(\\d+).(\\d+).(\\d+)-amd64-DVD-1.iso",
+      "mntpatt": "debian{{major}}",
       "md5sum": "",
       "lbl":    "debian10net",
       "kernel": "debian-installer/amd64/linux",
@@ -123,10 +154,36 @@
       "initrd": "debian-installer/amd64/initrd.gz"
     },
     {
+      "name": "Kali Linux 2024 (Live)",
+      "note": "Images may have suffix live-amd64.iso (5.0GB) OR -installer-amd64.iso (4.3GB) - Only live supports PXE",
+      "url_CURR": "https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-11.1.0-amd64-DVD-1.iso",
+      "url":      "https://cdimage.debian.org/cdimage/release/11.1.0/amd64/iso-dvd/debian-11.1.0-amd64-DVD-1.iso",
+      "md5sum" : "6230c5be416e9149993e446d3616ecd5",
+      "imgpatt": "kali-linux-((\\d+).(\\d+))-live-amd64.iso",
+      "mntpatt": "kali{{major}}",
+      "lbl":    "kali2024",
+      "kernel": "live/vmlinuz",
+      "initrd": "live/initrd.img"
+    },
+    {
+      "name": "Photon OS 4",
+      "note": "From VMWare, RH Based system.",
+      "url_CURR": "",
+      "url":  "photon-4.0-c001795b8.iso",
+      "md5sum" : "",
+      "imgpatt": "photon-((\\d+).(\\d+))-(\\w+).iso",
+      "mntpatt": "photon{{major}}",
+      "lbl":    "photon",
+      "kernel": "isolinux/vmlinuz",
+      "initrd": "isolinux/initrd.img"
+    },
+    {
       "name": "Centos 6",
       "vertype": "sv2",
       "url":  "http://mirrors.oit.uci.edu/centos/6.10/isos/x86_64/CentOS-6.10-x86_64-minimal.iso",
       "md5sum": "0da4a1206e7642906e33c0f155d2f835",
+      "imgpatt": "CentOS-(\\d+).(\\d+)-x86_64-minimal.iso",
+      "mntpatt": "centos{{major}}",
       "lbl":    "centos6",
       "kernel": "images/pxeboot/vmlinuz",
       "initrd": "images/pxeboot/initrd.img"
@@ -137,6 +194,8 @@
       "md5sum_OLD" : "bd43d41e01c2a46b3cb23eb9139dce4b",
       "url":"http://mirrors.sonic.net/centos/7.9.2009/isos/x86_64/CentOS-7-x86_64-DVD-2009.iso",
       "md5sum" : "5a3b0b3f4a6654ee195ec6edb6d938a4",
+      "imgpatt": "CentOS-(\\d+)-x86_64-DVD-2009.iso",
+      "mntpatt": "centos{{major}}",
       "lbl": "centos7",
       "kernel": "images/pxeboot/vmlinuz",
       "initrd": "images/pxeboot/initrd.img"
@@ -154,6 +213,8 @@
       "baseurl": "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/",
       "url":"https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.4-x86_64-dvd1.iso",
       "md5sum" : "c1cce83eb6a3b880cd176e2d3614c00b",
+      "imgpatt": "Rocky-((\\d+).(\\d+))-x86_64-dvd1.iso",
+      "mntpatt": "rocky{{major}}",
       "lbl":    "rocky8",
       "kernel": "images/pxeboot/vmlinuz",
       "initrd": "images/pxeboot/initrd.img"
@@ -168,10 +229,23 @@
       "initrd": "fdboot.img"
     },
     {
+      "name":"Ubuntu 24.04 Main Distro Desktop LTS",
+      "note":"Note: http://cdimage.ubuntu.com/ubuntu/ ... does not have any amd64 images !!!",
+      "url":"https://releases.ubuntu.com/noble/ubuntu-24.04.3-desktop-amd64.iso",
+      "md5sum" : "",
+      "imgpatt": "ubuntu-((\\d+).(\\d+))(.\\d+)?-desktop-amd64.iso",
+      "mntpatt": "ubuntu{{major}}dt-base",
+      "lbl":    "ubuntu20dt-base",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
+    {
       "name":"Ubuntu 20.04 MATE Desktop LTS",
       "note":"http://cdimage.ubuntu.com/ubuntu-mate/",
       "url":"http://cdimage.ubuntu.com/ubuntu-mate/releases/20.04/release/ubuntu-mate-20.04.3-desktop-amd64.iso",
       "md5sum" : "bbf62e9abd1ad8cdde4e8789dd17ef46",
+      "imgpatt": "ubuntu-mate-((\\d+).(\\d+))(.\\d+)?-desktop-amd64.iso",
+      "mntpatt": "ubuntu{{major}}dt",
       "lbl":    "ubuntu20dt",
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
@@ -192,16 +266,31 @@
       "url":"http://cdimage.ubuntu.com/kubuntu/releases/noble/release/kubuntu-24.04.2-desktop-amd64.iso",
       "md5sum" : "",
       "sha256sum": "e84c3cb8a9e91504fabbc4763adaacfee0ebd27ef988529dadafb9c53276fb4b",
-      "lbl":"kubuntu24dt",
+      "imgpatt": "kubuntu-((\\d+).(\\d+))(?:.\\d+)?-desktop-amd64.iso",
+      "mntpatt": "kubuntu{{major}}dt",
+      "lbl":     "kubuntu24dt",
       "kernel": "install/netboot/ubuntu-installer/amd64/linux",
       "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
     },
-
+    {
+      "name":"Xubuntu (XFCE) 24.04 Desktop LTS",
+      "note":"TODO: test",
+      "url": "OLD: http://cdimage.ubuntu.com/xubuntu/releases/noble/release/xubuntu-24.04.2-desktop-amd64.iso",
+      "url": "http://cdimage.ubuntu.com/xubuntu/releases/24.04.2/release/xubuntu-24.04.3-desktop-amd64.iso",
+      "md5sum" : "",
+      "sha256sum": "",
+      "imgpatt": "xubuntu-((\\d+).(\\d+))(?:.\\d+)?-desktop-amd64.iso",
+      "mntpatt": "xubuntu{{major}}dt",
+      "lbl":     "xubuntu24dt",
+      "kernel": "install/netboot/ubuntu-installer/amd64/linux",
+      "initrd": "install/netboot/ubuntu-installer/amd64/initrd.gz"
+    },
     {
       "name":"Arch Linux",
       "baseurl": "",
       "note":"Image dirs are 'cycling' very rapidly and old versions disappear quickly on mirrors.",
       "imgpatt": "archlinux-((\\d+)\\.(\\d+)\\.(\\d+))-x86_64.iso",
+      "mntpatt": "archlinux",
       "lbl":    "archlinux2021",
       "md5sum": "c76867784b21d6f70cb156d9d1f113db",
       "url":    "http://mirrors.acm.wpi.edu/archlinux/iso/2021.10.01/archlinux-2021.10.01-x86_64.iso",
@@ -210,9 +299,10 @@
     },
     
     {
-      "name":"Alpine Linux Standard",
-      "note":    "https://dl-cdn.alpinelinux.org/alpine/v{{ ver }}/releases/x86_64/",
-      "imgpatt": "alpine-standard-(\\d+\\.\\d+\\.\\d+)-x86_64.iso",
+      "name": "Alpine Linux Standard",
+      "note":    "https://dl-cdn.alpinelinux.org/alpine/v{{ ver }}/releases/x86_64/ - Note: alpine-standard is ~1.5GB, alpine-extended is ~7.5G ",
+      "imgpatt": "alpine-standard-((\\d+)\\.(\\d+)\\.(\\d+))-x86_64.iso",
+      "mntpatt": "alpine{{major}}{{minor}}",
       "lbl":    "alpine314",
       
       "md5sum": "5f4c07fb3790145a8ea552bb99bfecde",
@@ -227,10 +317,65 @@
       "url":  "http://download.opensuse.org/distribution/leap/15.2/iso/openSUSE-Leap-15.2-DVD-x86_64.iso",
       "md5sum" : "eba94158bc2ca5ec1265aeb12f0606a1",
       "imgpatt": "openSUSE-Leap-((\\d+)\\.(\\d+))-DVD-x86_64.iso",
+      "mntpatt": "opensuse{{major}}{{minor}}",
       "lbl":    "opensuse152",
       "kernel": "boot/x86_64/loader/linux",
       "initrd": "boot/x86_64/loader/initrd"
       
+    },
+    {
+      "name": "Fedora Workstation - Live",
+      "vertypeXX": "sv2",
+      "url":  "Fedora-Workstation-Live-x86_64-39-1.5.iso",
+      "imgpatt": "Fedora-Workstation-Live-x86_64-((\\d+)-(\\d+)\\.(\\d+))\\.iso",
+      "mntpatt": "fedora_ws",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    {
+      "name": "Manjaro XFCE (Arch) - Live",
+      "vertypeXX": "sv2",
+      "url":  "manjaro-xfce-25.0.1-250508-linux612.iso",
+      "imgpatt": "manjaro-xfce-((\\d+)\\.(\\d+)\\.(\\d+))-(\\d+)-linux(?:\\d+)\\.iso",
+      "mntpatt": "manjaro",
+      "kernel": "boot/vmlinuz-x86_64",
+      "initrd": "boot/amd_ucode.img, boot/intel_ucode.img, boot/initramfs-x86_64.img"
+    },
+    {
+      "name": "Zorin OS (Core)",
+      "vertypeXX": "sv2",
+      "url":  "Zorin-OS-17.3-Core-64-bit-r1.iso",
+      "imgpatt": "Zorin-OS-((\\d+)\\.(\\d+))-Core-64-bit-r(?:\\d+).iso",
+      "mntpatt": "zorin{{major}}",
+      "kernel": "casper/vmlinuz",
+      "initrd": "casper/initrd.zstd"
+    },
+    {
+      "name": "Elementary OS",
+      "vertypeXX": "sv2",
+      "url":  "elementaryos-8.0-stable.20250314rc.iso",
+      "imgpatt": "elementaryos-((\\d+)\\.(\\d+))-stable.(\\d+rc)?.iso",
+      "mntpatt": "elementaryos{{major}}{{minor}}",
+      "kernel": "casper/vmlinuz",
+      "initrd": "casper/initrd.lz"
+    },
+    {
+      "name": "PopOS",
+      "vertypeXX": "sv2",
+      "url":  "pop-os_22.04_amd64_intel_38.iso",
+      "imgpatt": "pop-os_((\\d+)\\.(\\d+))_amd64_intel_(\\d+)\\.iso",
+      "mntpatt": "popos{{major}}",
+      "kernel": "casper/vmlinuz.efi",
+      "initrd": "casper/initrd.gz"
+    },
+    {
+      "name": "Slackware 15",
+      "vertypeXX": "sv2",
+      "url":  "slackware64-15.0-install-dvd.iso",
+      "imgpatt": "slackware64-((\\d+)\\.(\\d+))-install-dvd.iso",
+      "mntpatt": "slackware{{major}}",
+      "kernel": "EFI/BOOT/huge.s",
+      "initrd": "EFI/BOOT/initrd.img"
     },
     {
       "name": "FreeBSD 12.1 (disc1/910MB)",
@@ -269,5 +414,8 @@
       "kernel": "pxechn.c32",
       "initrd": "pxeboot"
     }
+  ],
+  "mntpatts": [
+    {"imgpatt":"", "":""}
   ]
 }
