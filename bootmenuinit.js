@@ -7,7 +7,9 @@
 // - Validate loop mounted ISO:s, presence of initrd, kernel on local system
 // - Validate downloadability of initrd, kernel (HTTP HEAD request)
 // - Validate Checksums of images
-
+// ## Dev Hints (Mainly RE)
+// - RE Non-capturing parens: (?:Value)
+// - RE Non-capturing and optional block: (?:Value)? (E.g. Ubuntu .N patch release after initial distro release)
 var Mustache = require("mustache");
 var path = require('path');
 var fs   = require('fs');
@@ -83,7 +85,8 @@ function mount() {
   console.log(cont);
 }
 /**
-List images and extract version number(s)
+List images from /isoimages/ directory and extract version number(s).
+Match filename to a distro naming pattern (RE) to conclude how it should be mounted.
 Version numbers are extracted with nested RegExp, where outer parens match **whole** version
 number and the inner parts of it (major, minor, patch). These should be coming from config.
 */
@@ -92,22 +95,32 @@ function images_list() {
   if (!fs.existsSync(isopath)) { usage(`Image dir ${isopath} does not seem to exist !`)}
   let files = fs.readdirSync(`${isopath}`);
   files = files.filter((fn) => { return fn.match(/.*\.iso$/i); });
-  console.log(files);
+  console.log(`{files.length} ISO Images found.`, files);
+  if (!files.length) { usage(`No ISO files listed from ${isopath}. FS area not mounted ?`); }
+  let stats = {"isocnt": files.length, "misscnt": 0, "matchcnt": 0, "mountcnt": 0};
+  let missnames = [];
   files.forEach( (fn) => {
-    // Does image name match any of the patterns ?
+    // Does image name match any of the patterns ? di = Distro item
     let di = find_item_by_imgname(fn);
     if (!di) {
       //console.error(`Image name ${fn} did not match any distro items (by image name)!`);
       //console.error(`No MATCH: ${fn}`);
+      stats.misscnt++; missnames.push(fn);
       return;
     }
-    console.log(`File ${fn} matched (belongs to) distro ${di.name} image ${di.img_bn} matches: ${di.mvals}`);
+    console.log(`File '${fn}' matched (belongs to) distro '${di.name}' => matches: ${di.mvals}`); // image ${di.img_bn}
     let obj = mvals_to_obj(di.mvals);
+    stats.mountcnt += mntpath(di, obj);
     console.log(obj);
+    stats.matchcnt++;
   });
+  console.error(`${stats.isocnt} ISO:s, ${stats.matchcnt} Matches, ${stats.misscnt} Misses, ${stats.mountcnt} Mounts discovered`);
+  console.error(`Missing match:\n`, missnames);
+  // Try to match image basename to a distro item by its imgpatt (RE).
+  // @return Cloned distro item if matching was successufl, null if there ws no match for file basename.
   function find_item_by_imgname(fn) {
     // Match Distro item
-    let dim = null; // Match
+    let dim = null; // (Distro item) Match
     let di = cfg.items.find( (di) => {
       let m;
       if (!di.imgpatt) { return 0; }
@@ -118,9 +131,10 @@ function images_list() {
     di.mvals = dim;
     return di;
   }
+  // TODO: Test the length of m0 cmp. w. m1+m2+... - if longer than sum, it's surrounding match
   function mvals_to_obj(mvals) {
     let mkeys = ["major","minor","patch"];
-    if (!mvals || !Array.isArray(mvals) || (mvals.length < 1)) { return {}; }
+    if (!mvals || !Array.isArray(mvals) || (mvals.length < 1)) { console.log(`Warning: No mvals (for above d.i.`); return {}; }
     mvals = dclone(mvals);
     let obj = { ver: mvals[0] };
     mvals.shift();
@@ -129,6 +143,11 @@ function images_list() {
     //if (mvals.length == 3) {}
     for (let i = 0;mvals[i];i++) { obj[mkeys[i]] = mvals[i]; }
     return obj;
+  }
+  // Try to discover mount path (under /isomnt/)
+  function mntpath(di, obj) {
+    if (di.mntpatt) { obj.mntpath = Mustache.render(di.mntpatt, obj); return 1; }
+    return 0;
   }
 }
 // Init bootables item so that predictable props are present
@@ -155,7 +174,7 @@ var ops = {
 };
 function usage(msg) {
   var rc = 1;
-  console.error("menuinit Error: " + msg);
+  console.error("Error: " + msg);
   // Brief usage
   console.log("Available ops/subcommands:\n"+ Object.keys(ops).map( (k) => { return `- ${k} - ${ops[k].desc}`; }).join('\n'));
   process.exit(rc);
