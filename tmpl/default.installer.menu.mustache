@@ -97,7 +97,7 @@ append boot=live  components union=overlay username=user noswap noeject ip= vga=
 # NOTE: The ISO image has subdir "sysresccd", so if Lineboot loop mount dir is name "sysresccd/" (isomnt/sysresccd/),
 # the sysresccd *should* be duplicated in paths (see below).
 label sysresccd
-menu label System Rescue CD (Live)
+menu label System Rescue CD 8.05 (Live)
 kernel http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/vmlinuz
 INITRD http://{{ httpserver }}/sysresccd/sysresccd/boot/intel_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/amd_ucode.img,http://{{ httpserver }}/sysresccd/sysresccd/boot/x86_64/sysresccd.img
 # NOT: append initrd=http://{{ httpserver }}/sysresccd/sysresccd copytoram setkmap=us
@@ -1163,11 +1163,11 @@ append talos.platform=metal panic=1000 slab_nomerge pti=on talos.config.oauth.cl
 # Other:
 # - Finnix PXE boot #18 https://github.com/orgs/finnix/discussions/18
 # - See also: https://github.com/beta-tester/RPi-PXE-Server
-label finnix-x64
+label finnix126
 menu label Finnix (Live Server) x64
-kernel http://{{ httpserver }}/finnix-x64/live/vmlinuz
-initrd http://{{ httpserver }}/finnix-x64/live/initrd.img
-append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix-x64/ ro boot=live config
+kernel http://{{ httpserver }}/finnix126/live/vmlinuz
+initrd http://{{ httpserver }}/finnix126/live/initrd.img
+append ip=dhcp netboot=nfs nfsroot={{ nfsserver }}:/isomnt/finnix126/ ro boot=live config
 #TEXT HELP
 #  Boot to Finnix x64 Live
 #ENDTEXT
@@ -1201,8 +1201,8 @@ append root=/dev/ram0  loglevel=3
 # - Info on PXE Live mode: https://0day.work/how-to-configure-pxe-network-booting-for-kali-linux/
 label kali_live
 menu label Kali Linux 2024.4 (Live Desktop)
-kernel http://{{ httpserver }}/kali/live/vmlinuz
-initrd http://{{ httpserver }}/kali/live/initrd.img
+kernel http://{{ httpserver }}/kali2024/live/vmlinuz
+initrd http://{{ httpserver }}/kali2024/live/initrd.img
 # theme=dark rescue/enable=true priority=low (not full auto) "auto=true priority=critical"
 # vga=788
 # Live mode 
