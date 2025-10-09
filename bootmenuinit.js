@@ -69,6 +69,11 @@ function download() {
   }
   console.log(cont);
 }
+/* Create mount entries (mount command or fstab line) by
+ * - main config: cfg.imgpath and cfg.mountpath
+ * - image/distro item: it.img_bn and it.lbl
+ * @return content (cmds or fstab) for all mounts
+*/
 function mount() {
   var cont = "";
   for (var i in cfg.items) {
