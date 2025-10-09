@@ -521,28 +521,6 @@ initrd http://{{ httpserver }}/rocky8/images/pxeboot/initrd.img
 # inst.stage2=http://{{ httpserver }}/rocky8/
 append auto=true devfs=nomount inst.method=http://{{ httpserver }}/rocky8/ inst.ks=http://{{ httpserver }}/ks.cfg?osid=centos8
 
-# Fedora PXE
-# Install / PXE Docs
-# https://jfearn.fedorapeople.org/fdocs/en-US/Fedora/20/html/Installation_Guide/s1-netboot-pxe-config.html
-# https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Boot_Options/
-# Image Links
-# https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/ (Missing last 2)
-# All: https://mirror.arizona.edu/fedora/linux/releases/ (E.g. https://mirror.arizona.edu/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso)
-# Ra fedoraproject URL: https://download.fedoraproject.org/pub/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso
-# Notes:
-# - basenames or kernel, initrd seem RH-conventional (are paths the same? assume so)
-# - Live Mode: append root=live:http://.../squashfs.img for Live mode ? (Note: this is not exlusively an initrd, but root for Live mode)
-# - install Fedora: append ... repo=http://dl.fedoraproject.org/pub/fedora/linux/releases/20/Fedora/x86_64/os/
-# - Newer Fedoras require inst.repo=... instead of only repo=..., Also inst.ks=... See also: inst.ks.sendsn (sn=Serial number)
-#    inst.sshd, inst.vnc, inst.vncpassword. method=... has been replaced by inst.repo. See: 
-label fedora38
-menu label Fedora 38 (Live)
-kernel http://{{ httpserver }}/fedora/images/pxeboot/vmlinuz
-initrd http://{{ httpserver }}/fedora/images/pxeboot/initrd.img
-# auto=true (supported w. fedora ?) xdriver=vesa nomodeset inst.ks=http://{{ httpserver }}/ks.cfg?osid=fedora38
-# inst.repo=http://{{ httpserver }}/fedora38/x86_64/os inst.ks.sendmac
-append  devfs=nomount root=live:http://{{ httpserver }}/fedora/LiveOS/squashfs.img
-
 # Dell Update CD (R630)
 # Aka DTK = Dell Deployment Toolkit (File isolinux/VER_INFO gives DTK version, e.g. DTK_VERSION_STRING="6.3.0")
 # DSA = DellOpenManage Server Assistant
@@ -1105,6 +1083,28 @@ append rd.neednet=1 rd.retry=10 rd.timeout=30 rd.multipath=0 ignition.firstboot 
 # Advised in /live-booting/
 ipappend 2
 
+# Fedora PXE
+# Install / PXE Docs
+# https://jfearn.fedorapeople.org/fdocs/en-US/Fedora/20/html/Installation_Guide/s1-netboot-pxe-config.html
+# https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Boot_Options/
+# Image Links
+# https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/ (Missing last 2)
+# All: https://mirror.arizona.edu/fedora/linux/releases/ (E.g. https://mirror.arizona.edu/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso)
+# Ra fedoraproject URL: https://download.fedoraproject.org/pub/fedora/linux/releases/38/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-38-1.6.iso
+# Notes:
+# - basenames or kernel, initrd seem RH-conventional (are paths the same? assume so)
+# - Live Mode: append root=live:http://.../squashfs.img for Live mode ? (Note: this is not exlusively an initrd, but root for Live mode)
+# - install Fedora: append ... repo=http://dl.fedoraproject.org/pub/fedora/linux/releases/20/Fedora/x86_64/os/
+# - Newer Fedoras require inst.repo=... instead of only repo=..., Also inst.ks=... See also: inst.ks.sendsn (sn=Serial number)
+#    inst.sshd, inst.vnc, inst.vncpassword. method=... has been replaced by inst.repo. See: 
+## label fedora38
+## menu label Fedora Workstation 38 (Live)
+## kernel http://{{ httpserver }}/fedora/images/pxeboot/vmlinuz
+## initrd http://{{ httpserver }}/fedora/images/pxeboot/initrd.img
+# auto=true (supported w. fedora ?) xdriver=vesa nomodeset inst.ks=http://{{ httpserver }}/ks.cfg?osid=fedora38
+# inst.repo=http://{{ httpserver }}/fedora38/x86_64/os inst.ks.sendmac
+## append  devfs=nomount root=live:http://{{ httpserver }}/fedora/LiveOS/squashfs.img
+
 # Fedora Workstation (edition) - OK
 # This seems to be long standing standard approach (e.g. 2016 (f.24) ... 2024 f.39)
 # Google: fedora pxe boot live cd
@@ -1117,7 +1117,6 @@ label fedora_ws
 menu label Fedora Workstation 39 Live
 kernel http://{{ httpserver }}/fedora_ws/images/pxeboot/vmlinuz
 initrd http://{{ httpserver }}/fedora_ws/images/pxeboot/initrd.img
-#,http://{{ httpserver }}/fcos/images/pxeboot/rootfs.img
 # Seems repo dir is the root dir (w/o trailing slash ?)
 # NFS alt: root=/dev/nfs nfsroot={{ nfsserver }}:/isomnt/fedora_ws/ (what is here) rw ip=dhcp
 # inst.stage2=http://workstation.example.org/ Fedora Installer (dracut) will get LiveOS/squashfs.img
