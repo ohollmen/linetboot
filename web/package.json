@@ -21,7 +21,7 @@
   ],
   "dependencies": {
     "async": "2.6.2",
-    "axios": "0.18.0",
+    "axios": "0.21.2",
     "bootstrap": "3.3.5",
     "chart.js": "2.7.3",
     "docindex": "0.0.5",
