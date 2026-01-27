@@ -91,4 +91,16 @@ registry=https://your.intranet.registry/
 //npm.intranet.local/:_password=base64-encoded-password
 //npm.intranet.local/:email=you@example.com
 ```
+.npmrc is looked up from: /etc/npmrc, $HOME/.npmrc, $proj_root/.npmrc
 .npmrc location can also be given by env. var. NPM_CONFIG_USERCONFIG.
+
+## Listing/Modding NPM Config
+
+```
+# Short
+npm config list
+# Long
+npm config list -l
+# Mod
+npm config set registry https://npm.intranet.local/
+```
