@@ -1352,6 +1352,15 @@ function riskadj_cell(val, item) {
     //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
     //{"name": "",      "title": "", "type":"text", "width": 15, itemTemplate: null,},
    ];
+   var fldinfo_tas_time = [
+    { "name": "UTC",       "title": "UTC",        "type": "text", "width": 26, "itemTemplate": null },
+    { "name": "Local",     "title": "Local",      "type": "text", "width": 25, "itemTemplate": null },
+    { "name": "StartDST",  "title": "Start DST",  "type": "text", "width": 25, "itemTemplate": null },
+    { "name": "EndDST",    "title": "End DST",    "type": "text", "width": 25, "itemTemplate": null },
+    { "name": "Timezone",  "title": "Time Zone",  "type": "text", "width": 8,  "itemTemplate": null },
+    { "name": "Sunrise",   "title": "Sunrise",    "type": "text", "width": 7,  "itemTemplate": null },
+    { "name": "Sunset",    "title": "Sunset",     "type": "text", "width": 7,  "itemTemplate": null }
+];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
