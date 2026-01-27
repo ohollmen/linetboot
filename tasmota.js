@@ -24,7 +24,7 @@ let skeys = [
   // 6-11
   { "sid": 6, "key": "StatusMQT", "name": "MQTT", },
   { "sid": 7, "key": "StatusTIM", "name": "Time", },
-  { "sid": 8, "key": "StatusSNS", "name": "Sensors(Legacy)", },
+  { "sid": 8, "key": "StatusSNS", "name": "Sensors(Legacy)", }, // See 10
   { "sid": 9, "key": "StatusPTH", "name": "Power Thresholds", },
   { "sid": 10, "key": "StatusSNS", "name": "Sensors", },
   { "sid": 11, "key": "StatusSTS", "name": "General/TelePeriod", },
@@ -38,13 +38,19 @@ function init() {
   //lines = lines.filter( (l) => { return (!l.match(/^#/)) && l; });
   ips = lines; // map to objects ?
 }
+/** Query all Tasmotas (listed in config) for info (on particular domain 0..11)
+* For "info domains", see the lookup table on top of file.
+* Produce webapp API JSON response or dump data to stdout for CLI app.
+*/
 function info(req, res) {
   // Prep a AoO where infoid is present in all of objs ? Or rely on info() scope ?
   let infoid = req.query.infoid; // 0 = All, e.g. 5: Network info, 7: Time info
   let infokey = skeys[infoid].key;
   async.map(ips, tasinfo, (err, ress) => {
+    // TypeError: Cannot read properties of null (reading 'StatusSNS') ... at it[infokey], added: it check
+    // Some devices not alive or present produce null Obj, e.g. 3 devices [{...}, null, {...}]
     //if (infoid) { // Distinguish: && infoid != "0"
-      ress = ress.map( (it) => { return it[infokey]; });
+      ress = ress.map( (it) => { return it ? it[infokey]: null; }); // .filter( (it) => { return it; })
     //}
     let r = {"title": skeys[infoid].name, "key": skeys[infoid].key,
       "sid": skeys[infoid].sid, "data": ress };
@@ -61,12 +67,13 @@ function info(req, res) {
     var url = `http://${ip}/cm?cmnd=Status%20${infoid}`;
     axios.get(url).then(function (resp) {
       var d = resp.data;
+      if (!d) { console.error(`Warning: got null for {ip}`); }
       //console.log(`Info from ${ip}:\n${JSON.stringify(d,null,2)}`); // Debug
       return cb(null, d);
     }).catch( (ex) => {
       console.log(`${ex}`);
       // TODO: Respond with entry, but signal outage (e.g. sleep, deep sleep)
-      return cb("Error", null);
+      return cb(`Error in Tasmota info-fetch ({ip}): {ex}`, null);
     });
   }
 }
