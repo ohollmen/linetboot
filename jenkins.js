@@ -22,7 +22,7 @@ function init(_mcfg) {
   else { cfg = _mcfg; }
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
-// Build jenkins job (POST)
+// Build jenkins job (POST). TODO: job => jobpath
 function jenkins_build(job, xpara) {
   if (!job) { console.error("No job identifier (URL segment) give !"); return null; }
   var usch = (cfg.ssl || (cfg.ssl === undefined)) ? "https" : "http"; // Could use !("ssl" in cfg) or !cfg.hasOwnProperty("ssl")
@@ -61,9 +61,11 @@ function jenkins_build(job, xpara) {
     console.log("Submitted request ok.");
     console.log("R-headers:", resp.headers);
     // location: https://my.server.com/queue/item/136857/
+    // TODO: Have jenkins job info object to follow up with job.
+    let jjinfo = { jobpath: job, bid: null };
     if (resp.headers && resp.headers.location) {
-      let bid = path.basename(resp.headers.location);
-      console.log(`Extracted BID: ${bid}`);
+      jjinfo.bid = path.basename(resp.headers.location); // Store/return bid (see above jjinfo)
+      console.log(`Extracted BID: ${jjinfo.bid}`);
     }
   }).catch( (ex) => {
       console.log(`Error calling Jenkins: ${ex}`);
