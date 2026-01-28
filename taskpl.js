@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /** Task Pipeline of sync and async tasks
 * ectx = Extra/External context
 * ## Notes
@@ -13,10 +14,10 @@
 /*
 ReferenceError: Cannot determine intended module format because both require() and top-level await are present. If the code is intended to be CommonJS, wrap await in an async function. If the code is intended to be an ES module, replace require() with import.
     at file:///net/src/linetboot/taskpl.js:12:10
-	    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
-		    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
-			    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
-				  code: 'ERR_AMBIGUOUS_MODULE_SYNTAX'
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+      code: 'ERR_AMBIGUOUS_MODULE_SYNTAX'
 */
 
 let fs = require("fs");
@@ -35,16 +36,27 @@ async function httpreq(it) {
 }
 
 // Run single task with extra context.
-// pass cb to follow.
+// pass cb to follow (asynchronous action).
+// Tasknode (it) may have private (synchronous) hooks on it (per tasktype):
+// - filemod: cb(it, extx) - should do cb(it, extx, fn) (but "filename" is already in it) ?
+// - cmd: cb(it, ectx, stdout)
+// - http: cb(it, ectx, resp)
 function run_it(it, ectx, cb) {
   // File task (sync)
   if (it.filename) {
+    // Note there is fw-level no default op on file (e.g. load content). Handler must handle everything.
     try {
       it.cb(it, ectx);
-	} catch (ex) {
-	  console.error(`Failed to run file task: ${ex}`);
-	  return cb(`Error in file task: ${ex}`, null);
-	}
+      if (ectx && ectx.dryrun) { console.log(`Dry-run mode (not saving '${it.filename}')`); }
+      else if (it.cont && it.savecont) {
+        console.log(`Saving content (${it.cont.length} B) to ${it.filename}`);
+        fs.writeFileSync(it.filename , it.cont, {encoding: "utf8"} );
+      }
+    } catch (ex) {
+      let msg = `Error: Failed running file task '${it.name}': ${ex}`;
+      console.error(`${msg}`);
+      return cb(msg, null);
+    }
     return cb(null, it);
   } // sync ?
   // Command task.
@@ -52,24 +64,35 @@ function run_it(it, ectx, cb) {
   // See also stdout = execSync(cmd,  copts); - will throw on errors
   if (it.cmd) {
     let cwd = it.cwd || null;
-	let copts = {}; // cwd, env,maxBuffer (def 1M)
+    let copts = {}; // cwd, env,maxBuffer (def 1M)
+    /*
     let cpr = cproc.exec(it.cmd, copts, function (error, stdout, stderr) {
-	  if (error) { console.error(`Command task failed w. rc: error.status`); return cb(`Cmd failed`, null);}
-	  //NA: console.log(`Ran cmd task w. exit status: '${error.status}'`);
-	  // Run extractor (must be sync !!!). Place params in an new object or it ?
-	  if (it.cb) { it.cb(error, stdout, stderr); }
-	  return cb(null, it);
-	});
-	// Sync ?
-	//try {
-	//  let stdout = cproc.execSync(it.cmd, copts);
-	//  if (it.cb) { it.cb(error, stdout, stderr); }
-	//  return cb(null, it);
-	//} catch (ex) { return(); }
+      if (error) { console.error(`Command task failed w. rc: error.status`); return cb(`Cmd failed`, null);}
+      //NA: console.log(`Ran cmd task w. exit status: '${error.status}'`);
+      // Run extractor (must be sync !!!). Place params in an new object or it ?
+      if (it.cb) { it.cb(error, stdout, stderr); }
+      return cb(null, it);
+    });
+    */
+    // Sync ? Note: Cannot capture stderr on rc=0
+    try {
+      let stdout = cproc.execSync(it.cmd, copts);
+      if (!it.nostr) { stdout = stdout.toString(); } // Buffer to string
+      if (it.cb) { it.cb(it, ectx, stdout); }
+      
+    } catch (ex) {
+      let msg = `Error: Failed to run command (in sync mode): {ex}`;
+      console.error(`${msg}`);
+      return cb(msg, null);
+    }
+    return cb(null, it);
   }
   // http task. Can we syncronify axios call ?
   else  if (it.url) {
-    // httpreq();
+    console.log(`TODO: Run http task !!!`);
+    // let resp = httpreq();
+    // Typical processing: Use resp.data (body) or resp.headers.
+    // if (it.cb) { it.cb(it, ectx, resp); }
   }
   else {
     console.error(`Unrecognizable task ('${it.name}') !`);
@@ -78,7 +101,10 @@ function run_it(it, ectx, cb) {
 }
 
 function run_by_tid(arr, tid, ectx) {
-  let it = arr.find( (it) => { return it.id == tid; });
+  //let isarr = Array.isArray(tid);
+  let findcb = (it) => { return it.id == tid; };
+  //if (isarr) { findcb = (it) => { return tid.includes(it.id); }; }
+  let it = arr.find( findcb );
   if (!it) { throw "No task item found"; }
   run_it(it, ectx);
 }
@@ -87,21 +113,35 @@ module.exports = {
   ectx: null,
   run_it: run_it,
   run_by_tid: run_by_tid,
+  
 };
 
 async function itmain(it) {
   let resp = await httpreq(it);
   console.log(`main response data: `, resp.data);
 }
-
+let ops = [
+  
+];
 if (process.argv[1].match(/\btaskpl.js$/)) {
   console.log(`Running taskpl...`);
   let taskpl = module.exports;
+  let ectx = { dryrun: 0, };
+  var Mustache   = require("mustache");
   let its = [
     { url: "https://linux.org/", },
-	{ cmd: "ls -al /mnt", cb: (err, so, se) => { console.log(`STDOUT: ${so}`); }}
+    { cmd: "ls -al /mnt", cb: (it, ectx, so) => { console.log(`STDOUT: ${so}`); it.cont = so; }}, // so.trim()
+    { filename: `/tmp/testfile_${Math.random(1000)}.md`,
+      
+      cb: function (it, ectx) {
+        it.cont = Mustache.render("# Hello {{name}}\nHow's your {{subject}} ?\n...\n", { name: "Mr Smith", subject: "son Jack" });
+        
+      },
+      savecont: 1,
+    },
   ];
-  let cb = (err, it) => { console.log(`Done with ${it}`); };  
+  let cb = (err, it) => { console.log(`Done with ${JSON.stringify(it)}`); };  
   //itmain(its[0]);
-  run_it(its[1], {foo: 1}, cb);
+  //taskpl.run_it(its[1], ectx, cb);
+  taskpl.run_it(its[2], ectx, cb);
 }
