@@ -63,9 +63,12 @@ function confluence_index(req, res) {
  
 }
 
+ // Added arbitrary header (e.g. x-api-key: ...) support. Rename to add_creds
  function add_basic_creds(cfg, opts) {
     //opts.headers ||= {};
     opts.headers = opts.headers || {}; // 
+    //if (typeof cfg != 'object') { throw "Creds config not passed as object !"; }
+    let numkeys = Object.keys(cfg).length;
     // New: tweak logic to facilitate Bearer auth
     //if ( !cfg.user || !cfg.pass) { throw "Username or password in credentials missing."; }
     if ( cfg.user && cfg.pass) { 
@@ -76,12 +79,14 @@ function confluence_index(req, res) {
     else if (cfg.token) {
       opts.headers.Authorization = "Bearer "+cfg.token;
     }
+    // Arbitrary header (e.g. x-api-key: ...)
+    else if (numkeys == 1) { let k = Object.keys(cfg)[0]; opts.headers[k] = cfg[k]; }
     else { throw "Neither Basic or Bearer auth credentials were configured by config keys "+Object.keys(cfg).join(','); }
     return;
   } // add_basic_creds
 
 function confluence_page(req, res) {
-  var jr = {status: "err", "msg": "Could deliver Confluence Doc."};
+  var jr = {status: "err", "msg": "Could not deliver Confluence Doc."};
   //var cfg = global.confluence;
   
   res.type('text/html');
