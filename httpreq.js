@@ -47,6 +47,14 @@ function add_creds(cfg, opts) {
   //else { throw "Neither Basic or Bearer auth credentials were configured by config keys "+Object.keys(cfg).join(','); }
   return;
 }
+// Parse form data (k1=v1&k2=v2) parameter string into an object.
+function formdata_parse(pstr) {
+  let p = {}
+  // TODO: decode url-enc (at p-assign)
+  pstr.split('&').forEach( (kvp) => { k_v = kvp.split('=', 2); p[k_v[0]] = k_v[1]; });
+  return p;
+}
+
 /// Make a http request with axios based on "request config" (rconf).
 function request(rconf, ectx) {
   let ameth, meth; // http method, axios method
