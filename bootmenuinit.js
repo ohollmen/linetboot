@@ -14,13 +14,16 @@
 var Mustache = require("mustache");
 var path = require('path');
 var fs   = require('fs');
-var cfg  = require("./bootables.json");
+let cliapp = require("./cliapp");
 var mcfg;
+var cfg; //  = require("./bootables.json");
 
 function dclone(d) { return JSON.parse(JSON.stringify(d)); }
-
+// TODO: Load bootables.json, pre-process
+//function init(mcfg) {
+//}
 // Validate presence kernel / boot items (on FS)
-function validate_ki () {
+function validate_ki (opts) {
   var attrs = ["kernel","initrd"];
   for (var i in cfg.items) {
     var it = cfg.items[i];
@@ -41,7 +44,7 @@ function validate_ki () {
 }
 
 
-function genmenu() {
+function genmenu(opts) {
   // Patch with config "httpserver"
   cfg.items.forEach(function (it) {
     it.httpserver = cfg.httpserver; // "foo-1.2";
@@ -60,7 +63,7 @@ function genmenu() {
 }
 // Generate image download commands for curl or wget.
 // TODO: Support HEAD method for presence check.
-function download() {
+function download(opts) {
   var cont = "";
   let meth = 'GET'; // or HEAD
   for (var i in cfg.items) {
@@ -68,20 +71,21 @@ function download() {
     let tgtfn = `${cfg.imgpath}/${it.img_bn}`;
     //if (fs.existsSync(tgtfn)) { console.error(`Image ${tgtfn} exists - not overwriting`); continue; }
     
-    // -O path.basename(it.url
+    // -O path.basename(it.url)
+    // Wget: --spider => HEAD req. (prevent download) --server-response => show headers
     cont += `wget ${it.url} -O ${cfg.imgpath}/${it.img_bn}\n`;
     //cont += `curl -X GET ${it.url} -o ${tgtfn}\n`;
   }
   console.log(cont);
 }
-/* Create mount entries (mount command or fstab line) by
- * - main config: cfg.imgpath and cfg.mountpath
- * - image/distro item: it.img_bn and it.lbl
+/** Create mount entries (mount command or fstab line) by
+ * - main config: cfg.imgpath and cfg.mountpath (base directories)
+ * - image/distro item: it.img_bn and it.lbl (ISO fn, mount subdir)
  * @return content (cmds or fstab) for all mounts
 */
-function mount(exitems) {
+function mount(opts) { // OLD: exitems
   var cont = "";
-  items = exitems || cfg.items;
+  items = opts.items || cfg.items;
   //OLD:for (var i in cfg.items) { var it = cfg.items[i];
   items.forEach( (it) => {
     // Basename of image
@@ -90,18 +94,20 @@ function mount(exitems) {
     prefix = "";
     if (!fs.existsSync(an)) { prefix = "# NA: ";}
     // console.log(it); // prefix +
-    if (op == 'mount' || op == 'imglist') { cont +=  `sudo mount -o loop ${an} ${cfg.mountpath}/${it.lbl}\n`; }
+    if (!it.img_bn) { cont += "# Warning: 'img_bn' missing for item below\n"; }
+    if (!it.lbl) { cont += "# Warning: 'lbl' missing for item below\n"; }
+    if (opts.op == 'mount' || opts.op == 'imglist') { cont +=  `sudo mount -o loop ${an} ${cfg.mountpath}/${it.lbl}\n`; }
     else { cont += `${an} ${cfg.mountpath}/${it.lbl} iso9660 loop 0 0\n`; }
   });
   console.log(cont);
 }
-/**
-List images from /isoimages/ directory and extract version number(s).
-Match filename to a distro naming pattern (RE) to conclude how it should be mounted.
-Version numbers are extracted with nested RegExp, where outer parens match **whole** version
-number and the inner parts of it (major, minor, patch). These should be coming from config.
+/** List images from /isoimages/ directory and extract version number(s).
+ * Match filename to a distro naming pattern (RE) to conclude how it should be mounted.
+ * Version numbers are extracted with nested RegExp, where outer parens match **whole** version
+ * number and the inner parts of it (major, minor, patch). These should be coming from config.
 */
-function images_list() {
+function images_list(opts) {
+  console.log("OPTIONS:", opts);
   let isopath = `${mcfg.isopath}` || "/isomnt"; // Also: ${cfg.core.maindocroot}
   if (!fs.existsSync(isopath)) { usage(`Image dir ${isopath} does not seem to exist !`)}
   let files = fs.readdirSync(`${isopath}`);
@@ -111,7 +117,7 @@ function images_list() {
   let ign = ignore_load(files, `.imgignore`); // ${isopath}/
   files = ignore_list(files, ign);
   let igncnt = origcnt - files.length;
-  console.log(`${files.length} ISO Images found.`, files);
+  //console.log(`${files.length} ISO Images found.`, files);
   if (!files.length) { usage(`No ISO files listed from ${isopath}. FS area not mounted ?`); }
   let stats = {"isocnt": files.length, "misscnt": 0, "matchcnt": 0, "mountcnt": 0, "igncnt": igncnt};
   let missnames = [];
@@ -128,15 +134,17 @@ function images_list() {
     console.log(`File '${fn}' matched (belongs to) distro '${di.name}' => matches: ${di.mvals}`); // image ${di.img_bn}
     let obj = mvals_to_obj(di.mvals);
     di.img_bn = fn; // For mount() compat
-    //di.varinfo = obj; // NOT necessary (w. img_bn and lbl)
+    //di.varinfo = obj; // NOT necessary (w. img_bn (above) and lbl (below))
     stats.mountcnt += mntpath(di, obj);
-    if (obj.mntpath && obj.pathok) { di.lbl = obj.mntpath; }
+    if (obj.mntpath && obj.pathok) { di.lbl = obj.lbl = obj.mntpath; } // For mount()
     console.log(obj);
     stats.matchcnt++;
-    items.push(di);
+    items.push(obj);
   });
+  //console.log(items); process.exit(1); // DEBUG
   console.error(`${stats.isocnt} ISO:s, ${stats.matchcnt} Matches, ${stats.misscnt} Misses, ${stats.mountcnt} Mounts discovered, ${stats.igncnt} Ignored`);
   console.error(`Missing match (${missnames.length}):\n`, missnames);
+  opts.items = items;
   mount(items);
   // Try to match image basename to a distro item by its imgpatt (RE).
   // @return Cloned distro item if matching was successufl, null if there ws no match for file basename.
@@ -208,20 +216,23 @@ function bootables_init(cfg) {
     // Consider sv3 the standard method of versioning, for others 
   });
 }
-var ops = {
-  "menu": {desc: "Generate Simple menu stub (w/o advanced append options) to STDOUT", cb: genmenu},
-  "mount": {desc: "Generate loop-mount commands for ISO media)", cb: mount},
-  "fstab" : {desc: "Generate fstab", cb: mount},
+// TODO: id, title, cb
+var ops = [
+  {id: "menu",    desc: "Generate Simple menu stub (w/o advanced append options) to STDOUT", cb: genmenu},
+  {id: "mount",   desc: "Generate loop-mount commands for ISO media)", cb: mount},
+  {id: "fstab",   desc: "Generate fstab", cb: mount},
   
-  "download": {desc: "Generate ISO media download commands)", cb: download},
-  "validate_ki": {"desc":"Validate Mounted media kernel and initrd file presence", cb: validate_ki},
-  "imglist" : {desc: "List Images from default image dir (e.g. /isoimages/)", cb: images_list},
-};
+  {id: "download", desc: "Generate ISO media download commands)", cb: download},
+  {id: "validate_ki", "desc":"Validate Mounted media kernel and initrd file presence", cb: validate_ki},
+  {id: "imglist",  desc: "List Images from default image dir (e.g. /isoimages/)", cb: images_list},
+];
+//let optargs = [{name: "sudo"}, {name: "fstab"}, {}];
+var cliopts = [["","sudo","Use Sudo wrapping for commands."], ["","fstab","Generate /etc/fstab format output."]];
 function usage(msg) {
   var rc = 1;
   console.error("Error: " + msg);
-  // Brief usage
-  console.log("Available ops/subcommands:\n"+ Object.keys(ops).map( (k) => { return `- ${k} - ${ops[k].desc}`; }).join('\n'));
+  // Brief usage   OLD: Object.keys(ops)
+  console.log("Available ops/subcommands:\n"+ ops.map( (it) => { return `- ${it.id} - ${it.desc}`; }).join('\n'));
   process.exit(rc);
 }
 
@@ -230,19 +241,31 @@ function usage(msg) {
 //};
 
 if (process.argv[1].match("bootmenuinit.js")) {
+  
   // TODO: take httpserver, mountpath, imgpath from main config (unless overriden)!
   let mcfgfn = `${process.env.HOME}/.linetboot/global.conf.json`;
   mcfg = require(mcfgfn);
+  if (!mcfg) { usage(`No main fonfig ('${mcfgfn}') loaded\n`); }
+  cfg = require("./bootables.json");
   if (!cfg) { usage(`No bootables.json loaded (bootables.json)\n`); }
   if (!cfg.items) { usage("No bootable items (cfg.items)\n"); }
-  if (!mcfg) { usage(`No main fonfig ('${mcfgfn}') loaded\n`); }
+  let app = new cliapp.cliapp(ops, cliopts, {});
+  // // NA: cliapp.attrs.id = 'ID';
+  app.attrs.label = 'desc'; app.debug = 0;
+  let opn = app.parse({ addself: false, addop: true });
+  op = opn.id; // Intermed helper for (g-var) comp.: if (op == 'mount' || op == 'imglist') ...
+  
+  
   cfg.items.forEach(function (it) {
     if (it.img_bn) { return; } // Already given explicitly as likely not extractable from URL
     it.img_bn = path.basename(it.url); // "foo-1.2";
   });
-  var op = process.argv[2];
-  if (!ops[op]) { usage("No op:" + op); }
+  
+  //var op = process.argv[2];
+  //if (!op) { usage(`No op given on CLI ! Pass as 1st arg.`);}
+  //let opn = ops.find( (it) => { return it.id == op; });
+  //if (!opn) { usage("No op:" + op); } // ops[op]
 
-  ops[op].cb();
+  opn.cb(app.opts); // ops[op].cb();
   process.exit(0);
 }
