@@ -3,12 +3,28 @@
  * 
  * # Refs
  * - https://axios-http.com/docs/multipart
- * 
+ * - Test URL w. very little content: https://jsonplaceholder.typicode.com/posts/1
+ * ## Noteworthy error
+ * Error: ReferenceError: Cannot determine intended module format because both require() and top-level await are present. If the code is intended to be CommonJS, wrap await in an async function.
+ * If the code is intended to be an ES module, replace require() with import.
  */
  
-var fs         = require("fs");
-var path       = require("path"); // path.basename(),path.dirname()
-var axios     = require("axios");
+//var fs         = require("fs");
+//var path       = require("path"); // path.basename(),path.dirname()
+//var axios     = require("axios");
+//import * as fs from "fs";
+//import * as path from "path";
+import fs from "fs";
+import path from "path";
+//SyntaxError: Named export 'get' not found. The requested module 'axios' is a CommonJS module, which may not support all module.exports as named exports.
+//CommonJS modules can always be imported via the default export, for example using:
+
+//import pkg from 'axios';
+//const {get, post, postForm} = pkg;
+//import {get, post, postForm} from "axios";
+
+import axios from 'axios';
+
 //var yaml       = require('js-yaml');
 //var asyncjs    = require("async");
 //var Mustache   = require("mustache"); // Simple templating on URL:s
@@ -24,10 +40,10 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 /////////////////// HTTP methods ///////////////////////
 function auth_conf_set(x) {
   auth_conf = x;
-  module.exports.auth_conf = x;
+  //module.exports.auth_conf = x;
 }
 // Added arbitrary header (e.g. x-api-key: ...) support. Rename to add_creds
-function add_creds(cfg, opts) {
+export function add_creds(cfg, opts) {
   //opts.headers ||= {};
   opts.headers = opts.headers || {}; // 
   //if (typeof cfg != 'object') { throw "Creds config not passed as object !"; }
@@ -42,13 +58,14 @@ function add_creds(cfg, opts) {
   else if (cfg.token) {
     opts.headers.Authorization = "Bearer "+cfg.token;
   }
+  //else if (cfg.authkey && cfg[cfg.authkey]) { opts.headers[cfg.authkey] = cfg[cfg.authkey]; } // authhdrkey ???
   // Arbitrary header (e.g. x-api-key: ...)
   else if (numkeys == 1) { let k = Object.keys(cfg)[0]; opts.headers[k] = cfg[k]; }
   //else { throw "Neither Basic or Bearer auth credentials were configured by config keys "+Object.keys(cfg).join(','); }
   return;
 }
 // Parse form data (k1=v1&k2=v2) parameter string into an object.
-function formdata_parse(pstr) {
+export function formdata_parse(pstr) {
   let p = {}
   // TODO: decode url-enc (at p-assign)
   pstr.split('&').forEach( (kvp) => { k_v = kvp.split('=', 2); p[k_v[0]] = k_v[1]; });
@@ -56,7 +73,7 @@ function formdata_parse(pstr) {
 }
 
 /// Make a http request with axios based on "request config" (rconf).
-function request(rconf, ectx) {
+export function request(rconf, ectx) {
   let ameth, meth; // http method, axios method
   if (!rconf.method) { rconf.method = "get"; }
   meth = axmeth = rconf.method.toLowerCase();
@@ -83,11 +100,24 @@ function request(rconf, ectx) {
     // ex.response ...
     console.log(`Error calling '${rconf.url}', status: ${ex.response.status}`);
   });
-} 
-function curlify(rconf) {
+}
+// Internal Example of naive sync-like http call.
+// await pauses func till promise settles, but JS event loop continues running.
+async function reqsync(url) {
+  try {
+    let resp = await axios.get(url);
+    console.log(`Got data:`, resp.data);
+    return resp.data;
+  } catch (ex) { console.error(`Got error (calling {url}): {ex.message}`); throw ex; }
+}
+async function syncwrap(url) {
+  return await reqsync(url);
+}
+export function curlify(rconf) {
   if (!rconf.method) { rconf.method = "GET"; }
   let cmd = `curl -X ${rconf.method.toUpperCase()} `;
 }
+/*
 module.exports = {
   auth_conf_set: auth_conf_set,
   add_creds: add_creds,
@@ -95,10 +125,30 @@ module.exports = {
   //auth_conf: auth_conf, // a.c. data ?
   curlify: curlify,
 };
+*/
+import "node-getopt";
+async function main() {
+  //(async function () {
+    console.log(`Request a url in seemingly blocking way.`);
+    let testurl = process.argv[2];
+    if (!testurl) { console.log(`Pass URL from CLI !!`); process.exit(); }
+    let data = await reqsync(testurl);
+    //let data = await syncwrap(testurl);
+    console.log(`main: Received data (DONE):`, data);
+  //})();
+}
 if (process.argv[1].match("httpreq.js")) {
-  var Getopt     = require("node-getopt");
+  //var Getopt     = require("node-getopt");
+  //import * as Getopt from "node-getopt";
+  
   console.log(`Running httpreq.js`);
-  let httpreq = module.exports;
+  //let httpreq = module.exports;
   let it = {url: "https://www.linux.org/foo", method: 'GET', cb: (it, ectx, resp) => { console.log(`CB called url: ${it.url} (status: ${resp.status})`); }}
-  httpreq.request(it);
+  //request(it);
+  // Caller of async / await must itself be async and use await.
+  // The below IIFE (Immediately invoked function expression) seems to be ok w. 18.19.1 but not 22.21.1
+  // 22.21.1: TypeError: {(intermediate value)(intermediate value)(intermediate value)} is not a function
+  
+  main();
+  
 }
