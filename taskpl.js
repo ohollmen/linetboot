@@ -24,15 +24,15 @@ let fs = require("fs");
 let asyncjs = require("async");
 let cproc = require("child_process");
 let axios = require("axios");
-
+let httpreq = require("./httpreq.js");
 // Keep ectx as module global ? Alt: module.exports ? Alt: Always pass ? Hybrid (==both)
 // let ectx = null;
 
 // Run http task with info / params from it (url,params,method)
 // https://stackoverflow.com/questions/46347778/how-to-make-axios-synchronous
 
-async function httpreq(it) {  
-  return await axios.get(it.url).then( (r) => {return r.data});
+async function httpcall(it) {  
+  return await axios.get(it.url).then( (r) => {return r.data; });
 }
 
 // Run single task with extra context.
@@ -55,9 +55,9 @@ function run_it(it, ectx, cb) {
     } catch (ex) {
       let msg = `Error: Failed running file task '${it.name}': ${ex}`;
       console.error(`${msg}`);
-      return cb(msg, null);
+      if (cb) return cb(msg, null);
     }
-    return cb(null, it);
+    if (cb) return cb(null, it);
   } // sync ?
   // Command task.
   // spawn: cpr.on('close', (code) => {}) can capture exit val.
@@ -83,14 +83,15 @@ function run_it(it, ectx, cb) {
     } catch (ex) {
       let msg = `Error: Failed to run command (in sync mode): {ex}`;
       console.error(`${msg}`);
-      return cb(msg, null);
+      if (cb) return cb(msg, null);
     }
-    return cb(null, it);
+    if (cb) return cb(null, it);
   }
   // http task. Can we syncronify axios call ?
   else  if (it.url) {
     console.log(`TODO: Run http task !!!`);
-    // let resp = httpreq();
+    // let resp = httpcall(it);
+    
     // Typical processing: Use resp.data (body) or resp.headers.
     // if (it.cb) { it.cb(it, ectx, resp); }
   }
@@ -117,11 +118,12 @@ module.exports = {
 };
 
 async function itmain(it) {
-  let resp = await httpreq(it);
+  let resp = await httpcall(it);
   console.log(`main response data: `, resp.data);
 }
 let ops = [
-  
+  {},
+  {}
 ];
 if (process.argv[1].match(/\btaskpl.js$/)) {
   console.log(`Running taskpl...`);
@@ -141,7 +143,7 @@ if (process.argv[1].match(/\btaskpl.js$/)) {
     },
   ];
   let cb = (err, it) => { console.log(`Done with ${JSON.stringify(it)}`); };  
-  //itmain(its[0]);
+  itmain(its[0]);
   //taskpl.run_it(its[1], ectx, cb);
-  taskpl.run_it(its[2], ectx, cb);
+  //taskpl.run_it(its[2], ectx, cb);
 }
