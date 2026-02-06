@@ -25,15 +25,51 @@ let asyncjs = require("async");
 let cproc = require("child_process");
 let axios = require("axios");
 let httpreq = require("./httpreq.js");
+var Mustache = require("mustache"); // For templating
+var jsyaml  = require('js-yaml'); // YAML mods ...
 // Keep ectx as module global ? Alt: module.exports ? Alt: Always pass ? Hybrid (==both)
 // let ectx = null;
 
+///////////////////// Task type related work routines /////////
+
+function runtmpl(it, ectx) {
+  let cont = fs.readFileSync(it.tmplfn, 'utf8');
+  // if (it.tmplfn.match(/\.mustache$/)) {} // Detect tmpl type
+  it.cont  = Mustache.render(cont, ectx);
+  // if (it.filename == '') { return; }
+  let ofn = `${ectx.gitroot}/${it.filename}`;
+  console.log(`Should save (later) to '${ofn}' (no name means its an independent snippet)`);
+  if (ofn && fs.existsSync(ofn)) { console.log(`WARNING: File ${ofn} already exists !!`); }
+  if (it.debug) console.log(`runtmpl content:\n${it.cont}\n======END-OF-TMPL-CONT======`);
+  // Do not write here !!!
+  // fs.writeFileSync(`${it.filename}`, it.cont, {encoding: "utf8"} ); // outside
+};
+function yamlmod(it, ectx) {
+  let fn = `${ectx.gitroot}/${it.filename}`;
+  
+  if (!fs.existsSync(fn)) { console.log(`ERROR: File to modify: '${fn}' does not exist !!`); return; }
+  let d = yaml_load(fn);
+  let ytop = d;
+  if (!it.datapath) { throw("No .datapath (in dot-not) defined in node");} // exists
+  let pa = it.datapath.split(".");
+  let i = 0;
+  //while (y[i]) {}
+  for (i=0;pa[i] && d[ pa[i] ];i++) { d = d[ pa[i] ]; } // hasOwnProperty
+  if (!d) { console.log("No data found at the end of the dot-not path."); return; }
+  // TODO: Have a flexible requirement data type here
+  
+  ////////////////// Mod part ! (model by modcb(it, ectx) ?)
+  if (it.modcb) { it.modcb(d); }
+  else { console.log(`Note: mofif. callback for yaml mod is missing !!`); }
+}
 // Run http task with info / params from it (url,params,method)
 // https://stackoverflow.com/questions/46347778/how-to-make-axios-synchronous
 
 async function httpcall(it) {  
   return await axios.get(it.url).then( (r) => {return r.data; });
 }
+
+/////////////////// High level task orchestration ///////////////
 
 // Run single task with extra context.
 // pass cb to follow (asynchronous action).
@@ -46,7 +82,7 @@ function run_it(it, ectx, cb) {
   if (it.filename) {
     // Note there is fw-level no default op on file (e.g. load content). Handler must handle everything.
     try {
-      it.cb(it, ectx);
+      if (it.cb) it.cb(it, ectx);
       if (ectx && ectx.dryrun) { console.log(`Dry-run mode (not saving '${it.filename}')`); }
       else if (it.cont && it.savecont) {
         console.log(`Saving content (${it.cont.length} B) to ${it.filename}`);
@@ -87,13 +123,14 @@ function run_it(it, ectx, cb) {
     }
     if (cb) return cb(null, it);
   }
-  // http task. Can we syncronify axios call ?
+  // http (URL) task. Can we syncronify axios call ?
   else  if (it.url) {
-    console.log(`TODO: Run http task !!!`);
-    // let resp = httpcall(it);
+    console.log(`TODO: Run http URL task !!!`);
+    let resp = httpcall(it);
     
     // Typical processing: Use resp.data (body) or resp.headers.
-    // if (it.cb) { it.cb(it, ectx, resp); }
+    if (it.cb) { it.cb(it, ectx, resp); } // Task cb for resp
+    if (cb) return cb(null, it); // completion asyncjs
   }
   else {
     console.error(`Unrecognizable task ('${it.name}') !`);
@@ -114,7 +151,9 @@ module.exports = {
   ectx: null,
   run_it: run_it,
   run_by_tid: run_by_tid,
-  
+  /// Helpers
+  runtmpl: runtmpl,
+  yamlmod: yamlmod,
 };
 
 async function itmain(it) {
