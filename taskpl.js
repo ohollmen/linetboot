@@ -65,8 +65,12 @@ function yamlmod(it, ectx) {
 // Run http task with info / params from it (url,params,method)
 // https://stackoverflow.com/questions/46347778/how-to-make-axios-synchronous
 
-async function httpcall(it) {  
-  return await axios.get(it.url).then( (r) => {return r.data; });
+async function httpcall(it, cb) {
+  console.log(`Calling URL: ${it.url}`);
+  return await axios.get(it.url).then( (r) => {
+    return r.data;
+    //if (cb) { cb(); }
+  }); //.catch( (ex) => { console.error(`HTTP Exception {ex}`); return null; });
 }
 
 /////////////////// High level task orchestration ///////////////
@@ -125,12 +129,15 @@ function run_it(it, ectx, cb) {
   }
   // http (URL) task. Can we syncronify axios call ?
   else  if (it.url) {
-    console.log(`TODO: Run http URL task !!!`);
-    let resp = httpcall(it);
-    
+    console.log(`TODO: Run http URL task '${it.name}' !!!`);
+    let resp_p = httpcall(it);
+    console.log(`Initial ret. from httpcall(it): ${resp_p}`);
+    resp_p.then( (resp) => {
+      if (it.cb) { it.cb(it, ectx, resp); } // Task cb for resp
+      if (cb) return cb(null, it); // completion asyncjs
+    });
     // Typical processing: Use resp.data (body) or resp.headers.
-    if (it.cb) { it.cb(it, ectx, resp); } // Task cb for resp
-    if (cb) return cb(null, it); // completion asyncjs
+    
   }
   else {
     console.error(`Unrecognizable task ('${it.name}') !`);
