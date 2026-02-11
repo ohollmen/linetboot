@@ -162,7 +162,26 @@ function run_by_tid(arr, tid, ectx) {
   if (!it) { throw "No task item found"; }
   run_it(it, ectx);
 }
-
+/** Multiply item (it) by objects in array (arr).
+ * The template member/property in it (e.g. .tmpl) should name the property to grab from each object in arr
+ * (e.g. '{{name}}' grabs property .name - note: to have a value it *must* exist and have a value in object)
+ * 
+ * 
+ */
+function item_multiply_template(it, arr, cfg) { // cfg ?
+  cfg = cfg || {};
+  let tmplmem = cfg.tmplmem;
+  let tgtmem = cfg.tgtmem;
+  let clonecb = cfg.clonecb;
+  // let copymems = ...; // ???
+  let newarr = arr.map( (ait) => { // ait = arr item
+    let tout = Mustache.render(it[tmplmem], ait);
+    let o = clonecb ? clonecb(it, ait) : {};
+    o[tgtmem] = tout;
+    return o;
+  });
+  return newarr;
+}
 module.exports = {
   ectx: null,
   run_it: run_it,
@@ -171,6 +190,7 @@ module.exports = {
   runtmpl: runtmpl,
   yamlmod: yamlmod,
   arr_nextlink: arr_nextlink,
+  item_multiply_template: item_multiply_template,
 };
 
 async function itmain(it) {
@@ -207,4 +227,9 @@ if (process.argv[1].match(/\btaskpl.js$/)) {
 
   //taskpl.run_it(its[1], ectx, cb);
   //taskpl.run_it(its[2], ectx, cb);
+  let tnode = {tmpl: "Hello {{title}} {{lastname}}"};
+  let itemarr = [{title: "Mr.", lastname: "Jennings"}, {title: "Mrs.", lastname: "Cully"}, {title: "Director", lastname: "Megalonar"}];
+  let clonecb = (it, ita) => { let o = {origtitle: ita.title, }; return o;};
+  let oarr = item_multiply_template(tnode, itemarr, {tmplmem: "tmpl", tgtmem: "output", clonecb: clonecb});
+  console.log(oarr);
 }
