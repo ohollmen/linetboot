@@ -74,7 +74,15 @@ async function httpcall(it, cb) {
 }
 
 /////////////////// High level task orchestration ///////////////
-
+function arr_nextlink(arr) {
+  for (let i = 0;i<arr.length;i++) {
+    let o = arr[i];
+    let n = arr[i+1] || null; // Also ...
+    //let n = (i+1 < arr.length) ? arr[i+1] : null;
+    o.next = () => { return n; };
+    // Check if typeof object
+  }
+}
 // Run single task with extra context.
 // pass cb to follow (asynchronous action).
 // Tasknode (it) may have private (synchronous) hooks on it (per tasktype):
@@ -83,7 +91,7 @@ async function httpcall(it, cb) {
 // - http: cb(it, ectx, resp)
 function run_it(it, ectx, cb) {
   // File task (sync)
-  if (it.filename) {
+  if (it.hasOwnProperty("filename")) { // it.filename
     // Note there is fw-level no default op on file (e.g. load content). Handler must handle everything.
     try {
       if (it.cb) it.cb(it, ectx);
@@ -92,6 +100,7 @@ function run_it(it, ectx, cb) {
         console.log(`Saving content (${it.cont.length} B) to ${it.filename}`);
         fs.writeFileSync(it.filename , it.cont, {encoding: "utf8"} );
       }
+      else { console.log(`Not dryrun, not to be saved (cont: ${it.cont.length} B)`); }
     } catch (ex) {
       let msg = `Error: Failed running file task '${it.name}': ${ex}`;
       console.error(`${msg}`);
@@ -102,7 +111,7 @@ function run_it(it, ectx, cb) {
   // Command task.
   // spawn: cpr.on('close', (code) => {}) can capture exit val.
   // See also stdout = execSync(cmd,  copts); - will throw on errors
-  if (it.cmd) {
+  else if (it.cmd) {
     let cwd = it.cwd || null;
     let copts = {}; // cwd, env,maxBuffer (def 1M)
     /*
@@ -128,7 +137,7 @@ function run_it(it, ectx, cb) {
     if (cb) return cb(null, it);
   }
   // http (URL) task. Can we syncronify axios call ?
-  else  if (it.url) {
+  else if (it.url) {
     console.log(`TODO: Run http URL task '${it.name}' !!!`);
     let resp_p = httpcall(it);
     console.log(`Initial ret. from httpcall(it): ${resp_p}`);
@@ -161,6 +170,7 @@ module.exports = {
   /// Helpers
   runtmpl: runtmpl,
   yamlmod: yamlmod,
+  arr_nextlink: arr_nextlink,
 };
 
 async function itmain(it) {
@@ -188,8 +198,13 @@ if (process.argv[1].match(/\btaskpl.js$/)) {
       savecont: 1,
     },
   ];
+  for (let i = 0; i < its.length; i++) { its[i].lbl = i.toString()}
+  arr_nextlink(its);
+  // its.forEach( (it) => { console.log(`Next(${it.lbl}) is ${it.next()}`);} );
+
   let cb = (err, it) => { console.log(`Done with ${JSON.stringify(it)}`); };  
-  itmain(its[0]);
+  //itmain(its[0]);
+
   //taskpl.run_it(its[1], ectx, cb);
   //taskpl.run_it(its[2], ectx, cb);
 }
