@@ -7,30 +7,57 @@
  * For JSON-RPC part See: https://www.jsonrpc.org/specification
  * ## tests
  * 
+ * ## Historical notes
+ * 
+ * JSON-RPC spec is compact, simple and terse, but OpenRPC proposed a method "rpc.discover" method (similar to swagger standard)
+ * that would return an OpenRPC document describing methods and their parameters. Also XML-RPC "system.listMethods" was adopted by
+ * some JSON-RPC implementations. Note: MCP did not adopt OpenRPC's "rpc.discover" but uses "$noun/$verb" notation for various
+ * discovery methods (e.g. tools/list, resources/list).
+ * References:
+ * - https://modelcontextprotocol.io/specification/2025-11-25
+ * - https://modelcontextprotocol.io
+ * - https://github.com/modelcontextprotocol/modelcontextprotocol ... See schema.ts
+ * 
+ * ## Client side configuration
+ * 
+ * - https://platform.claude.com/docs/en/agent-sdk/mcp
+ * 
+ * ## TODO
+ * - Facilitate asynchronicity, but it seems we can do a lot
  */
 const express = require("express");
-let cproc = require("child_process");
+let cproc     = require("child_process");
+let readline  = require('readline'); // for stdio transport. In node.js core !
+// Standard "capabilities" (from initialize - capability negotiation)
+let stdcapa = { "capabilities": {
+    "tools": {}, // Also: "resources": {}, "prompts": {},
+}};
+
 // TODO: Require more props, e.g. if handler should be run in async or sync mode (!)
+// Mandatory: initialize Practically mandatory tools/list
 let method_hdlrs = {
+  "initialize": (method, id, params) => { return { result: stdcapa }; },
+  // "tools/list": (method, id, params) => { return { result: ???? }; }, // loop through
   "uptime": hdl_uptime,
 };
 let jrpc = {};
 
-
-/**
- * Utility: Safe shell execution
+function method_hdlr_add(mname, mhdlr) {
+  if (typeof mhdlr != 'function') { console.error(`Method handler passed is not a function !`); return; }
+  method_hdlrs[mname] = mhdlr;
+}
+/** Utility: Safe shell execution for shelled-out commands.
  */
-function safeExec(command) {
+function safeExec(cmd) {
   try {
-    return cproc.execSync(command, { encoding: "utf8" }).trim(); // stdout
+    return cproc.execSync(cmd, { encoding: "utf8" }).trim(); // stdout
   } catch (err) {
     throw new Error(`Shell command failed: ${err.message}`);
   }
 }
 
 
-/**
- * Get system start time from `uptime --since`
+/** Get system start time from `uptime --since`.
  */
 function getStartTime() {
   const since = safeExec("uptime --since");
@@ -50,15 +77,16 @@ function computeDuration(startDate) {
 }
 
 
-/**
- * JSON-RPC Error Helper
+/** JSON-RPC Error Helper.
  */
 function jsonRpcError(id, code, message) {
   return { jsonrpc: "2.0", error: { code: code, message: message }, id: id || null, };
 }
 
-/**
- * Service Schema (MCP discovery)
+/** Service Schema (for MCP discovery)
+ * TODO: Isolate these to JS "plugin" modules.
+ * Allow module to export one or array of these to then register here.
+ * Note: It seems intial documentation on schema format was wrong/misleading - revise this.
  */
 const schema = {
   name: "SystemUptimeService",
@@ -84,53 +112,69 @@ const schema = {
     },
   },
 };
+// For tools/list Seems JSON-RPC needs to have result.tools = [{}, {}, ...] // t1, t2, ...
+// Each tool should have: name, description, inputSchema: {}, 
+// The granularity is per-function/method, not per-service/module
+
+
 // Note: Do not let handler worry about ID (except for erro messages ?). Return resp data only, however in response object w. {"result": ...}.
 // Pass method for overloaded handlers that can do multiple variations of "same method theme" but different method names with minute differences.
 // (distinct methods, but same functional pattern with minor variations).
 function hdl_uptime(method, id, params) {
-      if (!params || typeof params.restype !== "string") {
-        //return res.json(
-        return jsonRpcError(id, -32602, "Missing or invalid 'restype' parameter")
-        //);
-      }
-      const restype = params.restype;
-      const allowed = ["startiso", "minutes", "hours", "days", "raw"];
-      if (!allowed.includes(restype)) {
-        //return res.json(
-        return jsonRpcError(id, -32602, `Invalid 'restype'. Allowed: ${allowed.join(", ")}`)
-        //);
-      }
+  if (!params || typeof params.restype !== "string") {
+    //return res.json(
+    return jsonRpcError(id, -32602, "Missing or invalid 'restype' parameter")
+    //);
+  }
+  const restype = params.restype;
+  const allowed = ["startiso", "minutes", "hours", "days", "raw"];
+  if (!allowed.includes(restype)) {
+    //return res.json(
+    return jsonRpcError(id, -32602, `Invalid 'restype'. Allowed: ${allowed.join(", ")}`)
+    //);
+  }
 
-      if (restype === "raw") {
-        const raw = safeExec("uptime");
-        //return res.json();
-        return { jsonrpc: "2.0", result: raw, id: id, };
-      }
-      const startDate = getStartTime();
-      const duration = computeDuration(startDate);
+  if (restype === "raw") {
+    const raw = safeExec("uptime");
+    //return res.json();
+    return { jsonrpc: "2.0", result: raw, id: id, };
+  }
+  const startDate = getStartTime();
+  const duration = computeDuration(startDate);
 
-      let result;
+  let result;
 
-      switch (restype) {
-        case "startiso":
-          result = startDate.toISOString();
-          break;
-        case "minutes":
-          result = Number(duration.minutes.toFixed(2));
-          break;
-        case "hours":
-          result = Number(duration.hours.toFixed(2));
-          break;
-        case "days":
-          result = Number(duration.days.toFixed(2));
-          break;
-      }
-      return { result: result, };
-    }
-/** JSON-RPC level handler */
-function hdl_rpc_req(req, res) {
-  const { jsonrpc, method, params, id } = req.body;
-  if (Array.isArray(req.body)) { return res.json(jsonRpcError(id, -32600, "JSON-RPC Batch Request (array-of-msgs) detected. Not supported (yet) !")); } // Number ???
+  switch (restype) {
+    case "startiso":
+      result = startDate.toISOString();
+      break;
+    case "minutes":
+      result = Number(duration.minutes.toFixed(2));
+      break;
+    case "hours":
+      result = Number(duration.hours.toFixed(2));
+      break;
+    case "days":
+      result = Number(duration.days.toFixed(2));
+      break;
+  }
+  return { result: result, };
+}
+// Thin wrapper for HTTP / Express.js
+function hdl_rpc_req_http(req, res) {
+  let m = req.body;
+  //const { jsonrpc, method, params, id } = req.body;
+  hdl_rpc_req(m, res);
+}
+/** JSON-RPC level handler (for any of the transport types: http, stdio) */
+//function hdl_rpc_req(req, res) {
+function hdl_rpc_req(m, res) {
+  //let m = null; // Message
+  //const { jsonrpc, method, params, id } = m = req.body;
+  const { jsonrpc, method, params, id } = m;
+  //console.log(`Received JSON-RPC message: ${JSON.stringify(m)}`);
+  if (Array.isArray(m)) { return res.json(jsonRpcError(id, -32600, "JSON-RPC Batch Request (array-of-msgs) detected. Not supported (yet) !")); } // Number ???
+  
   if (jsonrpc !== "2.0") { return res.json(jsonRpcError(id, -32600, "Invalid JSON-RPC version")); }
   if (!method)           { return res.json(jsonRpcError(id, -32600, "Missing method")); }
   try {
@@ -159,14 +203,52 @@ function hdl_rpc_req(req, res) {
   }
 }
 module.exports = {
-  
+  hdl_rpc_req: hdl_rpc_req,
+  hdl_rpc_req_http: hdl_rpc_req_http, // For arbitrary express applications.
 };
 if (process.argv[1].match("mcp.js")) {
-  const PORT = process.env.PORT || 3000;
-  const app = express();
-  app.use(express.json());
-  app.post("/rpc", hdl_rpc_req);
-  app.listen(PORT, () => {
-    console.log(`MCP JSON-RPC server running on port ${PORT}`);
-  });
+  let PORT = process.env.PORT || 3000;
+  let mode = process.argv[2] || "http"; // http / stdio
+  let servurl = "/rpc";
+  console.log(`Got mode: ${mode}`);
+  // HTTP transport
+  if (mode == 'http') {
+    let app = express();
+    app.use(express.json());
+    app.post(servurl, hdl_rpc_req_http);
+    app.listen(PORT, () => {
+      console.log(`MCP (HTTP) JSON-RPC server running on port ${PORT} (Service URL path: '${servurl}')`);
+    });
+  }
+  // stdio transport
+  else if (mode == 'stdio') {
+    // Create (i.e. "mock') an object that looks similar to Express res, w. method json() to share the response handling interface 1:1
+    let res = {json: (rmsg) => {
+      process.stdout.write(JSON.stringify(rmsg) + '\n');
+    }};
+    // output => Don't let readline touch stdout, terminal => stdin is not a TTY.
+    const rl = readline.createInterface({ input: process.stdin, output: null, terminal: false });
+    // Request handler. Note *ALL* JSON of request must be on one line.
+    rl.on('line', (line) => {
+      let trimmed = line.trim();
+      if (!trimmed) { return; } // skip empty lines (i.e. requests)
+      let message;
+      // Parse, detect early errors (e.g. parsing malformed JSON)
+      try { message = JSON.parse(trimmed); }
+      catch (err) {
+        // Malformed JSON ...
+        let jerr = jsonRpcError(0, -32700, `Could not parse JSON-RPC message - check you JSON syntax !`)
+        process.stdout.write(JSON.stringify(jerr) + '\n');
+        return;
+      }
+      // Parsed as JSON ok - process JSON-RPC.
+      hdl_rpc_req(message, res);
+      // OLD/TEST - Write response as a single line to stdout. Now written with hdl_rpc_req using res.json()
+      // process.stdout.write(JSON.stringify(response) + '\n');
+    });
+    // Register "client close" handler for stdio mode (stdin closed - client disconnected, clean up and exit)
+    // There is an explicit: rl.close()
+    rl.on('close', () => { process.exit(0); }); // Do fancier stuff here ?
+
+  }
 }
