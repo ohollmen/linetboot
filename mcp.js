@@ -12,23 +12,28 @@
  * JSON-RPC spec is compact, simple and terse, but OpenRPC proposed a method "rpc.discover" method (similar to swagger standard)
  * that would return an OpenRPC document describing methods and their parameters. Also XML-RPC "system.listMethods" was adopted by
  * some JSON-RPC implementations. Note: MCP did not adopt OpenRPC's "rpc.discover" but uses "$noun/$verb" notation for various
- * discovery methods (e.g. tools/list, resources/list).
+ * discovery methods (e.g. tools/list, resources/list, It seems tools/call invokes a too (!?)).
  * References:
  * - https://modelcontextprotocol.io/specification/2025-11-25
  * - https://modelcontextprotocol.io
  * - https://github.com/modelcontextprotocol/modelcontextprotocol ... See schema.ts
+ * - MCP Apps: https://modelcontextprotocol.io/docs/extensions/apps
+ *   - Most AI have config dir in ~ and `skills/` dir under it (E.g. .claude, .copilot, .gemini, .codex - for chatGPT)
+ * - .outputSchema: https://github.com/modelcontextprotocol/modelcontextprotocol/pull/371
+ * - Superficial article on schemas (w. examples): https://www.merge.dev/blog/mcp-tool-schema
  * 
  * ## Client side configuration
  * 
  * - https://platform.claude.com/docs/en/agent-sdk/mcp
- * 
+ * - e.g. In proj dir ./.mcp.json: command: "" and "args":[] OR: "url": ... 
  * ## TODO
- * - Facilitate asynchronicity, but it seems we can do a lot
+ * - Facilitate asynchronicity, but it seems we can do a lot synchronously (esp. await ...).
  */
 const express = require("express");
 let cproc     = require("child_process");
 let readline  = require('readline'); // for stdio transport. In node.js core !
-// Standard "capabilities" (from initialize - capability negotiation)
+// let jrpc  = require('jrpc');
+// Standard MCP "capabilities" (from initialize - capability negotiation)
 let stdcapa = { "capabilities": {
     "tools": {}, // Also: "resources": {}, "prompts": {},
 }};
@@ -37,10 +42,20 @@ let stdcapa = { "capabilities": {
 // Mandatory: initialize Practically mandatory tools/list
 let method_hdlrs = {
   "initialize": (method, id, params) => { return { result: stdcapa }; },
-  // "tools/list": (method, id, params) => { return { result: ???? }; }, // loop through
+  // loop through
+  "tools/list": (method, id, params) => { return { jsonrpc: "2.0", result: {tools: [schema_tool] }, id: id, }; },
+  "tools/call": (method, id, params) => {
+    let tname = params.name;
+    return tools_hdlrs[tname](tname, id, params.arguments); // ret. result
+  },
   "uptime": hdl_uptime,
 };
-let jrpc = {};
+// These should have similar/same signature (method, id, params) as method calls
+// BUT: method => toolname (within), params => arguments (within params)
+let tools_hdlrs = {
+  "uptime": hdl_uptime,
+};
+let jrpc = {}; // JRPC module / NS "method_hdlr": {} ?
 
 function method_hdlr_add(mname, mhdlr) {
   if (typeof mhdlr != 'function') { console.error(`Method handler passed is not a function !`); return; }
@@ -55,8 +70,15 @@ function safeExec(cmd) {
     throw new Error(`Shell command failed: ${err.message}`);
   }
 }
-
-
+// Create a wrapping for a tool call for client (there is a 2nd stage indirection here). Let caller add id (?)
+function mcp_tools_call(tname, params) {
+  let m = { // "jsonrpc": "2.0",
+    method: "tools/call", params: { name: tname, arguments: params } };
+  return m;
+}
+// Answer 2 questions: 1) is this an MCP tool call 2) what is the method name ?
+// This allows to switch to MCP tool callback table
+function mcp_is_mcp_call(m) { return (m.method == 'tools/call') ? m.params.name : null; }
 /** Get system start time from `uptime --since`.
  */
 function getStartTime() {
@@ -111,6 +133,20 @@ const schema = {
       returns: { type: "object" },
     },
   },
+};
+let schema_tool = {
+  name: "uptime",
+  description: "Returns system uptime based on --since",
+  inputSchema: {
+    type: "object",
+    properties: {
+      restype: { type: "string", description: "Uptime Result type (startiso,minutes,hours,days,raw)" },
+      //destination: { type: "string", description: "Arrival Airport" },
+      //date: { type: "string", format: "date", description: "Travel date" }
+    },
+    required: ["restype"],
+    "additionalProperties": false,
+  }
 };
 // For tools/list Seems JSON-RPC needs to have result.tools = [{}, {}, ...] // t1, t2, ...
 // Each tool should have: name, description, inputSchema: {}, 
@@ -178,18 +214,20 @@ function hdl_rpc_req(m, res) {
   if (jsonrpc !== "2.0") { return res.json(jsonRpcError(id, -32600, "Invalid JSON-RPC version")); }
   if (!method)           { return res.json(jsonRpcError(id, -32600, "Missing method")); }
   try {
-    // SCHEMA DISCOVERY
-    if (method === "rpc.discover") {
-      return res.json({ jsonrpc: "2.0", result: schema, id: id, });
+    // SCHEMA DISCOVERY (JSON-RPC)
+    /*
+    if (method === "tools/list") { // rpc.discover
+      //return res.json({ jsonrpc: "2.0", result: schema, id: id, });
+      return res.json({ jsonrpc: "2.0", result: {tools: [schema_tool] }, id: id, });
     }
+    */
     let result = null; // Rename: jres or jrpcres
-    // UPTIME METHOD
-    //if (method === "uptime") {
-    //  result = hdl_uptime(method, params);
+    // Dispatch method from method_hdlrs (TODO: make more granular)
     let mcb = method_hdlrs[method];
     if (mcb) {
-      result = mcb(method, id, params);
-      if (result.error) { return res.json(result); } // Assume complete response (?) OR add id, jsonrpc
+      result = mcb(method, id, params); // rmsg ?
+      //if (typeof result != 'object') { return res.json(jsonRpcError(id, -32603, "No result object returned from RPC handler !!!")); }
+      if (result.error) { return res.json(result); } // Assume complete response (?) OR add result.id = id; result.jsonrpc = "2.0";
       // Still check result.result (for saneness) for value and object (array, even string ?) type ?
       // At JSON-RPC Handling level: Now create complete response with "jsonrpc" and "id"
       result.jsonrpc = "2.0";
