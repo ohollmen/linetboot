@@ -339,6 +339,7 @@ if (process.argv[1].match("mcp.js")) {
   let servurl = "/mcp"; // "/rpc" works equally
   console.error(`Got mode: ${mode}`);
   let res = null;
+  let inbuf = null;
   // HTTP transport - HTTP/SSE transport
   if (mode == 'httpraw') {
     // Raw Node.js
@@ -362,13 +363,17 @@ if (process.argv[1].match("mcp.js")) {
     //let
     res = {json: (rmsg) => {
         let j = JSON.stringify(rmsg);
-        process.stdout.write(`Content-length: ${j.length}\n\n`);
-        process.stdout.write( j ); // + '\n'
+        stdio_write_frame(j);
       },
-      send: (rmsg) => { process.stdout.write(rmsg + '\n'); },
-      write: (rmsg) => { process.stdout.write(rmsg + '\n'); },
+      send: (rmsg) => { stdio_write_frame(rmsg); },
+      write: (rmsg) => { stdio_write_frame(rmsg); },
       status: (any) => { return res; }, // for chaining - should not be used
     };
+    function stdio_write_frame(body) {
+        let len = Buffer.byteLength(body, "utf8");
+        process.stdout.write(`Content-Length: ${len}\r\n\r\n${body}`);
+    }
+    /**
     // output => Don't let readline touch stdout, terminal => stdin is not a TTY.
     const rl = readline.createInterface({ input: process.stdin, output: null, terminal: false });
     console.error(`Hook handlers`);
@@ -377,7 +382,23 @@ if (process.argv[1].match("mcp.js")) {
     // Register "client close" handler for stdio mode (stdin closed - client disconnected, clean up and exit)
     // There is an explicit: rl.close()
     rl.on('close', () => { process.exit(0); }); // Do fancier stuff here ?
-
+    */
+      // Parse MCP stdio frames:
+      // Content-Length: <n>\r\n
+      // ...optional headers...\r\n
+      // \r\n
+      // <n bytes of JSON body>
+      //let
+      inbuf = Buffer.alloc(0);
+      process.stdin.on("data", (chunk) => {
+        inbuf = Buffer.concat([inbuf, chunk]);
+        hdl_rpc_req_stdio_frames();
+      });
+      process.stdin.on("end", () => { process.exit(0); });
+      process.stdin.on("error", (err) => {
+        console.error(`stdin error: ${err.message}`);
+        process.exit(1);
+      });
   }
    function hdl_rpc_req_stdio_msg(line) { // TODO: hdl_rpc_req_stdio_msg(res)(line)
       console.error(`Got line: ${line}`);
@@ -398,4 +419,42 @@ if (process.argv[1].match("mcp.js")) {
       // OLD/TEST - Write response as a single line to stdout. Now written with hdl_rpc_req using res.json()
       // if (rp) process.stdout.write(JSON.stringify(response) + '\n');
     }
+    function hdl_rpc_req_stdio_frames() {
+      while (true) {
+        let hdrend = inbuf.indexOf("\r\n\r\n");
+        let seplen = 4;
+        if (hdrend < 0) {
+          hdrend = inbuf.indexOf("\n\n");
+          seplen = 2;
+        }
+        if (hdrend < 0) { return; } // Need more data.
+  
+        let headers = inbuf.slice(0, hdrend).toString("utf8");
+        let clen = null;
+        for (const line of headers.split(/\r?\n/)) {
+          const m = line.match(/^Content-Length:\s*(\d+)\s*$/i);
+          if (m) { clen = Number(m[1]); break; }
+        }
+        if (!Number.isFinite(clen) || clen < 0) {
+          console.error(`Missing/invalid Content-Length header in stdio frame`);
+          inbuf = inbuf.slice(hdrend + seplen);
+          continue;
+        }
+  
+        let bodystart = hdrend + seplen;
+        if (inbuf.length < bodystart + clen) { return; } // Need more body bytes.
+        let body = inbuf.slice(bodystart, bodystart + clen).toString("utf8");
+        inbuf = inbuf.slice(bodystart + clen);
+  
+        let message;
+        try { message = JSON.parse(body); }
+        catch (err) {
+          let jerr = jsonRpcError(null, -32700, `Could not parse JSON-RPC message - check your JSON syntax`);
+          res.json(jerr);
+          continue;
+        }
+        hdl_rpc_req(message, res);
+      }
+    }
+
 }
