@@ -30,7 +30,7 @@
  * ## TODO
  * - Facilitate asynchronicity, but it seems we can do a lot synchronously (esp. await ...).
  */
-const express = require("express");
+
 let cproc     = require("child_process");
 let readline  = require('readline'); // for stdio transport. In node.js core !
 // let jrpc  = require('jrpc');
@@ -350,6 +350,7 @@ if (process.argv[1].match("mcp.js")) {
     });
   }
   if (mode == 'http') {
+    const express = require("express");
     let app = express();
     app.use(express.json());
     app.post(servurl, hdl_rpc_req_express);
@@ -400,6 +401,8 @@ if (process.argv[1].match("mcp.js")) {
         process.exit(1);
       });
   }
+   // Simple Line based implementation of JSON-RPC stdio transport.
+   // All messages (requests, responses) are sent as one-liner JSON (simple !)
    function hdl_rpc_req_stdio_msg(line) { // TODO: hdl_rpc_req_stdio_msg(res)(line)
       console.error(`Got line: ${line}`);
       let trimmed = line.trim();
