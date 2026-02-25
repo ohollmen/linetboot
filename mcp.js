@@ -22,7 +22,17 @@
  * - .outputSchema: https://github.com/modelcontextprotocol/modelcontextprotocol/pull/371
  * - Superficial article on schemas (w. examples): https://www.merge.dev/blog/mcp-tool-schema
  * - https://github.com/modelcontextprotocol/typescript-sdk
- * -https://modelcontextprotocol.wiki/en/docs/concepts/resources
+ * - https://modelcontextprotocol.wiki/en/docs/concepts/resources
+ * - EventSource API: https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+ * ## SSE Server-sent events vs. Streamable HTTP (dedicated to MCP)
+ * - SSE (https://en.wikipedia.org/wiki/Server-sent_events) and Streamable HTTP are2 different standards
+ *   - MCP has used both: https://brightdata.com/blog/ai/sse-vs-streamable-http
+ * - SSE (aka HTTP+SSE): Chunked transfer encoding (https://en.wikipedia.org/wiki/Chunked_transfer_encoding), chunked ... not supported in HTTP/2
+ *   `Transfer-Encoding: chunked`. The media type for SSE is text/event-stream. Unlike WebSockets, SSE is unidirectional
+ * - Streamable HTTP: 
+ *   - Single entrypoint
+ *   - Uses E.G. Mcp-Session-Id: session-a4b1-c8d3-e5f6
+ *   - 202 Accepted response, which is sent with an empty body,
  * ## Client side configuration
  * 
  * - https://platform.claude.com/docs/en/agent-sdk/mcp
