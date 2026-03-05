@@ -75,8 +75,11 @@ export function add_hdrs(hdrs, opts) {
 // Parse form data (k1=v1&k2=v2) parameter string into an object.
 export function formdata_parse(pstr) {
   let p = {}
+  let pst = typeof pstr;
+  // , ${JSON.stringify(pstr)})
+  if (pst != 'string') { console.error(`formdata_parse(): Param pstr is not a string (Got: '${pst}' !`); return; }
   // TODO: decode url-enc (at p-assign)
-  pstr.split('&').forEach( (kvp) => { k_v = kvp.split('=', 2); p[k_v[0]] = k_v[1]; });
+  pstr.split('&').forEach( (kvp) => { let k_v = kvp.split('=', 2); p[k_v[0]] = k_v[1]; });
   return p;
 }
 export function axmethod(rconf) {
