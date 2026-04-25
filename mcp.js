@@ -23,7 +23,9 @@
  * - Superficial article on schemas (w. examples): https://www.merge.dev/blog/mcp-tool-schema
  * - https://github.com/modelcontextprotocol/typescript-sdk
  * - https://modelcontextprotocol.wiki/en/docs/concepts/resources
+ * - https://modelcontextprotocol.io/community/contributing
  * - EventSource API: https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+ * - How MCP Uses Streamable HTTP: https://thenewstack.io/how-mcp-uses-streamable-http-for-real-time-ai-tool-interaction/
  * ## SSE Server-sent events vs. Streamable HTTP (dedicated to MCP)
  * - SSE (https://en.wikipedia.org/wiki/Server-sent_events) and Streamable HTTP are2 different standards
  *   - MCP has used both: https://brightdata.com/blog/ai/sse-vs-streamable-http
@@ -33,6 +35,10 @@
  *   - Single entrypoint
  *   - Uses E.G. Mcp-Session-Id: session-a4b1-c8d3-e5f6
  *   - 202 Accepted response, which is sent with an empty body,
+ *   - Client: Accept: text/event-stream, Server: Content-Type: text/event-stream
+ *   - Streamable HTTP still has optional SSE (stream) ?
+ *   - Server sends an SSE data: chunk on the long-lived GET connection.
+ *   - new HTTP GET (e.g. on disconnect) must have 2 items: Last-Event-ID header + Mcp-Session-Id header
  * ## Client side configuration
  * 
  * - https://platform.claude.com/docs/en/agent-sdk/mcp
@@ -241,6 +247,7 @@ function hdl_rpc_req_http_raw(req, res) {
     'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive' }; // Need to change Content-Type to text/event-stream ?
   //res.statusCode = 200; // Express equivalent: res.status(200);
   let streamhdr2 = { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' };
+  // Seems this should happen much later as notifications (detected later) may require 202 - Accepted
   res.writeHead(200, streamhdr2); // Also: res.setHeader(k, v);
   res.write("\n"); // Required initial flush
   let buffer = ''; // Cumulated JSON-RPC message buffer to parse as JSON.
