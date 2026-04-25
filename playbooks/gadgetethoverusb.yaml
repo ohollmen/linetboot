@@ -1,0 +1,123 @@
+---
+# # Configure Arduio Uno Q with Ethernet over USB
+# 
+# Create CDC-NCM (USB Ethernet, aka RNDIS) transport between Desktop and Uno Q (with means of cdc_ncm kernel module).
+# 
+# Setup configures:
+# - Desktop / Master that connects to Peripheral device (Uno Q)
+# - The Peripheral "Gadget" (Uno Q) that is being connected to
+# 
+# Gadget device requirements: USB OTG (On-The-Go) or Dual-Role Data port. Standard PC ports are "Host-only."
+# Also: Special Port: One of the Linux hosts has a port wired for "Device Mode" (common on Raspberry Pis, Odroids, and Snapdragon-based boards like yours).
+# Sample output on client when Uno Q gets connected w. USB (some regexp captures need to performed on the key lines):
+# ```
+# [606029.812931] usbcore: registered new interface driver cdc_ether
+# [606029.900059] cdc_ncm 1-12:1.0 eth0: register 'cdc_ncm' at usb-0000:0b:00.0-12, CDC NCM (NO ZLP), 0e:3b:50:27:b7:72
+# [606029.900100] usbcore: registered new interface driver cdc_ncm
+# [606029.901823] usbcore: registered new interface driver cdc_wdm
+# [606029.902749] usbcore: registered new interface driver cdc_mbim
+# ```
+# 
+- name: Enable Ethernet over USB on Uno Q
+  hosts: '{{host}}'
+  become: true
+  gather_facts: false
+  vars:
+    # Default network: 192.168.7.x
+    desktop_ip: "192.168.7.1"
+    board_ip: "192.168.7.2"
+    # 
+    # Only exists on Uno Q (Only path /sys/kernel/config/ on desktop linux)
+    gadget_path: "/sys/kernel/config/usb_gadget/g1"
+    # Must set !!!
+    ansible_become_password_localhost: ""
+
+  tasks:
+    - name: Ensure NCM module is loaded
+      modprobe:
+        name: usb_f_ncm
+        state: present
+    - name: Create NCM function directory
+      file:
+        path: "{{ gadget_path }}/functions/ncm.usb0"
+        state: directory
+    # Note: On Uno Q we can choose to call netif "eth0"
+    - name: Atomic USB Rebind on Uno Q (Fire and Forget)
+      shell: |
+        UDC_NAME=$(cat {{ gadget_path }}/UDC)
+        echo "" > {{ gadget_path }}/UDC
+        ln -sf {{ gadget_path }}/functions/ncm.usb0 {{ gadget_path }}/configs/c.1/
+        echo "$UDC_NAME" > {{ gadget_path }}/UDC
+        sleep 2
+        ip addr add {{ board_ip }}/24 dev usb0
+        ip link set usb0 up
+      async: 10
+      poll: 0
+      register: usb_rebind
+    # Consider `sudo dmesg -c` to make `tail -n 1` more positive/robust
+    # TEST: dmesg | grep 'cdc_ncm.*register' | tail -n 1 | grep -o -E '([0-9a-f]{2}:){5}[0-9a-f]{2}'
+    - name: Configure Desktop Interface (Local)
+      delegate_to: localhost
+      become: yes
+      vars:
+        # Map the local-specific variable to the standard become pass
+        ansible_become_password: "{{ ansible_become_password_localhost }}"
+      #shell: |
+      #  # Heuristic: Find interface by looking at dmesg for the NCM registration
+      #  # Captures e.g. eth0
+      #  IFACE=$(dmesg | grep 'cdc_ncm.*register' | tail -n 1 | sed -n 's/.* \([^ ]*\): register .*/\1/p')
+      #  if [ -n "$IFACE" ]; then
+      #    ip addr add {{ desktop_ip }}/24 dev $IFACE
+      #    ip link set $IFACE up
+      #  fi
+      shell: |
+        # Extract the MAC from the kernel log for the most recent NCM registration
+        TARGET_MAC=$(dmesg | grep 'cdc_ncm.*register' | tail -n 1 | grep -o -E '([0-9a-f]{2}:){5}[0-9a-f]{2}')
+        # Use that MAC to find the current interface name via the /sys filesystem
+        # This bypasses the need to parse 'ip link' text and is extremely reliable.
+        if [ -n "$TARGET_MAC" ]; then
+          for iface in /sys/class/net/*; do
+            if [ "$(cat $iface/address 2>/dev/null)" = "$TARGET_MAC" ]; then
+              IFACE=$(basename $iface)
+              break
+            fi
+          done
+        fi
+        echo $TARGET_MAC > /tmp/target_mac.txt
+        echo $IFACE > /tmp/target_iface.txt
+        echo "{{ desktop_ip }}" > /tmp/target_ip.txt
+        # Apply config to the "real" name
+        if [ -n "$IFACE" ]; then
+          ip link set $IFACE down
+          # sleep 3
+          # Tell NetworkManager to ignore this device (avoids the race)
+          nmcli device set $IFACE managed no || true
+          # sleep 3
+          # Flush and set (the "Hammer")
+          ip addr flush dev $IFACE
+          # Must have
+          sleep 2
+          MAX_RETRIES=5
+          COUNT=0
+          # Loop here ?
+          until ip addr add {{ desktop_ip }}/24 dev $IFACE || [ $COUNT -eq $MAX_RETRIES ]; do
+            echo "Retrying IP assignment on $IFACE..."
+            sleep 1
+            COUNT=$((COUNT + 1))
+          done
+          # ip addr add {{ desktop_ip }}/24 dev $IFACE || [ $? -eq 2 ]
+          sleep 2
+          ip link set $IFACE up
+          # sleep 3
+          # echo "FINAL_STATE_FOR_$IFACE:"
+          # ip addr show dev $IFACE > /tmp/target_post_config_check
+        fi
+      register: desktop_config
+    # Test with ansible wait_for module
+    - name: Wait for connectivity over new Wired Link
+      delegate_to: localhost
+      wait_for:
+        host: "{{ board_ip }}"
+        port: 22
+        timeout: 30
+
