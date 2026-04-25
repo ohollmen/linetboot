@@ -74,8 +74,8 @@
   #header { padding: 5px 20px; margin: 0px;  color: white; background-colorXX: black;  }
   #header {
     Xposition: relative;
-    /* horiz, vert. Still does not affect size */
-    background-position: center top;
+    /* horiz, vert. Still does not affect size. Elim top (as 2nd) to center vertically */
+    background-position: center;
     /* Scale to right size */
     background-size: cover;
     background-repeat: no-repeat;
@@ -707,6 +707,7 @@ https://www.ecma-international.org/ecma-262/8.0/index.html ECMAScript? 2017 Lang
   <form id="t_mkrepoform">
   <label style="width:200px">Multi-Repo Root</label><select id="repolbl" name="repolbl"></select><br>
   <label style="width:200px">Repository name</label><input type="text" id="reponame" name="reponame"><br>
+  <label style="width:200px">Remote label/name (optional)</label><input type="text" id="remname" name="remname"><br>
   <input id="mkrepobut" type="button" value="Create">
   </form>
   <div><pre id="mkrepo_usage"></pre></div>
