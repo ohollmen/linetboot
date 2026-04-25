@@ -1065,10 +1065,15 @@ function mkrepo_uisetup(act, data) {
       // TODO: Follow ansible GUI example of showing <pre> on-demand (only)
       var infoel = document.getElementById("mkrepo_usage");
       if (!infoel) { console.log("No mkrepo_usage (id) element !"); return; }
-      var remname = "myrepo"; // TODO: parametrize from GUI
+	  var remname_el = document.getElementById("remname");
+      var remname = (remname_el && remname_el.value) ? remname_el.value : "myrepo";
+	  // TODO: parametrize from GUI
+	  var branch_el = document.getElementById("branch");
+	  let defbranch = (branch_el && branch_el.value) ? branch_el.value : "main"; // Legacy: "master"
+	  // TODO: Cleanup d.data.repourl (On server side) - HAS DOUBLE '//' !!
       var text = `# Clone empty repo and fill it out\ngit clone ${d.data.repourl}\n`;
-      text += `# Add newly created repo as remote and push to it\ngit remote add ${remname} ${d.data.repourl}\ngit push ${remname} master\n`;
-      text += `# Push and set as default upstream repo\ngit push --set-upstream ${remname} master`; // TODO: Only set as upstream (not push)
+      text += `# Add newly created repo as remote and push to it\ngit remote add ${remname} ${d.data.repourl}\ngit push ${remname} ${defbranch}\n`;
+      text += `# Push and set as default upstream repo\ngit push --set-upstream ${remname} ${defbranch}`; // TODO: Only set as upstream (not push)
       infoel.innerHTML = text;
     }).catch((ex) => {
       toastr.error("Problems with Deployment: "+ex);
