@@ -70,10 +70,12 @@ var htpasswd = require("./htpasswd.js");
 var jira     = require("./jira.js");
 var afa      = require("./afa.js");
 var hclparse = require("./hclparse.js");
+var grepo    = require("./grepo.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
-var global = {};
+var global = {}; // Main config
+//var mcfg = {};
 global.tmpls = {}; // cached
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
 // from their DNS static IP address (and name). This only gets loaded by request via Env.variable
@@ -91,11 +93,11 @@ app.use(bodyParser.json({limit: '1mb'}));
 var rawoptions = { inflate: true, limit: '10kb', type: 'application/octet-stream' };
 app.use(bodyParser.raw(rawoptions));
 
-/** Initialize Application / Module with settings from global conf.
-* @param cfg {object} - Global linetboot configuration
+/** Initialize Application / Module with settings from main confuration.
+* @param cfg {object} -  linetboot configuration
 * @todo Perform sanity checks in mirror docroot.
 */
-function app_init() { // global
+function app_init() { // mcfg
   /** Modules */
   app.set('json spaces', 2);
   //var user;
@@ -106,6 +108,7 @@ function app_init() { // global
   var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
   console.log("Choosing mainconf: " + globalconf);
   global = mc.mainconf_load(globalconf);
+  // global = mcfg;  // Interim compat
   mc.env_merge(global);
   mc.mainconf_process(global);
   var user   = mc.user_load(global); // TODO: After env_merge, mainconf_process ?
@@ -136,6 +139,7 @@ function app_init() { // global
   jira.init(global);
   afa.init(global);
   hclparse.init(global);
+  grepo.init(global);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
@@ -368,6 +372,8 @@ function app_init() { // global
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
+  // repo
+  app.get("/grepo", grepo.hdl_grepo);
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -738,7 +744,7 @@ function pkg_counts (req, res) {
   var root = global.pkglist_path || process.env["HOME"] + "/.linetboot/hostpkginfo";
   var jr = {status: "err", msg: "Package list collection failed."};
   if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
-  // Get package count for a single host. Uses global hostcache and 9outer var) root.
+  // Get package count for a single host. Uses mcfg hostcache and 9outer var) root.
   // TODO: Pass facts, map(hostarr, ...)
   function gethostpackages(hn, cb) {
     var path = root + "/" + hn;
