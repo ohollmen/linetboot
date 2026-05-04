@@ -1360,7 +1360,73 @@ function riskadj_cell(val, item) {
     { "name": "Timezone",  "title": "Time Zone",  "type": "text", "width": 8,  "itemTemplate": null },
     { "name": "Sunrise",   "title": "Sunrise",    "type": "text", "width": 7,  "itemTemplate": null },
     { "name": "Sunset",    "title": "Sunset",     "type": "text", "width": 7,  "itemTemplate": null }
+   ];
+   function ossproj_cell(val, item) {
+     return val ? `<a href="${val}" title="${val}" target="oss_tab"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span></a>` : "";
+     //  // ok-sign/ok-circle
+   }
+   function revtype_cell(val, item) {
+     let rev = item.revision || "";
+     // let type = 'default';
+     if (!rev) return "HEAD of"; // HEAD of def. branch
+     if (rev.startsWith("refs/heads/")) return "branch"; // path notation Not Used for type branch (!?). Only branch name
+     if (rev.startsWith("refs/tags/")) {
+        item.revision = rev.substring(10);
+        //item.revlen = item.revision.length;
+        if (item.revision.length > 40) { }
+        //return "tag";
+        return `<span class="glyphicon glyphicon-tag" aria-hidden="true" title="Tag"></span>`;
+    } // return rev.substring(10);
+     if (/^[0-9a-f]{7,40}$/.test(rev)) return "commit";
+     return "HEAD of"; // "HEAD (of branch)"
+     // const colors = { branch: "#4CAF50", tag: "#2196F3", commit: "#9C27B0", unknown: "#9E9E9E", default: "#607D8B"};
+     // return `<span style="padding:2px 6px;border-radius:4px;background:${colors[type]};color:white">${value || "(default)"}</span>`;
+   }
+   function grepo_remote_cell(val, item) {
+     if (val && !item.remote_def) { return val; }
+     return `<span style="color: #888888;">${item.remote_def}</span>`;
+   }
+   function grepo_rev_cell(val, item) {
+     if (val && !item.revision_def) { return val; }
+     return `<span style="color: #888888;">${item.revision_def}</span>`;
+   }
+   // https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
+   // Others: upstream, groups(csv), upstream(git ref, typ branch), dest-branch, clone-depth, clone-filter, force-path
+var fldinfo_repo_proj = [
+  { "name": "name", "title": "Project Name", "type": "text", "width": 20 }, // 150
+  { "name": "path", "title": "Checkout Path", "type": "text", "width": 25 }, // 200
+  // ossproj
+  { "name": "ossproj", "title": "OSS (?)", "type": "text", "width": 5, "itemTemplate": ossproj_cell, },
+  { "name": "remote", "title": "Remote", "type": "text", "width": 7, "itemTemplate": grepo_remote_cell, },
+  { "name": "revisionType", "title": "Rev. Type", "type": "text", "width": 8, "itemTemplate": revtype_cell }, // "editing": false
+  // (Branch/Tag/Commit)
+  { "name": "revision", "title": "Revision ", "type": "text", "width": 24, "itemTemplate": grepo_rev_cell, }, // 180
+  { "name": "revlen", "title": "Rev. Length ", "type": "text", "width": 7, "itemTemplate": null, },
+  // Boolean attrs
+  // ad-hoc Attribute used to tell if dev. is active to no "sync-over" the changes.
+  // { "name": "development", "title": "Dev. Active", "type": "text", "width": 5 }, // *true*/false
+  // Suggested "checkbox". This is usually the single most effective optimization.
+  { "name": "sync-c", "title": "Sync Current Branch Only", "type": "text", "width": 5 }, // 100
+  { "name": "sync-s", "title": "Sync Submodules", "type": "text", "width": 5 },
+  // { "name": "sync-tags", "title": "Sync Tags", "type": "text", "width": 5 },
+  // sync-j (rare). you can 1) give this as default, 2) pass this as a CLI flag (-j8)
+  { "name": "sync-j", "title": "Sync Parallel jobs", "type": "text", "width": 5 },
 ];
+var fldinfo_repo_remote =[
+  { "name": "name", "title": "Remote Name", "type": "text", "width": 14,  }, // "validate": "required"
+  // Overrides the name used in the local .git/config. If you have multiple remotes in your manifest that
+  // actually point to the same physical server, you can use the same alias so they all show up under one
+  // remote name in your local Git branches.
+  { "name": "alias", "title": "Alias Name", "type": "text", "width": 14,  },
+  { "name": "fetch", "title": "Fetch URL", "type": "text", "width": 26,  }, // "validate": "required"
+  { "name": "review", "title": "Code Review URL", "type": "text", "width": 22 },
+];
+   // copyfile
+   //[{ "name": "src", "title": "Source Path", "type": "text", "width": 220, "validate": "required" },
+   //{ "name": "dest", "title": "Destination Path", "type": "text", "width": 220, "validate": "required" }]
+   // linkfile
+   //[ { "name": "src", "title": "Source Path", "type": "text", "width": 220, "validate": "required" },
+   // { "name": "dest", "title": "Link Destination", "type": "text", "width": 220, "validate": "required" }]
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1377,5 +1443,6 @@ function riskadj_cell(val, item) {
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
       "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
+      "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote, 
    };
    

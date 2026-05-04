@@ -650,6 +650,12 @@ var tabloadacts = [
     path: "hcliusage", uisetup: hcliusage_uisetup, urlpara: hcliusage_urlpara, tpcb: hcliusage_tpcb, }, // viewid: 'routerdiv'
   {"name":"Jira Sprints", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/sprints", gridid: "jsGrid_jirasprint", fsetid: "jirasprint",
     path: "jirasprints", uisetup: null, dialogid: ""},
+  {"name": "Git Multi-Repo Set", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
+    gridid: "jsGrid_grepo", fsetid: "repo_proj",
+    path: "grepo", uisetup: grepo_uisetup, dialogid: "", datapath: "project", tpcb: grepo_tpcb},
+  {"name": "Git Repo Remotes", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
+    gridid: "jsGrid_grepo_remote", fsetid: "repo_remote",
+    path: "grepo_remote", uisetup: null, dialogid: "", datapath: "remote", tpcb: grepo_tpcb},
 ];
 
 function hcliusage_urlpara(ev, an) {
@@ -784,13 +790,30 @@ function gendialog(ev, act) {
   }
 }
 
+/** Repo Template cb. 
+ * Note: should fr.w. pass "whole data" (obj) here ?
+*/
+function grepo_tpcb(tpara, arr, ev) { // tpara is cloned act
+  // As supported by simplegrid_x
+  let o = tpara.data;
+  if (o && o.manifestfn) { tpara.subname = o.manifestfn; } // 
+  let addon = tpara.name == 'repo' ? 'sub-repos' : 'remotes';
+  tpara.rowcnt = `${arr.length} ${addon}`; //  sub-repos
+  // We cannot add content to id="xui" here by JQ .html() or DOM el.innerHTML ! :-(
+  // For that see act.uisetup()
+}
+function grepo_uisetup(act, arr, ev) {
+  // Summarize some stats from repo "default" ?
+  document.getElementById('xui').innerHTML = `Repo Config for ${arr.length} repos ...`;
+}
+
 var tabloadacts_idx = {};
 tabloadacts.forEach(function (it) { tabloadacts_idx[it.elsel] = it; });
 var dopts = {modal: true, width: 600, // See min,max versions
                     height: 500}; // show: {effect: "", duration: 1000}, hide: {}
 // MUST have separate custom opts (wide grid)
 // See min,max versions
-var dopts_grid = {modal: true, width: 1000, height: 500};
+var dopts_grid = { modal: true, width: 1000, height: 500 };
 //////////////////// Tabs and Grids ////////////////////////
 /** Tab Activation handler.
 * Treat new tab activation almost like routing event. Uses action nodes similar to router

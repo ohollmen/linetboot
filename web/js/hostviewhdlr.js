@@ -41,6 +41,7 @@ function simplegrid_cd(ev, act) {
   showgrid(act.gridid,  d, fldinfo[act.fsetid], act); 
   if (act.uisetup) { act.uisetup(act, d); } // TODO: Params ? (see rapp)
 }
+
 // Extract fldinfo label from gridid (... or alternative way ?)
   //if (0) {
   //  var m = act.gridid.match(/^jsGrid_(\w+)/);
@@ -49,7 +50,27 @@ function simplegrid_cd(ev, act) {
   // var fsid = m[1];
   // var dsid = "hostlist"; // TODO: Discard
   // showgrid() - pass fldinfo[m[1]]
-/** Simple grid from URL.
+
+/** Generic finder for data at the end of "dot path".
+ * "dot path" string is basically not-notation to give location of data within
+ * data structure. dotpath addressing must happen within objects by member/property names -
+ * arrays "in-the-path" are not supported.
+ * TODO: Can we be sure we reached the end of dot-chain (need for loop w. index to check agains cnt?)?
+*/
+function dotpath_data(obj, dpath) {
+  let dpcomps = dpath.split('.');
+  console.log(`Got datapth (comps) as: ${JSON.stringify(dpcomps)}`);
+  let dcn; // dotnot comp. name
+  let dhandle = obj;
+  while ((dcn = dpcomps.shift()) && (dhandle[dcn])) {
+    console.log(`Store member: '${dcn}' as handle`);
+    dhandle = dhandle[dcn];
+  }
+  console.log(`Got dot-not-data of type '${Array.isArray(dhandle) ? 'array': typeof dhandle}' at comp '${dcn}'.`);
+  return dhandle;
+}
+
+  /** Simple grid from URL.
  * Hooks supported in action:
  * - urlpara(ev, act) - Generate complete or relative URL compatible with axios.get(url)
  *   - Handler can use URL in the action as base url to extend (e.g. with params or additional URL route components
@@ -74,27 +95,52 @@ function simplegrid_url(ev, an) {
   if (urlgen) {  url = urlgen(ev, an); console.log("Called urlgen() => "+url); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
-    var arr = (data && data.data) ? data.data : data; // AoO
+    var arr = (data && data.data) ? data.data : data; // AoO (hopefully, but we also supp. datapath)
     // TODO: Refine logic
     if (data.status == 'err') { return toastr.error(data.msg); }
-    if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data found in response (as array)"); }
+    // TODO: Decide if we should separate between data (old expect.: array, new: array/obj + datapath )
+    // and grid data (always array). an.dprep() and tpcb could benefit out of "whole data object" as oppeosed
+    // to "grid-array-only".
+    if (typeof arr == 'object' && an.datapath) {
+      // let dhandle = arr; // Object !
+      arr = dotpath_data(arr, an.datapath);
+      /*
+      let dpcomps = an.datapath.split('.');
+      console.log(`Got datapth as: ${JSON.stringify(dpcomps)}`);
+      let dcn; 
+      while ((dcn = dpcomps.shift()) && (dhandle[dcn])) {
+        console.log(`Store member: ${dcn} as handle`);
+        dhandle = dhandle[dcn];
+      }
+      arr = dhandle;
+      console.log(`Got datapath end as ${typeof arr}`);
+      */
+    }
+    else if (!arr || !Array.isArray(arr)) { return toastr.error("Simplegrid: No data found in response (as array)"); }
     if (an.dprep) { an.dprep(an, arr, ev); } // New: ev
     //var an2 = rapp.dclone(an);
     // contbytemplate(an.tmpl, an, ttgt);
     // TODO: dclone an and Merge 1) data info (arr) 2) params info (from event ev)
     let tpara = an; // Default: Use as-is
-    // Allow tpcb - Template parameter callback to mutate copy of an (e.g. add params from ev)
-    if (an.tpcb && (typeof an.tpcb == 'function')) { tpara = rapp.dclone(an); an.tpcb(tpara, arr, ev); } // Pass copy of an
+    // Allow tpcb - Template parameter callback to mutate copy of an (e.g. add params from ev).
+    // For apps that receive "complex data" object (not grid AoO only), we add "data" member to cloned tpara.
+    if (an.tpcb && (typeof an.tpcb == 'function')) {
+      tpara = rapp.dclone(an);
+      tpara.data = data.data; // NEW: add data (possibly obj) for "complex data" actions. In worst case this will be undef/null
+      an.tpcb(tpara, arr, ev); // Pass deep-cloned copy of an
+    } 
     rapp.templated(an.tmpl, tpara, ttgt); // Initial templating
     var fsetid = an.fsetid;
-    if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW
+    if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW (Pass tapara ?)
     //TODO: let fldinfo = an.fldinfo || window.fldinfo;
-    showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid
+    showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid (<= re-eval)
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
     // Seems this *can* this be *after* showgrid() like uisetup in others (was before showgrid())
     // NOTE: If we pass act to showgrid(..., act); must disable this
     // NEW(2301): Pass ev, as data within it may contribute to view
-    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(an, arr, ev); }
+    // NEW: Pass tpara i.e. possibly cloned action as that may contribute important info to .uisetup and
+    // there should be no downside to it.
+    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(tpara, arr, ev); } // Orig: an (not tpara)
   }).catch(function (error) { console.log(error); })
   .finally(() => { spinner && spinner.stop(); spinner = null; });
 }
