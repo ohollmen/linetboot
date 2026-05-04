@@ -17,7 +17,13 @@
 # [606029.901823] usbcore: registered new interface driver cdc_wdm
 # [606029.902749] usbcore: registered new interface driver cdc_mbim
 # ```
-# 
+# ## Master side Udev rules
+# E.g. `/etc/udev/rules.d/99-uno-q-net.rules`:
+# ```
+# # Match the Uno Q by its MAC address
+# # Note: %k is a udev formatter/placeholder for the kernel name (like enx466dc10ff265).
+# SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="46:6d:c1:0f:f2:65", RUN+="/usr/sbin/ip addr add 192.168.7.1/24 dev %k", RUN+="/usr/sbin/ip link set %k up"
+# ```
 - name: Enable Ethernet over USB on Uno Q
   hosts: '{{host}}'
   become: true
