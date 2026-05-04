@@ -293,6 +293,13 @@
     "modelX": "llama3.2",
     "model": "llama3.2:latest"
   },
+  "grepo": {
+    "cache": 1,
+    "ossreffn": "grepo_osref.json",
+    "mfpath": [],
+    "fn": "repo_manifest.xml",
+    "debug": 2
+  },
   "recipes" : [
     {"url":"/preseed.deb.cfg",        "ctype":"preseed_deb",    "tmpl":"preseed.deb.cfg.mustache", "push": 1}
   ],
