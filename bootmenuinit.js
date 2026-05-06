@@ -78,10 +78,14 @@ function download(opts) {
   }
   console.log(cont);
 }
+function images_ls() {}
 /** Create mount entries (mount command or fstab line) by
  * - main config: cfg.imgpath and cfg.mountpath (base directories)
  * - image/distro item: it.img_bn and it.lbl (ISO fn, mount subdir)
  * @return content (cmds or fstab) for all mounts
+ * NOTE: This should be drive by images on the filesystem, not by URL:s !!!
+ * cross-correlate / lookup image def. for image by testing all items (.find(cb))
+ * 
 */
 function mount(opts) { // OLD: exitems
   var cont = "";
@@ -90,14 +94,16 @@ function mount(opts) { // OLD: exitems
   items.forEach( (it) => {
     // Basename of image
     // Abs path of image file
-    var an = `${cfg.imgpath}/${it.img_bn}`;
+    var an = `${cfg.imgpath}/${it.img_bn}`; // Image
     prefix = "";
-    if (!fs.existsSync(an)) { prefix = "# NA: ";}
+    if (!fs.existsSync(an)) { cont +=  `# Warning: Img ('${an}') not found.\n`; prefix = "# NA: ";}
     // console.log(it); // prefix +
-    if (!it.img_bn) { cont += "# Warning: 'img_bn' missing for item below\n"; }
-    if (!it.lbl) { cont += "# Warning: 'lbl' missing for item below\n"; }
-    if (opts.op == 'mount' || opts.op == 'imglist') { cont +=  `sudo mount -o loop ${an} ${cfg.mountpath}/${it.lbl}\n`; }
-    else { cont += `${an} ${cfg.mountpath}/${it.lbl} iso9660 loop 0 0\n`; }
+    else if (!it.img_bn) { cont += "# Warning: 'img_bn' missing for item below\n"; prefix = "# "; }
+    else if (!it.lbl) { cont += "# Warning: 'lbl' missing for item below\n"; prefix = "# ";
+       cont += `DEBUG: ${JSON.stringify(it, null, 2)}`;
+    }
+    if (opts.op == 'mount' || opts.op == 'imglist') { cont +=  `${prefix}sudo mount -o loop ${an} ${cfg.mountpath}/${it.lbl}\n`; }
+    else { cont += `${prefix}${an} ${cfg.mountpath}/${it.lbl} iso9660 loop 0 0\n`; } // op == ''
   });
   console.log(cont);
 }
@@ -108,8 +114,8 @@ function mount(opts) { // OLD: exitems
 */
 function images_list(opts) {
   console.log("OPTIONS:", opts);
-  let isopath = `${mcfg.isopath}` || "/isomnt"; // Also: ${cfg.core.maindocroot}
-  if (!fs.existsSync(isopath)) { usage(`Image dir ${isopath} does not seem to exist !`)}
+  let isopath = mcfg.isopath || "/isoimages"; // Also: ${cfg.core.maindocroot}
+  if (!fs.existsSync(isopath)) { usage(`Image dir '${isopath}' does not seem to exist !`); }
   let files = fs.readdirSync(`${isopath}`);
   files = files.filter((fn) => { return fn.match(/.*\.iso$/i); });
   files.sort();
@@ -121,23 +127,28 @@ function images_list(opts) {
   if (!files.length) { usage(`No ISO files listed from ${isopath}. FS area not mounted ?`); }
   let stats = {"isocnt": files.length, "misscnt": 0, "matchcnt": 0, "mountcnt": 0, "igncnt": igncnt};
   let missnames = [];
-  let items = [];
+  let items = []; // New array !
   files.forEach( (fn) => {
     // Does image name match any of the patterns ? di = Distro item
     let di = find_item_by_imgname(fn);
     if (!di) {
-      //console.error(`Image name ${fn} did not match any distro items (by image name)!`);
+      console.error(`# ERR: Image filename '${fn}' did not match any distro items (by image name)!`);
       //console.error(`No MATCH: ${fn}`);
       stats.misscnt++; missnames.push(fn);
       return;
     }
-    console.log(`File '${fn}' matched (belongs to) distro '${di.name}' => matches: ${di.mvals}`); // image ${di.img_bn}
+    // di = clone(di); // Clone di here, use it ???
+    console.log(`OK: File '${fn}' matched (belongs to) distro '${di.name}' => matches: ${di.mvals}`); // image ${di.img_bn}
     let obj = mvals_to_obj(di.mvals);
-    di.img_bn = fn; // For mount() compat
+    // For mount() compat ...
+    obj.img_bn = di.img_bn = fn;
+    //di.lbl - see below
     //di.varinfo = obj; // NOT necessary (w. img_bn (above) and lbl (below))
     stats.mountcnt += mntpath(di, obj);
-    if (obj.mntpath && obj.pathok) { di.lbl = obj.lbl = obj.mntpath; } // For mount()
-    console.log(obj);
+    // For mount()
+    if (obj.mntpath && obj.mntpathok) { di.lbl = obj.lbl = obj.mntpath; }
+    else if (di.lbl) { obj.lbl = di.lbl; }
+    console.log(obj); // Dump
     stats.matchcnt++;
     items.push(obj);
   });
@@ -145,20 +156,23 @@ function images_list(opts) {
   console.error(`${stats.isocnt} ISO:s, ${stats.matchcnt} Matches, ${stats.misscnt} Misses, ${stats.mountcnt} Mounts discovered, ${stats.igncnt} Ignored`);
   console.error(`Missing match (${missnames.length}):\n`, missnames);
   opts.items = items;
-  mount(items);
+  mount(opts);
   // Try to match image basename to a distro item by its imgpatt (RE).
   // @return Cloned distro item if matching was successufl, null if there ws no match for file basename.
-  function find_item_by_imgname(fn) {
+  function find_item_by_imgname(fn) { // ISO fn
     // Match Distro item
     let dim = null; // (Distro item) Match
+    // Find image definition (first matching)
     let di = cfg.items.find( (di) => {
       let m;
+      // No imgpatt - no basis for comparison (what about exact match ???) if (fn == di.img_bn) {}
       if (!di.imgpatt) { return 0; }
+      // Shift full match (m[0]) out
       if ( m = fn.match(new RegExp(di.imgpatt, "i")) ) { m.shift(); dim = m; return 1; } // new RegExp(di.imgpatt, "i")
     });
     if (!di) { return null; } // console.error(`Image name ${fn} did not match any distro items (by image name)!`); return; }
     di = dclone(di);
-    di.mvals = dim;
+    di.mvals = dim; // Match values m[1] onwards
     return di;
   }
   // TODO: Test the length of m0 cmp. w. m1+m2+... - if longer than sum, it's surrounding match
@@ -166,7 +180,7 @@ function images_list(opts) {
     let mkeys = ["major","minor","patch"];
     if (!mvals || !Array.isArray(mvals) || (mvals.length < 1)) { console.log(`Warning: No mvals (for above d.i.)`); return {}; }
     mvals = dclone(mvals);
-    let obj = { ver: mvals[0] };
+    let obj = { ver: mvals[0] }; // Full outermost match
     mvals.shift();
     if (!mvals.length) { return obj; }
     // Remaining major, minor, patch
@@ -179,10 +193,10 @@ function images_list(opts) {
     if (di.mntpatt) {
       obj.mntpath = Mustache.render(di.mntpatt, obj);
       // ${mcfg.core.maindocroot} OR cfg.mountpath (Should be mntroot !!! )
-      if (fs.existsSync(`${mcfg.core.maindocroot}/${obj.mntpath}`)) { obj.pathok = true; }
-      return 1;
+      if (fs.existsSync(`${mcfg.core.maindocroot}/${obj.mntpath}`)) { obj.mntpathok = true; }
+      return 1; // OK - mntpath exists
     }
-    return 0;
+    return 0; // ERR: mntpath N/A
   }
   function ignore_load(files, ignorefn) {
     let fna = `${mcfg.isopath}/${ignorefn}`;
@@ -203,6 +217,25 @@ function images_list(opts) {
     return files;
   }
 }
+/**
+ * TODO: Add file-listing drive, distro-def matching logic, mntpatt templating
+*/
+function exports_gen(opts) {
+  items = cfg.items;
+  console.log(`Generate /etc/exports`);
+  let nfsopts = "192.168.1.0/24(ro,no_subtree_check,sync,no_root_squash)";
+  // Disro pattern for NFS distros
+  let distre = new RegExp("^(ubuntu|kubuntu|elementaryos|popos|finnix|libreelec)", "i"); 
+  items.forEach( (it) => {
+    img_bn = it.img_bn || path.basename(it.url);
+    if (!img_bn) { return; }
+    if (img_bn.match(distre)) {
+      // Add exception for Ubuntu Server > 20.04
+      if (img_bn.match(/ubuntu/) && img_bn.match(/server/)) { return; }
+      console.log(`Need: ISO:${img_bn} =>  ${cfg.mountpath}/${it.lbl} ${nfsopts}`);
+    }
+  });
+}
 // Init bootables item so that predictable props are present
 function bootables_init(cfg) {
   cfg.items.forEach( (di) => {
@@ -219,12 +252,17 @@ function bootables_init(cfg) {
 // TODO: id, title, cb
 var ops = [
   {id: "menu",    desc: "Generate Simple menu stub (w/o advanced append options) to STDOUT", cb: genmenu},
-  {id: "mount",   desc: "Generate loop-mount commands for ISO media)", cb: mount},
-  {id: "fstab",   desc: "Generate fstab", cb: mount},
+  {id: "mount",   desc: "Generate loop-mount commands (for ISO media)", cb: mount},
+  {id: "fstab",   desc: "Generate fstab loop-mount lines (for ISO media)", cb: mount},
   
   {id: "download", desc: "Generate ISO media download commands)", cb: download},
   {id: "validate_ki", "desc":"Validate Mounted media kernel and initrd file presence", cb: validate_ki},
   {id: "imglist",  desc: "List Images from default image dir (e.g. /isoimages/)", cb: images_list},
+  // Any ubuntu.*, kubuntu.*, elementaryos.*, popos, finnix126
+  // libreelec12, libreelec_data,
+  // NOTE: NOT needed on debian (!!!)
+  // OPTIONAL (on ... Not needed): manjaro, fedora_ws
+  {id: "exports",  desc: "Generate /etc/exports for distros needing NFS on netboot", cb: exports_gen},
 ];
 //let optargs = [{name: "sudo"}, {name: "fstab"}, {}];
 var cliopts = [["","sudo","Use Sudo wrapping for commands."], ["","fstab","Generate /etc/fstab format output."]];
