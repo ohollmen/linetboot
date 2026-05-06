@@ -23,31 +23,11 @@ var reptmpl = `
 {{/hosts}}
 `;
 // Process reporter (default / base) config
-var proccfg = {nre: null, user: (process.env["PROC_USER"] || "root"), agedays: 5, allok: 0, debug: 0};
-
-function climain() {
-  proccfg_init(); // proccfg
-  // Hostloader config
-  var cfg = { hostsfile: process.env["HOME"]+"/.linetboot/hosts", };
-  hlr.init({ fact_path: process.env["HOME"]+"/hostinfo" });
-  var hostarr = hlr.hosts_load(cfg);
-  console.log("Host names:", hostarr); // DEBUG
-
-  var hnames = hostarr.filter(filtercb);
-  console.log(hnames.length + " hosts remain after filtering:", hnames); // proccfg.debug
-  staleprocs_report(hnames, proccfg, function (err, badrep) {
-    if (err) { console.log("Error in extracting process reports: "+err); process.exit(1); }
-    if (!badrep || !badrep.length) { console.log("Nothing to report (report="+badrep+")"); process.exit(1); }
-    // Decorate result set with ISO time here for CLI
-    badrep.forEach((hp) => {
-      if (!hp.procs) { return; }
-      hp.procs.forEach((p) => { p.starttime_iso = new Date(p.starttime*1000).toISOString(); });
-    });
-    console.log("Bad Processes on Hosts\n", JSON.stringify(badrep, null, 2));
-  });
-} // climain
-
-if (process.argv[1].match(/procreport.js$/)) { climain(); }
+var proccfg = {
+  nre: null,
+  user: (process.env["PROC_USER"] || "root"),
+  agedays: 5, allok: 0, debug: 0, "apikey": "",
+};
 
 // Basic / default host filtering callback.
 function filtercb (hname) {
@@ -64,12 +44,15 @@ function proccfg_init(mcfg) {
   if (mcfg && mcfg.procster && (typeof mcfg.procster == 'object')) {
     console.log("procreport.init - Got mcfg");
     // ["user","nrestr","agedays","allok"];
-    var pcfg = mcfg.procster;
+    var pcfg = mcfg.procster; // Temp procster cfg to merge to local proccfg.
     if (pcfg.user) { proccfg.user = pcfg.user; }
     // nrestr
+    // let keys = ["nrestr", "agedays", "allok", "apikey"];
+    // keys.forEach( (k) => { if (pcfg[k]) { proccfg[k] = pcfg[k]; } });
     if (pcfg.nrestr)  { proccfg.nrestr = pcfg.nrestr; }
     if (pcfg.agedays) { proccfg.agedays = pcfg.agedays; }
     if (pcfg.allok)   { proccfg.allok = pcfg.allok; }
+    if (pcfg.apikey)   { proccfg.apikey = pcfg.apikey; }
   }
   // TODO: When not passed, use proccfg_default
   //else { proccfg = proccfg_default; }
@@ -85,6 +68,7 @@ function proccfg_init(mcfg) {
 }
 // Generate procster remote URL per procster conventions.
 // TODO: allow parametrizing port !
+// TODO: Can we also inject api credentials centrally here ?
 function hosturl_formulate(host) {
   var url = "http://"+host+":8181/proclist"; // 
   seen[host] = seen[host] ? seen[host] + 1 : 1;
@@ -137,7 +121,7 @@ function staleprocs_report(hostnames, proccfg, cb) {
       return cb(ex, null);
     });
   },
-  // Completion callback.
+  // Completion callback - aggregate multiple process responses into one result.
   // Note: For compatibility w. eachSeries, the results should come from outer ctx
   // param rather than completion callback param.
   function (err, results) {
@@ -230,3 +214,29 @@ module.exports = {
   procreport_web: procreport_web,
   proccfg: proccfg
 };
+
+function climain() {
+  proccfg_init(); // proccfg
+  // Hostloader config
+  var cfg = { hostsfile: process.env["HOME"]+"/.linetboot/hosts", };
+  hlr.init({ fact_path: process.env["HOME"]+"/.linetboot/hostinfo" });
+  var hostarr = hlr.hosts_load(cfg);
+  console.log("Host names:", hostarr); // DEBUG
+
+  var hnames = hostarr.filter(filtercb);
+  console.log(hnames.length + " hosts remain after filtering:", hnames); // proccfg.debug
+  staleprocs_report(hnames, proccfg, function (err, badrep) {
+    if (err) { console.log("Error in extracting process reports: "+err); process.exit(1); }
+    if (!badrep || !badrep.length) { console.log("Nothing to report (report="+badrep+")"); process.exit(1); }
+    // Decorate result set with ISO time here for CLI
+    badrep.forEach((hp) => {
+      if (!hp.procs) { return; }
+      hp.procs.forEach((p) => { p.starttime_iso = new Date(p.starttime*1000).toISOString(); });
+    });
+    console.log("Bad Processes on Hosts\n", JSON.stringify(badrep, null, 2));
+  });
+} // climain
+
+if (process.argv[1].match(/procreport.js$/)) {
+  climain();
+}
