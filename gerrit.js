@@ -1,4 +1,4 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 // https://www.tabnine.com/code/javascript/functions/node-fetch/fetch
 // Key format:
 // - Cannot parse privateKey: Unsupported key format
@@ -9,7 +9,8 @@
 // var gaxios = require("gaxios"); // No good in here
 
 var fs = require("fs");
-var fetch = require("node-fetch");
+// Legacy dependency (package.json): "digest-fetch": "1.2.1",
+// var fetch = require("node-fetch"); // Use later node.js fetch (build in) API directly
 var DigestFetch = require('digest-fetch');
 var ssh2 = require("ssh2");
 
@@ -67,9 +68,9 @@ function changes_recv() {
       }).on('data', (data) => {
         // console.log('STDOUT: ' + data);
         var evinfo;
-	try { evinfo = JSON.parse(data); }
-	catch (ex) { console.log("Error parsing evinfo: ", ex); }
-	console.log("EVINFO:"+JSON.stringify(evinfo, null, 2));
+	      try { evinfo = JSON.parse(data); }
+	      catch (ex) { console.log("Error parsing evinfo: ", ex); }
+	      console.log("EVINFO:"+JSON.stringify(evinfo, null, 2));
       }).stderr.on('data', (data) => {
         console.log('STDERR: ' + data);
       });
@@ -108,11 +109,11 @@ module.exports = {
 
 if (process.argv[1].match("gerrit.js")) {
   var mc = require("./mainconf.js");
-  var global = require(process.env["HOME"]+"/.linetboot/global.conf.json");
-  // global = mc.mainconf_load(globalconf);
-  mc.env_merge(global);
-  mc.mainconf_process(global);
-  init(global); // require(process.env["HOME"]+"/.linetboot/global.conf.json"));
+  var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  // mcfg = mc.mainconf_load(globalconf);
+  mc.env_merge(mcfg);
+  mc.mainconf_process(mcfg);
+  init(mcfg); // require(process.env["HOME"]+"/.linetboot/global.conf.json"));
   // gerrapi();
   changes_recv();
 }
