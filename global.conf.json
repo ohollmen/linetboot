@@ -35,7 +35,7 @@
     "trycnt": 30,
     "execact": "ssh ${POSTOP_USER}@${POSTOP_IP} ls -al /"
   },
-  "fact_path":  "~/hostinfo",
+  "fact_path":  "~/.linetboot/hostinfo",
   "hostsfile" : "~/.linetboot/hosts",
   "isopath": "/isoimages",
   "core": {
@@ -44,7 +44,7 @@
     "appname": "Hollmen IT - Hosts",
     "hdrbgX": "https://events.redhat.com/accounts/register123/redhat/events/ansible-technical-wkshp/ansible_storage_1080.jpg",
     "hdrbgX": "https://cms.qz.com/wp-content/uploads/2018/12/tinyturtles.jpg?quality=75&strip=all&w=1600&h=1067",
-	"hdrbg": "/web/img/photo-1645720135736-9ae19651b729.jpg",
+    "hdrbg": "/web/img/photo-1645720135736-9ae19651b729.jpg",
     "apiena": 1,
     "authusers": ["ohollmen", "mrsmith", "auntnancy", "guest"],
     "grpattr": "grpid",
@@ -80,8 +80,8 @@
     "menutitle": "",
     "sync": 1
   },
-  "rmgmt_path": "~/hostrmgmt",
-  "pkglist_path": "~/hostpkginfo",
+  "rmgmt_path": "~/.linetboot/hostrmgmt",
+  "pkglist_path": "~/.linetboot/hostpkginfo",
   "ipmi": {
     "desc": "Remote Management (RedFish and IPMI)",
     "path": "~/hostrmgmt",
@@ -169,6 +169,7 @@
     "desc": "Web based (REST/JSON) Process Lister",
     "port": 8181,
     "user": "ohollmen",
+    "apikey": "",
     "nrestr": "^nuc",
     "agedays": 8,
     "allok": 1,
@@ -198,9 +199,11 @@
   "jenkins": {
     "host": "192.168.1.127:8080",
     "user": "ohollmen",
-    "pass":""
+    "pass": "",
+    "jobs": {"a_job": "pathcomp1/job/pathcomp2"}
   },
   "deployer": {
+    "des": "Git project Deployment",
     "deployfn": "~/.linetboot/deploy.conf.json",
     "deployfn_EXAMPLE": "~/linetboot/deploy.conf.example.json",
     "gitreposfn": "~/.linetboot/gitrepos.conf.json",
@@ -222,6 +225,7 @@
     "pkey": ""
   },
   "github": {
+    "desc": "GitHub Org Repo List",
     "url":  "api.github.com",
     "url_ent":"mycomp.github.com",
     "ent": 0,
@@ -230,6 +234,7 @@
     "token":""
   },
   "gitlab": {
+    "desc": "GitHub Org/Group Repo List",
     "url":  "gitlab.com",
     "url_ent":"gitlab.mycomp.com",
     "ent": 0,
@@ -266,8 +271,11 @@
     "user": "",
     "pass": "",
     "project": "MYPROJECT",
+    "boardid": 0,
+    "sprintfn": "~/.linetboot/sprints_summ.json",
+    "sfre": "^(ETL|Migration)",
     "query": "",
-    "isspatt": "[A-Z]+\\-\\d{3,6}",
+    "isspatt": "[A-Za-z]+\\-\\d{3,8}",
     "apiprefix": "",
     "debug": 0,
     "jqps": {
@@ -276,6 +284,38 @@
   },
   "tenable": {
     "apiurl": "https://www.tenable.com/downloads/api/v2/pages",
+    "token": "",
+    "fnpatt": "el9\\.x86_64",
+    "plugin": {
+      "user": "",
+      "pass": ""
+    }
+  },
+  "afa": {
+    "host": "",
+    "user": "",
+    "token": "",
+    "imgrepo": "my-docker",
+    "imgpath": "pc1/pc2/pc3",
+    "excpatt": "(hello|refactor-\\w|\\w+-backup|legacy-img|windows|junk-folders|master-\\d\\d|test)",
+    "storpath": "~/.linetboot/afa/docker_images_tags.json"
+  },
+  "hclparse": {
+    "webstats": 1,
+    "defmodname": "mod-1",
+    "modnames": ["mod-1", "mod-2"],
+    "modroot":    "~/terraform/rmods/",
+    "moddirpatt": "tfmodule-.+",
+    "iacreposroot": "~/terraform/",
+    "iacrepopatt": ".*-infra$",
+    "iacstorefn":   "~/.linetboot/iacs.store.json",
+    "varstorepath": "~.linetboot/hclmodvars/",
+    "debug": 0
+  },
+  "artihub": {
+    "host": "artihub.comp.com",
+    "user": "",
+    "pass":"",
     "token": ""
   },
   "htview": {
@@ -294,6 +334,7 @@
     "model": "llama3.2:latest"
   },
   "grepo": {
+    "desc": "Git Repo Tool Manifest view",
     "cache": 1,
     "ossreffn": "grepo_osref.json",
     "mfpath": [],
