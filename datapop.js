@@ -72,7 +72,7 @@ function cload(fn, opts) {
 
 function yload(fn) {
   var cont = fs.readFileSync(fn, 'utf8');
-  var d = yaml.safeLoad(cont);
+  var d = yaml.load(cont);
   // Object.keys(d).forEach((k) => { console.log(k); }) // DEBUG
   return d;
 }

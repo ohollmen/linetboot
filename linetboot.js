@@ -921,7 +921,7 @@ function netplan_yaml(req, res) {
   }
   var nproot = {"network": np}; // Netplan (root) - Complete
   ////////////////////////////////// YAML ///////////////////////////////////////////////
-  // var yaml = yaml.safeLoad(fs.readFileSync('test.yml', 'utf8')); // From
+  // var yaml = yaml.load(fs.readFileSync('test.yml', 'utf8')); // From
   // To YAML
   var ycfg = {
     'styles': { '!!null': 'canonical' }, // dump null as ~
@@ -1042,7 +1042,7 @@ function apidoc(req, res) {
   var apidocfn = "./swagger.yaml";
   var doc;
   var q = req.query;
-  try { doc = yaml.safeLoad(fs.readFileSync(apidocfn, 'utf8')); }
+  try { doc = yaml.load(fs.readFileSync(apidocfn, 'utf8')); }
   catch (ex) { return res.end("No YAML parsed "+ ex.toString());}
   paths_fix(doc);
   if (q.doc) {
@@ -1983,7 +1983,7 @@ function dockerenv_info(req, res) {
 /** Display authorized images (from a TSV/CSV file)
  * TODO: Create collection file display with ability to show:
  * - JSON by j = JSON.parse()
- * - YAML by y = yaml.safeLoad(out);
+ * - YAML by y = yaml.load(out);
  * - CSV by aoo = hlr.csv_parse(fname, opts)
  * - XML ?
  * Each profile should lay out:
@@ -2013,7 +2013,7 @@ function docker_authimages(req, res) {
 function yaml_show(req, res) {
   var cfg = {ftype: "yaml", fn: process.env["HOME"] + "/.linetboot/subnets-svgovus1.yaml"};
   var cont = fs.readFileSync(cfg.fn, 'utf8');
-  var y = yaml.safeLoad(cont);
+  var y = yaml.load(cont);
   y.forEach( (e) => {
     var ip_m = e.subnet_ip.split('/');
     //console.log(ip_m);
@@ -2959,7 +2959,7 @@ function load_dc_services(fpath) {
   var cont = fs.readFileSync(fpath, 'utf8');
   if (!cont) { return "No Content for: "+fpath; }
   // res.json(jr);
-  try { y = yaml.safeLoad(cont); } catch (ex) { return "Parse error:"+ex; } // console.log("Failed autoinstall yaml load: "+ex);
+  try { y = yaml.load(cont); } catch (ex) { return "Parse error:"+ex; } // console.log("Failed autoinstall yaml load: "+ex);
   if (typeof y != 'object') { return "Top level of docker-compose is not an object"; }
   // Detect single-service docker compose file
   var topkeys = Object.keys(y);

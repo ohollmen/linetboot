@@ -460,7 +460,7 @@ function ansible_play_list(acfg, pbpath, opts) { // dirname
         cont = fs.readFileSync(relname, 'utf8');
         node.doc = doc_extract(cont, {maxXX: 10});
         // TODO: Extract MD on top (detect heading '#' after stripping comment '#' ?)
-        yf = yaml.safeLoad(cont);
+        yf = yaml.load(cont);
       }
       catch (ex) { console.log("Failed to parse: "+relname+" .. "+ex); }
       if (!yf) { console.log("Failed to load(relfn): "+relname); return; }

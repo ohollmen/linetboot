@@ -35,7 +35,7 @@
  * - user
  * - 
  * ### Linting yaml
-node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.safeLoad(fs.readFileSync('tmpl/subiquity.autoinstall.yaml.mustache')); console.log(JSON.stringify(y, null, 2));"
+node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.load(fs.readFileSync('tmpl/subiquity.autoinstall.yaml.mustache')); console.log(JSON.stringify(y, null, 2));"
 
  * 
  * # TODO
@@ -133,13 +133,13 @@ function pp_subiquity(out, d) {
   var y;
   var ycfg = { 'styles': { '!!null': 'canonical' }, };
   // Holistic recipe
-  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall YAML load: "+ex); }
+  try { y = yaml.load(out); } catch (ex) { console.log("Failed autoinstall YAML load: "+ex); }
   // Add disk (d.diskinfo), net (d.net)
   console.log("pp_subiquity(dump-orig-tmpl-filled):"+JSON.stringify(y, null, 2));
   if (y) { // ... YAML loaded/parsed successfully
     var dy;
     // Parse Diskinfo
-    try { dy = yaml.safeLoad(d.diskinfo); } catch (ex) { console.log("Failed disk YAML load: "+ex); }
+    try { dy = yaml.load(d.diskinfo); } catch (ex) { console.log("Failed disk YAML load: "+ex); }
     if (!Array.isArray(dy)) { console.log("Disk YAML not parseable"); }
     // Combine Disk to main config tree
     y.autoinstall.storage.config = dy;
@@ -173,7 +173,7 @@ function pp_fcos(out, d) {
     'styles': { '!!null': 'canonical' },
   };
   //console.log("Got YAML: "+out);
-  try { y = yaml.safeLoad(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
+  try { y = yaml.load(out); } catch (ex) { console.log("Failed autoinstall yaml load: "+ex); }
   if (y) {
     delete(y.variant);
     // kernelArguments
