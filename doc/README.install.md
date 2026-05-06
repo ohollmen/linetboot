@@ -59,13 +59,8 @@ Run prep-steps (legacy / manual):
 sudo mkdir /isomnt
 # Change to home directory
 cd ~
-# Create config directory (under homedir)
-mkdir ~/.linetboot
-# Create host facts directory
-mkdir ~/hostinfo
-# Create OS packages list directory
-mkdir ~/hostpkginfo
-
+# Create config directory, host facts directory, OS packages list directory
+mkdir -p ~/.linetboot ~/.linetboot/hostinfo ~/.linetboot/hostpkginfo
 # Change to linetboot to copy configs
 cd linetboot
 # Copy configs as "template" for your personal env config
@@ -130,26 +125,29 @@ Having host facts is mandatory for both web GUI based inventory as well as
 PXE based host installation. With this (simplified) install guide, you must
 have single account with synchronized password on all hosts as well as SSH keys
 copied onto that remote account. Copying SSH keys can be accomplished by:
-
-    ssh-copy-id remoteuser@ws-001.comp.com
-    
+```
+ssh-copy-id remoteuser@ws-001.comp.com
+```
 Do this for all the machines (If you did not have SSH key to start with, generate it with `ssh-keygen -t rsa -b 4096`, use no passphrase).
 The ssh-copy-id will prompt you to treat machine as trustworthy machine and
 add it to your ~/.ssh/known_hosts.
 
 The above flow is fine for few machines, but if you have larger set of machines, you can (and probabl;y should) run the ansible playbooks from `linetboot/playbooks` directory:
-
-     # Register all inventoried hosts as trusted
-     ansible-playbook -i ~/.linetboot/hosts  playbooks/sshreghosts.yaml -e "host=all"
-     # Copy local SSH public key to remote (ssh-copy-id)
-     ansible-playbook -i ~/.linetboot/hosts  playbooks/sshcopyid.yaml \
-       -e "remoteuser=... remotepass=... ansible_sudo_pass=... host=all"
-
+```
+# Register all inventoried hosts as trusted (effectively: ssh-keyscan)
+ansible-playbook -i ~/.linetboot/hosts  playbooks/sshreghosts.yaml -e "host=all"
+# Copy local SSH public key to remote (effectively: ssh-copy-id)
+ansible-playbook -i ~/.linetboot/hosts  playbooks/sshcopyid.yaml \
+       -e "remoteuser=... remotepass=... ansible_become_pass=... host=all"
+```
 Record facts (for all hosts in single step) by running command:
-
-    ansible all -i ~/.linetboot/hosts -b -m setup --tree ~/hostinfo --extra-vars "ansible_sudo_pass=$ANSIBLE_PASS"
-
-Use `ansible_user=remoteuser` in --extra-vars if your current user is not
+```
+# With sudo rights on remote host
+ansible all -i ~/.linetboot/hosts -b -m setup --tree ~/.linetboot/hostinfo --extra-vars "ansible_become_pass=$ANSIBLE_PASS"
+# Without sudo rights (strip -b / --become). You may/will get slimmer/lesser facts as non-superuser.
+ansible all -i ~/.linetboot/hosts -m setup --tree ~/.linetboot/hostinfo
+```
+Use `ansible_user=remoteuser` in `--extra-vars` (and `ansible_password` respectively if ssh keys have not been copied) if your current user is not
 the same as remote user. key=val pairs in --extra-vars are separated by space.
 
 ### Gathering package information
@@ -157,19 +155,26 @@ the same as remote user. key=val pairs in --extra-vars are separated by space.
 This is an optional step for minimal installation, but you can collect
 OS install packages to get statistics chart on it in "Packages" tab in Web GUI.
 Example of manual package extraction commands (for DEB and RPM based distros):
+```
+mkdir ~/.linetboot/hostpkginfo
+# Extracting package host-by-host individually
+# Debian/Ubuntu Host
+ssh remoteuser@ws-001.comp.com dpkg --get-selections > ~/.linetboot/hostpkginfo/ws-001.comp.com
+# RedHat/Centos Host
+ssh remoteuser@ws-002.comp.com yum list installed > ~/.linetboot/hostpkginfo/ws-002.comp.com
+# Using a linetboot bundled playbook to extract package lists (Normal SSH)
+ansible-playbook -i ~/.linetboot/hosts playbooks/hostpkginfocollect.yaml \
+   -e "host=all ansible_user=$USER ansible_become_pass=$ANSIBLE_PASS destpath=$HOME/.linetboot/hostpkginfo"
+# Same ... dynamic inventory and passwordless sudo
+ansible-playbook playbooks/hostpkginfocollect.yaml -e "host=all destpath=$HOME/.linetboot/hostpkginfo"
+```
 
-    mkdir ~/hostpkginfo
-    # Extracting package host-by-host individually
-    # Debian/Ubuntu Host
-    ssh remoteuser@ws-001.comp.com dpkg --get-selections > ~/hostpkginfo/ws-001.comp.com
-    # RedHat/Centos Host
-    ssh remoteuser@ws-002.comp.com yum list installed > ~/hostpkginfo/ws-002.comp.com
-    # Using a linetboot bundled playbook to extract package lists (Normal SSH)
-    ansible-playbook -i ~/.linetboot/hosts playbooks/hostpkginfocollect.yaml -e "host=all ansible_user=$USER ansible_sudo_pass=$ANSIBLE_PASS destpath=$HOME/hostpkginfo"
-    # Same ... dynamic inventory and passwordless sudo
-    ansible-playbook playbooks/hostpkginfocollect.yaml -e "host=all destpath=$HOME/hostpkginfo"
-
-NOTE: Use ansible playbook for extracting any larger amounts of package lists.
+NOTEs:
+- Use ansible playbook for extracting any larger amounts of package lists.
+- For passwords with shell sensitive chars (e.g. '!'), you may have to use
+  `--ask-become-pass` or (e.g.) `export ANSIBLE_BECOME_PASS='p@ss!word'`
+- For non-sudo/non-become case use `--ask-pass` (Can also be combined with --ask-become-pass)
+- To check all hosts are up, use: `ansible all -i ~/.linetboot/hosts -m ping`
 
 ### Misc. Config Adjustments
 
@@ -186,19 +191,19 @@ The config sections to review at this point would be: "core"
 
 ### Starting Linetboot Server
 
-Linetboot runs as non-root user:
-
-    # Option 1) Start purely by node (on the shell foreground, only good for debugging and seeing "live log" output).
-    # Use this only in very small scale
-    $ node linetboot.js
-    # Option 2) Run "safely" by node.js utility "pm2" (where pm stands for Process manager).
-    # Linetboot goes to shell background and gets process watchdog features from PM2 (https://pm2.keymetrics.io)
-    $ node_modules/pm2/bin/pm2 start linetboot.js
-    # Option 3) Generate Linux systemd unit file by linetboot, install it and run it.
-    # Note: You must first start Linetboot by Option 1 or Option 2
-    wget http://localhost:3000/scripts/linetboot.service -O ~/.linetboot/linetboot.service
-    sudo systemctl enable ~/.linetboot/linetboot.service
-    
+Run Linetboot as non-root user:
+```
+# Option 1) Start purely by node (on the shell foreground, only good for debugging and seeing "live log" output).
+# Use this only in very small scale (e.g. development, when viewing logged output)
+$ node linetboot.js
+# Option 2) Run "safely" by node.js utility "pm2" (where pm stands for Process manager).
+# Linetboot goes to shell background and gets process watchdog features from PM2 (https://pm2.keymetrics.io)
+$ node_modules/pm2/bin/pm2 start linetboot.js
+# Option 3) Generate Linux systemd unit file by linetboot, install it and run it.
+# Note: You must first start Linetboot by Option 1 or Option 2
+wget http://localhost:3000/scripts/linetboot.service -O ~/.linetboot/linetboot.service
+sudo systemctl enable ~/.linetboot/linetboot.service
+```
 
 Check Linetboot Web GUI with your browser (Assume localhost as install host here): `http://localhost:3000/web/` .
 
@@ -326,9 +331,9 @@ track of packages maybe very useful.
 All these steps are very fit to be run with Ansible playbooks that are contained with Linetboot (playbooks/):
 ```
 # Gather Remote management (IPMI) Info from BMC
-ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_sudo_pass=... host=all destpath=$HOME/hostrmgmt"
+ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_become_pass=... host=all destpath=$HOME/.linetboot/hostrmgmt"
 # Gather SSH Keys 
-ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_sudo_pass=... host=all keyarchpath="
+ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_become_pass=... host=all keyarchpath="
 ```
 A small intro or refresher (depending on your familiarity w. Ansible) on ansible host selection mechanism
 (by yaml playbook "hosts: ..." or command line `--limit` option):
