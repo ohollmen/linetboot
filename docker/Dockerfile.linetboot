@@ -28,7 +28,7 @@ RUN mkdir -p /root/src/
 RUN ln -s /root/linetboot/ /root/src/linetboot
 
 WORKDIR /root
-RUN mkdir -p /root/hostinfo /root/hostrmgmt /root/hostpkginfo
+RUN mkdir -p /root/.linetboot/hostinfo /root/.linetboot/hostrmgmt /root/.linetboot/hostpkginfo
 
 # Env. Additions ?
 ENV LC_ALL=en_US.UTF-8 LANGUAGE=en_US

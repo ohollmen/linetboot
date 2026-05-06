@@ -119,7 +119,7 @@ dotlinetboot:
 	# [ ! -f ~/.linetboot/iptrans.json ] && echo "{}" > ~/.linetboot/iptrans.json
 	@mkdir -p ~/.linetboot/sshkeys
 	@mkdir -p ~/.linetboot/tmpl
-	@echo "Copying PXE (preseed,kickstart) Install templates for you to customize"
+	@echo "Copying PXE (preseed,kickstart, etc.) Install templates for you to customize"
 	@cp ./tmpl/* ~/.linetboot/tmpl
 	@[ ! -f "~/.linetboot/initialuser.conf.json" ] && cp ./initialuser.conf.json ~/.linetboot/initialuser.conf.json
 	@echo "Set following env variables in your ~/.bashrc (or equivalent shell config)"
@@ -127,7 +127,7 @@ dotlinetboot:
 	#@echo "export LINETBOOT_GLOBAL_CONF=$(HOME)/.linetboot/global.conf.json"
 	#@echo "export LINETBOOT_IPTRANS_MAP=$(HOME)/.linetboot/iptrans.json"
 	#@echo "export LINETBOOT_USER_CONF=$(HOME)/.linetboot/user.conf.json"
-	#@echo "export FACT_PATH=$(HOME)/hostinfo"
+	#@echo "export FACT_PATH=$(HOME)/.linetboot/hostinfo"
 	@ls -al ~/.linetboot
 	
 jsdoc: FORCE
@@ -160,5 +160,6 @@ dockerimg:
 	docker build --rm=true -t 'linetboot:0.0.1' -f docker/Dockerfile.linetboot .
 # sudo lsof -i -P -n | grep 3005
 # Error: Invalid username
+# TODO: If all of config is under ~/linetboot/ - just mount it once ! (shortens below a lot)
 dockerrun:
-	docker run --rm=true -p 3005:3000 -e "A=B" -v /isomnt:/isomnt -v ~/.linetboot:/root/.linetboot -v ~/.ssh/:/root/.ssh -v ~/hostrmgmt:/root/hostrmgmt -v ~/hostinfo:/root/hostinfo -v ~/hostpkginfo:/root/hostpkginfo -t 'linetboot:0.0.1' node /linetboot/linetboot.js
+	docker run --rm=true -p 3005:3000 -e "A=B" -v /isomnt:/isomnt -v ~/.linetboot:/root/.linetboot -v ~/.ssh/:/root/.ssh -v ~/.linetboot/hostrmgmt:/root/.linetboot/hostrmgmt -v ~/.linetboot/hostinfo:/root/.linetboot/hostinfo -v ~/hostpkginfo:/root/hostpkginfo -t 'linetboot:0.0.1' node /linetboot/linetboot.js

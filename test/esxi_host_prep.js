@@ -9,9 +9,9 @@
 * ## netinfo + merge (using piping)
 * # In first myhost means hostname
 * # Dry-run, review JSON output
-* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost
+* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/.linetboot/hostinfo/myhost
 * # Overwrite a file
-* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/hostinfo/myhost > ~/hostinfo/myhost.new
+* esxi_host_prep.js netinfo myhost | esxi_host_prep.js merge ~/.linetboot/hostinfo/myhost > ~/.linetboot/hostinfo/myhost.new
 * ```
 * References
 * - Dealing with stdin in Node.js: https://stackoverflow.com/questions/20086849/how-to-read-from-stdin-line-by-line-in-node
