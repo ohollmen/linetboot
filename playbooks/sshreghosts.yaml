@@ -1,9 +1,20 @@
-# # Register 
+# # Register Hosts with equivalent of ssh-keyscan
+# Example of running:
+# ```
+# ansible-playbook -i ~/.linetboot/hosts -e 'khfile=/tmp/'
+# ```
+# To avoid prompting for host key checks one cal also add to inventory:
+# ```
+# [defaults]
+# host_key_checking = False
+# ```
+# OR in environment: `export ANSIBLE_HOST_KEY_CHECKING=False`
 - name: Register Hosts (keyscan)
   # become: yes
-  hosts: '{{ host }}'
+  # hosts: '{{ host }}'
+  hosts: localhost
   connection: local
-  #gather_facts: false
+  gather_facts: false
   serial: 1
   vars:
     khfile: ~/.ssh/known_hosts
@@ -18,12 +29,23 @@
       shell: 'ssh-keygen -R {{ inventory_hostname }}; ssh-keygen -R {{ ansible_default_ipv4.address }}; ssh-keygen -R {{inventory_hostname}},{{ansible_default_ipv4.address}}'
       delegate_to: localhost
       #when: inventory_hostname != "local"
-      #when: 0
+      when: 0
     - name: Add host (RSA) key to known_hosts
       # Also -H name,ipaddr
       # -t rsa  -t rsa
+      # Add by hostname and ip address (2 invocations of ssh-keyscan)
       shell: 'ssh-keyscan  -H {{ inventory_hostname }} >> ~/.ssh/known_hosts; ssh-keyscan -H {{ansible_default_ipv4.address}} >> ~/.ssh/known_hosts'
       #throttle: 1
       #serial: 1
       delegate_to: localhost
-      #when: 0
+      when: 0
+    # Use with (top) hosts: localhost. Use ansible.builtin.known_hosts, still depends on ssh-keyscan.
+    # known_hosts expects (in key): "<full known_hosts-formatted key line>" (from ssh-keyscan)
+    - name: Add hosts to known_hosts (Ansible way)
+      known_hosts:
+        # path: ~/.ssh/known_hosts
+        path: '{{ khfile }}'
+        name: "{{ item }}"
+        # Ansible pipe runs shell command, captures output in string (like OUTPUT=$(ssh-keyscan host1.example.com) )
+        key: "{{ lookup('pipe', 'ssh-keyscan ' + item) }}"
+      loop: "{{ groups['all'] }}"

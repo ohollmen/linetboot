@@ -1,6 +1,7 @@
+# Note: sshpass utilized here needs to be installed separately (package: sshpass)
 - name: Perform ssh-copy-id from localhost
   # Important to *only* be current user
-  become: no
+  become: false
   hosts: '{{ host }}'
   # Not fit for authorized_key module?
   connection: local
@@ -11,20 +12,22 @@
     remotepass: 'none'
   serial: 50
   tasks:
-    - name: SSH Copy id
+    # TODO: Detect presence of sshpass and use when: ... (present)
+    - name: SSH Password setup
       # -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
       shell: 'sshpass -p {{ remotepass }} ssh-copy-id {{ remoteuser }}@{{ inventory_hostname }}'
       delegate_to: localhost
       #when: inventory_hostname != "local"
       #when:  inventory_hostname  != 'myhost.somewhere.com'
-      #when: 0
-    - name: SSH Copy id (Easy way)
+      when: 0
+    # ansible.posix.authorized_key
+    - name: SSH Copy id (The Easy / ansible internal way)
       authorized_key:
         user: '{{ remoteuser }}'
         state: present
         # Does ~ expand here ?
         key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-      when: 0
+      #when: 0
       # Could use (note indent):
       #  key: '{{ item }}'
       # with_file:\n- ~/.ssh/id_rsa.pub
