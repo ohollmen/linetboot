@@ -2748,14 +2748,14 @@ function keys_exchange(req, res) {
  * This can be added to remote-host (host being installed by linetboot) ~/authorized_keys.
  */
 function keys_pubkey(req, res) {
-  var key = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
-  if (!key) { return res.send("");}
+  var pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa.pub
+  if (!pubkey) { return res.send(""); }
   // Keep newline for append-friendly format (?)
-  //if (key.substr(key.length-1, 1) == "\n") {
+  //if (pubkey.substr(pubkey.length-1, 1) == "\n") {
   //  console.log("Strip linefeed");
-  //  key = key.substr(0, key.length-1);
+  //  pubkey = pubkey.substr(0, pubkey.length-1);
   //}
-  res.send(key);
+  res.send(pubkey);
 }
 // /eflowrscs
 function eflowrscs(req, res) {

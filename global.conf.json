@@ -5,6 +5,7 @@
   "mirrorserver": "",
   "debug": 1,
   "passfn": "~/.linetboot/.htpasswd",
+  "Xsshkeyfn": "~/.ssh/id_ed25519",
   "inst": {
     "desc": "Settings for OS Installer or scripts run during install",
     "userconfig": "~/.linetboot/initialuser.conf.json",

@@ -10,7 +10,7 @@
 * Start allowing changing settings.
 */
 var fs = require('fs');
-var ssh = require("node-ssh");
+var node_ssh = require("node-ssh");
 var async = require("async");
 var dns = require('dns');
 
@@ -26,14 +26,6 @@ function users_test() {
   var usersinfo = fs.readFileSync(lfn, 'utf8');
   var users = users_parse(usersinfo);
   console.log(users);
-}
-// console.log(process.argv);
-// Detect calling CL utility and trigger test mode.
-if (process.argv[1].match(/\bipmi\b/)) {
-  var act = process.argv[2];
-  if (act == 'lan') { lan_test(); }
-  else if (act == 'user') { users_test(); }
-  else { hosts_rmgmt_info(); }
 }
 
 var rmpath_ev = "RMGMT_PATH"; // TODO: Use below
@@ -75,13 +67,14 @@ function hosts_rmgmt_info(hlist, sshpara) {
   // host,username, privateKey
   if (!sshpara) { throw "Need SSH params"; }
   if (!sshpara.privateKey) {
-    sshpara.privateKey = process.env["HOME"]+"/.ssh/id_rsa";
+    sshpara.privateKey = `${process.env["LINETBOOT_SSHKEY"]}`; // private! id_rsa
   }
   if (!sshpara.username) { sshpara.username = process.env["USER"]; }
   var cmd = "sudo  ipmitool lan print 1"; // Not going to work w/o root ssh
   // if (process.env["SUDOPASS"]) { cmd = "echo '"+pass+"' |" + cmd; } // Add -S
   function host_rm_info(hn, cb) {
-    var ssh = new node_ssh();
+    //var ssh = new node_ssh();
+    var ssh = new node_ssh.NodeSSH() // OLD: new node_ssh()
     var sshpara2 = JSON.parse(JSON.stringify(sshpara)); // Copy for each async thread
     sshpara2.host = hn;
     var execopts = {stream: 'stdout'}; // pty: true to interactively respond to prompt
@@ -89,9 +82,10 @@ function hosts_rmgmt_info(hlist, sshpara) {
       // with stream: 'stdout' ... result is directly stdout
       ssh.execCommand(cmd, execopts).then(function (result) {
         var lan = lan_parse(result); // result.stdout
-        cb(lan);
+        // return cb(lan); // Should be
+        return cn(null, lan); // ???
       }); // .catch(function (err) {})
-    });
+    }).catch(function (ex) { let err = "IPMI ssh connect error !"; console.log(err); return cb(err, null); });
   }
   async.map(hlist, host_rm_info, function (err, results) {
     console.log(JSON.stringify(results, null, 2));
@@ -143,7 +137,7 @@ function lan_hostname(ent, cb) {
   dns.reverse(ipaddr, function (err, domains) {
     if (err) {   } // return cb(null, ""); // ent.rmhname = "N/A(err)";
     else { ent.rmhname = domains[0]; } // Add resolved name
-    cb(null, ent); // domains[0]
+    return cb(null, ent); // domains[0]
   });
 }
 
@@ -287,3 +281,12 @@ module.exports = {
   rmgmt_load: rmgmt_load,
   ipmi_cmd: ipmi_cmd
 };
+
+// console.log(process.argv);
+// Detect calling CL utility and trigger test mode.
+if (process.argv[1].match(/\bipmi\b/)) {
+  var act = process.argv[2];
+  if (act == 'lan') { lan_test(); }
+  else if (act == 'user') { users_test(); }
+  else { hosts_rmgmt_info(); }
+}

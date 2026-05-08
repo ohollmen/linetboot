@@ -85,6 +85,7 @@ var iprofs = {};
 var patch_params_custom; // CB (from user custom .js module)
 var setupmod = {}; // custom CB Module
 var logdb = {};
+var privkey;
 //var tmpls = {};
 var recipes = [
   {"url":"/preseed.cfg",        "ctype":"preseed",    "tmpl":"preseed.cfg.mustache",        "defosid": "debian"},
@@ -229,7 +230,7 @@ function pp_fcos(out, d) {
       p.users[0]["passwordHash"] = hashedpass; // "$6$"+ salt + "$"+ hash; // "$6$0XwRWIsO$.bEcqJy1xTLMJcwLSg7kdTsOEcwIi49Lnm6//b0FwMGSHv0rGEmw4NS189j8tTNLkPnrsGlP4LIUia8Ph.8Yc.";
       console.log("Shadow line: "+p.users[0]["passwordHash"]);
       // TODO: Move to user.sshkey
-      var pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+      var pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa.pub
       if (pubkey) { p.users[0]["sshAuthorizedKeys"] = [pubkey]; }
       if (Array.isArray(p.users[0].groups)) { p.users[0].groups.push("docker"); }
     }
@@ -260,7 +261,7 @@ function pp_photon(out, d) {
   // public_key: "",
   //  "network": { "type": "dhcp" } // type:static requires ip_addr: "", netmask: "", gateway: "", nameserver: "", vlan_id: "" (last optional)
   // release_version: "4.0"
-  var pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  var pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa.pub
   j.public_key = pubkey;
 }
 var recipes_idx = {};
@@ -556,7 +557,7 @@ function preseed_gen(req, res) {
   d = recipe_params_init(f, global, user, ip);
   // TODO: Bring check for d HERE !
   // SSH public key
-  d.ssh_pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  d.ssh_pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa.pub
   if (d.ssh_pubkey && d.ssh_pubkey.match(/\s+$/)) { d.ssh_pubkey = d.ssh_pubkey.replace(/\s+$/, ""); }
   // Note even custom hosts are seen as having facts (as minimal dummy facts are created)
   if (f) { // Added && f because we depend on facts here // OLD: !skip &&

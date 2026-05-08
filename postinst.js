@@ -34,9 +34,11 @@ function hostup_init(global, ip) {
   if (!global.postinst) { return null; }
   var picfg = dclone(global.postinst || {});
   picfg.username = global.postinst.user || process.env['USER'];
+  // Also: privateKeyPath, privateKey: Buffer.from('...')
   picfg.sshcfg = { host: ip, username: picfg.username, privateKey: netprobe.privkey() }; // pkey
   //var conn = new ssh2.Client();
-  picfg.ssh = new node_ssh();
+  // picfg.ssh = new node_ssh();
+  picfg.ssh = new node_ssh.NodeSSH() // OLD: new node_ssh()
   picfg.global = global;
   picfg.ip = ip;
   picfg.user_host = picfg.username+"@"+picfg.ip;
@@ -46,8 +48,8 @@ function hostup_init(global, ip) {
   picfg.initwait = picfg.initwait || 60; // Initial delay before starting to poll (s.)
   picfg.pollint  = picfg.pollint  || 10; // Poll interval (s.)
   picfg.trycnt   = picfg.trycnt || 30; // Number of pollings (cnt)
- //var trycnt = picfg.trycnt;
- return picfg;
+  //var trycnt = picfg.trycnt;
+  return picfg;
 }
 /** Do intial wait / delay before starting to poll (to save poll cycles and clutter of log)
 * What we could do here is ping host at the end to ensure it is up.

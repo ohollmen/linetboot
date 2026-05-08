@@ -30,10 +30,11 @@ var resolver;
 // resolver.setServers([]);
 var dnsopts = {};
 var inited = 0;
-var ssh = new node_ssh();
-//NOT HERE: var ssh2Client = ssh2.client();
+// var ssh = new node_ssh();
+var ssh = new node_ssh.NodeSSH() // OLD: new node_ssh()
+//NOT HERE: var ssh2Client = ssh2.Client();
 var pkey;
-var pubkey;
+var pubkey; // Needed for purposes other than ssh2 connection
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
 var opts = {tout: 0, debug: 0};
@@ -47,10 +48,11 @@ function init(popts) {
   inited++;
   popts = popts || {};
   // MUST read in utf8 (to not get a binary buffer)
-  pkey   = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
-  pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  //pkey   = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
+  //pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  pkey   = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}`, 'utf8'); // id_rsa
+  pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa
   if (!pkey || !pubkey) { console.log("Warning: Linetboot should have SSH keys to interact effectively during installation.");}
-  // pkey = process.env['HOME']+'/.ssh/id_rsa';
   servers = popts.dns ? popts.dns : dns.getServers();
   //resolver.setServers([]);
   // require('os').networkInterfaces() // [{mac: ...},{mac:...},...]
@@ -267,14 +269,14 @@ function stats_proc(hnode, cb) {
   // Props to pass (as objs): id: "", cmd: "", prop: "", pcb: (str, obj) => {}
   // 
   function runprobecmd(cfg, cb) {
-    var conn = new ssh2.Client();
+    let conn = new ssh2.Client();
     conn.on('ready', function() { // After succesful auth
       console.log('conn-ready on ' + hn + "(" +cfg.id+ ")");
       conn.exec(cfg.cmd, function(err, stream) {
         if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, additem(prec)); }
         stream.on('close', function(code, signal) {
           // signal seems to be ~always undefined ', signal=' + signal +
-          console.log('stream-close: ' +hn+ ' (code=' + code +  ', tout=' +tout+')');
+          console.log(`stream-close: ${hn} (code=${code}, tout=${tout})`);
           //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
         })
         // Note: We possibly should not call the cb() here as conn.on('', ...) may follow, causing "Callback was already called."

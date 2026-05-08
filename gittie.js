@@ -235,7 +235,7 @@ function repo_create(opts) { // OLD: host, p
 function ssh_key_send(opts) {
   let url = `https://${cfg.url}${apiprefix}/user/keys`; // GET: list POST: send
   // let url = `https://${cfg.url}${apiprefix}/user/keys`; // list
-  let kfn = process.env.HOME + `/.ssh/id_rsa.pub`;
+  let kfn = process.env.HOME + `/.ssh/id_rsa.pub`; // TODO (determine ... e.g. keytype)
   if (opts.keyfn) { kfn = opts.keyfn; }
   console.log(`Loading key ${kfn}`);
   let cont = fs.readFileSync(kfn, 'utf8');

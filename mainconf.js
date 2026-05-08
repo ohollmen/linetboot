@@ -110,7 +110,8 @@ function mainconf_process(global) {
   });
   //////// "~" ($HOME) expansion //////////////////
   // ... for config convenience (top-level & some sects ?)
-  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module", "passfn"];
+  var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module",
+    "passfn", "sshkeyfn"];
   tilde_expand(global, top_paths);
   var home = process.env['HOME'];
   //console.log("Statring individual sections expand");
@@ -137,6 +138,9 @@ function mainconf_process(global) {
   tilde_expand(global.gerrit, ["pkey"]); // }
   tilde_expand(global.gcp, ["dyninvfn", "sakeyfn"]);
   tilde_expand(global.services, ["conffn"]);
+  // For compat use id_rsa.pub, later id_ed25519 (-t ed25519)
+  if (!global.sshkeyfn) { global.sshkeyfn = `${process.env['HOME']}/.ssh/id_rsa`; } // Default (in trans. to ec25519)
+  process.env['LINETBOOT_SSHKEY'] = global.sshkeyfn;
   //console.log("Done services.");
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
@@ -256,7 +260,7 @@ function disabled_detect(global) {
   var ser = global.services;
   if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
   return dis;
-} // diabled_detect
+} // disabled_detect
 
 ////// TRANSFER KEY ENV VARS /////////////////
   // No Transfer: LINETBOOT_GLOBAL_CONF, LINETBOOT_URL (linet.js)
