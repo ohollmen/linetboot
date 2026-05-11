@@ -45,10 +45,10 @@ function init(mcfg) {
 // Lookup manifest by its basename from linetboot config dir and a set of paths.
 // Note: we could push() or shift_in() lineboot path
 function mf_abspath(bn) {
-  let cpath = `${process.env.HOME}/.linetboot`;
   if (!bn) { console.error(`Manifest basename not given.`); return null; }
-  let fna = `${cpath}/${bn}`;
-  if (fs.existsSync(fna)) { return fna; }
+  //let cpath = `${process.env.HOME}/.linetboot`;
+  //let fna = `${cpath}/${bn}`;
+  //if (fs.existsSync(fna)) { return fna; }
   ///////////////////// Path-Array search ///////////////////
   if (!cfg.mfpath || !Array.isArray(cfg.mfpath)) { return null; }
   let pathok = cfg.mfpath.find( (it) => {
@@ -71,7 +71,7 @@ function manifest_load(fn, cb) {
   if (typeof fn == 'object' && fn.name) {
     fn = fn.name;
     let fna = mf_abspath(fn);
-    if (!fna) { return cb(`MF include file '${fn}' was not resoled to absolute name.`); }
+    if (!fna) { return cb(`MF include file '${fn}' was not resolved to absolute name.`); }
     fn = fna;
   }
   if (!fs.existsSync(fn)) { return cb(`XML Manifest ('${fn}') not found !`, null);  } // throw `XML Manifest ('${fn}') not found !`;
@@ -167,16 +167,19 @@ if (process.argv[1].match("grepo.js")) {
   let cfgfn = `${process.env.HOME}/.linetboot/global.conf.json`;
   let mcfg = require(cfgfn);
   //mcfg.grepo = {"debug": 2, "fn": "repo_manifest.xml"}; // mcfg.reposet
+  let mc = require("./mainconf.js");
+  mc.tilde_expand(mcfg.grepo, ["mfpath"]); // MUST expand !!!
   init(mcfg);
   let cb = (err, data) => {
-   if (err) { console.error(`Error processing: {err}`); return; }
+   if (err) { console.error(`Error processing: ${err}`); return; }
    //console.error(`cb - Success`);
    console.error(`INC:`, data.include);
    // manifest_merge(data, () => { console.log(`Done inc.`); });
   };
   let bn = cfg.fn || "manifest.xml";
-  let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
-  manifest_load(fn, cb);
+  let fna = mf_abspath(bn); // let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  console.log(`mf_abspath resolved ${bn} => fna: ${fna}`);
+  manifest_load(fna, cb);
   
  
 }
