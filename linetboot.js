@@ -372,7 +372,6 @@ function app_init() { // mcfg
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
-  // repo
   app.get("/grepo", grepo.hdl_grepo);
  } // sethandlers
   //////////////// Load Templates ////////////////
@@ -1655,6 +1654,8 @@ function hostp_prop_stat(req, res) {
   var umap = [
     {url: "/hostcpucounts", sprop: "ansible_processor_vcpus", dprop: "numcpus"},
     {url: "/hostmemstats",  sprop: "ansible_memtotal_mb", dprop: "memcapa"},
+    // 
+
   ];
   if (req.url == '/hostcpucounts') { sprop = "ansible_processor_vcpus"; dprop = 'numcpus'; } // Num CPU:s
   else if (req.url == '/hostmemstats') { sprop = 'ansible_memtotal_mb'; dprop = 'memcapa'; } // MB
@@ -1664,8 +1665,8 @@ function hostp_prop_stat(req, res) {
   //var dprop = un.dprop;
   var arr = [];
   // Extract sorce property sprop to destination prop dprop
+  // OLD: //arr.push({hname: f.ansible_fqdn, numcpus: f[sprop]});
   hostarr.forEach(function (f) {
-    //arr.push({hname: f.ansible_fqdn, numcpus: f[sprop]});
     var e = {hname: f.ansible_fqdn};
     e[dprop] = f[sprop];
     arr.push(e);
@@ -2066,8 +2067,8 @@ function config_send(req, res) {
   cfg.unattr = global.ldap ? global.ldap.unattr : "";
   // OS/Version view columns/fields
   if (web && web.xflds) { cfg.xflds = web.xflds; }
-  // 
-  if (esxi && esxi.vmhosts) { cfg.vmhosts = esxi.vmhosts; }
+  // Add username: && esxi.username ? For now Use dummy passwd (e.g. LINETBOOT_ESXI_PASS=pass) to show cached
+  if (esxi && esxi.vmhosts ) { cfg.vmhosts = esxi.vmhosts; }
   // 
   if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
   else { cfg.clistnames = []; }
@@ -3185,8 +3186,9 @@ function gh_projs(req, res) {
   if (!org) { jr.msg += "No GH Org resolved."; return res.json(jr); }
   console.log("Show org: "+org);
   var url = "https://"+ghcfg.url+"/";
-  if (ghcfg.ent) { url += "api/v3/"; }
-  url += "users/"+org+"/repos"; // "users" On public repo only ?
+  let apistart = "users";
+  if (ghcfg.ent) { url += "api/v3/"; apistart = 'orgs'; }
+  url += `${apistart}/${org}/repos`; // "users/" On public repo only ? GHE Must have "orgs/" to work uniformally
   console.log("Final URL: "+url);
   var opts = {};
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
