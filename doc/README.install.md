@@ -121,18 +121,34 @@ on recording facts (and using ansible more generally) with Windows hosts.
 
 ### Recording (Ansible collected) Host Facts
 
+At this pint of install SSH homogenous connectivity to your hosts by SSH becomes essential. Make sure you 1) have
+an SSH key generated (under `~/.ssh/`), 2) ... of a key type (e.g. rsa, ed25519, etc.) that remote machines will accept as key type
+( see your /etc/ssh/sshd_config or issue `sudo sshd -T | grep -i pubkeyacceptedalgorithms `, in older ssh this was known as `pubkeyacceptedkeytypes`) and 3) this key distributed to all machines of the "farm" you manage / maintain.
+
+If you already have a SSH key and have distributed it to all hosts you can skip these steps. Generate key:
+```
+# Old fashioned RSA Key
+ssh-keygen -t rsa -b 4096 -m PEM
+# New Stronger Elleptic Cryptography (ec) key (key is fixed size, -b would be ignored).
+# Note some of the newer Debian/Ubuntu distributions reject old RSA key, thus stonger key is needed.
+# To test key generation to alternative path, use e.g. -f /tmp/.ssh/id_ed25519
+ssh-keygen -t ed25519 -m PEM
+```
+For SSH connectivity (by JS libraries) linetboot does not currently have passphrase support, so please create a key
+without passphrase.
+
 Having host facts is mandatory for both web GUI based inventory as well as
 PXE based host installation. With this (simplified) install guide, you must
 have single account with synchronized password on all hosts as well as SSH keys
-copied onto that remote account. Copying SSH keys can be accomplished by:
+copied onto that remote account. Copying SSH keys can be (manually - the "hard way") accomplished by:
 ```
 ssh-copy-id remoteuser@ws-001.comp.com
 ```
-Do this for all the machines (If you did not have SSH key to start with, generate it with `ssh-keygen -t rsa -b 4096`, use no passphrase).
-The ssh-copy-id will prompt you to treat machine as trustworthy machine and
-add it to your ~/.ssh/known_hosts.
+If you only have few machines, do this for all the machines (otherwise see the "playbook way" below).
+The `ssh-copy-id` will prompt you to treat machine as trustworthy machine and
+add it to your `~/.ssh/known_hosts`.
 
-The above flow is fine for few machines, but if you have larger set of machines, you can (and probabl;y should) run the ansible playbooks from `linetboot/playbooks` directory:
+The above flow is fine for few machines, but if you have larger set of machines, you can (and probably should) run the ansible playbooks from `linetboot/playbooks` directory:
 ```
 # Register all inventoried hosts as trusted (effectively: ssh-keyscan)
 ansible-playbook -i ~/.linetboot/hosts  playbooks/sshreghosts.yaml -e "host=all"
@@ -162,19 +178,21 @@ mkdir ~/.linetboot/hostpkginfo
 ssh remoteuser@ws-001.comp.com dpkg --get-selections > ~/.linetboot/hostpkginfo/ws-001.comp.com
 # RedHat/Centos Host
 ssh remoteuser@ws-002.comp.com yum list installed > ~/.linetboot/hostpkginfo/ws-002.comp.com
+
 # Using a linetboot bundled playbook to extract package lists (Normal SSH)
 ansible-playbook -i ~/.linetboot/hosts playbooks/hostpkginfocollect.yaml \
    -e "host=all ansible_user=$USER ansible_become_pass=$ANSIBLE_PASS destpath=$HOME/.linetboot/hostpkginfo"
-# Same ... dynamic inventory and passwordless sudo
-ansible-playbook playbooks/hostpkginfocollect.yaml -e "host=all destpath=$HOME/.linetboot/hostpkginfo"
+# Same ... w. passwordless sudo (for dynamic cloud inventory, leave -i ... out)
+# ansible-playbook -i ~/.linetboot/hosts playbooks/hostpkginfocollect.yaml -e "host=all destpath=$HOME/.linetboot/hostpkginfo"
 ```
 
 NOTEs:
 - Use ansible playbook for extracting any larger amounts of package lists.
 - For passwords with shell sensitive chars (e.g. '!'), you may have to use
   `--ask-become-pass` or (e.g.) `export ANSIBLE_BECOME_PASS='p@ss!word'`
-- For non-sudo/non-become case use `--ask-pass` (Can also be combined with --ask-become-pass)
+- For non-sudo/non-become case use `--ask-pass` (Can also be combined with `--ask-become-pass`)
 - To check all hosts are up, use: `ansible all -i ~/.linetboot/hosts -m ping`
+
 
 ### Misc. Config Adjustments
 
@@ -320,6 +338,7 @@ node linetadm.js dhcpconf
 
 To use some of the more sophisticated automated Boot and OS Installation features we must have connectivity to BMC - The Baseboard
 management controller (also called just MC) which is able to control host by booting it, setting boot type (e.g. PXE), etc.
+These features are usually present on only server grade hardware with features like Dell iDRAC (Integrated Dell Remote Access Controller).
 The "Remote Management" info is extracted with an open-source tool "ipmitool", which is able to inquire the BMC info from within host
 (although this requires root rights and thus "become: yes" Ansible feature).
 
@@ -329,15 +348,18 @@ is not very useful. If OS composition is going to stay for weeks or e.g. 2 years
 track of packages maybe very useful.
 
 All these steps are very fit to be run with Ansible playbooks that are contained with Linetboot (playbooks/):
+
 ```
-# Gather Remote management (IPMI) Info from BMC
-ansible-playbook  -i ~/.linetboot/hosts ipmiinfo.yaml --extra-vars "ansible_become_pass=... host=all destpath=$HOME/.linetboot/hostrmgmt"
+# Gather Remote management (IPMI) Info from BMC (Server grade HW only)
+ansible-playbook  -i ~/.linetboot/hosts playbooks/ipmiinfo.yaml --extra-vars "ansible_become_pass=... host=all destpath=$HOME/.linetboot/hostrmgmt"
 # Gather SSH Keys 
-ansible-playbook  -i ~/.linetboot/hosts sshkeyarch.yaml --extra-vars "ansible_become_pass=... host=all keyarchpath="
+ansible-playbook  -i ~/.linetboot/hosts playbooks/sshkeyarch.yaml --extra-vars "ansible_become_pass=... host=all keyarchpath=$HOME/.linetboot/sshkeys"
+# Default values, prompt sudo password interactively
+ansible-playbook  -i ~/.linetboot/hosts playbooks/sshkeyarch.yaml -e "host=all" --ask-become-pass
 ```
 A small intro or refresher (depending on your familiarity w. Ansible) on ansible host selection mechanism
 (by yaml playbook "hosts: ..." or command line `--limit` option):
-- keyword *all* allows you to address all hosts in your `hosts` inventory file
+- keyword *all* allows you to address all hosts in your `hosts` inventory file (all hosts from all groups)
 - single hostname (e.g. host=db-01.comp.com) allows you address single host
 - multiple hosts can be given as comma separated list (no whitespaces to keep them as "single token")
 - multiple groups can be given as colon separated string 
