@@ -5,7 +5,7 @@
   "mirrorserver": "",
   "debug": 1,
   "passfn": "~/.linetboot/.htpasswd",
-  "Xsshkeyfn": "~/.ssh/id_ed25519",
+  "sshkeyfn": "~/.ssh/id_ed25519",
   "inst": {
     "desc": "Settings for OS Installer or scripts run during install",
     "userconfig": "~/.linetboot/initialuser.conf.json",
@@ -296,6 +296,7 @@
     "host": "",
     "user": "",
     "token": "",
+    "apiprefixXX": "artifactory/api/docker/{{ imgrepo }}/v2/",
     "imgrepo": "my-docker",
     "imgpath": "pc1/pc2/pc3",
     "excpatt": "(hello|refactor-\\w|\\w+-backup|legacy-img|windows|junk-folders|master-\\d\\d|test)",
@@ -338,8 +339,9 @@
     "desc": "Git Repo Tool Manifest view",
     "cache": 1,
     "ossreffn": "grepo_osref.json",
-    "mfpath": [],
+    "mfpath": ["~/.linetboot/", "/some/other/path"],
     "fn": "repo_manifest.xml",
+    "mergeinc": 0,
     "debug": 2
   },
   "recipes" : [
