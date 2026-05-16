@@ -494,7 +494,8 @@ var tabloadacts = [
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  dsid: "hostlist", gridid: "jsGrid_hw",  fsetid: "hw", uisetup: osview_guisetup},
   {"name": "OS/Version",  "elsel": "tabs-3", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "dist", dsid: "hostlist", gridid: "jsGrid_dist", fsetid: "dist", uisetup: osview_guisetup}, // Last could have hdlr ?
   //NONEED: {"name": "Reports", "path":"XXXXXXXX", tabs: ["tabs-X","tabs-Y","tabs-Z"], hdlr: tabsetview},
-  {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/hostpkgcounts", gridid: null, "path": "reports"}, // DUAL
+  // Reports actually has multiple separate chart urls (gridid: null,)
+  {"name": "Reports",     "elsel": "tabs-4",  "tmpl":"reports", hdlr: pkg_stats, "url": "/none",  "path": "reports"}, // DUAL
   {"name": "Groups",      "elsel": "tabs-5",  "tmpl":null,      hdlr: multigridview, "url": "/groups", gridid: null, path: "groups", "fsetid": "hw", colla: "hosts"},
   {"name": "Remote ...",  "path":"remoteviews", tabs: ["tabs-6","tabs-63","tabs-64"], hdlr: tabsetview}, // NEW(tabset)
   {"name": "Remote Mgmt", "elsel": "tabs-6",  "tmpl":"simplegrid", hdlr: rmgmt, "url": "/hostrmgmt", gridid: "jsGrid_rmgmt", fsetid: "rmgmt",},
@@ -1053,7 +1054,7 @@ var cmap = {
       "RedHat": color('rgb(180, 36, 36)').alpha(0.5).rgbString(),
       "CentOS": color('rgb(30, 130, 25)').alpha(0.5).rgbString()
     };
-/** Transform AoO to Chart data
+/** Transform AoO to Chart(.js) data.
  * Generate cdata.datasets[0].data and shared cdata.labels into cdata.
 * @param darr {array} - Array of Objects (AoO) from where (numeric) data values will be extracted
 * @param cdata {object} - Chart Data (structure) to populate with values and colors
@@ -1062,10 +1063,6 @@ var cmap = {
 * Accesses outer scope Color map (cmap)
 */
 function chartdata(darr, cdata, vprop, cmap, lblprop) {
-  // OLD: var prop = "pkgcnt";
-  // TODO:
-  //var lblprop = 'hname'; // old, fixed
-  // var vprop = ... // 
   cdata.labels = darr.map(function (it) { return it[lblprop]; });
   // Add dataset
   cdata.datasets[0].data = darr.map(function (it) { return it[vprop]; });
@@ -1074,6 +1071,19 @@ function chartdata(darr, cdata, vprop, cmap, lblprop) {
     cdata.datasets[0].backgroundColor = darr.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
   }
 }
+function chartdata2(darr, chdef, cdata) { // vprop, cmap, lblprop
+  console.log(`Running new chartdata2()`);
+  let vprop    = chdef.chcols[0].attr;
+  let lblprop  = chdef.lblprop;
+  cdata.labels = darr.map(function (it) { return it[lblprop]; });
+  // Add dataset
+  cdata.datasets[0].data = darr.map(function (it) { return it[vprop]; });
+  // Lookup BG color for each bar
+  if (cmap) {
+    cdata.datasets[0].backgroundColor = darr.map(function (it) { return cmap[it.distname] ? cmap[it.distname] : "#777777"; });
+  }
+}
+
     // Debug Chart Click (detects particular bar)
     function onCC(ev, ent) {
       //alert(p1 + p2 + p3);
@@ -1092,16 +1102,34 @@ function pkg_stats(ev, act) {
   //var gscale = 1000;
   // Routing event ?
   // TODO(data, all in one ?): {charts: [{},{}, ...]}
+  // NOTE: This is data-only (no cb:s) - could be loaded from server side. in datasets or /config (!)
+  // Data from server (AoO): Must have
+  // - labeling property (.lblprop)
+  // - one or more value props chcols[].attr
   var chdefs = [
-    { title: "Package Stats", lblprop: "hname", url:"/hostpkgcounts", subtype: "bar", chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000},
-    { title: "CPU Counts",    lblprop: "hname", url: "/hostcpucounts", subtype: "bar", chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
-    { title: "Memory Stats",  lblprop: "hname", url: "/hostmemstats", subtype: "bar", chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
+    { title: "Package Count Stats", lblprop: "hname", url:"/hostpkgcounts", subtype: "bar",
+      chcols: [{attr: "pkgcnt", name: "Packages"}], canvasid: "canvas_pkg", gscale: 1000},
+    { title: "CPU Counts",    lblprop: "hname", url: "/hostcpucounts", subtype: "bar",
+      chcols: [{attr: "numcpus", name: "CPU:s"}], canvasid: "canvas_cpu", gscale: 10},
+    { title: "Memory Stats (MB)",  lblprop: "hname", url: "/hostmemstats", subtype: "bar",
+      chcols: [{attr: "memcapa", name: "Mem (MB)"}], canvasid: "canvas_mem", gscale: 10},
     // Note: When changing to "pie" will keep the grid. TODO: Have config opts to eliminate grid (for "pie")
-    { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar", chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
+    { title: "OS Distro Stats", lblprop: "distname", url: "/distrostats", subtype: "bar",
+      chcols: [{attr: "val", name: "Count"}], canvasid: "canvas_osdist", gscale: 10, noclick: 1},
+    { title: "CPU Arch stats", lblprop: "arch", url: "/cpuarchstats", subtype: "bar",
+      chcols: [{attr: "val", name: "Arch"}], canvasid: "canvas_cpuarch", gscale: 10, noclick: 1},
   ];
-  if (ev.routepath) { rapp.templated("reports", null, "routerdiv"); } // OLD: contbytemplate
-  async.map(chdefs, fetchchart, (err, ress) => { console.log("Done with charts"); });
+  console.log(`Calling chartgroup()`);
+  chartgroup(chdefs);
+  function chartgroup(chdefs) {
+  // Could we generate this (See: id="reports"):
+  // console.log(`New non-templated reporting ...`);
+  let cont = chdefs.map( (it) => { return `<h3>${it.title}<h3>\n<canvas id="${it.canvasid}"></canvas>`; }).join("\n")
+  document.getElementById("routerdiv").innerHTML = cont;
+  // if (ev.routepath) { rapp.templated("reports", null, "routerdiv"); } // OLD: contbytemplate
+  async.map(chdefs, fetchchart, (err, ress) => { console.log(`Done ${chdefs.length} with charts`); });
   return;
+  }
   /*
   axios.get('/hostpkgcounts').then(function (resp) {
     var d = resp.data;
@@ -1144,25 +1172,29 @@ function pkg_stats(ev, act) {
     //chdef = rapp.dclone(chdef);
     axios.get(chdef.url).then(function (resp) {
       var d = resp.data;
-      if (d.status == "err") { alert(chdef.title + " stats error: " + d.msg); return; }
+      if (d.status == "err") { alert(chdef.title + " chart/stats error: " + d.msg); return; }
       var data = d.data;
       createchart(data, chdef);
-      return cb(null, chdef);
+      return cb(null, chdef); // dclone(chdef) ?
     }).catch((ex) => { console.log(ex); return cb(ex, null); });
   }
+  // Combine chart.js results (data)
   // Uses global: cmap, global scales, outer: gscale (for ... suggestedMax)
-  function createchart(data, chdef) { // label, vprop, canvasid
-    var vprop    = chdef.chcols[0].attr;
+  function createchart(data, chdef) {
+    let vprop    = chdef.chcols[0].attr; // Only passed to chartdata
     // Note for not-by-host charts the label for (e.g. bar) is not necessarily constant - now fixed by passing lblprop to chartdata()!
-    var label    = chdef.chcols[0].name;
-    var canvasid = chdef.canvasid;
-    var gscale   = chdef.gscale;
-    var lblprop  = chdef.lblprop;
+    let label    = chdef.chcols[0].name; // Used for cdata stub
+    // var canvasid = chdef.canvasid;
+    //var gscale   = chdef.gscale; // Scalar not used !!!
+    // let lblprop  = chdef.lblprop;
     // label: null displays as :"null" (). See legend: { display: false} below.
-    var cdata = {labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }]}; // "Packages"
+    // This could be created by chartdata() !!!!
+    var cdata = { labels: [], datasets: [{ "label": label, borderWidth: 1, data: [] }] };
     // cdata.datasets[0].backgroundColor = color('rgb(255, 99, 132)').alpha(0.5).rgbString();
-    var ctx = document.getElementById(canvasid).getContext('2d'); // 'canvas_pkg'
-    chartdata(data, cdata, vprop, cmap, lblprop); // AoO to chart
+    var ctx = document.getElementById(chdef.canvasid).getContext('2d'); // 'canvas_pkg'
+    // chartdata(data, cdata, vprop, cmap, chdef.lblprop); // AoO to chart
+    // TODO:
+    chartdata2(data, chdef, cdata); 
     // console.log(JSON.stringify(cdata, null, 2));
     // Position for 'label' of each dataset. 'top' / 'bottom'
     //title: {display: true,text: 'Chart.js Bar Chart'}
