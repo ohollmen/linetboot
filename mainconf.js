@@ -123,6 +123,7 @@ function mainconf_process(global) {
   tilde_expand(global.ipmi, ["path"]);
   tilde_expand(global.esxi, ["cachepath"]);
   tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path", "iprofsconfig"]);
+  //tilde_expand(global.probe, ["???"]);
   // var dkr = global.docker;
   if (global.docker) {
     tilde_expand(global.docker, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
@@ -138,8 +139,12 @@ function mainconf_process(global) {
   tilde_expand(global.gerrit, ["pkey"]); // }
   tilde_expand(global.gcp, ["dyninvfn", "sakeyfn"]);
   tilde_expand(global.services, ["conffn"]);
+  tilde_expand(global.afa, ["storpath"]);
+  tilde_expand(global.grepo, ["mfpath"]);
   // For compat use id_rsa.pub, later id_ed25519 (-t ed25519)
   if (!global.sshkeyfn) { global.sshkeyfn = `${process.env['HOME']}/.ssh/id_rsa`; } // Default (in trans. to ec25519)
+  // Allow LINETBOOT_SSHKEY to override, sync to global.sshkeyfn = 
+  if (process.env.LINETBOOT_SSHKEY) { global.sshkeyfn = process.env.LINETBOOT_SSHKEY; }
   process.env['LINETBOOT_SSHKEY'] = global.sshkeyfn;
   //console.log("Done services.");
   /////////// Post Install Scripts ///////
@@ -238,8 +243,8 @@ function disabled_detect(global) {
   if (global.groups && 1) {
     //dis.push("groups");
   }
-  var esxi = global.esxi;
-  if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) { dis.push("esxiguests"); } // Note UI term
+  var esxi = global.esxi; // console.log(`ESXI Config:`, esxi);
+  if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) {dis.push("esxiguests"); } // Note UI term
   var proc = global.procster;
   // !proc.urlpath ... does not seemed to be filled in any examples
   if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
@@ -379,3 +384,10 @@ module.exports = {
   tilde_expand: tilde_expand,
   disabled_detect: disabled_detect
 };
+if (process.argv[1].match(/\bmainconf.js$/)) {
+  var yaml   = require('js-yaml');
+  let mcfgfn = `${process.env['HOME']}/.linetboot/global.conf.json`;
+  let mcfg = mainconf_load(mcfgfn);
+  let ycfg = null;
+  console.log(yaml.dump(mcfg, ycfg));
+}
