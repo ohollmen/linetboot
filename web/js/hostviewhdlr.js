@@ -1810,6 +1810,7 @@ function afaimgs_uisetup(act, data, ev) {
 
     axios.get("/imgmani", {params: p}).then((resp) => {
       var d = resp.data;
+      if (d.status != 'ok') { return toastr.error(`Error loading manifest: ${d.msg}`); }
       console.log(d);
       jev.viewdata = d.data;
       gendialog(jev, act);
