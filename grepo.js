@@ -26,7 +26,7 @@ function init(mcfg) {
   let cpath = `${process.env.HOME}/.linetboot`;
   // throw `XML Manifest ('${fn}') not found !`;
   let otfn = `${cpath}/${cfg.ossreffn}`;
-  console.log(`Check presence of ${otfn}`);
+  console.log(`Check presence of OSS ref. file: '${otfn}'`);
   if (fs.existsSync(otfn)) {
     console.log(`Found  ${otfn} !! Loading ...`);
     osstrans = require(otfn);
@@ -68,11 +68,12 @@ function asArray(v) {
 */
 function manifest_load(fn, cb) {
   // Tolerate/Allow object from include section
+  let isroot = 1; // Is root MF ?
   if (typeof fn == 'object' && fn.name) {
     fn = fn.name;
     let fna = mf_abspath(fn);
     if (!fna) { return cb(`MF include file '${fn}' was not resolved to absolute name.`); }
-    fn = fna;
+    fn = fna; isroot = 0;
   }
   if (!fs.existsSync(fn)) { return cb(`XML Manifest ('${fn}') not found !`, null);  } // throw `XML Manifest ('${fn}') not found !`;
   var cont = fs.readFileSync(fn, 'utf8');
@@ -108,26 +109,30 @@ function manifest_load(fn, cb) {
     return cb(null, data);
   });
 }
-/** Implement moderate 1 level merge */
-function manifest_merge(data) {
-  let incs = data.include;
-  if (!Array.isArray(incs)) { return null; }
-  // relative to absolute (for now here)
-  //NOT:incs.forEach( (it) => {  });
+/** Implement moderate 1 level merge for 1 or more includes of manifest. */
+function manifest_merge(data, cb) {
+  let incs = data.include; // Include-request of original MF
+  if (!Array.isArray(incs)) { return cb("MF includes not in an Array !", null); }
+  // relative to absolute done in manifest_load()
   // wrap 
   let proccb = manifest_load; // dummy_load / manifest_load
   async.mapSeries(incs, proccb, (err, ress) => {
-    if (err) { console.error(`manifest_merge (load-completion): Error: ${err}`); return; }
-    console.log(`Completed incnodes`, ress);
-    // Concat projects of each include
+    if (err) { console.error(`manifest_merge (load-completion): Error: ${err}`); return cb('Err', null); }
+    (cfg.debug && cfg.debug > 2) && console.log(`Completed incnodes: `, ress);
+    // Concat projects of each include to original data.
+    let i = 1;
     ress.forEach( (subdata) => {
-      //data.project = data.project.concat(subdata.project);
+      // Mark manifest identity here, e.g.: 1) filename (too long?), 2) A,B,... 3) M1, M2, M3, 4) INC1, INC2
+      subdata.project.forEach( (p) => { p.mflbl = `Inc${i}`;});
+      data.project = data.project.concat(subdata.project);
+      i++;
     });
+    return cb(null, data);
   });
-  function dummy_load(incnode, cb) {
-    console.log(`Should load by:`, incnode);
-    return cb(null, incnode);
-  }
+  //function dummy_load(incnode, cb) {
+  //  console.log(`Should load by:`, incnode);
+  //  return cb(null, incnode);
+  //}
 }
 
 /** HTTP (GET) handler for repo view */
@@ -135,10 +140,17 @@ function hdl_grepo(req, res) {
   let jr = {status: "err", msg: "Error loading repo(set) data ! "};
   let bn = cfg.fn;
   if (!bn) { jr.msg += "No repo file given in config !"; return res.json(jr); }
-  let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  let fn = mf_abspath(bn); // `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  cfg.mergeinc = 1; // TEST
   manifest_load(fn, (err, data) => {
     if (err) { jr.msg += err; return res.json(jr);}
-    res.json({status: "ok", data: data});
+    if (cfg.mergeinc) { manifest_merge(data, (err, data) => {
+      if (err) { jr.msg += `Includes could not be properly merged: ${err}`; return res.json(jr); }
+      console.log(`Done inc.`);
+      res.json({status: "ok", data: data});
+    });
+    }
+    else { res.json({status: "ok", data: data}); } // No includes
   });
 }
 /** Produce Chart.js stats for */
@@ -146,7 +158,7 @@ function hdl_grepo_stats(req, res) {
   let jr = {status: "err", msg: "Error producing stats out of the data. "};
   let bn = cfg.fn;
   if (!bn) { jr.msg += "No repo file given in config !"; return res.json(jr); }
-  let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  let fn = mf_abspath(bn); // `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
   manifest_load(fn, (err, data) => {
     if (err) { jr.msg += err; return res.json(jr);}
     // TODO: Stats, see 
@@ -158,6 +170,7 @@ function hdl_grepo_stats(req, res) {
 module.exports = {
   init: init,
   manifest_load: manifest_load,
+  manifest_merge: manifest_merge,
   // Web handlers
   hdl_grepo: hdl_grepo,
   hdl_grepo_stats: hdl_grepo_stats,
@@ -171,10 +184,10 @@ if (process.argv[1].match("grepo.js")) {
   mc.tilde_expand(mcfg.grepo, ["mfpath"]); // MUST expand !!!
   init(mcfg);
   let cb = (err, data) => {
-   if (err) { console.error(`Error processing: ${err}`); return; }
-   //console.error(`cb - Success`);
-   console.error(`INC:`, data.include);
-   // manifest_merge(data, () => { console.log(`Done inc.`); });
+    if (err) { console.error(`Error processing: ${err}`); return; }
+    //console.error(`cb - Success`);
+    console.error(`INC:`, data.include);
+    // manifest_merge(data, () => { console.log(`Done inc.`); });
   };
   let bn = cfg.fn || "manifest.xml";
   let fna = mf_abspath(bn); // let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
