@@ -167,7 +167,10 @@ function lsmani(p) {
     if (h) { console.log("HISTORY:"+ JSON.stringify(h, null, 2)); }
     if (p.cb) { return p.cb(null, d); }
     else { console.log(JSON.stringify(d, null, 2)); } // CLI
-  }).catch( (ex) => { console.log(`Error requesting: ${ex}`); });
+  }).catch( (ex) => {
+    console.log(`Error requesting manifest: ${ex}`);
+    if (p.cb) { return p.cb(`Error requesting manifest: ${ex}`, null); }
+  });
 }
 /* Parse History in manifest (schema 1) "history" (AoO) member.
 * Each entry (obj) is expected to be in format: {v1Compatibility}
@@ -253,7 +256,7 @@ function imgmani(req, res) {
   //p.tag = "0.0.13"; // TEST
   lsmani(p);
   function respond(err, d) {
-    if (err) { return res.json(jr); }
+    if (err) { jr.msg += `Error getting image manigest: ${err}`; return res.json(jr); }
     return res.json({"status": "ok", "data": d});
   }
 }
