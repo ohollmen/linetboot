@@ -121,7 +121,7 @@ function config(req, res) {
 }
 
 /** Create a new Empty Git repo on one of the remote servers (using SSH).
-* DO something like:
+* Do something like:
 ssh ${USER}@remhost 'cd /the/repos && git init --bare --shared=group reponame.git && chown -R $USER:www-data reponame.git'
 * ## Repo config
 * - lbl /repolbl - Short id label for repo
@@ -179,8 +179,11 @@ function createrepo (req, res) {
   var repogroup = repo.group || "users"; // e.g. www-data (for HTTP push)
   if (!repouser) { jr.msg += "No repo user to set owner (from user or repo url)"; return res.json(jr); }
   //var chown = "chown -R "+repouser+":"+repogroup + " "+reponame;
+  // NOTE/TODO: while cdcmd + gitcmd succeed, chown tends to fail (w. long list of individual file level errors):
+  // issue the the chown as serparate optional / parametrized step (See bwlow mock-up !!!)
   var chown = "chgrp -R "+repogroup+ " "+reponame;
   var cmd = "ssh "+gurl.auth+"@"+gurl.host + " '"+cdcmd +" && "+gitcmd + " && "+chown+"'";
+  // if (p.chgrp) { cmd += ` && ${chown}`; }
   var repofullname = gurlstr+reponame;
   // Possibly on client: git branch --set-upstream-to master home/master
   // ... to avoid: git push -u origin branchname
