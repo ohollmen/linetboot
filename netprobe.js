@@ -46,6 +46,8 @@ function pubkey() { return pubkey; }
 function init(popts) {
   if (inited) { return; }
   inited++;
+  //if (mcfg.netprobe) { popts = mcfg.netprobe; }
+  //else { popts = mcfg; }
   popts = popts || {};
   // MUST read in utf8 (to not get a binary buffer)
   //pkey   = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
