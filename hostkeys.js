@@ -13,7 +13,7 @@ function hostkeys_list(hostcache, cfg) {
   var keypath = process.env["LINETBOOT_SSHKEY_PATH"] || keypath_def;
   var debug = process.env["LINETBOOT_DEBUG"] || 0;
   //if () {}
-  if (!fs.existsSync(keypath)) { console.log("Keypath " + keypath + " not there.");return []; }
+  if (!fs.existsSync(keypath)) { console.log(`Keypath ${keypath} not there.`);return []; }
   var opts = {}; // withFileTypes: true
   var files = fs.readdirSync(keypath, opts);
   // Directories only
@@ -25,23 +25,29 @@ function hostkeys_list(hostcache, cfg) {
     return (isdir && hostcache[it]) ? 1 : 0;
   });
   //DEBUG: hostdirs = ["/etc/ssh/"]; // DEBUG
-  console.log("Host Dirs: ", hostdirs);
+  console.log("Host Dirs: ", hostdirs); // dirs by hostname
   // ecdsa|ed25519|rsa
   var keynamere = /^ssh_host_(\w+?)_key(.pub|)/; // 
   var keylist = [];
   hostdirs.forEach(function (it) {
-    var hk = {hname: it};
+    var hk = { hname: it };
     var files = fs.readdirSync(keypath + "/" + it, opts);
-    console.log("Initial Files: ", files);
+    console.log(`Initial Files(${it}): `, files);
     files = files.filter(function (f) {
       var m = f.match(keynamere);
       if (!m) { return false; } // Not a (matching) key file
       debug && console.log("Match:", m, "On: "+f);
       if (typeof m[2] == 'undefined') { return false; } // Empty OK
-      var suff = {"": "_priv", ".pub": "_pub"};
+      var suff = {"": "_priv", ".pub": "_pub"}; // For m[2] lookup
+      var idxmap = {"": 0, ".pub": 1 };
+      // Initial impl, e.g.: ("hname": ... , "rsa_priv": 1, "rsa_pub": 1}
       var kt = m[1] + suff[m[2]]; // Keytype + .pub / .priv
       debug && console.log("key:" + kt);
       hk[kt] = 1;
+      // NEW: Map to 0/1 for priv/pub
+      var kt2 = m[1];
+      if (!hk[kt2]) { hk[kt2] = [0, 0]; }
+      hk[kt2][idxmap[m[2]]] = 1;
     });
     // Prepare to add some explict 0's (?)
     keylist.push(hk);
@@ -54,9 +60,9 @@ function hostkeys_all_hosts(hostarr, keylist) {
   // Index keylist
   var keylist_idx = {};
   keylist.forEach(function (ke) { keylist_idx[ke.hname] = ke; });
-  var hkarr = []; // Complete list
+  var hkarr = []; // Complete list by host
   hostarr.forEach(function (he) {
-    var ent = {hname: he.ansible_fqdn}; // Default for no keys archived
+    var ent = { hname: he.ansible_fqdn }; // Default for no keys archived
     if (keylist_idx[ent.hname]) { ent = keylist_idx[ent.hname]; }
     hkarr.push(ent);
   });

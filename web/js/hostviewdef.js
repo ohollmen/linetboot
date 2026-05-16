@@ -260,14 +260,20 @@ var gridplug = {
      {name: "pcnt",     title: "# Procs", type: "number", width: 30},
      {name: "uptime",   title: "Uptime and Users", type: "text", width: 70},
      {name: "loads",    title: "Load Avg", type: "text", width: 50, visible: false},
-     {name: "loadsarr",    title: "Load Avg", type: "text", width: 50, itemTemplate: loads_cell},
-     {name: "ssherr",    title: "Probe Error (?)", type: "text", width: 100}, // 
+     {name: "loadsarr", title: "Load Avg", type: "text", width: 50, itemTemplate: loads_cell},
+     {name: "ssherr",   title: "Probe Error (?)", type: "text", width: 100}, // 
      {name: "rfop",    title: "RedFish", type: "text", width: 50, itemTemplate: redfish_cell}, // 
      {name: "proc",    title: "Proc", type: "text", width: 50, itemTemplate: procps_cell}, // visible: false
    ];
    function hkeycell(value, item) {
      // 
      return value ? "OK" : "-";
+   }
+   function hkeycell2(value, item) {
+     // <span class=""></span>
+     // <span style="color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;">Fail</span>
+     // <span style="color: #1A7A0C;">OK</span>
+     return value ? (value[0] ? "Private:OK": "---") + " / " + (value[1] ? "Public:OK": "---") : "-";
    }
    function sshkeysfetch_cell(value, item) {
      var cnt = 0;
@@ -278,16 +284,17 @@ var gridplug = {
      // Icon (TODO: Fetch/Restore). Give action name as data-op="fetch"
      return "<span class=\"sshkeyload\" data-hname=\""+item.hname+"\"><i class=\"glyphicon glyphicon-repeat\"></span>"; // -repeat -refresh
    }
+   // Old (e.g): rsa_pub, rsa_priv and "RSA Pub", "RSA Priv"
    var fldinfo_sshkeys = [
      hostfld, // Need hn ?
-     {name: "rsa_pub",     title: "RSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "rsa_priv",    title: "RSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "dsa_pub",     title: "DSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "dsa_priv",    title: "DSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ecdsa_pub",   title: "ECDSA Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ecdsa_priv",  title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ed25519_pub", title: "ED25519 Pub",  type: "text", width: 50, itemTemplate: hkeycell},
-     {name: "ed25519_priv",title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "rsa",     title: "RSA",  type: "text", width: 50, itemTemplate: hkeycell2},
+     //{name: "rsa_priv",    title: "RSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "dsa",     title: "DSA",  type: "text", width: 50, itemTemplate: hkeycell2},
+     //{name: "dsa_priv",    title: "DSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ecdsa",   title: "ECDSA",  type: "text", width: 50, itemTemplate: hkeycell2},
+     //{name: "ecdsa_priv",  title: "ECDSA Priv", type: "text", width: 50, itemTemplate: hkeycell},
+     {name: "ed25519", title: "ED25519",  type: "text", width: 50, itemTemplate: hkeycell2},
+     //{name: "ed25519_priv",title: "ED25519 Priv", type: "text", width: 50, itemTemplate: hkeycell},
      // TODO: Make sure right action occurs. Seems some Fetch restored ... glyphicon glyphicon-share-alt
      // glyphicon glyphicon-circle-arrow-left glyphicon glyphicon-circle-arrow-right
      // glyphicon glyphicon-save
@@ -1361,6 +1368,7 @@ function riskadj_cell(val, item) {
     { "name": "Sunrise",   "title": "Sunrise",    "type": "text", "width": 7,  "itemTemplate": null },
     { "name": "Sunset",    "title": "Sunset",     "type": "text", "width": 7,  "itemTemplate": null }
    ];
+   function mflbl_cell(val, item) { return val ? val: "Root"; }
    function ossproj_cell(val, item) {
      return val ? `<a href="${val}" title="${val}" target="oss_tab"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span></a>` : "";
      //  // ok-sign/ok-circle
@@ -1393,6 +1401,7 @@ function riskadj_cell(val, item) {
    // https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
    // Others: upstream, groups(csv), upstream(git ref, typ branch), dest-branch, clone-depth, clone-filter, force-path
 var fldinfo_repo_proj = [
+  { "name": "mflbl", "title": "MFLbl", "type": "text", "width": 5, "itemTemplate": mflbl_cell },
   { "name": "name", "title": "Project Name", "type": "text", "width": 20 }, // 150
   { "name": "path", "title": "Checkout Path", "type": "text", "width": 25 }, // 200
   // ossproj
