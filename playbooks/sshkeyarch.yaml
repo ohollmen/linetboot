@@ -1,5 +1,5 @@
 # Notes:
-# 
+# - Hostkeys in `/etc/ssh` are accessible: Public keys: read by anybody, Secret keys: rea
 # - {{ ansible_user_id }} with become is root (except > 2.8.3)
 # - This playbook requires also passwordless reverse connectivity (from ansible remote host to ansible running host)
 #   - Depends on earlier ssh-copy-id (See e.g. sshcopyid.yaml)
@@ -28,24 +28,26 @@
     #    state: touch
     #  delegate_to: localhost
     # Note: Some dirs (ones other than ansible host) do not get created
-    - name: Create key dir for host
+    - name: Create local key dir for host
       file:
         path: '{{ keyarchpath }}/{{ inventory_hostname }}'
         state: directory
         owner: '{{ keyuser }}'
         # group: '{{ keygroup }}'
       delegate_to: localhost
+      become: false
     # 
     - name: Register Name of current host
       shell: 'hostname -f'
       register: hostnameinfo
       delegate_to: localhost
+      become: false
     #- name: run cmd
     #  #shell: echo "{{ inventory_hostname }}"
     #  shell: 'cat {{ sshdir }}/ssh_host_rsa_key'
     #  register: 'sshkey'
     # Then (after) use: with_items: "{{ keylist.stdout_lines }}"
-    - name: list keys
+    - name: List keys on remote host
       shell: 'ls {{ sshdir }}/ssh_host*'
       register: keylist
     #- name: Store RSA Locally
@@ -57,6 +59,20 @@
     #    mode: 0600
     #  delegate_to: localhost
     #  #when: 0
-    - name: Sync Keys (push) form remote to local
-      shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath }}/{{ inventory_hostname }}'
-      #when: 0
+    #- name: Copy Keys (push) form remote to local
+    #  shell: 'rsync -v {{ sshdir }}/ssh_host* {{ thisuser }}@{{ hostnameinfo.stdout }}:{{ keyarchpath }}/{{ inventory_hostname }}'
+    #  #when: 0
+    - name: Copy Keys (ansible copy) from remote to local host
+      # Note: src: under /tmp works, but not under home / NFS
+      copy:
+        # src: '{{ sshdir }}/ssh_host*'
+        src: '{{item}}'
+        # Leave out trailing '/' to succeeed
+        dest: '{{ keyarchpath }}/{{ inventory_hostname }}'
+        owner: '{{thisuser}}'
+        #group: '{{keygroup}}'
+        mode: '0644'
+        remote_src: yes
+      with_fileglob:
+        - '{{sshdir}}/ssh_host*'
+

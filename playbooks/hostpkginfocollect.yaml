@@ -5,7 +5,7 @@
 # ansible-playbook ... -e "destpath=$HOME/hostpkginfo"
 # ```
 - name: Collect Package List/Metainfo from Hosts
-  become: yes
+  # become: yes
   hosts: '{{ host }}'
   vars:
     destpath: '/tmp/hostpkginfo'
