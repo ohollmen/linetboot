@@ -15,21 +15,21 @@
 "use strict;";
 var fs = require("fs");
 var fact_path; // Module-global facts path config populated from mcfg.fact_path at init()
-var colls;
+var colls; // Object w. hostcache, hostarr , hostnames, groups (OoO)
 var debug = 0;
 /** Initialize host loader module.
  * 
-* @param global {object} - Main config (for e.g. fact_path)
+* @param mcfg {object} - Main config (for e.g. fact_path)
 * @param gcolls {object{} - Host collections (hostcache, hostarr, groups).
 * 
 */
-function init(global, gcolls) {
+function init(mcfg, gcolls) {
   // TODO: Store whole global config.
-  fact_path = global.fact_path;
+  fact_path = mcfg.fact_path;
   if (!fact_path) { console.log("hlr.init: No fact path given - can't continue without it..");process.exit(1);}
   colls = gcolls || {hostcache: {}, hostarr: [], hostnames: [], groups: {} };
   if (!module.exports.colls) { module.exports.colls = colls; } // Lazy-assign
-  debug = global.debug || 0;
+  debug = mcfg.debug || 0;
   // return module.exports; // ?????
 }
 /** Load Ansible (GCP) JSON dynamic inventory file.
@@ -111,7 +111,7 @@ function hosts_load(global) {
   // Line oriented text file. Renamed hnames => hlines
   if (hfn) { hlines = hostsfile_load(hfn); }
   if (!hlines || !Array.isArray(hlines)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
-  debug && console.error(hlines.length + " Hostlines (before parsing):", hlines); // global.debug && ...
+  (debug > 3) && console.error(hlines.length + " Hostlines (before parsing):", hlines); // global.debug && ...
   // Allow easy commenting-out as JSON itself does not have comments.
   // Possibly Use /^\s+/ instead of /^\s*$/ to eliminate *any* line with space in front of it.
   hlines = hlines.filter(function (hn) { return (! hn.match(/^#/)) && (! hn.match(/^\s*$/)); }); // OLD: ^(#|\[)/ - keep [...] in and handle later
@@ -198,7 +198,7 @@ function hosts_load(global) {
     var hn = hent.hn;
     //global.hostparams[hn] = hent.p; // original (Bad)
     colls.hostparams[hn] = hent.p; // Module encapsulated
-    debug && console.log("HN:" + hn);
+    (debug > 3) && console.log("HN:" + hn);
     if (curr_g) {
       groups[curr_g].push(hn);
       // TODO: Post-process this *after* parsing
@@ -249,7 +249,7 @@ function hosts_load(global) {
       hnames.forEach((hn) => {
         // Make sure colls.hostparams[hn] is object
         colls.hostparams[hn] = colls.hostparams[hn] || {};
-        debug && console.log("Assigning group vars for group "+gn+"");
+        (debug > 3) && console.log("Assigning group vars for group "+gn+"");
         Object.keys(gvs).forEach((varkey) => {
           if (colls.hostparams[hn][varkey]) { return; } // Do not override ! Consider: != undefined ?
           colls.hostparams[hn][varkey] = gvs[varkey];
@@ -638,3 +638,27 @@ module.exports = {
   // Hosts collections (!)
   colls: colls
 };
+// TODO: Add functinality to statistify facts
+if (process.argv[1].match(/\hostloader.js$/)) {
+  var yaml   = require('js-yaml');
+  // let mcfg = mainconf_load(mcfgfn);
+  let hfn = `${process.env['HOME']}/.linetboot/hosts`;
+  let fact_path = `${process.env['HOME']}/.linetboot/hostinfo`;
+  let hlr = module.exports;
+  //let hdata = hostsfile_load(hfn); // ret. string !
+  let hcfg = { fact_path: fact_path, hostsfile: hfn};
+  hlr.init(hcfg);
+  // Adds inventory to cfg.hostparams
+  let hostarr = hlr.hosts_load(hcfg);
+  if (!hostarr) { console.log(`No hosts loaded !`); process.exit(1); }
+  let ycfg = null;
+  // Note: These are array-of-hostnames only !!!
+  //console.log(hostarr);
+  //console.log(yaml.dump(hostarr, ycfg));
+  // Note: The real *full* inverntory is in hcfg.hostparams
+  // Same as colls.hostparams
+  //console.log(yaml.dump(hcfg.hostparams, ycfg));
+  // Also: colls.hostnames
+  // Complete colls
+  console.log(`COLLS:\n`+yaml.dump(colls, ycfg));
+}
