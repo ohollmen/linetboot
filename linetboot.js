@@ -349,6 +349,7 @@ function app_init() { // mcfg
   app.get("/kubinfo", kubi.kube_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
+  app.get("/gh_teams", gh_projs); // overload
   app.get("/gl_projs", gl_projs);
   // 
   app.get("/cflpage",    cfl.confluence_page);
