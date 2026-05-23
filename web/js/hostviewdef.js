@@ -35,6 +35,19 @@ var gridplug = {
   as_yaml: (val, item) => {
     if (!windows.jsyaml) { return `<pre><small>${JSON.stringify(val, null, 2)}</small></pre>`; }
     return(`<pre><small>${jsyaml.dump(val)}</small></pre>`);
+  },
+  // Extract (LDAP "reverse") basename (i.e. leftmost comp. in the string)
+  ldap_dn_bn: (val, item) => {
+    if (!val) { return `???`; }
+    let comps = val.split(',', 2);
+    if (!comps || !comps[0]) { return `???/2`; }
+    return comps[0].trimEnd();
+  },
+  ldap_multival: (val, item) => {
+    if (!val) { return ``; }
+    if (!Array.isArray(val)) { return ''; } // Show scalar / single value ?
+    //return val.map( (v) => { return `<span>${v}</span>`;}).join(' ');
+    return val.join(', ');
   }
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
@@ -48,7 +61,7 @@ var gridplug = {
    }
    function rotcell(value, item) {
      if (typeof value == 'undefined' || value === "") { return "??"; }
-     if (value == "1") { return("HDD");}
+     if (value == "1") { return("HDD"); }
      return "SSD";
    }
    function tscell(value, item) {
@@ -458,8 +471,11 @@ var gridplug = {
      {name: "size",      title: "Image Size",  type: "text", width: 10, },
    ];
    function uname_cell(val, item) {
-     return "<span class=\"unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</span>";
+     //return "<span class=\"unamecell\" data-uid=\""+item.sAMAccountName+"\">"+val+"</span>";
+     // +item.sAMAccountName+
+     return `<span class="unamecell" data-uid="${item.uid}">${val}</span>`;
    }
+   // See also (tmpl): lduser
    var ldinfo_ldad = [
     // itemTemplate: ...
     {name: "givenName", title: "First Name", type: "text", width: 40, visible: false},
@@ -482,6 +498,39 @@ var gridplug = {
     {name: "postalCode", title: "Area/Zip", type: "text", width: 40, visible: false},
     // Manager
     {name: "manager", title: "Manager", type: "text", width: 40, visible: false},
+    //{name: "memberOf", title: "Member of", type: "text", width: 40, visible: false},
+    // POSIX:
+    //{name: "homeDirectory", title: "Home Directory", type: "text", width: 40, visible: false},
+    //{name: "gecos"          title: "Description", type: "text", width: 200, visible: false},
+    //{name: "uidNumber"      title: "UID Num.", type: "text", width: 30, visible: false},
+    //{name: "gidNumber"      title: "GID Num.", type: "text", width: 30, visible: false},
+    //{name: "loginShell"     title: "Shell", type: "text", width: 80, visible: false},
+   ];
+   function mail_cell(val, item) { return `${val[0]}`;}
+   var ldinfo_ldad2 = [
+    // itemTemplate: ...
+    {name: "givenName", title: "First Name", type: "text", width: 40, visible: false},
+    {name: "sn", title: "Last Name", type: "text", width: 40, visible: false},
+    {name: "fullName", title: "Name", type: "text", width: 80, itemTemplate: uname_cell}, // displayName
+    {name: "uid", title: "Username", type: "text", width: 40}, // sAMAccountName
+    //{name: "uid", title: "Username (UNIX)", type: "text", width: 40, visible: false},
+    {name: "mail", title: "Email Address", type: "text", width: 70, itemTemplate: mail_cell }, // Need cb (multival)
+    //{name: "title", title: "title", type: "text", width: 60},
+    {name: "employeeNumber", title: "Emp #", type: "text", width: 40, visible: false},
+    {name: "departmentNumber", title: "Division / Dept", type: "text", width: 20}, // division
+    //{name: "telephoneNumber", title: "Phone", type: "text", width: 100, visible: false},
+    // Locality
+    // {name: "streetAddress", title: "Street Address", type: "text", width: 40, visible: false},
+    {name: "l", title: "City/Town", type: "text", width: 40, visible: true},
+    {name: "st", title: "State/County", type: "text", width: 40, visible: true}, // NA
+    {name: "c", title: "Country", type: "text", width: 40}, // co (in some)
+    // Needs parsing (;)
+    //NA-HERE: {name: "postalAddress", title: "Complete Post Address", type: "text", width: 40, visible: false},
+    {name: "postalCode", title: "Area/Zip", type: "text", width: 40, visible: false}, // NA
+    {name: "roomNumber", title: "Room #", type: "text", width: 7, visible: true},
+    // Manager
+    {name: "manager", title: "Manager", type: "text", width: 40, visible: false},
+    // employeeType, departmentNumber, roomNumber
     //{name: "memberOf", title: "Member of", type: "text", width: 40, visible: false},
     // POSIX:
     //{name: "homeDirectory", title: "Home Directory", type: "text", width: 40, visible: false},
@@ -948,28 +997,68 @@ function ibip_cell(val, item) {
      {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 10},
      
    ];
-   // User/Organization site, Project sites
+   // User/Organization site, Project sites. For links use item.full_name first part (org/repo) item.owner.login ?
    // https://pages.github.com/
    function gh_pages_url_cell(val, item) {
      if (!val) { return ""; }
      // Username from item
      var un = item.owner ? item.owner.login : "";
      if (!un) { return "???"; }
-     return "https://"+un+".github.io/"+item.name;
+     return `https://${un}.github.io/${item.name}`;
+   }
+   function gh_repolink_cell(val, item) {
+    return `<a href="${item.html_url}" title="${item.html_url}" target="gh_html_page">${val}</a>`;
+   }
+   // See _url items in repo object. Note: Direct links would be subject to either API ratelimit OR Auth.
+   // TODO: Work around the limits by auth.
+   function gh_repo_misc(val, item) {
+    return ['url', 'teams_url', 'tags_url'].map( (uk) => {
+      let k = 'url';
+      //let m = uk.match(/^((url)|([a-z]+)_url)$/);
+      let m = uk.match(/^(\w+?)_url$/);
+      if (m) { k = m[1]; }
+      return `<a href="${item[uk]}" class="menuactive" target="gh_extra_url" style="color: white;">${k}</a> `; // (${m.length})
+    }).join(' ');
+   }
+   // Create table cell with styled label/tag "bubbles" (TODO: How to define color ?) from an array
+   function tag_cell(val, item) {
+     if (!Array.isArray(val)) { return "??? (NanA)"; }
+     // TODO: Use class="..." / style from flddef ???
+     // <span style="color: white; background-color: #B42424;display: block; Xwidth: 100%;padding: 2px; border-radius: 3px;">Fail</span>
+     return val.map( (it) => { return ` <span style="color: white; background-color: #B42424; font-weight: bold; border-radius: 3px; padding: 0px 3px; margin-right: 3px">${it}</style> `; });
    }
    var fldinfo_gh_projs = [
      {"name": "id",          "title": "Repo ID",   type: "number", width: 7},
-     {"name": "name",        "title": "Repo Name", type: "text",   width: 15}, // name or full_name
+     {"name": "name",        "title": "Repo Name", type: "text",   width: 15, itemTemplate: gh_repolink_cell}, // name or full_name
      // 
      {"name": "description", "title": "Description", type: "text", width: 45},
      {"name": "language",    "title": "Language",    type: "text", width: 7},
-     {"name": "html_url",    "title": "URL",        type: "text", width: 30},
+     //{"name": "html_url",    "title": "URL",        type: "text", width: 30}, // TODO: combine for link w. "id" or "name"
      {"name": "fork",        "title": "Is Fork ?",  type: "text", width: 5}, // bool
      {"name": "created_at",  "title": "Created",    type: "text", width: 10, itemTemplate: gridplug.isodate},
+     // TODO: Turn to cover Misc subsystems: Pages, Users, Groups, Issues, Tags, ...
+     // URL:s to these are the "*_url" items (w. path /repos/{org}/{repo}/{area}) in repo ent. (api URLs)
      {"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},
-     {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12},
-     //{"name": "html_url",     "title": "URL",    type: "text", width: 25},
+     {"name": "miscinfo",   "title": "Repo Related ...",   type: "text", width: 25, itemTemplate: gh_repo_misc},
+     {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12}, // Link to other branches ?
+     {"name": "topics",      "title": "Topics",    type: "text", width: 25, itemTemplate: tag_cell},
+     // Note: visibility is redundant on github.com public repos
+     {"name": "visibility",  "title": "Visibility",    type: "text", width: 25, itemTemplate: null},
+     //{"name": "",     "title": "",    type: "text", width: 25},
      
+   ];
+   // GH teams (for /api/v3/repos/${org}/${repo}/teams)
+   function gh_memurl_cell(val, item) { return val; }
+   var fldinfo_gh_teams = [
+    {name: "id",      title: "ID", type: "text", width: 5, itemTemplate: null},
+    {name: "name",    title: "Name", type: "text", width: 12, itemTemplate: null},
+    {name: "slug",    title: "ID Label", type: "text", width: 12, itemTemplate: null}, // auto-gen
+    {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
+    {name: "privacy", title: "Privacy", type: "text", width: 25, itemTemplate: null},
+    {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
+    {name: "members_url", title: "Mems", type: "text", width: 25, gh_memurl_cell: gh_memurl_cell}, // Link !
+    {name: "permission" , title: "Perms", type: "text", width: 25, itemTemplate: null}, // admin, push, pull
+    {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
    // High similarity to GitHub
    var fldinfo_gl_projs = [
@@ -1430,6 +1519,33 @@ var fldinfo_repo_remote =[
   { "name": "fetch", "title": "Fetch URL", "type": "text", "width": 26,  }, // "validate": "required"
   { "name": "review", "title": "Code Review URL", "type": "text", "width": 22 },
 ];
+function builds_cell(val, item) {
+  return val.map( (b) => {
+    return `<a href="${b.url}" target="buildpane" class="menuactive">${b.number}</a>`;
+  }).join(', ');
+}
+let fldinfo_jjob = [
+  {name: "displayName", label: "Name", type: "text", width: 20, itemTemplate: null}, // In JSON this is 2nd
+  {name: "description", label: "Description", type: "text", width: 20, itemTemplate: null},
+  // displayNameOrNull, fullDisplayName, fullName, name
+  {name: "url", label: "URL", type: "text", width: 20, itemTemplate: null}, // visible: false
+  {name: "buildable", label: "Buildable", type: "text", width: 20, itemTemplate: null}, // true/false
+  // AoO w. _class, number,url (depth=1)
+  // TODO: Color these based on last*Build ?
+  {name: "builds", label: "Builds", type: "text", width: 20, itemTemplate: builds_cell}, // 
+  {name: "color", label: "Color", type: "text", width: 20, itemTemplate: null}, // blue, red, 
+  // AoO description (e.g. Build stability: 1 out of the last 5 builds failed.), iconClassName, iconUrl, score (e.g. 80, 100)
+  {name: "healthReport", label: "Health", type: "text", width: 20, itemTemplate: null},
+  {name: "inQueue", label: "In-Queue", type: "text", width: 20, itemTemplate: null},
+  // lots of _last*Build fields (1 object)
+  {name: "nextBuildNumber", label: "NextBN", type: "text", width: 20, itemTemplate: null}, // visible: false ?
+  // Has AoO, which has one item for parameters:  "_class": "hudson.model.ParametersDefinitionProperty", "parameterDefinitions": [...]
+  // w. description, name, type, choices: []
+  //{name: "property", label: "Property", type: "text", width: 20, itemTemplate: null},
+  {name: "concurrentBuild", label: "Conc.Bld.", type: "text", width: 20, itemTemplate: null}, // true / false
+  {name: "disabled", label: "Disable?", type: "text", width: 20, itemTemplate: null},
+  {name: "downstreamProjects", label: "DonwnstreamProj.", type: "text", width: 20, visible: false, itemTemplate: null}, // A or AoO ?
+];
    // copyfile
    //[{ "name": "src", "title": "Source Path", "type": "text", "width": 220, "validate": "required" },
    //{ "name": "dest", "title": "Destination Path", "type": "text", "width": 220, "validate": "required" }]
@@ -1440,18 +1556,21 @@ var fldinfo_repo_remote =[
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
-      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia, "ldad": ldinfo_ldad,
+      "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia,
+      "ldad": ldinfo_ldad, "ldad2": ldinfo_ldad2,
       "iblox":  fldinfo_iblox, "ibnets": fldinfo_ibnets, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss, "kubnodes": fldinfo_kub_nodes,
       "gerr_change": fldinfo_gerr_change,
-      "ghprojs": fldinfo_gh_projs, "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
+      "ghprojs": fldinfo_gh_projs, "ghteams": fldinfo_gh_teams,
+      "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
       "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
-      "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote, 
+      "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote,
+      "jjob": fldinfo_jjob,
    };
    
