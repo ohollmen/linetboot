@@ -336,10 +336,19 @@ function env_merge(global) {
   if (process.env["LINETBOOT_GITHUB_ORG"])    {
     stub("github"); var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
     global.github.org = orgstr ? orgstr.split(/,/) : [];
+    //strarray_set(global.github, "org", process.env["LINETBOOT_GITHUB_ORG"]);
   }
   if (process.env["LINETBOOT_GIT_BAREROOT"])  { stub("deployer"); global.deployer.bareroot = process.env["LINETBOOT_GIT_BAREROOT"]; }
   // Fake fact hosts CVS filename
   if (process.env["LINETBOOT_NEWHOSTS"])  {  global.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
+  // unipass support by "$UNIPASS"
+  if (process.env.LINETBOOT_UNIPASS) {
+    let unipass = process.env.LINETBOOT_UNIPASS;
+    Object.keys(mcfg).forEach( (k) => {
+      let pass = mcfg[k].pass;
+      if (pass && pass.match(/^\$UNIPASS$/)) { mcfg[k].pass = unipass; }
+    });
+  }
   // Create sub-config object stub under main config
   function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
 }
@@ -374,7 +383,14 @@ function tilde_expand(obj, keyarr) {
     }
   });
 }
-
+// Split an overriding CSV-string to array components to override property (prop) in object (obj).
+function strarray_set(obj, prop, str) {
+  if (!obj || !prop || !str) { return; } // console.log(``);
+  let arr = str.split(',');
+  // Allow setting to empty array ?
+  if (!arr.length) { return; } // obj[prop] = [] ???
+  obj[prop] = arr;
+}
 module.exports = {
   mainconf_load: mainconf_load,
   user_load: user_load,
