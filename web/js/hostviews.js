@@ -657,6 +657,9 @@ var tabloadacts = [
   {"name": "Git Repo Remotes", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
     gridid: "jsGrid_grepo_remote", fsetid: "repo_remote",
     path: "grepo_remote", uisetup: null, dialogid: "", datapath: "remote", tpcb: grepo_tpcb},
+  {"name": "Jenkins Jobs", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/jenkins_jobs",
+    gridid: "jsGrid_jjob", fsetid: "jjob",
+    path: "jjobs", uisetup: null, dialogid: "", datapathXX: "remote", tpcb: null}, // grepo_tpcb
 ];
 
 function hcliusage_urlpara(ev, an) {
