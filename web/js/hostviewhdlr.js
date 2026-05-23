@@ -1745,25 +1745,63 @@ function jgrid_fielddefs(ev, act) {
 function ghprojs_uisetup(act, data) {
   var k = "ghorgs"; // 
   if (act.path == 'glprojs') { k = "glorgs"; }
-  var fs = datasets.cfg[k]; // datasets.cfg.docker.files;
-  console.log("ghprojs_uisetup ..."+ fs);
-  //console.log("Got Action: ", act);
-  var cont = "";
+  var fs = datasets.cfg[k]; // From /config. Similar to: datasets.cfg.docker.files;
+  console.log(`ghprojs_uisetup ...${fs}`);
+  if (!datasets.cfg[`${k}_active`]) { datasets.cfg[`${k}_active`] = fs[0]; }
   // toastr.info(fs);
-  fs.forEach((name) => { cont += "<span class=\"vmglink mpointer\" data-dcfn=\""+name+"\">"+name+"</span>\n"; });
-  $(".xui").html(cont);
+  //console.log("Got Action: ", act);
+  // Generate menu. itemsel: By class (additional non-homogen items) or elem type (all homogenous)
+  let menucfg = {wrapsel: '.xui', itemsel: ".mitem", elmod: (el) => { el.classlist.remove('menuactive'); }, }; // dset: datasetter => elmod
+  // ... urltmpl: `${act.url}?org=${val}`, // cb (???) => {} ? Should have val available: el, act, val
+  function menu_createmenu() {
+    var cont = "";
+    fs.forEach((name) => { cont += `<span class="vmglink mpointer" data-dcfn="${name}">${name}</span>\n`; });
+    $(".xui").html(cont);
+    //let outel = document.querySelector(`.xui`); // ${menucfg.wrapsel}
+    menu_setactive(datasets.cfg[`${k}_active`]);
+  }
+  //if (menu_hasmenu() ) {} // Always blank slate !
+  //else { console.log("No menu found. Create it !");
+  menu_createmenu(); // menu_setactive(fs[0]); // }
+  
+  // for (let i = 0, len = items.length; i < len; i++) { items[i].style.display = 'block'; }
+  // let theactive = document.querySelectorAll('[data-status="active"]');
+  // More complex logic:
+  //const allItems = Array.from(document.querySelectorAll('.item'));
+  //const filtered = allItems.filter(el => el.dataset.count > 10);
+  // data attrs are always string. to work around: el._jparsed = JSON.parse(el.dataset.jsoncfg || '{}');
+  // .. will not show in HTML source code, will not surv. page refresh.
   // $(".xui").html("Hello !"); // OK
-  $(".xui").show();
+  $(".xui").show(); // Aff. display .. window.getComputedStyle(element); element.style.display = "...". ALT: element.setAttribute('style', ...)
+  //let active_dcfn = fs[0];
+  
   // TODO: Must inject parameters to event (that should be accounted for by simplegrid_url)
   $(".vmglink").click(function (jev) {
     //toastr.info("Click on "+Object.keys(jev));
-    toastr.info("Show projects of Org/User "+this.dataset.dcfn);
-    // TODO: Grab this from original act ? act.hdlr
+    toastr.info(`Show projects of Org/User: ${this.dataset.dcfn}`);
+    active_dcfn = this.dataset.dcfn;
+    datasets.cfg[`${k}_active`] = active_dcfn;
+    // TODO: Grab this from original act (passed here as 2nd) ? act.hdlr
     // Because this does no go through router pre-handler, we must set viewtgtid manually
     // TODO: High level imperative routing that consults pre-handler. Existing method ?
     jev.viewtgtid = "routerdiv";
     simplegrid_url(jev, act);
+    //menu_setactive(active_dcfn);
   });
+  
+  function menu_setactive(thename) {
+    let mitems = document.querySelectorAll(`${menucfg.wrapsel} > ${menucfg.itemsel}`);
+    for (const el of mitems) { menucfg.elmod(el); } // .toggle()
+    let el = document.querySelector(`[data-dcfn="${thename}"]`);
+    el.classList.add(`menuactive`);
+  }
+  // Check if menu has been intialized
+  function menu_hasmenu() { /// menucfg
+    let themenu = document.querySelector(`${menucfg.wrapsel}`);
+    if (!themenu) { console.error(`Menu wrapper '${menucfg.wrapsel}' could not be found (to see it's inner...)`); return 0; } // Error: throw ?
+    return themenu.innerHTML ? 1 : 0;
+
+  }
 }
 // Like docker / dcomposer_uisetup
 // dsattr, cfgattr (array in datasets.cfg[...] or getter cb), (url)parakey
@@ -1775,8 +1813,10 @@ function ghprojs_urlpara(ev, act) {
   var ds = ev.target.dataset;
   if (ds && ds.dcfn) { val = ds.dcfn; }
   if (!val && datasets.cfg[ckey]) { val = datasets.cfg[ckey][0]; }
+  // Maintain global state (for now it is done this way)
+  datasets.cfg[`${ckey}_active`] = val;
   //return "fn="+dcfn; // OLD: params only
-  return act.url + "?org="+val; // NEW: Resp. for whole URL
+  return `${act.url}?org=${val}`; // NEW: Resp. for whole URL
 }
 
 function certsys_uisetup(act, data, ev) {
