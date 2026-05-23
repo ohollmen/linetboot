@@ -331,7 +331,7 @@ function app_init() { // mcfg
   app.get("/bs_statuses", bootables_status);
   app.get("/recipes_dump", osinst.recipes_view);
   
-  app.get("/jenkins_jobs", jenkins_jobs);
+  app.get("/jenkins_jobs", jenkins_jobs); // jenkins.js, jnk.jenkins_jobs
   app.get("/deploy", deployer.deploy); // /deploy/:proj/:dlbl (This would pop. q.params)
   app.post("/deploy", deployer.deploy);
   app.get("/bares", deployer.barerepos_list); // 24-02
@@ -3084,17 +3084,15 @@ function jenkins_jobs(req, res) {
   var jcfg = global.jenkins;
   var jr = {status: "err", msg: "Failed to get Jenkins jobs. "};
   if (!jcfg) { jr.msg += "No Jenkins config."; return res.json(jr); }
-  // TODO: https !!!
-  //var url = "http://"+jcfg.user+":"+jcfg.pass+"@"+jcfg.host+"/api/json?pretty=true";
   var usch = jcfg.ssl ? "https" : "http";
-  var url = usch +"://"+jcfg.host+"/api/json?pretty=true"; // &depth=N (0,1,2,3)
+  var url = `${usch}://${jcfg.host}/api/json?depth=1&pretty=true`; // &depth=N (0,1,2,3)
   // Job name gotten from jobs[N].name (--data => application/x-www-form-urlencoded)
   // Note: Name may be *long* (with multiple paths steps), not just simple \w+ token.
   // /job/JOB_NAME/build?token=TOKEN_NAME (Go to build, Auth... Token: ...)
   // Still GET, params passed in GET query URL
   // /job/JOB_NAME/buildWithParameters --data id=123 --data verbosity=high (or --form key=@file)
   // --form => multipart/form-data
-  console.log("Concluded URL: "+ url);
+  console.log(`Concluded URL: ${url}`);
   var opts = {"headers": {"Authorization": ""}};
   cfl.add_basic_creds(jcfg, opts);
   //console.log("Call Jenkins w-opts:", opts); // return;
@@ -3167,10 +3165,10 @@ function hosthier(req, res) {
 // Kube Info was here
 
 
-/** Allow viewing GH projects for single org.
+/** View GH projects for single org (/gh_projs).
  * https://docs.github.com/en/rest/overview/resources-in-the-rest-api
- * GitLab
- * https://docs.gitlab.com/ee/api/
+ * Examples:
+ * - Replace all topics: PUT /repos/{owner}/{repo}/topics
  */
 function gh_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GH Projects."};
@@ -3184,29 +3182,44 @@ function gh_projs(req, res) {
   if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
   else { org = ghcfg.org[0]; }
   if (!org) { jr.msg += "No GH Org resolved."; return res.json(jr); }
-  console.log("Show org: "+org);
-  var url = "https://"+ghcfg.url+"/";
-  let apistart = "users";
+  // Optional repo for repo teams/groups ACL query
+  let repo = req.query.repo;
+  console.log(`Show org: ${org}`);
+  var url = `https://${ghcfg.url}/`;
+  let apistart = "users"; // Public github.com w. host: api.gihub.com
   if (ghcfg.ent) { url += "api/v3/"; apistart = 'orgs'; }
+  // For github.com priv. repos this should be: https:/api.github.com/user/repos ???
   url += `${apistart}/${org}/repos`; // "users/" On public repo only ? GHE Must have "orgs/" to work uniformally
+  // Overload: allow to also handle /gh_teams. Need orgid=... and 
+  // Members: https://${ghcfg.url}/api/v3/organizations/${orgidnum}/team/${teamidnum}}/members
+  if ((req.url == '/gh_teams') && (ghcfg.ent)) {
+    if (!repo) { jr.msg += `No repo param. passed for ACL teams query`; console.log(jr.msg); return res.json(jr); }
+    url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
+  // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
+  // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
+  // W. token priv repo on github.com will: 1) users/ - ret [], 2) orgs/ ret 404 (Not found)
+  // /search/repositories?q=user:USERNAME - will return repos (!?) "visibility": "private",
   console.log("Final URL: "+url);
   var opts = {};
-  if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; }
+  if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; console.log(`Using token: ${ghcfg.token.length} B`); }
   // page=2&per_page=100
   //if (ghcfg.pgsize) { // Not: ghcfg.ent
     opts.params = { per_page: 100 };
   //}
+  //ghcfg.debug = 2;
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
-    if (Array.isArray(d)) { console.log("Got "+d.length+" repos"); }
+    if (Array.isArray(d)) { console.log("Got "+d.length+" repos (or teams)"); }
+    if (ghcfg.debug > 1) { console.log(d); }
     res.json({status: "ok", data: d});
   })
-  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
+  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; console.log(jr.msg); res.json(jr); });
 }
 
 /** View projects for single GitLab group (~org).
  * We call GitLab Groups "Orgs" in the code to retain similarity to GitHub.
  * Members: https://docs.gitlab.com/ee/api/members.html /groups/:id/members and /projects/:id/members
+ * GitLab API: https://docs.gitlab.com/ee/api/
  */
 function gl_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GL Projects."};
@@ -3216,6 +3229,7 @@ function gl_projs(req, res) {
   var org = '';
   if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
   else { org = ghcfg.org[0]; }
+  if (!org) { jr.msg += "No GL Org resolved."; return res.json(jr); }
   console.log("Show org: "+org);
   var url = "https://"+ghcfg.url+"/";
   // https://gitlab.com/api/v4/users?username=<username-here>
