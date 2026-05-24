@@ -1062,13 +1062,13 @@ function ibip_cell(val, item) {
    function gh_memurl_cell(val, item) { return val; }
    var fldinfo_gh_teams = [
     {name: "id",      title: "ID", type: "text", width: 5, itemTemplate: null},
-    {name: "name",    title: "Name", type: "text", width: 12, itemTemplate: null},
-    {name: "slug",    title: "ID Label", type: "text", width: 12, itemTemplate: null}, // auto-gen
+    {name: "name",    title: "Name", type: "text", width: 20, itemTemplate: null},
+    {name: "slug",    title: "ID Label", type: "text", width: 15, itemTemplate: null}, // auto-gen
     {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
-    {name: "privacy", title: "Privacy", type: "text", width: 25, itemTemplate: null},
+    {name: "privacy", title: "Privacy", type: "text", width: 10, itemTemplate: null},
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
     //{name: "members_url", title: "Mems", type: "text", width: 25, gh_memurl_cell: gh_memurl_cell}, // Link !
-    {name: "permission" , title: "Perms", type: "text", width: 25, itemTemplate: null}, // admin, push, pull
+    {name: "permission" , title: "Perms", type: "text", width: 8, itemTemplate: null}, // admin, push, pull
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
    // High similarity to GitHub
