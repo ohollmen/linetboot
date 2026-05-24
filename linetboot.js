@@ -3193,9 +3193,11 @@ function gh_projs(req, res) {
   url += `${apistart}/${org}/repos`; // "users/" On public repo only ? GHE Must have "orgs/" to work uniformally
   // Overload: allow to also handle /gh_teams. Need orgid=... and 
   // Members: https://${ghcfg.url}/api/v3/organizations/${orgidnum}/team/${teamidnum}}/members
-  if ((req.url.startsWith('/gh_teams')) && (ghcfg.ent)) { // Note: Url has query params, i.e. not: req.url == '/gh_teams'
+  if (req.url.startsWith('/gh_teams')) { // Note: Url has query params, i.e. not: req.url == '/gh_teams'   && ()
     if (!repo) { jr.msg += `No repo param. passed for ACL teams query`; console.log(jr.msg); return res.json(jr); }
-    url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
+    if (ghcfg.ent) { url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
+    else { url = `https://${ghcfg.url}/repos/${org}/${repo}/teams}`; }
+  }
   // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
   // W. token priv repo on github.com will: 1) users/ - ret [], 2) orgs/ ret 404 (Not found)
