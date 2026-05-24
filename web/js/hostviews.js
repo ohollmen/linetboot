@@ -764,8 +764,11 @@ function gendialog(ev, act) {
   // New special - Use hdlr and other CBs from act ! Must give dialog as view to operate on !
   if (act.useact) {
     ev.viewtgtid = act.dialogid; // Make dialog the view !
-    act.hdlr(ev, act);
     var diael = document.getElementById(act.dialogid);
+    // Wipe out dialog contents - previous view may be there !
+    diael.innerHTML = '';
+    act.hdlr(ev, act);
+    
     rundialog(diael);
     return;
   }
