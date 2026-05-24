@@ -1000,11 +1000,19 @@ function ibip_cell(val, item) {
    // User/Organization site, Project sites. For links use item.full_name first part (org/repo) item.owner.login ?
    // https://pages.github.com/
    function gh_pages_url_cell(val, item) {
-     if (!val) { return ""; }
-     // Username from item
-     var un = item.owner ? item.owner.login : "";
-     if (!un) { return "???"; }
-     return `https://${un}.github.io/${item.name}`;
+     let cont = '';
+     if (!val) {  } // return "";
+     else {
+       // Username from item
+       var un = item.owner ? item.owner.login : "";
+       if (!un) { return "???"; }
+       let url = `https://${un}.github.io/${item.name}`;
+       cont += `<a href="${url}" class="menuactive" style="color: white" target="gh_page">Pages</a> `;
+     }
+     let o_r = item.full_name.split('/'); // Org, Repo
+     let id = `${o_r[0]}_${o_r[1]}`;
+     if (item.teams_url) { cont += `<span id="${id}" data-org="${o_r[0]}" data-repo="${o_r[1]}" class="menuactive teamslink">Teams</span>`; }
+     return cont;
    }
    function gh_repolink_cell(val, item) {
     return `<a href="${item.html_url}" title="${item.html_url}" target="gh_html_page">${val}</a>`;
@@ -1012,11 +1020,14 @@ function ibip_cell(val, item) {
    // See _url items in repo object. Note: Direct links would be subject to either API ratelimit OR Auth.
    // TODO: Work around the limits by auth.
    function gh_repo_misc(val, item) {
-    return ['url', 'teams_url', 'tags_url'].map( (uk) => {
+    let always = {'html_url': true, };
+    return ['html_url', 'issues_url', 'tags_url'].map( (uk) => { // 'teams_url',
       let k = 'url';
       //let m = uk.match(/^((url)|([a-z]+)_url)$/);
       let m = uk.match(/^(\w+?)_url$/);
       if (m) { k = m[1]; }
+      // Combine with has_... 
+      // if (always[k] || item[`has_${k}`]) {}
       return `<a href="${item[uk]}" class="menuactive" target="gh_extra_url" style="color: white;">${k}</a> `; // (${m.length})
     }).join(' ');
    }

@@ -598,7 +598,7 @@ var tabloadacts = [
   */
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
-  // Git*
+  // Git* gh_projs
   {"name": "GitHub Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
       path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "GitLab Grp. Repos",   "elselXX": "glprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gl_projs", gridid: "jsGrid_glprojs", fsetid: "glprojs",
@@ -627,39 +627,46 @@ var tabloadacts = [
      path: "certfiles", uisetup: null, dialogid: "certfilesdialog"},
   // Vuln resol
   {"name":"Vulnerability Resolution", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/vulnlist", gridid: "jsGrid_vulnlist", fsetid: "vulnlist", 
-     path: "vulnlist", uisetup: null, dialogidXXX: ""},
+     path: "vulnlist", uisetup: null, },
   {"name":"Images authorized for Use", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/authimg", gridid: "jsGrid_authimg", fsetid: "authimg", 
-     path: "authimg", uisetup: null, dialogidXXX: ""},
+     path: "authimg", uisetup: null, },
   // ?jqp=fr
   {"name":"JIRA Issues", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/isslist", gridid: "jsGrid_jiraiss", fsetid: "jiraiss", 
-     path: "jiraiss", uisetup: null, dialogidXXX: "", "longload": 1},
+     path: "jiraiss", uisetup: null,  "longload": 1},
 
   {"name":"TF Nets", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/yaml/nets", gridid: "jsGrid_tfnets", fsetid: "tfnets", 
-     path: "tfnets", uisetup: null, dialogidXXX: "", "longload": 1},
+     path: "tfnets", uisetup: null, "longload": 1},
   {"name":"Cert Decode", "elselXX": "XX", tmpl: "certdecf", "hdlr": certdecode,  url: "/certdecode", path: "certdec" },
   {"name":"Cert Sys Documentation", "elselXX": "XX", tmpl: "", "hdlr": certdoc,  url: "/certsysdoc", path: "certsysdoc" },
   // 
   {"name":"Artifactory Images", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/afaimgs", gridid: "jsGrid_afaimg", fsetid: "afa_images",
     path: "afaimgs", uisetup: afaimgs_uisetup, dialogidXX: "afaimginfo", "longload": 1},
-  {"name":"Artifactory Image", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", gridid: "", fsetid: "",
+  {"name":"Artifactory Image Info", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", gridid: "", fsetid: "",
     path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "",  fsetid: "nft", formid: "fwform", fldinfo: fldinfo, subtypes: true, debug: 1,
-    path: "fwform", uisetup: null, dialogid: "afaimginfodialog", "optcoll": opts_nft, },
+    path: "fwform", uisetup: null,  "optcoll": opts_nft, }, // dialogid: "afaimginfodialog",
   {"name":"Grid Defs", "elselXX": "XX", tmpl: "", "hdlr": jgrid_fielddefs,   fldinfo: fldinfo, // url: "", gridid: "", fsetid: "",
     path: "fielddefs", uisetup: null, viewid: 'routerdiv' }, // dialogid: "", "optcoll": opts_nft,
   {"name":"TF Var Usage", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,   fldinfo: fldinfo, url: "/tfmodusage", gridid: "jsGrid_hcliusage", fsetid: "hcliusage",
     path: "hcliusage", uisetup: hcliusage_uisetup, urlpara: hcliusage_urlpara, tpcb: hcliusage_tpcb, }, // viewid: 'routerdiv'
   {"name":"Jira Sprints", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/sprints", gridid: "jsGrid_jirasprint", fsetid: "jirasprint",
-    path: "jirasprints", uisetup: null, dialogid: ""},
+    path: "jirasprints", uisetup: null, }, // dialogid: ""
   {"name": "Git Multi-Repo Set", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
     gridid: "jsGrid_grepo", fsetid: "repo_proj",
-    path: "grepo", uisetup: grepo_uisetup, dialogid: "", datapath: "project", tpcb: grepo_tpcb},
+    path: "grepo", uisetup: grepo_uisetup,  datapath: "project", tpcb: grepo_tpcb}, // dialogid: "",
   {"name": "Git Repo Remotes", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
     gridid: "jsGrid_grepo_remote", fsetid: "repo_remote",
-    path: "grepo_remote", uisetup: null, dialogid: "", datapath: "remote", tpcb: grepo_tpcb},
+    path: "grepo_remote", uisetup: null,  datapath: "remote", tpcb: grepo_tpcb}, // dialogid: "",
   {"name": "Jenkins Jobs", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/jenkins_jobs",
     gridid: "jsGrid_jjob", fsetid: "jjob",
-    path: "jjobs", uisetup: null, dialogid: "", datapathXX: "remote", tpcb: null}, // grepo_tpcb
+    path: "jjobs", uisetup: null,  datapath: "data.jobs", tpcb: null, longload: 1, }, // grepo_tpcb dialogid: "",
+  // See gh_projs  gendialog
+  // TODO: How to set view to render content to (dialog)
+  {"name": "GH Repo Teams", "elselXX": "XX", tmpl: "", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",
+    gridid: "jsGrid_ghteams", fsetid: "ghteams",
+    path: "ghteams", urlpara: (ev, act) => {
+      let ds = ev.target.dataset; return `org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
+    }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null},
 ];
 
 function hcliusage_urlpara(ev, an) {
@@ -748,24 +755,32 @@ function gendialog(ev, act) {
   // Create even the element (w. unique id) to which to create dialog ?
   // var uniid = new Date().foo()+"_"+act.path; // No act.dialogid ?
   // Most dialogs have data ...
-  var axopts = {params: null};
-  if (act.pmaker) { axopts.params = act.pmaker(); } // TODO: pass ....
+  var axopts = { params: null }; // GET params
+  let url = act.url;
+  // Assign to: axopts.params
+  if (act.urlpara) { url += "?"+act.urlpara(ev, act); } // TODO: pass .... event (has access to element) !
   if (ev.viewdata) { return showdialog(ev.viewdata); } // Have data, synchronous
-  if (!act.url) {   return; }
-  axios.get(act.url).then(function (resp) {
+  if (!act.url) { return; }
+  axios.get(url).then(function (resp) { // axopts ???
     var d = resp.data; // data always passed "raw"
     if (!d) { return alert("No data from server for dialog !"); }
+    if (d.status != 'ok') { return toastr.error(d.msg); }
     showdialog(d);
   })
-  .catch(function (ex) { console.log("No data for dialog from URL: "+act.url+""); });
+  .catch(function (ex) { console.log(`No data for dialog from URL: ${url}`); }); // act.url
+  // Create and pop up a dialog (with data for populating the view).
+  // - Get dialog contents template from elem given by act.tmpl
+  // - Fill/Render template (with data) into element given by act.dialogid
   function showdialog(data) {
-    if (!act.dialogid) { return alert("No dialog indicated (by 'dialogid')"); }
+    if (!act.dialogid) { return alert(`No dialog indicated (by 'act.dialogid')`); }
     // Check existence of elem by act.dialogid
+    if (!act.dialogid) {alert(`No dialog given in action ${act.path}`); return;}
     var diael = document.getElementById(act.dialogid);
-    if (!diael) { alert("No dialog by id:" + act.dialogid); return; }
+    if (!diael) { alert(`No dialog by id: ${act.dialogid}`); return; }
+    let diads = diael.dataset; // Use !
     rapp.templated(act.tmpl, data, act.dialogid);
-    var dopts = {modal: true, width: 500, height: 200};
-    console.log("Dialog.dataset", diael.dataset);
+    var dopts = { modal: true, width: 500, height: 200 };
+    console.log(`Dialog.dataset`, diael.dataset);
     // Look for dialog size (XSxYS) in ... target elem (jev: this)
     if (diael.dataset && diael.dataset.dsize) {
       var m = diael.dataset.dsize.match(/(\d+)x(\d+)/);
@@ -775,7 +790,7 @@ function gendialog(ev, act) {
     //console.log("gendialog:TGT:",ev.target);
     //console.log("gendialog:THIS:",this); // this is Window
     //$("#"+act.dialogid).html(out);
-    $("#"+act.dialogid).dialog(dopts);
+    $(`#${act.dialogid}`).dialog(dopts);
   }
   // TODO: Make this into rapp. ...
   // Get "raw" DOM element where event being handled now took place.

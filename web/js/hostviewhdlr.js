@@ -72,7 +72,7 @@ function dotpath_data(obj, dpath) {
 
   /** Simple grid from URL.
  * Hooks supported in action:
- * - urlpara(ev, act) - Generate complete or relative URL compatible with axios.get(url)
+ * - urlpara(ev, act) (a.k.a genurl) - Generate complete or relative server URL compatible with axios.get(url)
  *   - Handler can use URL in the action as base url to extend (e.g. with params or additional URL route components
  *   - Handler can pick up hints set in the event
  * - dprep(act, respdata, ev) - Refine data received from server (currently always an array)
@@ -92,7 +92,7 @@ function simplegrid_url(ev, an) {
   // Note: When view calls itself, this block *IS* visited, but Spinner does not show (ev.viewtgtid/spel not there).
   if (an.longload) { console.log("LONGLOAD !"+ev.viewtgtid); spinner = new Spinner(spinopts).spin(spel); }
   else { console.log("No 'longload' (no spinner)"); }
-  if (urlgen) {  url = urlgen(ev, an); console.log("Called urlgen() => "+url); }
+  if (urlgen) {  url = urlgen(ev, an); console.log(`Called urlgen() => ${url}`); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
     var arr = (data && data.data) ? data.data : data; // AoO (hopefully, but we also supp. datapath)
@@ -1745,6 +1745,16 @@ function jgrid_fielddefs(ev, act) {
 function ghprojs_uisetup(act, data) {
   var k = "ghorgs"; // 
   if (act.path == 'glprojs') { k = "glorgs"; }
+  // GH Teams
+  $(".teamslink").click( (jev) => {
+    let ds = jev.target.dataset;
+    console.log(`Org: ${ds.org}, Repo: ${ds.repo}`);
+    let act = tabloadacts.find((a) => { return a.path == "ghteams"; });
+    if (!act) { console.log("No Action"); return; }
+    console.log(`Gen dialog by action, event: `, act, jev);
+    //jev.viewdata = e;
+    gendialog(jev, act);
+  });
   var fs = datasets.cfg[k]; // From /config. Similar to: datasets.cfg.docker.files;
   console.log(`ghprojs_uisetup ...${fs}`);
   if (!datasets.cfg[`${k}_active`]) { datasets.cfg[`${k}_active`] = fs[0]; }
