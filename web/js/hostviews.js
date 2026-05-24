@@ -665,7 +665,7 @@ var tabloadacts = [
   {"name": "GH Repo Teams", "elselXX": "XX", tmpl: "", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",
     gridid: "jsGrid_ghteams", fsetid: "ghteams",
     path: "ghteams", urlpara: (ev, act) => {
-      let ds = ev.target.dataset; return `org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
+      let ds = ev.target.dataset; return `${act.url}?org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
     }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1},
 ];
 
