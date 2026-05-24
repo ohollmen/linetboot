@@ -3202,13 +3202,14 @@ function gh_projs(req, res) {
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
   // W. token priv repo on github.com will: 1) users/ - ret [], 2) orgs/ ret 404 (Not found)
   // /search/repositories?q=user:USERNAME - will return repos (!?) "visibility": "private",
-  console.log("Final URL: "+url);
+  
   var opts = {};
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; console.log(`Using token: ${ghcfg.token.length} B`); }
   // page=2&per_page=100
   //if (ghcfg.pgsize) { // Not: ghcfg.ent
     opts.params = { per_page: 100 };
   //}
+  console.log(`Final URL: curl -H "Authorization: Bearer $GH_TOKEN" '${url}'`);
   //ghcfg.debug = 2;
   axios.get(url, opts).then((resp) => {
     var d = resp.data;

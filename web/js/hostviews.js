@@ -666,7 +666,7 @@ var tabloadacts = [
     gridid: "jsGrid_ghteams", fsetid: "ghteams",
     path: "ghteams", urlpara: (ev, act) => {
       let ds = ev.target.dataset; return `org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
-    }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null},
+    }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1},
 ];
 
 function hcliusage_urlpara(ev, an) {
@@ -761,6 +761,14 @@ function gendialog(ev, act) {
   if (act.urlpara) { url += "?"+act.urlpara(ev, act); } // TODO: pass .... event (has access to element) !
   if (ev.viewdata) { return showdialog(ev.viewdata); } // Have data, synchronous
   if (!act.url) { return; }
+  // New special - Use hdlr and other CBs from act ! Must give dialog as view to operate on !
+  if (act.useact) {
+    ev.viewtgtid = act.dialogid; // Make dialog the view !
+    act.hdlr(ev, act);
+    var diael = document.getElementById(act.dialogid);
+    rundialog(diael);
+    return;
+  }
   axios.get(url).then(function (resp) { // axopts ???
     var d = resp.data; // data always passed "raw"
     if (!d) { return alert("No data from server for dialog !"); }
@@ -772,13 +780,16 @@ function gendialog(ev, act) {
   // - Get dialog contents template from elem given by act.tmpl
   // - Fill/Render template (with data) into element given by act.dialogid
   function showdialog(data) {
-    if (!act.dialogid) { return alert(`No dialog indicated (by 'act.dialogid')`); }
+    // if (!act.dialogid) { return alert(`No dialog indicated `); return; }
     // Check existence of elem by act.dialogid
-    if (!act.dialogid) {alert(`No dialog given in action ${act.path}`); return;}
+    if (!act.dialogid) {alert(`No dialog given in action ${act.path} (by 'act.dialogid')`); return;}
     var diael = document.getElementById(act.dialogid);
     if (!diael) { alert(`No dialog by id: ${act.dialogid}`); return; }
-    let diads = diael.dataset; // Use !
     rapp.templated(act.tmpl, data, act.dialogid);
+    rundialog(diael);
+  }
+  function rundialog(diael) {
+    let diads = diael.dataset; // Use !
     var dopts = { modal: true, width: 500, height: 200 };
     console.log(`Dialog.dataset`, diael.dataset);
     // Look for dialog size (XSxYS) in ... target elem (jev: this)
