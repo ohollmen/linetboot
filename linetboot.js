@@ -2044,6 +2044,7 @@ function config_send(req, res) {
   var gl   = global.gitlab;
   var cfl  = global.confluence;
   var hclparse = global.hclparse;
+  var afa  = global.afa;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
@@ -2073,10 +2074,11 @@ function config_send(req, res) {
   // 
   if (ldconnx.clistnames) { cfg.clistnames = ldconnx.clistnames; }
   else { cfg.clistnames = []; }
-  // Git*
+  // Git* and others with multiple sub cats
   if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
   if (gl && gl.org && Array.isArray(gl.org)) { cfg.glorgs = gl.org; }
   if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
+  if (afa && afa.afarepos && Array.isArray(afa.afarepos)) { afa.afarepos = afa.afarepos; }
   cfg.kubimap = (kubi && (kubi.kubimap) ) ? kubi.kubimap : [];
   if (hclparse && hclparse.modnames) { cfg.hclmodnames = hclparse.modnames; }
   res.json(cfg);
@@ -3209,6 +3211,8 @@ function gh_projs(req, res) {
   //if (ghcfg.pgsize) { // Not: ghcfg.ent
     opts.params = { per_page: 100 };
   //}
+  //let addh = {Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"};
+  //Object.keys(addh).forEach( (k) => { opts.headers[k] = addh[k]; });
   console.log(`Final URL: curl -H "Authorization: Bearer $GH_TOKEN" '${url}'`);
   //ghcfg.debug = 2;
   axios.get(url, opts).then((resp) => {
@@ -3223,7 +3227,8 @@ function gh_projs(req, res) {
 /** View projects for single GitLab group (~org).
  * We call GitLab Groups "Orgs" in the code to retain similarity to GitHub.
  * Members: https://docs.gitlab.com/ee/api/members.html /groups/:id/members and /projects/:id/members
- * GitLab API: https://docs.gitlab.com/ee/api/
+ * GitLab API: - EE: https://docs.gitlab.com/ee/api/  - https://docs.github.com/rest
+ * 
  */
 function gl_projs(req, res) {
   var jr = {status: "err", "msg": "Could not list GL Projects."};
@@ -3234,24 +3239,28 @@ function gl_projs(req, res) {
   if (q.org && ghcfg.org.includes(q.org)) { org = q.org; }
   else { org = ghcfg.org[0]; }
   if (!org) { jr.msg += "No GL Org resolved."; return res.json(jr); }
-  console.log("Show org: "+org);
-  var url = "https://"+ghcfg.url+"/";
+  console.log(`Show org: ${org}`);
+  var url = `https://${ghcfg.url}/`;
   // https://gitlab.com/api/v4/users?username=<username-here>
   if (ghcfg.ent) { url += "api/v4/"; } // GL Also: users/<user-id>/projects
+  else { url += "api/v4/"; }
   //url += "users/"+org+"/projects/"; // GH
-  // NOTE: /api/v4/groups/dockcpdev gives *also* group info and "projects": [...]. Adding /projects *only*
+  // NOTE: /api/v4/groups/mygroup gives *also* group info and "projects": [...]. Adding /projects *only*
   // gives the array of projects
-  url += "groups/"+org+"/projects/";
-  console.log("Final URL: "+url);
-  var opts = {};
-  if (ghcfg.token) { opts.headers = { "PRIVATE-TOKEN" : ghcfg.token}; } // GL
+  url += `groups/${org}/projects/`; // EE and gitlab.com
+  // console.log(`Final URL: '${url}'`);
+  console.log(`Final URL: curl -H "PRIVATE-TOKEN: $GH_TOKEN" '${url}'`);
+  var opts = { headers: {} };
+  if (ghcfg.token) { opts.headers = { "PRIVATE-TOKEN" : ghcfg.token}; console.log(`Using token (${ghcfg.token} B)`); } // GL (EE Still?)
+  
   opts.params = { per_page: 100 }; // Also: page: 1...
+  //console.log(opts);
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
     if (Array.isArray(d)) { console.log("Got "+d.length+" repos"); }
     res.json({status: "ok", data: d});
   })
-  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; res.json(jr); });
+  .catch((ex) => { jr.msg += "Failed GL Api Server HTTP Call"+ex; console.log(jr.msg); res.json(jr); });
 }
 
 /**
