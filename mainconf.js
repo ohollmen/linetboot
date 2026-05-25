@@ -254,9 +254,9 @@ function disabled_detect(global) {
   if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
   var dr = global.deployer;
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
-  var gh = global.github;
+  let gh = global.github;
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("ghprojs"); }
-  var gh = global.gitlab; // Reuse gh for gitlab
+  gh = global.gitlab; // Reuse gh for gitlab
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("glprojs"); }
   var cfl = global.confluence;
   if (!cfl || (cfl && !cfl.user) || (cfl && !cfl.pass) ) { dis.push("cflpages"); }
@@ -334,10 +334,21 @@ function env_merge(global) {
   if (process.env["LINETBOOT_GITHUB_TOKEN"])  { stub("github"); global.github.token = process.env["LINETBOOT_GITHUB_TOKEN"]; }
   if (process.env["LINETBOOT_GITHUB_ENT"])    { stub("github"); global.github.ent = process.env["LINETBOOT_GITHUB_ENT"]; }
   if (process.env["LINETBOOT_GITHUB_ORG"])    {
-    stub("github"); var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
-    global.github.org = orgstr ? orgstr.split(/,/) : [];
-    //strarray_set(global.github, "org", process.env["LINETBOOT_GITHUB_ORG"]);
+    stub("github");
+    //var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
+    //global.github.org = orgstr ? orgstr.split(/,/) : [];
+    strarray_set(global.github, "org", process.env["LINETBOOT_GITHUB_ORG"]);
   }
+
+  if (process.env["LINETBOOT_GITLAB_TOKEN"])  { stub("github"); global.gitlab.token = process.env["LINETBOOT_GITLAB_TOKEN"]; }
+  if (process.env["LINETBOOT_GITLAB_ENT"])    { stub("github"); global.gitlab.ent = process.env["LINETBOOT_GITLAB_ENT"]; }
+  if (process.env["LINETBOOT_GITLAB_ORG"])    {
+    stub("github");
+    //var orgstr = process.env["LINETBOOT_GITLAB_ORG"];
+    //global.github.org = orgstr ? orgstr.split(/,/) : [];
+    strarray_set(global.gitlab, "org", process.env["LINETBOOT_GITLAB_ORG"]);
+  }
+
   if (process.env["LINETBOOT_GIT_BAREROOT"])  { stub("deployer"); global.deployer.bareroot = process.env["LINETBOOT_GIT_BAREROOT"]; }
   // Fake fact hosts CVS filename
   if (process.env["LINETBOOT_NEWHOSTS"])  {  global.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
@@ -404,6 +415,8 @@ if (process.argv[1].match(/\bmainconf.js$/)) {
   var yaml   = require('js-yaml');
   let mcfgfn = `${process.env['HOME']}/.linetboot/global.conf.json`;
   let mcfg = mainconf_load(mcfgfn);
+  env_merge(mcfg);
+  mainconf_process(mcfg);
   let ycfg = null;
   console.log(yaml.dump(mcfg, ycfg));
 }
