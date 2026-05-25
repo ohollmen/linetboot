@@ -256,7 +256,7 @@ function imgmani(req, res) {
   //p.tag = "0.0.13"; // TEST
   lsmani(p);
   function respond(err, d) {
-    if (err) { jr.msg += `Error getting image manigest: ${err}`; return res.json(jr); }
+    if (err) { jr.msg += `Error getting image manifest: ${err}`; return res.json(jr); }
     return res.json({"status": "ok", "data": d});
   }
 }
