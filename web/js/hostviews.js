@@ -101,12 +101,12 @@ function procinfo_uisetup(pinfo) {
           var bel = document.getElementById("pkill"); // Has data-hname, data-pid
           // Note: this.dataset does behave differently (hname not avail !?)
           if (!bel.dataset) { return alert("No dataset"); }
-          var pi = {hname: bel.dataset.hname, pid: bel.dataset.pid};
+          var pi = { hname: bel.dataset.hname, pid: bel.dataset.pid };
           console.log("PI:", bel.dataset); // this.dataset is DOMStringMap
-          toastr.info("Should kill "+pi.hname+" Proc: "+pi.pid);
+          toastr.info(`Should kill host: ${pi.hname}, proc: ${pi.pid}`);
           //return;
           var port = datasets.cfg.procster.port || 8181;
-          axios.get("http://"+pi.hname+":"+port+"/kill/"+pid).then((resp) => {
+          axios.get(`http://${pi.hname}:${port}/kill/${pid}`).then((resp) => {
             console.log(resp.data);
             var d = resp.data;
             if (!d) { return toastr.error("No proper response !"); }
@@ -136,11 +136,23 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // TODO: Add tmpl (default: simplegrid, do double templating to make {{ name }} into a nice title ?)
     // - Come back tmplid => tmpl to sync with router (or other way around).
     // Add name (could create dialog elem completely autom.) ?
-    // Foold other use cases here (e.g. host, people, bootmedia, recipe prev.)
+    // Fold other use cases here (e.g. host, people, bootmedia, recipe prev.)
+    // - .tgtid - View content div id => here: dialog id (like act.dialogid)
+    //   - This gets matched with link event target element (a,span,div) data-tgt="mydialog"
+    // - .dcb(hn, tgt, dialogcb) - custom "Data CB" (with fixed url) to retrieve data (and further call dialogcb)
+    // - .gridid - JSGrid div gridid - like any grid action.gridid
+    // - .uisetup - Like any act uisetup(data) (FW: uisetu(act, arrdata, ev))
+    // - .tmplid - (Non-grid) template id (default/grid: 'simplegrid')
+    // Pros / Progressive features:
+    // - Link element (a,span,div) can drive the dialog action to dispatch
+    // - Signature here is **pure** ev handler signature (ev) - assignable directly as e.g. click(handler)
+    //    - Can be really easily be assigned as ev handler and ev.target (elem) can give more/remaining info (!)
+    // - cb mechanism - dialogcb is not called (by .dcb() data-cb) if data does not arrive !
+    // - 'nametmpl' mechanism (div attribute) - allow custom name by mustache templating
     {tgtid: "dockerimg", dcb: dockerinfo, gridid: "jsGrid_dockerimg_d"}, // Note gridid unused except as flag
     {tgtid: "nfsinfo",   dcb: nfsinfo, gridid: "jsGrid_nfs"},
     {tgtid: "rfdialog",  dcb: rfinfo, gridid: undefined, tmplid: "redfish", uisetup: rfinfo_uisetup}, // templated (not grid) and never gets to dialogcb.
-    {tgtid: "proclist",  dcb: procinfo, gridid: "jsGrid_procs", uisetup: procinfo_uisetup},
+    {tgtid: "proclist",  dcb: procinfo, gridid: "jsGrid_procs", uisetup: procinfo_uisetup}, // dprep: (act, arr, ev) => { arr.forEach( (e) => { }); }
 
     {tgtid: "dockercont", dcb: dockerinfo, gridid: "jsGrid_dockercont_d"}, // NEW: Containers (see first)
   ];
@@ -150,18 +162,19 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     if (!pinfo ) { console.log("No data set for grid"); return; }
     if (am.gridid && !Array.isArray(pinfo)) { console.log("Data set not in Array for grid"); return; }
     if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
-    console.log("dialogcb: called (#-sel) dialogsel:" + dialogsel); // e.g. proclist
+    console.log(`dialogcb: called (#-sel) dialogsel: '${dialogsel}'`); // e.g. proclist
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
     // class fwgrid is on grid-wrapping div-element
-    var del = $("#"+ dialogsel ).get(0); // Dialog element
-    if (!del) { console.log("No dialog element for dialog (id) selector: "+ dialogsel); }
+    //var diael = $("#"+ dialogsel ).get(0); // Dialog element
+    let diael = document.getElementById("#"+ dialogsel);
+    if (!diael) { console.log(`No dialog element for dialog (id) selector: '${dialogsel}'`); }
     // New: We give gridid directly in model, no need to probe it.
     //var gel = $("#"+ dialogsel + " .fwgrid");
     //var id = gel.attr("id");
     
     var tmplid = am.tmplid || "simplegrid";
-    console.log("Got template id: "+tmplid);
-    var titletmpl = del.getAttribute("nametmpl"); // TODO: Change proper
+    console.log(`Got template id: ${tmplid}`);
+    var titletmpl = diael.getAttribute("nametmpl"); // TODO: Change proper
     // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
     if (titletmpl) { tpara.name = Mustache.render(titletmpl, tpara); } // toastr.info("Formulated title/name: "+tpara.name);
     // TODO: Template into dialog container
@@ -175,7 +188,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
       //console.log("TEMPLATE_CONT: "+rapp.templated(tmplid, tpara));
       $("#"+ dialogsel ).dialog(dopts_grid);
     }
-    if (!am.gridid) {}
+    if (!am.gridid) {} // Custom view, NOT a grid
     //////////// Grid ///////////////////
     else {
       var id = am.gridid;
@@ -188,24 +201,19 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
       $("#"+ dialogsel ).dialog(dopts_grid); // "#dockerimg"
     }
     // $("#"+ dialogsel ).dialog(dopts_grid); // TODO !
-    // Hook UI handlers by  dialogsel (from ui-setup cb mapping below)
-    // if (uisetup[dialogsel]) { uisetup[dialogsel](pinfo);  } // Pass ...?
-    // TODO:
+    // Launch .uisetup()
     if (am.uisetup) { am.uisetup(pinfo); }
   };
   // Process *grid* UI - hook additional UI actions.
-  // If further 
-  //var uisetup = {"proclist": procinfo_uisetup };
-  //console.log("ARG[0]:"+ev);
-  // Note: also the 
+  // ev.target is typically e.g. a(anchor) or span (or div ?) element with ...
   var hn  = ev.target.getAttribute("data-hname"); // Hostname (to do op on)
   var tgt = ev.target.getAttribute("data-tgt"); // id-lbl for dialog and fldinfo
-  console.log("Dlg-HNAME:"+hn+", data-tgt: " + tgt);
-  var am = actsmodel.find((am) => { return am.tgtid == tgt; });
-  if (!am) { return toastr.error("No Action model found for: "+tgt); }
+  console.log(`Dlg-HNAME: ${hn}, data-tgt: ${tgt}`);
+  var am = actsmodel.find( (am) => { return am.tgtid == tgt; }); // find action model
+  if (!am) { return toastr.error(`No Action model found for: ${tgt}`); }
   // Consider: Clone am (PLUS functions in it), use in template.
-  // Future todo: Merge all elem data-* attributes to am
-  var tpara = {hname: hn, gridid: am.gridid, name: ""}; // Lookup actsmodel by tgt => use am.gridid
+  // Future todo: Merge all elem data-* attributes to am (as pot. templating params)
+  var tpara = { hname: hn, gridid: am.gridid, name: "" }; // Lookup actsmodel by tgt => use am.gridid
   // hn - from ev element
   // gridsel - grid/dialog selector (id) (from data-tgt=...)... replace w. dialog
   // dialogcb - dialogcb
@@ -214,6 +222,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
   //else if (tgt == "rfdialog")  { rfinfo(hn, "rfdialog", dialogcb); return; }
   //else if (tgt == "proclist")  { procinfo(hn, "proclist", dialogcb); }
   // TODO: Allow alternate dialogcb (for case templated) ?
+  // Dispatch custom data retrieval part (am.dcb, with hard-wired url ?)
   am.dcb(hn, tgt, dialogcb);
 }
 
@@ -488,7 +497,7 @@ function tabsetview(ev, act) {
 // Allow "path" attribute to indicate a routable item and "elsel" a tabbed item
 // subnavi: 1 ... in esxiguests(esxilist), dcomposer(see: dcomposer_uisetup), peopledir(showpeople) (potentially: covbuilds) . esxihostmenu(act, items) is a close example
 var tabloadacts = [
-  {"name": "Basic Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
+  {"name": "Host Info", "path":"basicinfo", tabs: ["tabs-1","tabs-2","tabs-3"], hdlr: tabsetview}, // NEW(tabset)
   // Tabs (NOTE: dataid unused, See: dsid (used by simplegrid_cd)
   {"name": "Networking",  "elsel": "tabs-1", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "net", mtx:0, dsid: "hostlist", gridid: "jsGrid_net", fsetid: "net", uisetup: osview_guisetup}, // url: "/list" (All 3)
   {"name": "Hardware",    "elsel": "tabs-2", "tmpl":"simplegrid", hdlr: simplegrid_cd, "dataid": "hw",  dsid: "hostlist", gridid: "jsGrid_hw",  fsetid: "hw", uisetup: osview_guisetup},
@@ -504,7 +513,7 @@ var tabloadacts = [
     uisetup: function () { $('.rfop').click(on_docker_info); $('.procps').click(on_docker_info); } },
   {"name": "Generated Output", "elsel": "tabs-65", "tmpl":null,    hdlr: outfmts, "url": "/allhostgen", gridid: null, path: "genoutput"}, // DUAL
   {"name": "Hostkeys",    "elsel": "tabs-67", "tmpl":"simplegrid", hdlr: sshkeys, "url": "/ssh/keylist", gridid: "jsGrid_sshkeys", fsetid: "sshkeys", path: "hostkeys", uisetup: sshkeys_uisetup}, // DUAL
-  {"name": "PkgStat",     "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", fsetid: "DYNAMIC", path: "pkgstats", "help": "x.md"}, //DUAL
+  {"name": "Pkg Checks",   "elsel": "tabs-68", "tmpl":"simplegrid", hdlr: pkgstat, "url":"/hostpkgstats", gridid: "jsGrid_pkgstat", fsetid: "DYNAMIC", path: "pkgstats", "help": "x.md"}, //DUAL
   {"name": "Docs/About",   "elsel": "tabs-8", "tmpl":"docs",       hdlr: showdocindex, url: "/web/docindex.json", path: "docsview"}, // DUAL
   // Disabled from here (groups): "tabs-5",
   {"name": "Dev/Admin",   tabs: ["tabs-65", "tabs-68", "tabs-api", "tabs-bprocs", "tabs-dc", "ansitab"], hdlr: tabsetview, "path":"devadm",}, // NEW(tabset)
@@ -521,7 +530,7 @@ var tabloadacts = [
   // logout (todo: literal template)
   {"name": "Logout",   "tmpl":"", hdlr: logout, url: "/logout",  path: "logout"}, // TODO: Add tmpl for ack ?
   // Directory  (TODO: composite templating)
-  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad", path: "peopledir"},
+  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad2", path: "peopledir"},
   {"name": "People Entry", tmpl: "lduser", "hdlr": gendialog, url: "", path: "uent", dialogid: "userdialog"},
   // Iblox
   {"name": "InfoBlox", tabs: ["tabs-ibnet", "tabs-ibhost"], hdlr: tabsetview, "path": "ibloxlist"},
@@ -640,8 +649,9 @@ var tabloadacts = [
   {"name":"Cert Sys Documentation", "elselXX": "XX", tmpl: "", "hdlr": certdoc,  url: "/certsysdoc", path: "certsysdoc" },
   // 
   {"name":"Artifactory Images", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/afaimgs", gridid: "jsGrid_afaimg", fsetid: "afa_images",
-    path: "afaimgs", uisetup: afaimgs_uisetup, dialogidXX: "afaimginfo", "longload": 1},
-  {"name":"Artifactory Image Info", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", gridid: "", fsetid: "",
+    path: "afaimgs", // dprep: (an, arr, ev) => { arr.forEach( (it) => {it.repo = ev.target.dataset.repo; }); },
+    uisetup: afaimgs_uisetup,  "longload": 1}, // dialogidXX: "afaimginfo",
+  {"name":"Artifactory Image Info", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", // gridid: "", fsetid: "",
     path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "",  fsetid: "nft", formid: "fwform", fldinfo: fldinfo, subtypes: true, debug: 1,
     path: "fwform", uisetup: null,  "optcoll": opts_nft, }, // dialogid: "afaimginfodialog",
@@ -662,8 +672,8 @@ var tabloadacts = [
     path: "jjobs", uisetup: null,  datapath: "data.jobs", tpcb: null, longload: 1, }, // grepo_tpcb dialogid: "",
   // See gh_projs  gendialog
   // TODO: How to set view to render content to (dialog)
-  {"name": "GH Repo Teams", "elselXX": "XX", tmpl: "", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",
-    gridid: "jsGrid_ghteams", fsetid: "ghteams",
+  {"name": "GH Repo Teams", "elselXX": "XX", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",
+    gridid: "jsGrid_ghteams", fsetid: "ghteams", eldataurl: 1, // Experim.
     path: "ghteams", urlpara: (ev, act) => {
       let ds = ev.target.dataset; return `${act.url}?org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
     }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1},
@@ -757,16 +767,19 @@ function gendialog(ev, act) {
   // Most dialogs have data ...
   var axopts = { params: null }; // GET params
   let url = act.url;
-  // Assign to: axopts.params
+  // Assign to: axopts.params ?
   if (act.urlpara) { url += "?"+act.urlpara(ev, act); } // TODO: pass .... event (has access to element) !
   if (ev.viewdata) { return showdialog(ev.viewdata); } // Have data, synchronous
   if (!act.url) { return; }
-  // New special - Use hdlr and other CBs from act ! Must give dialog as view to operate on !
+  // New special - Use hdlr and other CBs from act (e.g. for gridview) ! Must give dialog as view to operate on !
   if (act.useact) {
     ev.viewtgtid = act.dialogid; // Make dialog the view !
     var diael = document.getElementById(act.dialogid);
     // Wipe out dialog contents - previous view may be there !
-    diael.innerHTML = '';
+    diael.innerHTML = ''; // `Waiting for dialog data ...`
+    // TODO: Data may async-load or there may be other errors. How to know if dialog is wort popping up ?!
+    // act could contain a CB to ack if async part (data load) worked OK: loadok: (err, data) => { if (err) {return;} rundialog(diael); }
+    // BUT: All possible action hdlr: ... functions would need to support it (to prevent empty dialog from popping ) !!!
     act.hdlr(ev, act);
     
     rundialog(diael);
@@ -1261,9 +1274,9 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
   if (!hname) { toastr.error("No hostname (from ui) for docker info"); return; }
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   console.log("Calling docker API fetcher with dialogsel: "+dialogsel);
-  var enttype = "images"; // "containers"
+  var enttype = "images"; // OR "containers" (below)
   if (dialogsel == 'dockercont') { enttype = "containers"; }
-  var url = 'http://'+hname+':'+port+'/v1.24/'+enttype+'/json';
+  var url = `http://${hname}:${port}/v1.24/${enttype}/json`;
   axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Docker data: "+ JSON.stringify(pinfo, null, 2));
@@ -1288,7 +1301,7 @@ function nfsinfo(hname, dialogsel, cb) {
     // console.log(pinfo);
     cb(pinfo, dialogsel); return;
   })
-  .catch(function (error) { console.log(error); alert("No NFS info, "+ error); });
+  .catch(function (err) { let estr = `No NFS info:  ${err}`; console.log(estr); alert(estr); });
 }
 
 
@@ -1299,10 +1312,10 @@ function rfinfo_uisetup(d) { // d not used (in here)
         console.log("THIS:", this); // 2 elems ?
         console.log($(this).data('pxe'));
         var op = $(this).data('op');
-        var url = "/rf/"+op+"/"+d.hname;
+        var url = `/rf/${op}/${d.hname}`;
         var btype = "";
         if ($(this).data('pxe')) { url += "?pxe=1"; btype = " (PXE)"; }
-        console.log("use URL: "+url);
+        console.log(`use rfinfo URL: ${url}`);
         // var tid = setTimeout(() => {}, 10000);
         axios.get(url).then(function (resp) {
           console.log(resp.data);
@@ -1319,7 +1332,7 @@ function rfinfo(hname, dialogsel, cb) {
   //if (!tc) { return alert("No template content"); }
   
   toastr.info("Please wait ...", "Inquiring BMC Info");
-  axios.get("/rf/info/" + hname).then(function (resp) {
+  axios.get(`/rf/info/${hname}`).then(function (resp) {
     var rd = resp.data;
     if (rd.status == 'err') { return toastr.error(""+rd.msg); }
     //console.log("RFDATA", rd);
@@ -1369,7 +1382,7 @@ function procinfo(hname, dialogsel, cb) {
   if (!hname) { toastr.error("No hostname (from ui) for proc info"); return; } // proc
   if (!dialogsel) { console.error("No dialogsel to forward call to"); return;}
   //console.log("Calling procps ...");
-  var url = 'http://'+hname+':'+port+'/proclist'; // Dynamic
+  var url = `http://${hname}:${port}/proclist`; // Dynamic
   axios.get(url).then(function (resp) {
     var pinfo = resp.data; // NO: data.data
     //console.log("Proc data: "+ JSON.stringify(pinfo, null, 2));
