@@ -539,6 +539,18 @@ var gridplug = {
     //{name: "gidNumber"      title: "GID Num.", type: "text", width: 30, visible: false},
     //{name: "loginShell"     title: "Shell", type: "text", width: 80, visible: false},
    ];
+   var ldinfo_grp = [
+    {name: "cn",     title: "Group Name", type: "text", width: 15, itemTemplate: null, }, // ok
+    {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null, }, // ok
+    {name: "mail",   title: "Email List Name", type: "text", width: 12, itemTemplate: null, }, // ok (aka dn: cn=...)
+    {name: "owner",  title: "Owner",      type: "text", width: 15, itemTemplate: gridplug.ldap_dn_bn, }, // ok
+    {name: "admins", title: "Admins",    type: "text", width: 15, itemTemplate: null, }, // e.g ListAdmin
+    // Note: some groups may be missing this based on grptype (winsecgroup,closed,email ?)
+    // this exists on type list,email,saviynt (Third-Party Identity Governance and Administration (IGA) platform / rbac)
+    {name: "member", title: "Group Mems", type: "text", width: 30, itemTemplate: null, }, // ok
+    {name: "grptype",title: "Type",      type: "text", width: 40, itemTemplate: null, }, // e.g. ListType
+   ];
+
 // Compare these to facts values
 function ibmac_cell(val, item) {
     var sty = "";
@@ -674,7 +686,7 @@ function ibip_cell(val, item) {
    function gstate_cell(val, item) {
      // "running", "notRunning", (others?)
      var col = (val == "running") ? "#00AA00" : "#AA0000";
-     return "<span style=\"color: white; background-color: "+col+"; width: 100%; padding-left: 10px; padding-right: 10px;\">"+val+"</span>";
+     return `<span style="color: white; background-color: ${col}; width: 100%; padding-left: 10px; padding-right: 10px;border-radius: 4px;">${val}</span>`;
    }
    var fldinfo_esxi = [
      // 
@@ -1050,7 +1062,7 @@ function ibip_cell(val, item) {
      // TODO: Turn to cover Misc subsystems: Pages, Users, Groups, Issues, Tags, ...
      // URL:s to these are the "*_url" items (w. path /repos/{org}/{repo}/{area}) in repo ent. (api URLs)
      {"name": "has_pages",   "title": "GH Pages",   type: "text", width: 25, itemTemplate: gh_pages_url_cell},
-     {"name": "miscinfo",   "title": "Repo Related ...",   type: "text", width: 25, itemTemplate: gh_repo_misc},
+     //{"name": "miscinfo",   "title": "Repo Related ...",   type: "text", width: 25, itemTemplate: gh_repo_misc},
      {"name": "default_branch", "title": "Def. branch",    type: "text", width: 12}, // Link to other branches ?
      {"name": "topics",      "title": "Topics",    type: "text", width: 25, itemTemplate: tag_cell},
      // Note: visibility is redundant on github.com public repos
@@ -1059,15 +1071,20 @@ function ibip_cell(val, item) {
      
    ];
    // GH teams (for /api/v3/repos/${org}/${repo}/teams)
-   function gh_memurl_cell(val, item) { return val; }
+   function gh_memurl_cell(val, item) {
+     //return val;
+     val = val.replace('{/member}', '');
+     return `<a href="${val}" target="ghmems">Mems</a>`;
+   }
    var fldinfo_gh_teams = [
-    {name: "id",      title: "ID", type: "text", width: 5, itemTemplate: null},
+    {name: "id",      title: "TeamID", type: "text", width: 5, itemTemplate: null},
     {name: "name",    title: "Name", type: "text", width: 20, itemTemplate: null},
     {name: "slug",    title: "ID Label", type: "text", width: 15, itemTemplate: null}, // auto-gen
     {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
     {name: "privacy", title: "Privacy", type: "text", width: 10, itemTemplate: null},
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
-    //{name: "members_url", title: "Mems", type: "text", width: 25, gh_memurl_cell: gh_memurl_cell}, // Link !
+    // OR members_url (API) OR html_url (HTML)
+    {name: "html_url", title: "Mems", type: "text", width: 25, gh_memurl_cell: gh_memurl_cell}, // Link !
     {name: "permission" , title: "Perms/Role", type: "text", width: 8, itemTemplate: null}, // admin, push, pull,maintain
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
@@ -1377,13 +1394,13 @@ function riskadj_cell(val, item) {
      var style = "display: inline-block; color: white; background-color: #555555;border-radius: 3px;padding: 0px 5px 0px;";
      val.forEach( (it) => {
        //var p = "";
-       cont += `<span style="${style}" class="imgitem" data-imgpath="${item.imgpath}" data-tag="${it}">${it}</span>&nbsp;&nbsp;`;
+       cont += `<span style="${style}" class="imgitem" data-repo="" data-imgpath="${item.imgpath}" data-tag="${it}">${it}</span>&nbsp;&nbsp;`;
      });
      return cont;
    }
    var fldinfo_afa_images = [
-    {"name": "imgpath",               "title": "Image Path", "type": "text", "width": 20, itemTemplate: imgpath_cell},
-    {"name": "tags",               "title": "Image Tags", "type": "text", "width": 100, itemTemplate: tags_cell, },
+    {"name": "imgpath",           "title": "Image Path", "type": "text", "width": 20, itemTemplate: imgpath_cell},
+    {"name": "tags",             "title": "Image Tags", "type": "text", "width": 100, itemTemplate: tags_cell, },
    ];
    // No default tables like in iptables (user must name tables)
    // https://wiki.nftables.org/wiki-nftables/index.php/Nftables_families
@@ -1568,7 +1585,7 @@ let fldinfo_jjob = [
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
       "sshkeys" : fldinfo_sshkeys, "dockerimg": fldinfo_dockerimg, "dockercont": fldinfo_dockercont, "nfsinfo" : fldinfo_nfs,
       "dockercat": fldinfo_dockercat, "pxelinux": fldinfo_pxelinux, "bootmedia": fldinfo_bootmedia,
-      "ldad": ldinfo_ldad, "ldad2": ldinfo_ldad2,
+      "ldad": ldinfo_ldad, "ldad2": ldinfo_ldad2, "ldgrp": ldinfo_grp,
       "iblox":  fldinfo_iblox, "ibnets": fldinfo_ibnets, "eflow": fldinfo_eflow, "proclist": fldinfo_proclist, "esxilist":fldinfo_esxi,
       "dcomposer":fldinfo_dcomposer,  "iprofs": fldinfo_iprofs, "bootables": fldinfo_bootables, // "appact": fldinfo_appact,
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
@@ -1579,7 +1596,8 @@ let fldinfo_jjob = [
       "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
-      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets, "afa_images": fldinfo_afa_images,
+      "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets,
+      "afa_images": fldinfo_afa_images,
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
       "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote,
       "jjob": fldinfo_jjob,
