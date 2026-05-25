@@ -39,7 +39,7 @@ function simplegrid_cd(ev, act) {
     var cellcb = (e) => { return e.hname; }; let opts = {};
     let c = webview.matrix(d, cellcb, opts); $("#"+act.gridid).html(c); return; }
   showgrid(act.gridid,  d, fldinfo[act.fsetid], act); 
-  if (act.uisetup) { act.uisetup(act, d); } // TODO: Params ? (see rapp)
+  if (act.uisetup) { act.uisetup(act, d, ev); } // TODO: Params ? (see rapp)
 }
 
 // Extract fldinfo label from gridid (... or alternative way ?)
@@ -92,14 +92,21 @@ function simplegrid_url(ev, an) {
   // Note: When view calls itself, this block *IS* visited, but Spinner does not show (ev.viewtgtid/spel not there).
   if (an.longload) { console.log("LONGLOAD !"+ev.viewtgtid); spinner = new Spinner(spinopts).spin(spel); }
   else { console.log("No 'longload' (no spinner)"); }
-  if (urlgen) {  url = urlgen(ev, an); console.log(`Called urlgen() => ${url}`); }
+  // TODO: Either gen params only or template templated url:
+  if (an.eldataurl) { // && ev.target.dataset
+    let ds = ev.target.dataset;
+    // url += rapp.templated(an.url, ds); // template within URL
+    //url += "?"+Object.keys(ds).map( (k) => { return `${k}=${encodeURIComponent(ds[k])}`; }).join('&');
+    url += "?"+ new URLSearchParams(ds); console.log(`Used URLSearchParams: ${url}`); // ca. 2018
+  }
+  else if (urlgen) {  url = urlgen(ev, an); console.log(`Called urlgen(ev, act) => '${url}'`); }
   axios.get(url).then( function (resp) {
     var data = resp.data;
     var arr = (data && data.data) ? data.data : data; // AoO (hopefully, but we also supp. datapath)
     // TODO: Refine logic
     if (data.status == 'err') { return toastr.error(data.msg); }
     // TODO: Decide if we should separate between data (old expect.: array, new: array/obj + datapath )
-    // and grid data (always array). an.dprep() and tpcb could benefit out of "whole data object" as oppeosed
+    // and grid data (always array). an.dprep() and tpcb could benefit out of "whole data object" as opposed
     // to "grid-array-only".
     if (typeof arr == 'object' && an.datapath) {
       // let dhandle = arr; // Object !
@@ -126,8 +133,9 @@ function simplegrid_url(ev, an) {
     // For apps that receive "complex data" object (not grid AoO only), we add "data" member to cloned tpara.
     if (an.tpcb && (typeof an.tpcb == 'function')) {
       tpara = rapp.dclone(an);
-      tpara.data = data.data; // NEW: add data (possibly obj) for "complex data" actions. In worst case this will be undef/null
+      tpara.data = data.data; // NEW: add (orig. top-level) data (possibly obj) for "complex data" actions. In worst case this will be undef/null
       an.tpcb(tpara, arr, ev); // Pass deep-cloned copy of an
+      tpara.rowcnt = arr.length; // Also(?): tpara.cnt = arr.length;
     } 
     rapp.templated(an.tmpl, tpara, ttgt); // Initial templating
     var fsetid = an.fsetid;
@@ -1749,8 +1757,9 @@ function ghprojs_uisetup(act, data) {
   $(".teamslink").click( (jev) => {
     let ds = jev.target.dataset;
     console.log(`Org: ${ds.org}, Repo: ${ds.repo}`);
+    // Get this from elem ? data-actpath
     let act = tabloadacts.find((a) => { return a.path == "ghteams"; });
-    if (!act) { console.log("No Action"); return; }
+    if (!act) { console.log("No Dialog Action"); return; }
     console.log(`Gen dialog by action, event: `, act, jev);
     //jev.viewdata = e;
     gendialog(jev, act);
@@ -1853,10 +1862,12 @@ function certsys_uisetup(act, data, ev) {
 }
 function afaimgs_uisetup(act, data, ev) {
   $("[data-imgpath]").click(function (jev) {
+    let ds = jev.target.dataset;
+    // repo: jev.target.dataset.repo, 
     var p = {imgpath: jev.target.dataset.imgpath, tag: jev.target.dataset.tag};
     //alert("IMGPATH:"+p.imgpath+", TAG:"+p.tag);
     // MUST search another action ???
-    var act = tabloadacts.filter((a) => { return a.path == "afaimginfo"; })[0];
+    var act = tabloadacts.find((a) => { return a.path == "afaimginfo"; });
 
     axios.get("/imgmani", {params: p}).then((resp) => {
       var d = resp.data;
