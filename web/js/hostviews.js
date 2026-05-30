@@ -681,8 +681,9 @@ var tabloadacts = [
   // htview for GH repo, teams (and mems - to be custom dialog viewed)
   // Should patch url based on config at client init()
   {"name": "GH Repo Teams Grouping", tmpl: null, hdlr: multigridview, url: "/htview/ghrt", gridid: "jsGrid_ghteams", fsetid: "ghteams", path: "ghrt",
-    ida: "id", nattr: "full_name", colla: "teams",
-    titletmpl: "<h2>{{name}} (ID: {{id}} {{rowcnt}} Teams)</h2><p>Description: {{description}}. Teams:</p>\n",
+    ida: "id", nattr: "full_name", colla: "teams", longload: 1,
+    // Description: {{description}}.
+    titletmpl: "<h2>{{name}} (ID: {{id}} {{rowcnt}} Teams)</h2><p> Teams:</p>\n",
     uisetup: null, 
   },
 ];

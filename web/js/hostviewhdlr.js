@@ -210,7 +210,9 @@ function dcomposer_uisetup(act) { //
 function multigridview(ev, act) {
   var elsel = ev.routepath ? "routerdiv" : act.elsel;
   //console.log(`Generate into: ${elsel}`);
-  $('#' + elsel).html(''); // Clear document.getElementById(elsel).innerHTML = "";
+  // Clear
+  // $('#' + elsel).html('');
+  document.getElementById(elsel).innerHTML = "";
   var nattr = act.nattr || "name";
   var ida = act.ida || "id";
   var colla = act.colla || "items"; // items ? ("hosts" already in org act node)
@@ -241,10 +243,13 @@ function multigridview(ev, act) {
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
     if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // Auto-detect (e.g. For staleproc use-case)
     if (!Array.isArray(grps)) { toastr.clear(); return toastr.error("Results not in array !"); }
-    // TODO: Template ?
+    // TODO: Top-level Template
+    let tpara = { rowcnt: grps.length, name: act.name };
+    let title = `<h1>${tpara.name} (${grps.length})</h1>`;
+    // if (act.toptitletmpl) {  title = Mustache.render(act.toptitletmpl, tpara); }
     //console.log(JSON.stringify(grps, null, 2));
     // var cont = ""; // TODO: generate string initially ? Problem: How to do showgrid() - Loop again call showgrid() for each grid ?
-    //$('#' + elsel).append("<h1>"+act.name+" ("+ grps.length +")</h1>\n");
+    $('#' + elsel).append(title); // "<h1>"+act.name+" ("+ grps.length +")</h1>\n"
 
     grps.forEach(function (g) {
       var arr = g[colla]; // g.hosts

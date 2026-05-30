@@ -1080,8 +1080,9 @@ function ibip_cell(val, item) {
    // GH teams (for /api/v3/repos/${org}/${repo}/teams)
    function gh_memurl_cell(val, item) {
      if (!val) {return "";}
-     val = val.replace('{/member}', '');
-     return `<a href="${val}" target="ghmems">Mems</a>`;
+     //val = val.replace('{/member}', '');
+     let memnote = item['memcnt'] ? `(${item['memcnt']})` : '';
+     return `<a href="${val}" target="ghmems" title="Mems for ${item['slug']}">Mems ${memnote}</a>`;
    }
    var fldinfo_gh_teams = [
     {name: "id",      title: "TeamID", type: "text", width: 4, itemTemplate: null},
@@ -1091,7 +1092,7 @@ function ibip_cell(val, item) {
     {name: "privacy", title: "Privacy", type: "text", width: 10, itemTemplate: null},
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
     // OR members_url (API) OR html_url (HTML)
-    {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gridplug.url_link_bn}, // Link ! gh_memurl_cell
+    {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gh_memurl_cell}, // gh_memurl_cell / gridplug.url_link_bn
     {name: "permission" , title: "Perms/Role", type: "text", width: 7, itemTemplate: null}, // admin, push, pull,maintain
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
