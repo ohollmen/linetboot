@@ -48,7 +48,14 @@ var gridplug = {
     if (!Array.isArray(val)) { return ''; } // Show scalar / single value ?
     //return val.map( (v) => { return `<span>${v}</span>`;}).join(' ');
     return val.join(', ');
-  }
+  },
+  url_link_bn: (val, item) => {
+    if (!val || typeof val != 'string') { return ''; }
+    //if (Array.isArray(val)) { return ''; } // Show scalar / single value ?
+    let txt = val.split('/')[-1];
+    // TODO: How to derive target tab (pass fld/attr info)
+    return `<a href="${val}" target="bn_tab">${txt}</a>`;
+  },
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
    function distrocell(value, item) {
@@ -1072,21 +1079,35 @@ function ibip_cell(val, item) {
    ];
    // GH teams (for /api/v3/repos/${org}/${repo}/teams)
    function gh_memurl_cell(val, item) {
-     //return val;
+     if (!val) {return "";}
      val = val.replace('{/member}', '');
      return `<a href="${val}" target="ghmems">Mems</a>`;
    }
    var fldinfo_gh_teams = [
-    {name: "id",      title: "TeamID", type: "text", width: 5, itemTemplate: null},
-    {name: "name",    title: "Name", type: "text", width: 20, itemTemplate: null},
+    {name: "id",      title: "TeamID", type: "text", width: 4, itemTemplate: null},
+    {name: "name",    title: "Name", type: "text", width: 22, itemTemplate: null},
     {name: "slug",    title: "ID Label", type: "text", width: 15, itemTemplate: null}, // auto-gen
     {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
     {name: "privacy", title: "Privacy", type: "text", width: 10, itemTemplate: null},
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
     // OR members_url (API) OR html_url (HTML)
-    {name: "html_url", title: "Mems", type: "text", width: 25, gh_memurl_cell: gh_memurl_cell}, // Link !
-    {name: "permission" , title: "Perms/Role", type: "text", width: 8, itemTemplate: null}, // admin, push, pull,maintain
+    {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gh_memurl_cell}, // Link !
+    {name: "permission" , title: "Perms/Role", type: "text", width: 7, itemTemplate: null}, // admin, push, pull,maintain
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
+   ];
+   var fldinfo_gh_mems = [
+    {name: "login",     title: "Login",  type: "text", width: 6, itemTemplate: null},
+    {name: "id",        title: "ID",     type: "text", width: 4, itemTemplate: null},
+    {name: "node_id",   title: "NodeID", type: "text", width: 7, itemTemplate: null},
+    {name: "avatar_url",title: "Avatar", type: "text", width: 5, itemTemplate: null},
+    {name: "html_url",  title: "GHUser URL", type: "text", width: 5, itemTemplate: gridplug.url_link_bn},
+    {name: "type",      title: "MemType", type: "text", width: 5, itemTemplate: null}, // "User"
+    {name: "user_view_type",title: "ViewAcc", type: "text", width: 5, itemTemplate: null}, // public
+    {name: "site_admin",   title: "IsAdmin", type: "text", width: 3, itemTemplate: null},
+    {name: "ldap_dn",      title: "LDAP ID", type: "text", width: 5, itemTemplate: gridplug.ldap_dn_bn},
+    // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
+    // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
+    // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
    ];
    // High similarity to GitHub
    var fldinfo_gl_projs = [
@@ -1592,7 +1613,7 @@ let fldinfo_jjob = [
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss, "kubnodes": fldinfo_kub_nodes,
       "gerr_change": fldinfo_gerr_change,
-      "ghprojs": fldinfo_gh_projs, "ghteams": fldinfo_gh_teams,
+      "ghprojs": fldinfo_gh_projs, "ghteams": fldinfo_gh_teams, "ghmems": fldinfo_gh_mems,
       "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
