@@ -651,8 +651,9 @@ var tabloadacts = [
   {"name":"Artifactory Images", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/afaimgs", gridid: "jsGrid_afaimg", fsetid: "afa_images",
     path: "afaimgs", // dprep: (an, arr, ev) => { arr.forEach( (it) => {it.repo = ev.target.dataset.repo; }); },
     uisetup: afaimgs_uisetup,  "longload": 1}, // dialogidXX: "afaimginfo",
+  // TODO: longload: 1
   {"name":"Artifactory Image Info", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", // gridid: "", fsetid: "",
-    path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog"},
+    path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog", longload: 1},
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "",  fsetid: "nft", formid: "fwform", fldinfo: fldinfo, subtypes: true, debug: 1,
     path: "fwform", uisetup: null,  "optcoll": opts_nft, }, // dialogid: "afaimginfodialog",
   {"name":"Grid Defs", "elselXX": "XX", tmpl: "", "hdlr": jgrid_fielddefs,   fldinfo: fldinfo, // url: "", gridid: "", fsetid: "",
@@ -677,6 +678,12 @@ var tabloadacts = [
     path: "ghteams", urlpara: (ev, act) => {
       let ds = ev.target.dataset; return `${act.url}?org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
     }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1},
+  // htview for GH repo, teams (and mems - to be custom dialog viewed)
+  // Should patch url based on config at client init()
+  {"name": "GH Repo Teams Grouping", tmpl: null, hdlr: multigridview, url: "/htview/ghrt", gridid: "jsGrid_ghteams", fsetid: "ghteams", path: "ghrt",
+    titletmpl: "<h2>{{name}} ({{rowcnt}} Teams)</h2><p>The teams of Repo {{name}}:</p>\n",
+    uisetup: null, 
+  },
 ];
 
 function hcliusage_urlpara(ev, an) {
