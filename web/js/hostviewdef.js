@@ -52,9 +52,9 @@ var gridplug = {
   url_link_bn: (val, item) => {
     if (!val || typeof val != 'string') { return ''; }
     //if (Array.isArray(val)) { return ''; } // Show scalar / single value ?
-    let txt = val.split('/')[-1];
+    let txt = val.split('/').pop(); // .at(-1) / .pop()
     // TODO: How to derive target tab (pass fld/attr info)
-    return `<a href="${val}" target="bn_tab">${txt}</a>`;
+    return `<a href="${val}" target="bn_tab" title="${val}">${txt}</a>`;
   },
 };
 // Filtering: Part of controller(js-grid) cellFilter:(ui-grid)
