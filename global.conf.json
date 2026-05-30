@@ -326,8 +326,9 @@
     "views": [
       {"id": "tenapis", "url":"https://www.tenable.com/downloads/api/v2/pages", "localpath": "/htview/tenapis",  "token": ""},
       {"id": "tensc",   "url":"https://www.tenable.com/downloads/api/v2/pages/tenable-sc", "localpath": "/htview/tensc", "arrsel":"releases.latest"},
-      {"id": "tenscan", "url":"https://www.tenable.com/downloads/api/v2/pages/nessus", "localpath": "/htview/tenscan", "token":"", "arrsel":"releases.latest"}
-      
+      {"id": "tenscan", "url":"https://www.tenable.com/downloads/api/v2/pages/nessus", "localpath": "/htview/tenscan", "token":"", "arrsel":"releases.latest"},
+      {"id": "userfile", "fn": "~/.linetboot/initialuser.conf.json", "localpath": "/htview/initialuser"},
+      {"id": "afile", "fn": "~/afile.json", "localpath": "/htview/afile", "disa": 1}
     ]
   },
   "ollama": {
