@@ -1091,7 +1091,7 @@ function ibip_cell(val, item) {
     {name: "privacy", title: "Privacy", type: "text", width: 10, itemTemplate: null},
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
     // OR members_url (API) OR html_url (HTML)
-    {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gh_memurl_cell}, // Link !
+    {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gridplug.url_link_bn}, // Link ! gh_memurl_cell
     {name: "permission" , title: "Perms/Role", type: "text", width: 7, itemTemplate: null}, // admin, push, pull,maintain
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
