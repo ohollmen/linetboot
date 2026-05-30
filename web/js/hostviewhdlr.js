@@ -195,6 +195,11 @@ function dcomposer_uisetup(act) { //
  *   ...
  * ]
  * ```
+ * Action props:
+ * - nattr - name attribute for top items
+ * - ida - ID attribute for top items
+ * - colla - Array collection attribute where grid data exists
+ * - dataprep(gdarr) - CB for preparing grid data 
  * TODO: See how to handle dialog ui setup. uisetup could be done either
  * - In loop for each grid dataset <= CURRENT
  * - After whole loop for all grids collectively.
@@ -204,46 +209,58 @@ function dcomposer_uisetup(act) { //
  */
 function multigridview(ev, act) {
   var elsel = ev.routepath ? "routerdiv" : act.elsel;
-  //console.log("Generate into: " + elsel);
-  $('#' + elsel).html(''); // Clear
+  //console.log(`Generate into: ${elsel}`);
+  $('#' + elsel).html(''); // Clear document.getElementById(elsel).innerHTML = "";
   var nattr = act.nattr || "name";
   var ida = act.ida || "id";
   var colla = act.colla || "items"; // items ? ("hosts" already in org act node)
   var fsid = act.fsetid; // NO default
   if (!fsid) { return alert("No field layout !"); }
+  let fset = fldinfo[fsid];
+  if (!fset) {  return toastr.error("No grid def for multi-grid view !"); }
   // See disabled by act.elsel (TODO: Suppress whole tab)
   if (datasets && datasets.cfg && datasets.cfg.disabled && datasets.cfg.disabled.includes(act.elsel)) {
-    return $('#' + elsel).append("<p style=\"font-size: 11px; \">"+act.name+" not enabled in this system.</p>");
+    return $('#' + elsel).append(`<p style="font-size: 11px; ">${act.name} not enabled in this system.</p>`);
   }
   // console.log("Disabled: ",datasets.cfg.disabled, " elsel:", act.elsel);
-  toastr.info("Loading "+act.name);
+  toastr.info(`Loading act '${act.name}' (path: ${act.path})`);
   var spinner;
   var spel = document.getElementById(ev.viewtgtid);
   if (act.longload) { spinner = new Spinner(spinopts).spin(spel); }
   axios.get(act.url).then(function (resp) { // '/groups'
-    var grps = resp.data; // AoOoAoO...
+    let grps = resp.data; // AoOoAoO...
     // NOTE: Can we do this before knowing Arr/Obj (add !Array.isArray(grps) && ...
     // spinner && spinner.stop();
     if (grps.status && grps.status == 'err' && grps.msg) { return toastr.error("Error: "+grps.msg); }
     console.log("DATA:"+JSON.stringify(grps, null, 2));
+    //let grps = d;
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
     if (!Array.isArray(grps) && grps.data) { grps = grps.data; } // Auto-detect (e.g. For staleproc use-case)
     if (!Array.isArray(grps)) { toastr.clear(); return toastr.error("Results not in array !"); }
     // TODO: Template ?
     //console.log(JSON.stringify(grps, null, 2));
-    // var cont = ""; // TODO: generate string initially ? Problem: How to do showgrid()
+    // var cont = ""; // TODO: generate string initially ? Problem: How to do showgrid() - Loop again call showgrid() for each grid ?
     //$('#' + elsel).append("<h1>"+act.name+" ("+ grps.length +")</h1>\n");
+
     grps.forEach(function (g) {
       var arr = g[colla]; // g.hosts
       var id = (typeof ida == "function") ? ida(g) : g[ida];
+      // TODO: Homogenize w. other fw. action handlers
       if (typeof act.dataprep == 'function') { act.dataprep(g); } // Data-prep
-      $('#' + elsel).append("<h2>"+g[nattr]+" ("+ arr.length +")</h2>\n"); // g.name
-      if ((!arr || !arr.length) && act.skipe) { return $('#' + elsel).append("<p style=\"font-size: 11px; \">No items.</p>"); } // No items, allow skip
-      $('#' + elsel).append("<div id=\"grp_"+ id +"\"></div>\n");
-      showgrid("grp_"+id, arr, fldinfo[fsid]); // "hw"
-      if (typeof act.uisetup == 'function') { act.uisetup(act, arr); } // act
+      // TODO: Make more flexible (titletmpl)
+      let title = `<h2>${g[nattr]} (${arr.length})</h2>\n`;
+      let tpara = { rowcnt: arr.length, name: g[nattr], entid: id };
+      if (act.titletmpl) { title = Mustache.render(act.titletmpl, tpara); }
+      $('#' + elsel).append(title); // g.name
+      if ((!arr || !arr.length) && act.skipe) { return $('#' + elsel).append(`<p style="font-size: 11px;">No items.</p>`); } // No items, allow skip
+      $('#' + elsel).append(`<div id="grp_${id}"></div>\n`);
+      showgrid(`grp_${id}`, arr, fset); // fldinfo[fsid]
+      if (typeof act.uisetup == 'function') { act.uisetup(act, arr, ev); }
     });
-    //if (typeof act.uisetup == 'function') { act.uisetup(); } // act
+    // Post-loop ? 1) Setup grids by showgrid() 2) uisetup
+    //grps.forEach(function (g) { let arr = g[colla]; showgrid(`grp_${id}`, arr, fset); }
+    // After ALL the grids ?
+    //if (typeof act.uisetup == 'function') { act.uisetup(act, arr, ev); }
     toastr.clear();
   }).catch(function (error) {  console.log(error); })
   .finally(() => { spinner && spinner.stop(); });
