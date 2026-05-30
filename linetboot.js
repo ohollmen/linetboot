@@ -71,6 +71,7 @@ var jira     = require("./jira.js");
 var afa      = require("./afa.js");
 var hclparse = require("./hclparse.js");
 var grepo    = require("./grepo.js");
+var htview   = require("./htview.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -140,6 +141,7 @@ function app_init() { // mcfg
   afa.init(global);
   hclparse.init(global);
   grepo.init(global);
+  htview.init(global, app);
   var logger = function (res,path,stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
@@ -3378,6 +3380,6 @@ function vulnlist(req, res) {
   if (!varr) { console.error("No vuln data "); }
   varr = varr.records;
   if (!Array.isArray(varr)) { console.error("No vuln data as Array"); }
-  console.log(varr.length+" Items in array")
+  console.log(varr.length+" Items in array");
   res.json({status: "ok", data: varr});
 }
