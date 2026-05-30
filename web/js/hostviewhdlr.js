@@ -229,9 +229,13 @@ function multigridview(ev, act) {
   if (act.longload) { spinner = new Spinner(spinopts).spin(spel); }
   axios.get(act.url).then(function (resp) { // '/groups'
     let grps = resp.data; // AoOoAoO...
+    if (!Array.isArray(grps) && (typeof grps == 'object') && grps.data) {
+      //if (!Array.isArray(grps.data)) { return toastr.error(`No array found for groups`);  }
+      grps = grps.data;
+    }
     // NOTE: Can we do this before knowing Arr/Obj (add !Array.isArray(grps) && ...
     // spinner && spinner.stop();
-    if (grps.status && grps.status == 'err' && grps.msg) { return toastr.error("Error: "+grps.msg); }
+    if (grps.status && grps.status == 'err' && grps.msg) { return toastr.error(`Error: ${grps.msg}`); }
     console.log("DATA:"+JSON.stringify(grps, null, 2));
     //let grps = d;
     if (Array.isArray(grps) && (!grps || !grps.length)) { $('#' + elsel).html("No groups in this system"); return; }
