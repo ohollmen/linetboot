@@ -1093,7 +1093,7 @@ function ibip_cell(val, item) {
     // Color role
     let c = rcolor[val] || '';
     let implied = item.permissions || {};
-    let st = c ? `background-color: ${c[0]}; color: ${c[1]}` : '';
+    let st = c ? `background-color: ${c[0]}; color: ${c[1]}; border-radius: 3px; padding: 0px 3px;` : '';
     return `<span style="${st}" title="${Object.keys(implied).map( (k) => { return implied[k]; }).join(',')}">${val}</span>`;
    }
    var fldinfo_gh_teams = [
