@@ -1088,13 +1088,14 @@ function ibip_cell(val, item) {
    function gh_perms(val, item) {
     if (!val) return '';
     // TODO: array of bg, text
-    let rcolor = {"admin": ["black", "white"], "maintain": ["#222222", "white"],  push: ["#555555", "white"],
+    // maintain: blue
+    let rcolor = {"admin": ["black", "white"], "maintain": ["#333333", "white"],  push: ["#777777", "white"],
       triage: ["#AAAAAA","black"], pull: ["white", "#555555"]};
     // Color role
     let c = rcolor[val] || '';
     let implied = item.permissions || {};
     let st = c ? `background-color: ${c[0]}; color: ${c[1]}; border-radius: 3px; padding: 0px 3px;` : '';
-    return `<span style="${st}" title="${Object.keys(implied).map( (k) => { return implied[k]; }).join(',')}">${val}</span>`;
+    return `<span style="${st}" title="${Object.keys(implied).filter( (k) => { return implied[k]; }).join(',')}">${val}</span>`;
    }
    var fldinfo_gh_teams = [
     {name: "id",      title: "TeamID", type: "text", width: 4, itemTemplate: null},
