@@ -1094,7 +1094,7 @@ function ibip_cell(val, item) {
     let c = rcolor[val] || '';
     let implied = item.permissions || {};
     let st = c ? `background-color: ${c[0]}; color: ${c[1]}` : '';
-    return `<span style="${st}" title="${Object.keys(implied).join(',')}">${val}</span>`;
+    return `<span style="${st}" title="${Object.keys(implied).map( (k) => { return implied[k]; }).join(',')}">${val}</span>`;
    }
    var fldinfo_gh_teams = [
     {name: "id",      title: "TeamID", type: "text", width: 4, itemTemplate: null},
