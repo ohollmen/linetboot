@@ -1084,6 +1084,18 @@ function ibip_cell(val, item) {
      let memnote = item['memcnt'] ? `(${item['memcnt']})` : '';
      return `<a href="${val}" target="ghmems" title="Mems for ${item['slug']}">Mems ${memnote}</a>`;
    }
+   // Perms/roles and implied perms
+   function gh_perms(val, item) {
+    if (!val) return '';
+    // TODO: array of bg, text
+    let rcolor = {"admin": ["black", "white"], "maintain": ["#222222", "white"],  push: ["#555555", "white"],
+      triage: ["#AAAAAA","black"], pull: ["white", "#555555"]};
+    // Color role
+    let c = rcolor[val] || '';
+    let implied = item.permissions || {};
+    let st = c ? `background-color: ${c[0]}; color: ${c[1]}` : '';
+    return `<span style="${st}" title="${Object.keys(implied).join(',')}">${val}</span>`;
+   }
    var fldinfo_gh_teams = [
     {name: "id",      title: "TeamID", type: "text", width: 4, itemTemplate: null},
     {name: "name",    title: "Name", type: "text", width: 22, itemTemplate: null},
@@ -1093,7 +1105,7 @@ function ibip_cell(val, item) {
     // {name: "notification_setting", title: "Notif.", type: "text", width: 25, itemTemplate: null},
     // OR members_url (API) OR html_url (HTML)
     {name: "html_url", title: "Mems", type: "text", width: 25, itemTemplate: gh_memurl_cell}, // gh_memurl_cell / gridplug.url_link_bn
-    {name: "permission" , title: "Perms/Role", type: "text", width: 7, itemTemplate: null}, // admin, push, pull,maintain
+    {name: "permission" , title: "Perms/Role", type: "text", width: 7, itemTemplate: gh_perms}, // admin, push, pull,maintain
     {name: "ldap_dn", title: "LDAP Grp.", type: "text", width: 25, itemTemplate: gridplug.ldap_dn_bn},
    ];
    var fldinfo_gh_mems = [
