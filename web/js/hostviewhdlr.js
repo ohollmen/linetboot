@@ -266,6 +266,7 @@ function multigridview(ev, act) {
       showgrid(`grp_${id}`, arr, fset); // fldinfo[fsid]
       if (typeof act.uisetup == 'function') { act.uisetup(act, arr, ev); }
     });
+    // TODO: document.getElementById(elsel).innerHTML = cont;
     // Post-loop ? 1) Setup grids by showgrid() 2) uisetup
     //grps.forEach(function (g) { let arr = g[colla]; showgrid(`grp_${id}`, arr, fset); }
     // After ALL the grids ?

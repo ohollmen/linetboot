@@ -1089,8 +1089,8 @@ function ibip_cell(val, item) {
     if (!val) return '';
     // TODO: array of bg, text
     // maintain: blue
-    let rcolor = {"admin": ["black", "white"], "maintain": ["#333333", "white"],  push: ["#777777", "white"],
-      triage: ["#AAAAAA","black"], pull: ["white", "#555555"]};
+    let rcolor = {"admin": ["black", "white"], "maintain": ["#444444", "white"],  push: ["#888888", "white"],
+      triage: ["#BBBBBB","black"], pull: ["white", "#555555"]};
     // Color role
     let c = rcolor[val] || '';
     let implied = item.permissions || {};

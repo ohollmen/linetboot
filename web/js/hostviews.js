@@ -139,6 +139,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // Fold other use cases here (e.g. host, people, bootmedia, recipe prev.)
     // - .tgtid - View content div id => here: dialog id (like act.dialogid)
     //   - This gets matched with link event target element (a,span,div) data-tgt="mydialog"
+    //   - This is ALSO name of the fieldset to use for the grid (!).
     // - .dcb(hn, tgt, dialogcb) - custom "Data CB" (with fixed url) to retrieve data (and further call dialogcb)
     // - .gridid - JSGrid div gridid - like any grid action.gridid
     // - .uisetup - Like any act uisetup(data) (FW: uisetu(act, arrdata, ev))
@@ -161,7 +162,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
     if (!pinfo ) { console.log("No data set for grid"); return; }
     if (am.gridid && !Array.isArray(pinfo)) { console.log("Data set not in Array for grid"); return; }
-    if (!dialogsel) { console.error("No dialog selector, no gui."); return; }
+    if (!dialogsel) { console.error("No dialog selector, no dialog gui."); return; }
     console.log(`dialogcb: called (#-sel) dialogsel: '${dialogsel}'`); // e.g. proclist
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
     // class fwgrid is on grid-wrapping div-element
@@ -173,7 +174,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     //var id = gel.attr("id");
     
     var tmplid = am.tmplid || "simplegrid";
-    console.log(`Got template id: ${tmplid}`);
+    console.log(`Got template id: '${tmplid}'`);
     var titletmpl = diael.getAttribute("nametmpl"); // TODO: Change proper
     // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
     if (titletmpl) { tpara.name = Mustache.render(titletmpl, tpara); } // toastr.info("Formulated title/name: "+tpara.name);
@@ -681,7 +682,7 @@ var tabloadacts = [
   // htview for GH repo, teams (and mems - to be custom dialog viewed)
   // Should patch url based on config at client init()
   {"name": "GH Repo Teams Grouping", tmpl: null, hdlr: multigridview, url: "/htview/ghrt", gridid: "jsGrid_ghteams", fsetid: "ghteams", path: "ghrt",
-    ida: "id", nattr: "full_name", colla: "teams", longload: 1,
+    ida: "id", nattr: "full_name", colla: "teams", longload: 1, pagecnt: 150,
     // Description: {{description}}.
     titletmpl: "<h2>{{name}} (ID: {{id}} {{rowcnt}} Teams)</h2><p> Teams:</p>\n",
     uisetup: null, 
