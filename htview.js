@@ -102,6 +102,8 @@ function htview_send(req, res) {
   var jr = { status: "err", msg: "Could not create htdata result. " };
   // Resolve url to profile. Note: url should not have query params (?k1=v1&k2=v2&...) to work
   if (!cfg.views || !Array.isArray(cfg.views)) { jr.msg += `No views to lookup from.`; return res.json(jr); }
+  // TODO: Possibly do (parse):
+  let id = path.basename(req.url); // Match by id: { return id = vp.id; }
   let vp = cfg.views.find( (vp) => { return req.url == vp.localpath; } );
   if (!vp) { jr.msg += `No view profile (for path '${req.url}') found.`; console.error(jr.msg); return res.json(jr); }
   var d = htdata(vp, (err, d) => {
@@ -145,7 +147,7 @@ function htdata(vp, cb) {
     // in a special way
     if (vp.arrsel) { d = data_select(d, vp); }
     //console.log(d);
-    console.error( JSON.stringify(d, null, 2) );
+    cfg.debug && console.error( JSON.stringify(d, null, 2) );
     return cb(null, d);
   }).catch( function (ex) {
     let err = `Error fetching data for view: ${ex}`;
