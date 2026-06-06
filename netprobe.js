@@ -33,7 +33,7 @@ var inited = 0;
 // var ssh = new node_ssh();
 var ssh = new node_ssh.NodeSSH() // OLD: new node_ssh()
 //NOT HERE: var ssh2Client = ssh2.Client();
-var pkey;
+var pkey;   // Priv key **content**
 var pubkey; // Needed for purposes other than ssh2 connection
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
@@ -112,7 +112,7 @@ function resolve(hnode, cb) {
           // sshconn = 2 => Skipped
           if (p && p.nossh) { prec.nossh = 1; prec.sshconn = 2; console.log("Skipping SSH ("+hn+") !!!"); return cb(null, prec); }
           // console.log(sshcfg);
-          ssh.connect(sshcfg).then(function () {
+          ssh.connect(sshcfg).then(function () { // node_ssh.NodeSSH()
             prec.sshconn = 1;
             // result with .stdout, .stderr
             // NOTE: This is only successful on volatile basis ! Not concurrency proof ?
@@ -272,13 +272,14 @@ function stats_proc(hnode, cb) {
   // 
   function runprobecmd(cfg, cb) {
     let conn = new ssh2.Client();
+    // Note 2 nested scopes: connection scope and conn.exec() scope - both have similar events
     conn.on('ready', function() { // After succesful auth
-      console.log('conn-ready on ' + hn + "(" +cfg.id+ ")");
+      console.log(`conn-ready on ${hn} (${cfg.id})`);
       conn.exec(cfg.cmd, function(err, stream) {
-        if (err) { prec.ssherr = "Exec Err:" + err; return cb(null, additem(prec)); }
+        if (err) { prec.ssherr = `Exec Err: ${err}`; return cb(null, additem(prec)); }
         stream.on('close', function(code, signal) {
           // signal seems to be ~always undefined ', signal=' + signal +
-          console.log(`stream-close: ${hn} (code=${code}, tout=${tout})`);
+         console.log(`stream-close: ${hn} (code=${code}, tout=${tout})`);
           //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
         })
         // Note: We possibly should not call the cb() here as conn.on('', ...) may follow, causing "Callback was already called."
@@ -306,7 +307,7 @@ function stats_proc(hnode, cb) {
       //additem(prec);
     });
     conn.on('end', function () {
-      console.log("conn-end:   "+hn+'('+cfg.id+')');
+      console.log(`conn-end: ${hn} (${cfg.id})`);
       //return cb(null, prec); // Recent try (jam)
     });
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
