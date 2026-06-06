@@ -284,6 +284,7 @@ function disabled_detect(global) {
  * @todo Do (most?) env merges in a data driven way (env var => ds-node name, e.g. "core.maindocroot")
  */
 function env_merge(global) {
+  let mcfg = global; // TODO: Pass
   if (!global) { error("env_merge: No handle to main config !"); }
   // TOP
   if (process.env["FACT_PATH"])           { global.fact_path = process.env["FACT_PATH"]; }
@@ -353,6 +354,7 @@ function env_merge(global) {
   // Fake fact hosts CVS filename
   if (process.env["LINETBOOT_NEWHOSTS"])  {  global.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
   // unipass support by "$UNIPASS"
+  
   if (process.env.LINETBOOT_UNIPASS) {
     let unipass = process.env.LINETBOOT_UNIPASS;
     Object.keys(mcfg).forEach( (k) => {
