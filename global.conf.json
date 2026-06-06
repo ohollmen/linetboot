@@ -340,6 +340,7 @@
   "grepo": {
     "desc": "Git Repo Tool Manifest view",
     "cache": 1,
+    "remiconpath": {"origin": "web/img/type1.png", "upstream": "web/img/type2.png"},
     "ossreffn": "grepo_osref.json",
     "mfpath": ["~/.linetboot/", "/some/other/path"],
     "fn": "repo_manifest.xml",
@@ -386,6 +387,6 @@
       }
     ]
   },
-  "lboot_setup_module": "./custom.setup.js",
+  "lboot_setup_module": "~/.linetboot/custom.setup.js",
   "customhostsXX": "~/.linetboot/newhosts.txt"
 }
