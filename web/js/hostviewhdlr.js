@@ -149,7 +149,13 @@ function simplegrid_url(ev, an) {
     // NEW: Pass tpara i.e. possibly cloned action as that may contribute important info to .uisetup and
     // there should be no downside to it.
     if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(tpara, arr, ev); } // Orig: an (not tpara)
-  }).catch(function (error) { console.log(error); })
+  }).catch(function (err) {
+    console.log(`Encountered axios (${url}) ex: ${err}. Action '${an.name}'. TODO: Add cb for grid-NA explanation`);
+    // Note: On failed .then(...) there may ONLY be the outer dialog div (given by act.dialogid) avail with NO content)
+    let del = an.dialogid ? document.getElementById(an.dialogid) : null;
+    if (del) { del.innerHTML = `Data for {an.name} not available. You may not have permission to view it.`; }
+    // return toastr.error(data.msg);
+  })
   .finally(() => { spinner && spinner.stop(); spinner = null; });
 }
 /////////////////////////////////////////////////////////
