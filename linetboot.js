@@ -110,16 +110,17 @@ function app_init() { // mcfg
   console.log("Choosing mainconf: " + globalconf);
   global = mc.mainconf_load(globalconf);
   // global = mcfg;  // Interim compat
-  mc.env_merge(global);
-  mc.mainconf_process(global);
-  var user   = mc.user_load(global); // TODO: After env_merge, mainconf_process ?
-  var iprofs = mc.iprofs_load(global);
+  let mcfg = global;
+  mc.env_merge(mcfg);
+  mc.mainconf_process(mcfg);
+  var user   = mc.user_load(mcfg); // TODO: After env_merge, mainconf_process ?
+  var iprofs = mc.iprofs_load(mcfg);
   if (!iprofs) { console.log("No iprofsconfig"); }
   /////// Misc init():s ////////////////
   // {tout: (global.probe ? global.probe.tout : 0)}
-  netprobe.init(global.probe);
-  ipmi.init(global);
-  if (global.iblox) { iblox.init(global, {hostarr: hostarr, hostcache: hostcache}); }
+  netprobe.init(mcfg.probe);
+  ipmi.init(mcfg);
+  if (mcfg.iblox) { iblox.init(mcfg, {hostarr: hostarr, hostcache: hostcache}); }
   //app.use(express.static('pkgcache'));
   // Express static path mapping
   // Consider: npm install serve-static
@@ -142,7 +143,7 @@ function app_init() { // mcfg
   hclparse.init(global);
   grepo.init(global);
   htview.init(global, app);
-  var logger = function (res,path,stat) {
+  var logger = function (res, path, stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
     console.log("Send STATIC file in fspath: " + path + " ("+stat.size+" B, meth: "+res.req.method+")");
@@ -179,7 +180,7 @@ function app_init() { // mcfg
   // For local disk boot (recent) kernels and network install as well
   var maindocroot = global.core.maindocroot;
   if (!fs.existsSync(maindocroot)) {
-    console.error("Error/Warning: Main docroot '"+maindocroot+"' does not exist");
+    console.error(`Error/Warning: Main docroot '${maindocroot}' does not exist`);
     // 
     //process.exit(1);
   }
@@ -379,16 +380,16 @@ function app_init() { // mcfg
  } // sethandlers
   //////////////// Load Templates ////////////////
   
-  fact_path = global.fact_path;
+  fact_path = mcfg.fact_path;
   //console.log(process.env);
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env or set mcfg.fact_path !"); process.exit(1); }
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
   // OLD: global.fact_path = fact_path; // Store final in config
   ///////////// Hosts and Groups (hostloader.js) ////////////////////
   
-  hlr.init(global, {hostcache: hostcache, hostarr: hostarr});
-  hlr.hosts_load(global);
-  hlr.facts_load_all({short: global.core.shorthname}); // var hostarr = 
+  hlr.init(mcfg, {hostcache: hostcache, hostarr: hostarr});
+  hlr.hosts_load(mcfg);
+  hlr.facts_load_all({short: mcfg.core.shorthname}); // var hostarr = 
   
   /* Load IP Translation map if requested by Env. LINETBOOT_IPTRANS_MAP (JSON file)
    * Note: This is only needed with bad DHCP service that returns wrong or undeterministic
@@ -403,16 +404,16 @@ function app_init() { // mcfg
   // - Load into runtime directly from CSV file
   // - generate facts and remote config from customhosts
   // - TODO: Possibly converge to only one out of these two
-  if (global.customhosts) {
-    console.log("Detected New/custom hosts file: "+ global.customhosts);
-    var carr = hlr.customhost_load(global.customhosts, global, iptrans);
-    if (carr) { console.log("Loaded "+carr.length+" New/custom hosts"); }
+  if (mcfg.customhosts) {
+    console.log("Detected New/custom hosts file: "+ mcfg.customhosts);
+    var carr = hlr.customhost_load(mcfg.customhosts, mcfg, iptrans);
+    if (carr) { console.log(`Loaded ${carr.length} New/custom hosts`); }
     
   }
   //////////////// Groups /////////////////
   // If lineboot config has dynamic "groups" rules defined, collect group members into
   // TODO: Move to hostloader
-  var groups = global.groups;
+  var groups = mcfg.groups;
   
   if (groups && Array.isArray(groups)) {
     var gok = hlr.group_mems_setup(groups, hostarr);
@@ -420,7 +421,7 @@ function app_init() { // mcfg
   }
   //if (global.gcp && !global.gcp.disa) {
     gcp = require("./gcpops.js");
-    if (gcp && global.gcp) { gcp.init(global.gcp); }
+    if (gcp && mcfg.gcp) { gcp.init(mcfg.gcp); }
     // gcp.
 
   //}
@@ -445,23 +446,33 @@ function app_init() { // mcfg
   */
   // TODO: elevate higher / set more early. Probing options:  __dirname and process.cwd() and path.dirname(__filename)
   process.env["LINETBOOT_APP_PATH"] = __dirname; // NOTE: Use process.env["LINETBOOT_APP_PATH"] in lboot_setup_module to load add'l modules
-  /* Run customization setup plugin */
-  var modfn = global.lboot_setup_module;
+  /* Run customization setup (JS) plugin by mcfg member "lboot_setup_module" (e.g. default "~/.linetboot/custom.setup.js") */
+  function customsetup_run(mcfg, app, hostarr) {
+  var modfn = mcfg.lboot_setup_module;
   // TODO: Later eliminate and let normal module path resolution take place?
   var mod = setupmod = {};
-  if (!fs.existsSync(modfn))   { console.error("Warning: setup module does not exists as: "+ modfn);  } // return;
+  if (!fs.existsSync(modfn))   { console.error(`Warning: setup module does not exists as: '${modfn}'. Skip loading / running.`);  } // return;
   else {
-    setupmod = mod = require(modfn);
+    // Note: emtpy file would be ok for require. wrong (JS) syntax throws exception. Guard require() against that.
+    console.log(`Discovered custom setup module: '${modfn}'. Try to load and run()`);
+    try { setupmod = mod = require(modfn); }
+    catch (ex) { console.log(`Failed to load '${modfn}': ${ex}`); }
     if (!mod || !mod.run || typeof mod.run != 'function') {
-      console.error("Error: module either 1) Could not be loaded 2) Does not have run() member 3) run member is not a callable");
-      return; // exit() ?
+      console.error("Warning: custom setup module either:\n1) Could not be loaded\n2) Does not have run() member 3) run member is not a callable");
+      //return; // exit() ?
     }
-    console.log("Loaded app custom module: "+ modfn + " ... running setup: run() ...");
-    // Call for local customization: try {} catch () {}
-    mod.run(global, app, hostarr);
+    else {
+      if (1) { console.log("customsetup(obj):", mod); }
+      console.log(`Loaded app custom module file '${modfn}' ... running setup: run(mcfg,app,hostarr) ...`);
+      // Call for local customization:
+      try { mod.run(mcfg, app, hostarr);}
+      catch (ex) { console.error(`Warning: failed running custom setup run(): ${ex}`); }
+    }
   }
+  return mod ? mod : {}; } // customsetup_run
+  mod = customsetup_run(mcfg, app, hostarr); // TODO: mc.customsetup_run(mcfg, app, hostarr);
   // Init osinst AFTER loading hosts, iptrans, custom module
-  var osinst_initpara = {hostcache: hostcache, global: global, iptrans: iptrans, user: user, iprofs: iprofs};
+  var osinst_initpara = {hostcache: hostcache, global: mcfg, iptrans: iptrans, user: user, iprofs: iprofs};
   osinst.init(osinst_initpara, (mod.patch_params ? mod.patch_params : null)); // TODO: Pass mod
   // Session
   // resave: true, saveUninitialized: true, store: MemoryStore (default) cookie.maxAge, genid: (req) => {}
@@ -492,10 +503,10 @@ function app_init() { // mcfg
   // TODO: Allow controlling source IP addr
   // https://stackoverflow.com/questions/12349251/restrict-access-to-node-js-based-http-server-by-ip-address
   // server.on('connection', function (sock) { console.log(sock.remoteAddress); });
-  sethandlers(global);
+  sethandlers(mcfg);
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
-  var ldc = global.ldap; // ldc - LDAP Config
+  var ldc = mcfg.ldap; // ldc - LDAP Config
   // Check LD config
   if (ldc && (ldc.host && !ldc.disa)) {
     //var ldcopts = { url: 'ldap://' + ldc.host, strictDN: false};
@@ -509,7 +520,7 @@ function app_init() { // mcfg
     // Create LDAP Client for Authentication
     ldconn = ldap.createClient(ldcopts);
     //console.log("init LDAP");
-    ldconnx.init(global.ldap, ldconn); // Must be connected, but before any activity
+    ldconnx.init(mcfg.ldap, ldconn); // Must be connected, but before any activity
     ldconnx.ldconn_bind_cb(ldc, ldconn, function (err, ldconn) {if (err) {throw "Initial Bind err: "+err; }ldbound = 1; http_start(); });
     //console.log("Bind. conf:", ldc);
     /*
@@ -568,7 +579,7 @@ function app_init() { // mcfg
   // simu=1 be turned on by disa: 1. This way we dont have to carry on badly documented, half-hidden legacy var (simu)
   // Thanks (Github user) @sniffski for noticing this !
   else {
-    global.ldap = {simu: 1, disa: 1};
+    mcfg.ldap = {simu: 1, disa: 1};
     http_start();
   }
 }
@@ -623,7 +634,7 @@ function linet_mw(req, res, next) {
   // if (bootact[req.url]) {arp.getMAC(ipaddr, function(err, mac) { req.mac = mac; next(); }); } // ARP !
   
   //console.log("Setting CORS ...");
-  if (global.core.corshdr) { res.header("Access-Control-Allow-Origin", "*"); } // Access-Control-Allow-Origin
+  if (mcfg.core.corshdr) { res.header("Access-Control-Allow-Origin", "*"); } // Access-Control-Allow-Origin
   //res.header("Access-Control-Allow-Headers", "X-Requested-With");
   
   next();
@@ -639,6 +650,7 @@ function http_start() {
 }
 
 /** Deep clone any data structure.
+ * Note: Does not preserve functions, callbacks (but plainly disregards them).
 * @param data {object} - Root of the data structure to clone (deep copy)
 * @return Full deep copy of data structure.
 */
@@ -742,20 +754,20 @@ function oninstallevent(req,res) {
 * - pkgcnt - Package counts
 */
 function pkg_counts (req, res) {
-  // Package dir root
+  // Package dir root. TODO mcfg.ospkgs
   var root = global.pkglist_path || process.env["HOME"] + "/.linetboot/hostpkginfo";
   var jr = {status: "err", msg: "Package list collection failed."};
   if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
   // Get package count for a single host. Uses mcfg hostcache and 9outer var) root.
   // TODO: Pass facts, map(hostarr, ...)
   function gethostpackages(hn, cb) {
-    var path = root + "/" + hn;
+    var path = `${root}/${hn}`;
     // Lookup host for addl. info (for set to be self-contained)
     var f = hostcache[hn];
     var stat = {hname: hn, pkgcnt: 0, "distname": (f ? f.ansible_distribution: "???")};
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
     var err;
-    if (!fs.existsSync(path))   { err = "No pkg file for host: " + hn; console.log(err); return cb(null, stat); }
+    if (!fs.existsSync(path)) { err = "No pkg file for host: " + hn; console.log(err); return cb(null, stat); }
     if (hn.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
     cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
@@ -769,7 +781,7 @@ function pkg_counts (req, res) {
   //  gethostpackages(hn, function (err, cnt) { console.log("Got pkgs for " + hn + ": " + cnt);});
   //});
   async.map(global.hostnames, gethostpackages, function(err, results) {
-    if (err) {jr.msg += "Error collecting stats: " + err; return res.json(jr); }
+    if (err) {jr.msg += `Error collecting pkg stats: ${err}`; return res.json(jr); }
     res.json({status: "ok", data: results});
   });
   
@@ -1214,10 +1226,12 @@ function hostinfolist (req, res) {
   });
   res.json(arr);
 }
-/** List Groups if configured in main config (HTTP GET /groups).
+/** List Groups if configured in main config (GET /groups).
+ * TODO: Make this support (all) inventory groups
 */
 function grouplist(req, res) {
   var jr = {status: "err", msg: "Unable to List Host Groups."};
+  // mainconf driven groups (by re-pattern)
   if (!global.groups) { jr.msg += " No hostgroups declared"; return res.json(jr); }
   res.set('Access-Control-Allow-Origin', "*");
   // Deep clone (and remove irrelevant members ?)
@@ -2033,7 +2047,7 @@ function yaml_show(req, res) {
  * Config info is taken or derived from global config structure.
  */
 function config_send(req, res) {
-  var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}};
+  var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}, grepo: {}};
   console.log("Create config for user ");
   // Docker host group
   var dock = global.docker;
@@ -2047,6 +2061,7 @@ function config_send(req, res) {
   var cfl  = global.confluence;
   var hclparse = global.hclparse;
   var afa  = global.afa;
+  var grepo = global.grepo;
   // Docker
   if (dock && dock.hostgrp) { cfg.docker.hostgrp = dock.hostgrp; }
   if (dock && dock.port)    { cfg.docker.port = dock.port; }
@@ -2080,9 +2095,10 @@ function config_send(req, res) {
   if (gh && gh.org && Array.isArray(gh.org)) { cfg.ghorgs = gh.org; }
   if (gl && gl.org && Array.isArray(gl.org)) { cfg.glorgs = gl.org; }
   if (cfl && cfl.host) { cfg.cflhost = cfl.host; }
-  if (afa && afa.afarepos && Array.isArray(afa.afarepos)) { afa.afarepos = afa.afarepos; }
+  if (afa && afa.afarepos && Array.isArray(afa.afarepos)) { cfg.afa.afarepos = afa.afarepos; }
   cfg.kubimap = (kubi && (kubi.kubimap) ) ? kubi.kubimap : [];
   if (hclparse && hclparse.modnames) { cfg.hclmodnames = hclparse.modnames; }
+  if (grepo && grepo.remiconpath) { cfg.grepo.remiconpath = grepo.remiconpath } else { cfg.grepo.remiconpath = {}; }
   res.json(cfg);
 }
 
@@ -3382,4 +3398,63 @@ function vulnlist(req, res) {
   if (!Array.isArray(varr)) { console.error("No vuln data as Array"); }
   console.log(varr.length+" Items in array");
   res.json({status: "ok", data: varr});
+}
+// cmd = `docker image ls --format json`;
+// curl --unix-socket /var/run/docker.sock http://localhost/v1.24/images/json
+// Web API: ?all=true ?filters=... As of Ubu 24.04 Must use min API: v1.40
+// See: /usr/lib/systemd/system/docker.service and playbooks/docker_expose.yaml
+// ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+// ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:{{ dport }} --api-cors-header \"*\"
+// https://oneuptime.com/blog/post/2026-02-08-how-to-use-docker-api-directly-with-curl/view
+function dockerd_rsc_list(hn, rsctype) {
+  var ssh2  = require('ssh2');
+  let conn = new ssh2.Client();
+  let prec = {"hname": hn, "pcnt": -1};
+  let apiver = "v1.44"; // v1.24 ~2018
+  let rscurl = `http://localhost/${apiver}/${rsctype}/json`; // images / containers
+  let cmd = `curl --unix-socket /var/run/docker.sock '${rscurl}'`;
+  let sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
+  conn.on('ready', function() { // After succesful auth
+      console.log(`conn-ready on ${hn} (${cfg.id})`);
+      let jdata = '';
+      conn.exec(cmd, function(err, stream) {
+        if (err) { prec.ssherr = `Exec Err: ${err}`; return cb(prec.ssherr, null); }
+        stream.on('close', function(code, signal) {
+          // signal seems to be ~always undefined ', signal=' + signal +
+          console.log(`stream-close: ${hn} (code=${code}, tout=${tout})`);
+          //conn.end(); // Was enabled. Got : Cannot call write after a stream was destroyed Error: Callback was already called.
+        })
+        // Note: We possibly should not call the cb() here as conn.on('', ...) may follow, causing "Callback was already called."
+        .on('end', function () {
+          conn.end();
+          let j = JSON.parse(jdata);
+          return cb(null, j); // This does not seem to be culprit for conn.on('error', ..) "...already called"
+          //return;
+        }) // NEW (move conn.end() here)
+        .on('data', function on_data_uptime(data) {
+          //console.log('stream-data('+cfg.id+'): ' + data); // Buffer
+          //OLD: prec[cfg.prop] = data.toString(); // parseInt(data);
+          //cfg.pcb(data.toString(), prec);
+          //return cb(null, prec); // Long time loc
+          jdata += data.toString();
+        }); // .stderr.on('data', function(data) { console.log('STDERR: ' + data); });
+      });
+    });
+    // Note: this cb cannot be placed to outer scope (and call cb, cause that would be outer scopes cb)
+    // ... w/o getting Error: Callback was already called.
+    conn.on('error', function on_conn_error(err) {
+      prec.ssherr = `conn-error: ${hn}: ${err}`; // " + err.toString();
+      console.log(prec.ssherr);
+      // HERE ?
+      conn.end(); // or does close/end event still take place ?
+      return cb("Error during SSH connection", null); // long time loc. "Callback was already called." (BUGS.md)
+      //additem(prec);
+    });
+    conn.on('end', function () {
+      console.log(`conn-end: ${hn} (${cfg.id})`);
+      //return cb(null, prec); // Recent try (jam)
+    });
+    // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
+    conn.connect(sshcfg);
+  //}
 }
