@@ -288,6 +288,11 @@ function afarepo_ls(req, res) {
   console.log(`afarepos: from ${url} w. cred ${rcfg.token} B`);
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
+    if (!Array.isArray(d)) { jr.msg += "Result not in array."; return res.json(jr); }
+    if (cfg.repofilter) {
+      let re = new RegExp(cfg.repofilter, "g");
+      d = d.filter( (it) => { return it.key.match(re); });
+    }
     res.json({status: "ok", data: d});
   }).catch( (ex) => { jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr); });
   

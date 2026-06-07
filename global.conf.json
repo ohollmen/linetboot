@@ -302,7 +302,8 @@
     "imgpath": "pc1/pc2/pc3",
     "excpatt": "(hello|refactor-\\w|\\w+-backup|legacy-img|windows|junk-folders|master-\\d\\d|test)",
     "storpath": "~/.linetboot/afa/docker_images_tags.json",
-    "repocfgfn": ""
+    "repocfgfn": "",
+    "repofilter": ""
   },
   "hclparse": {
     "webstats": 1,
