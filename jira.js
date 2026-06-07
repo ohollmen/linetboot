@@ -175,7 +175,7 @@ function jira_query_opts(q, cb) {
   //axios.get(url, ropts).then((resp) => {
   axios.post(url, rbody, ropts).then((resp) => {
     var d = resp.data;
-    //if (q.debug) { console.log("Got JIRA Data: "+ JSON.stringify(d,null, 2) ); }
+    if (q.debug || cfg.debug) { console.log("Got JIRA Data: "+ JSON.stringify(d,null, 2) ); }
     if (q.html) { console.log("HTML:\n"+d.body.storage.value); return cb(null, d.body.storage.value); } // res.end();
     // TODO: rethink d.issues
     // NONEED: else if (res) {  return cb(null, d.issues); } // res.json({status: "ok", data: ... url: url})
