@@ -277,16 +277,19 @@ function afarepo_ls(req, res) {
   let rcfg = id ? repocfg_node(id) : cfg.repocfg[0];
   //
   if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
+  if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
   // TODO: Actually list repos
   let rpara = {
     headers: { 'X-JFrog-Art-Api': rcfg.token, 'Accept': 'application/json', }
   };
-  let prefix = rcfg.host.startsWith('http') ? '' : 'https://';
-  let url = `${prefix}${rcfg.host}/api/repositories`; // `/{reponame}`;
+  // let apiprefix = 'artifactory';
+  let scprefix = rcfg.host.startsWith('http') ? '' : 'https://';
+  let url = `${scprefix}${rcfg.host}/artifactory/api/repositories`; // `/{reponame}`;
+  console.log(`afarepos: from ${url} w. cred ${rcfg.token} B`);
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     res.json({status: "ok", data: d});
-  }).catch( (ex) => { jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; return res.json(jr); });
+  }).catch( (ex) => { jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr); });
   
   //res.json({status: "ok", data: cfg.repocfg});
   function repocfg_node(id) {
