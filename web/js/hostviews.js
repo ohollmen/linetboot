@@ -661,9 +661,9 @@ var tabloadacts = [
     path: "afarepos", uisetup: null, longload: 1},
   {"name": "Artifactory MultiServer Repos", tmpl: null, hdlr: multigridview, url: "/afarepos/all", gridid: "jsGrid_afarepos_all", fsetid: "afa_repos",
       path: "afarepos_all",
-    ida: "id", nattr: "id", colla: "repos", longload: 1, pagecnt: 150,
+    ida: "id", nattr: "name", colla: "repos", longload: 1, pagecnt: 150,
     // Description: {{description}}.
-    titletmpl: "<h2>Repo ID: {{id}}  {{rowcnt}} Repos)</h2>\n", // (ID: {{id}}
+    titletmpl: "<h2>{{name}}  (ID: {{id}}, {{rowcnt}} Repos)</h2>\n", // (ID: {{id}}
     uisetup: null, 
   },
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "",  fsetid: "nft", formid: "fwform", fldinfo: fldinfo, subtypes: true, debug: 1,

@@ -283,8 +283,8 @@ function afarepos_fetch(rcfg, cb) {
     let d = resp.data;
     if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
     // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
-    // let fre = cfg.repofilter || rcfg.repofilter; // Filter RE
-    if (cfg.repofilter) {
+    let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
+    if (fre) { // cfg.repofilter
       let re = new RegExp(cfg.repofilter, "g");
       d = d.filter( (it) => { return it.key.match(re); });
     }
@@ -313,6 +313,7 @@ function afarepo_ls(req, res) {
   //
   if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
   if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
+  rcfg = dclone(rcfg);
   afarepos_fetch(rcfg, (err, d) => {
     if (err) { jr.msg += `Failed to fetch server repos: ${err}`; return res.json(jr); }
     return res.json({status: "ok", data: d.repos});
