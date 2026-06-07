@@ -269,6 +269,8 @@ function disabled_detect(mcfg) {
   if (!ks || (ks && !ks.host) || (ks && !ks.token) ) { dis.push("kubinfo"); }
   var ser = mcfg.services;
   if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
+  let grepo = mcfg.grepo;
+  if (!grepo || (grepo && !grepo.fn)) { dis.push("grepo"); }
   return dis;
 } // disabled_detect
 
