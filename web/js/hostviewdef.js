@@ -1615,11 +1615,16 @@ let fldinfo_jjob = [
   {name: "disabled", label: "Disable?", type: "text", width: 20, itemTemplate: null},
   {name: "downstreamProjects", label: "DonwnstreamProj.", type: "text", width: 20, visible: false, itemTemplate: null}, // A or AoO ?
 ];
-//function afarepo_url_cell(val, item) { }
+
+function afarepo_rtype_cell(val, item) {
+  let = cmap = {"LOCAL": "#444444", "VIRTUAL": "#719fe5", "REMOTE": "#FF4444", "": "", };
+  let c = cmap[val] ? cmap[val] : 'black';
+  return `<span style="background-color: ${c}; color: white;">${val}</span>`;
+}
 var fldino_afa_repo = [
     { name: "key",         type: "text", title: "Key",          width: 160, itemTemplate: null },
     { name: "description", type: "text", title: "Description",  width: 220, itemTemplate: null },
-    { name: "type",        type: "text", title: "Repo Type",         width:  80, itemTemplate: null },
+    { name: "type",        type: "text", title: "Repo Type",         width:  80, itemTemplate: afarepo_rtype_cell },
     { name: "packageType", type: "text", title: "Package Type", width: 100, itemTemplate: null },
     { name: "url",         type: "text", title: "URL",          width: 320, itemTemplate: null },
   ];
