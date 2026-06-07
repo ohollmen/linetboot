@@ -286,7 +286,9 @@ function afarepos_fetch(rcfg, cb) {
     let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
     if (fre) { // cfg.repofilter
       let re = new RegExp(cfg.repofilter, "g");
+      console.log(`Use RE filter: ${re}`);
       d = d.filter( (it) => { return it.key.match(re); });
+      console.log(`Filetered down to: ${d.length} items`);
     }
     rcfg.repos = d; delete rcfg.token;
     return cb(null, rcfg); // Only success
