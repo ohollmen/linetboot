@@ -30,6 +30,7 @@ var axios = require("axios");
 var Mustache = require("mustache");
 var fs    = require("fs");
 var async = require("async");
+var jsyaml  = require('js-yaml');
 // API URL rules: https://docker-docs.uclv.cu/registry/spec/api/
 // - Shows API starting w. /v2/, <name> is the *image* path/name aka reponame
 // - Art seems to namespace their container registry with their own prefix (artifactory/)
@@ -60,7 +61,12 @@ function init(_mcfg) {
     ropts.headers[ahdr] = cfg.token; // axios
     if (cfg.apiprefix) { apiprefix = cfg.apiprefix; }
     if (cfg.afarepo) {  } // Prep  by templating: apiprefix = Mustache.render(apiprefix, cfg)
-    console.log(cfg);
+    //console.log(cfg);
+    // e.g. afa.conf.yaml
+    if (cfg.repocfgfn && fs.existsSync(cfg.repocfgfn)) {
+      let cont = fs.readFileSync(cfg.repocfgfn, 'utf8');
+      cfg.repocfg = yaml.load(cont);
+    }
 }
 // Make various API URL paths derived from the fixed / constant prefix part of the path
 // Typical appended "path" parts: _catalog
@@ -260,7 +266,17 @@ function imgmani(req, res) {
     return res.json({"status": "ok", "data": d});
   }
 }
-module.exports = {init: init, afaimgs: afaimgs, imgmani: imgmani};
+////////////////// Normal AFA (non-docker) repos
+function afarepo_ls(req, res) {
+  let jr = {status: "err", msg: ""};
+  // Grab config from the non-official part of cfg.
+  if (!cfg.repocfg) { jr.msg += "No afa repo config !"; return res.json(jr); }
+  // TODO: Actually list repos
+  res.json({status: "ok", data: cfg.repocfg});
+}
+
+///////////////////
+module.exports = {init: init, afaimgs: afaimgs, imgmani: imgmani, afarepo_ls: afarepo_ls, };
 
 if (process.argv[1].match("afa.js")) {
   var argv2 = process.argv.slice(2);
