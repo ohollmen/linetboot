@@ -1006,7 +1006,7 @@ window.onload = function () {
   var acts = tabloadacts.filter((ti) => { return ti.path; });
   // Can we do async preroute-op ?
   function preroute(ev, act) {
-    console.log("Routing: "+act.name+" ('"+location.hash+"' ... "+act.path+")");
+    console.log(`Routing: ${act.name} ('${location.hash}' ... ${act.path})`);
     if (!datasets.cfg.username) { location.hash = "loginform";  } // return;
     // Need to override in action for e.g. dialog (e.g. viewid)
     ev.viewtgtid = "routerdiv";
@@ -1309,7 +1309,7 @@ function nfsinfo(hname, dialogsel, cb) {
   axios.get("/showmounts/" + hname).then(function (resp) {
     var pinfo = resp.data;
     // console.log(pinfo);
-    cb(pinfo, dialogsel); return;
+    return cb(pinfo, dialogsel);
   })
   .catch(function (err) { let estr = `No NFS info:  ${err}`; console.log(estr); alert(estr); });
 }

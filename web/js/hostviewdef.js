@@ -1544,7 +1544,7 @@ function riskadj_cell(val, item) {
    }
    function grepo_remote_cell(val, item) {
     // Lookup icon from data of /config
-    let grepo = cfg && cfg.grepo ? cfg.grepo : null;
+    let grepo = datasets.cfg && datasets.cfg.grepo ? datasets.cfg.grepo : null;
     let iconsym =  (grepo && grepo.remiconpath && grepo.remiconpath[val]) ? `<img src="${grepo.remiconpath[val]}">` : '';
      if (val && !item.remote_def) { return val; }
      return `<span style="color: #888888;">${item.remote_def} ${iconsym}</span>`;
