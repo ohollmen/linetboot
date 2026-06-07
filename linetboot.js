@@ -76,7 +76,7 @@ var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
 var global = {}; // Main config
-//var mcfg = {};
+var mcfg;
 global.tmpls = {}; // cached
 // IP Translation table for hosts that at pxelinux DHCP stage got IP address different
 // from their DNS static IP address (and name). This only gets loaded by request via Env.variable
@@ -98,26 +98,24 @@ app.use(bodyParser.raw(rawoptions));
 * @param cfg {object} -  linetboot configuration
 * @todo Perform sanity checks in mirror docroot.
 */
-function app_init() { // mcfg
+function app_init(mcfg) { // mcfg
+  if (!mc.mcfg_looks_ok(mcfg)) { console.log(`app_init: Faulty main config !`); process.exit(1); }
   /** Modules */
   app.set('json spaces', 2);
   //var user;
+  // Old loc of mcfg loading
   
   
-  ///////////////////////////
-  // 
-  var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
-  console.log("Choosing mainconf: " + globalconf);
-  global = mc.mainconf_load(globalconf);
   // global = mcfg;  // Interim compat
-  let mcfg = global;
-  mc.env_merge(mcfg);
-  mc.mainconf_process(mcfg);
+  //mcfg = global;
+  // Call already upstream !
+  //mc.env_merge(mcfg);
+  //mc.mainconf_process(mcfg);
   var user   = mc.user_load(mcfg); // TODO: After env_merge, mainconf_process ?
   var iprofs = mc.iprofs_load(mcfg);
-  if (!iprofs) { console.log("No iprofsconfig"); }
+  if (!iprofs) { console.log("No (Install profiles) iprofsconfig"); }
   /////// Misc init():s ////////////////
-  // {tout: (global.probe ? global.probe.tout : 0)}
+  // {tout: (mcfg.probe ? mcfg.probe.tout : 0)}
   netprobe.init(mcfg.probe);
   ipmi.init(mcfg);
   if (mcfg.iblox) { iblox.init(mcfg, {hostarr: hostarr, hostcache: hostcache}); }
@@ -130,34 +128,34 @@ function app_init() { // mcfg
   // Test with /ubuntu/md5sum.txt (Works ok)
   // NOTE: express.static(usr, path, conf) can take 3rd conf parameter w.
   // "setHeaders": function (res,path,stat) {}
-  osdisk.init(global, {hostarr: hostarr, hostcache: hostcache});
-  procrpt.init(global);
-  deployer.init(global); // Good, should have access to "gitroots" also.
-  cfl.init(global);
+  osdisk.init(mcfg, {hostarr: hostarr, hostcache: hostcache});
+  procrpt.init(mcfg);
+  deployer.init(mcfg); // Good, should have access to "gitroots" also.
+  cfl.init(mcfg);
   tform.init();
-  kubi.init(global);
-  certs.init(global);
-  htpasswd.init(global);
-  jira.init(global);
-  afa.init(global);
-  hclparse.init(global);
-  grepo.init(global);
-  htview.init(global, app);
+  kubi.init(mcfg);
+  certs.init(mcfg);
+  htpasswd.init(mcfg);
+  jira.init(mcfg);
+  afa.init(mcfg);
+  hclparse.init(mcfg);
+  grepo.init(mcfg);
+  htview.init(mcfg, app);
   var logger = function (res, path, stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
     console.log("Send STATIC file in fspath: " + path + " ("+stat.size+" B, meth: "+res.req.method+")");
     // console.log(stat); // Stat Object
   };
-  if (global.gerrit) { gerrit.init(global); }
+  if (mcfg.gerrit) { gerrit.init(mcfg); }
   var staticconf_0 = {"setHeaders": logger };
   // TODO: Evaluate this (https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address)
   // app.set('trust proxy', true); // relates to req.header('x-forwarded-for') ?
   // Note this URL mapping *can* be done by establishing symlinks from maindocroot
   /*
-  if (global.useurlmapping) {
+  if (mcfg.useurlmapping) {
   console.log("URL Mappings (url => path):");
-  global.mirrors.forEach(function (mirror) {
+  mcfg.mirrors.forEach(function (mirror) {
     //TODO: var urlpath = "/" + mirror.directory; // osid
     app.use(mirror.directory, express.static(mirror.docroot));
     console.log("" + mirror.directory + " => " + mirror.docroot + "   " +
@@ -167,7 +165,7 @@ function app_init() { // mcfg
   } // end if
   // Advice to setup symlinks under docroot
   else {
-    global.mirrors.forEach(function (mirror) {
+    mcfg.mirrors.forEach(function (mirror) {
       var url = mirror.directory;
       // url.replace();
     });
@@ -176,24 +174,23 @@ function app_init() { // mcfg
   
   // For kernel and initrd (/linux, /initrd.gz) respectively
   // Installer Kernel and Initrd from mirror area (CD/DVD)
-  // global.mirror.docroot
+  // mcfg.mirror.docroot
   // For local disk boot (recent) kernels and network install as well
-  var maindocroot = global.core.maindocroot;
+  var maindocroot = mcfg.core.maindocroot;
   if (!fs.existsSync(maindocroot)) {
     console.error(`Error/Warning: Main docroot '${maindocroot}' does not exist`);
-    // 
-    //process.exit(1);
+    process.exit(1);
   }
   // https://expressjs.com/en/4x/api.html#express.static
   var staticconf = {dotfiles: "allow"}; // setHeaders, index, fallthrough=false (to short circuit)
   // Allow enabling 
-  if (global.inst.staticdebug) { staticconf.setHeaders = logger; }
+  if (mcfg.inst.staticdebug) { staticconf.setHeaders = logger; }
   // Main docroot
-  app.use(express.static(maindocroot, staticconf)); // e.g. /var/www/html/ or /isomnt/ (from global config)
+  app.use(express.static(maindocroot, staticconf)); // e.g. /var/www/html/ or /isomnt/ (from mcfg config)
   // For Opensuse ( isofrom_device=nfs:...) and FreeBSD (memdisk+ISO) Distros that need bare ISO image (non-mounted).
-  // Additional document roots in (Array) global.core.addroot
-  if (global.core.addroot && Array.isArray(global.core.addroot)) {
-    global.core.addroot.forEach((root) => { app.use(express.static(root, staticconf)); });
+  // Additional document roots in (Array) mcfg.core.addroot
+  if (mcfg.core.addroot && Array.isArray(mcfg.core.addroot)) {
+    mcfg.core.addroot.forEach((root) => { app.use(express.static(root, staticconf)); });
   }
   // No need for custom staticconf (mainly dotfiles)
   app.use('/web', express.static('web', staticconf)); // Host Inventory
@@ -203,7 +200,8 @@ function app_init() { // mcfg
   ////////////////////// Installer ///////////////////////////////////
   
   
-  function sethandlers(mcfg) { // app
+  function sethandlers(mcfg, app) {
+    if (!mc.mcfg_looks_ok(mcfg)) { mc.error(`sethandlers: MC does not look ok !`); }
   // preseed_gen - Generated preseed and kickstart shared handler
   // TODO: Do these by a driving config (in a loop, See preseed_gen() var tmplmap)
   osinst.url_hdlr_set(app); // NEW (driven by recipe selections)
@@ -229,6 +227,7 @@ function app_init() { // mcfg
   ////////////////// Host Info Viewer (/web) /////////////////////////
   app.get('/list', hostinfolist);
   app.get('/list/:viewtype', hostinfolist);
+  //return 3;
   // Package stats (from ~/hostpkginfo or path in env. PKGLIST_PATH)
   // Charts
   app.get('/hostpkgcounts', pkg_counts);
@@ -377,6 +376,7 @@ function app_init() { // mcfg
   app.get("/imgmani", afa.imgmani);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
   app.get("/grepo", grepo.hdl_grepo);
+  return 1;
  } // sethandlers
   //////////////// Load Templates ////////////////
   
@@ -384,7 +384,7 @@ function app_init() { // mcfg
   //console.log(process.env);
   if (!fact_path) { console.error("Set: export FACT_PATH=\"...\" in env or set mcfg.fact_path !"); process.exit(1); }
   if (!fs.existsSync(fact_path)) { console.error("FACT_PATH "+fact_path+" does not exist"); process.exit(1);}
-  // OLD: global.fact_path = fact_path; // Store final in config
+  // OLD: mcfg.fact_path = fact_path; // Store final in config
   ///////////// Hosts and Groups (hostloader.js) ////////////////////
   
   hlr.init(mcfg, {hostcache: hostcache, hostarr: hostarr});
@@ -395,10 +395,10 @@ function app_init() { // mcfg
    * Note: This is only needed with bad DHCP service that returns wrong or undeterministic
    * IP addresses for particular host (MAC address). Even then this is a really tedious mechanism.
    */
-  var mfn = process.env["LINETBOOT_IPTRANS_MAP"];
-  if (mfn && fs.existsSync(mfn)) {
-    iptrans = require(mfn); // TODO: try/catch ?
-    console.error("Loaded " + mfn + " w. " + Object.keys(iptrans).length + " mappings");
+  var ipmfn = process.env["LINETBOOT_IPTRANS_MAP"];
+  if (ipmfn && fs.existsSync(ipmfn)) {
+    iptrans = require(ipmfn); // TODO: try/catch ?
+    console.error(`Loaded IP-mapping ${ipmfn} w. ${Object.keys(iptrans).length} mappings`);
   }
   // TODO: Clear up both in doc and code how customhosts work in 2 cases:
   // - Load into runtime directly from CSV file
@@ -419,7 +419,7 @@ function app_init() { // mcfg
     var gok = hlr.group_mems_setup(groups, hostarr);
     if (!gok) { console.error("Problems in resolving dynamic group members"); }
   }
-  //if (global.gcp && !global.gcp.disa) {
+  //if (mcfg.gcp && !mcfg.gcp.disa) {
     gcp = require("./gcpops.js");
     if (gcp && mcfg.gcp) { gcp.init(mcfg.gcp); }
     // gcp.
@@ -433,7 +433,7 @@ function app_init() { // mcfg
   // ifs.keys().filter(function (k) {});
   //console.log(ifs); // DEBUG
   // Ansible
-  //global.ansible = global.ansible || {};
+  //mcfg.ansible = mcfg.ansible || {};
   
   // Websockets
   /*
@@ -446,30 +446,7 @@ function app_init() { // mcfg
   */
   // TODO: elevate higher / set more early. Probing options:  __dirname and process.cwd() and path.dirname(__filename)
   process.env["LINETBOOT_APP_PATH"] = __dirname; // NOTE: Use process.env["LINETBOOT_APP_PATH"] in lboot_setup_module to load add'l modules
-  /* Run customization setup (JS) plugin by mcfg member "lboot_setup_module" (e.g. default "~/.linetboot/custom.setup.js") */
-  function customsetup_run(mcfg, app, hostarr) {
-  var modfn = mcfg.lboot_setup_module;
-  // TODO: Later eliminate and let normal module path resolution take place?
-  var mod = setupmod = {};
-  if (!fs.existsSync(modfn))   { console.error(`Warning: setup module does not exists as: '${modfn}'. Skip loading / running.`);  } // return;
-  else {
-    // Note: emtpy file would be ok for require. wrong (JS) syntax throws exception. Guard require() against that.
-    console.log(`Discovered custom setup module: '${modfn}'. Try to load and run()`);
-    try { setupmod = mod = require(modfn); }
-    catch (ex) { console.log(`Failed to load '${modfn}': ${ex}`); }
-    if (!mod || !mod.run || typeof mod.run != 'function') {
-      console.error("Warning: custom setup module either:\n1) Could not be loaded\n2) Does not have run() member 3) run member is not a callable");
-      //return; // exit() ?
-    }
-    else {
-      if (1) { console.log("customsetup(obj):", mod); }
-      console.log(`Loaded app custom module file '${modfn}' ... running setup: run(mcfg,app,hostarr) ...`);
-      // Call for local customization:
-      try { mod.run(mcfg, app, hostarr);}
-      catch (ex) { console.error(`Warning: failed running custom setup run(): ${ex}`); }
-    }
-  }
-  return mod ? mod : {}; } // customsetup_run
+  
   mod = customsetup_run(mcfg, app, hostarr); // TODO: mc.customsetup_run(mcfg, app, hostarr);
   // Init osinst AFTER loading hosts, iptrans, custom module
   var osinst_initpara = {hostcache: hostcache, global: mcfg, iptrans: iptrans, user: user, iprofs: iprofs};
@@ -503,7 +480,10 @@ function app_init() { // mcfg
   // TODO: Allow controlling source IP addr
   // https://stackoverflow.com/questions/12349251/restrict-access-to-node-js-based-http-server-by-ip-address
   // server.on('connection', function (sock) { console.log(sock.remoteAddress); });
-  sethandlers(mcfg);
+  let hdlrs_ok = sethandlers(mcfg, app);
+  if (!hdlrs_ok) { console.error(`Not all URL handlers were set up (rc=${hdlrs_ok})`); process.exit(1); }
+  else { console.log(`app_init: Set all URL handlers: rc/ok=${hdlrs_ok}`); }
+  routes_report_v4(app);
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
   var ldc = mcfg.ldap; // ldc - LDAP Config
@@ -598,7 +578,7 @@ function app_init() { // mcfg
 function linet_mw(req, res, next) {
   //var filename = path.basename(req.url);
   //var extension = path.extname(filename);
-  if (0) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
+  if (1) { console.log("ldconn:" + (ldconn ? "connected" : "N/A")); }
   // req.ldconn = ldconn; // Consider for (passing to) web handlers
   //req.session.num++;
   
@@ -639,13 +619,59 @@ function linet_mw(req, res, next) {
   
   next();
 }
+function routes_report_v4(app) {
+  var stack = app._router && app._router.stack;
+  if (!stack) { console.error("routes_report: Express route stack not available"); return; }
+  var routes = [];
+  stack.forEach(function (layer) {
+    if (!layer.route || !layer.route.path) { return; }
+    var methods = Object.keys(layer.route.methods || {}).join(",");
+    routes.push(methods.toUpperCase()+ " " + layer.route.path);
+  });
+  console.log(`routes_report: ${routes.length} routes registered; /list=${routes.includes("GET /list") ? "yes" : "no"}`);
+  if (!routes.includes("GET /list")) { console.error("routes_report: /list missing from registered route table"); }
+}
+/* Run customization setup (JS) plugin by mcfg member "lboot_setup_module" (e.g. default "~/.linetboot/custom.setup.js") */
+  function customsetup_run(mcfg, app, hostarr) {
+  var modfn = mcfg.lboot_setup_module;
+  // TODO: Later eliminate and let normal module path resolution take place?
+  var mod = setupmod = {};
+  if (!fs.existsSync(modfn))   { console.error(`Warning: setup module does not exists as: '${modfn}'. Skip loading / running.`);  } // return;
+  else {
+    // Note: emtpy file would be ok for require. wrong (JS) syntax throws exception. Guard require() against that.
+    console.log(`Discovered custom setup module: '${modfn}'. Try to load and run()`);
+    try { setupmod = mod = require(modfn); }
+    catch (ex) { console.log(`Failed to load '${modfn}': ${ex}`); }
+    if (!mod || !mod.run || typeof mod.run != 'function') {
+      console.error("Warning: custom setup module either:\n1) Could not be loaded\n2) Does not have run() member 3) run member is not a callable");
+      //return; // exit() ?
+    }
+    else {
+      if (1) { console.log("customsetup(obj):", mod); }
+      console.log(`Loaded app custom module file '${modfn}' ... running setup: run(mcfg,app,hostarr) ...`);
+      // Call for local customization:
+      try { mod.run(mcfg, app, hostarr);}
+      catch (ex) { console.error(`Warning: failed running custom setup run(): ${ex}`); }
+    }
+  }
+  return mod ? mod : {}; } // customsetup_run
 
-
-app_init();
+/////////////////////////// MAIN ///////////////////////////
+// 
+var linetconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
+console.log(`main: Choosing mainconf: ${linetconf}`);
+mcfg = global = mc.mainconf_load(linetconf);
+// console.log(JSON.stringify(mcfg, null, 2));
+mc.env_merge(mcfg);
+let ok_mcp = mc.mainconf_process(mcfg);
+if (!ok_mcp) { mc.error("main: MainConf Processing Failed !"); }
+/////////////////////////////////////////////
+//mcfg = global;
+app_init(mcfg);
 
 function http_start() {
   app.listen(port, function () {
-    console.log("Linux Network Installer app listening on host:port http://localhost:"+port+" OK"); // ${port}
+    console.log(`main: Linux Network Installer app listening on host:port http://localhost:${port} OK`);
   });
 }
 
@@ -1052,7 +1078,7 @@ function ubu20_meta_data(req, res) {
  */
 function apidoc(req, res) {
   //var jr = {"status":"err", "msg":"Failed to generate hostcommand output."};
-  // var ycont = yaml.safeDump(JSON.parse(JSON.stringify(nproot)), ycfg);
+  // var ycont = yaml.safeDump(dclone(nproot), ycfg);
   var apidocfn = "./swagger.yaml";
   var doc;
   var q = req.query;
@@ -1235,7 +1261,7 @@ function grouplist(req, res) {
   if (!global.groups) { jr.msg += " No hostgroups declared"; return res.json(jr); }
   res.set('Access-Control-Allow-Origin', "*");
   // Deep clone (and remove irrelevant members ?)
-  var groups = JSON.parse(JSON.stringify(global.groups));
+  var groups = dclone(global.groups); // JSON.parse(JSON.stringify(global.groups));
   groups.forEach(function (g) {
     g.hosts = [];
     g.hostnames.map(function (hn) {
@@ -2047,7 +2073,7 @@ function yaml_show(req, res) {
  * Config info is taken or derived from global config structure.
  */
 function config_send(req, res) {
-  var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}, grepo: {}};
+  var cfg = {docker: {}, core: {}, bootlbls: [], procster: {}, afa: {}, grepo: {}};
   console.log("Create config for user ");
   // Docker host group
   var dock = global.docker;
