@@ -285,7 +285,7 @@ function afarepos_fetch(rcfg, cb) {
     // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
     let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
     if (fre) { // cfg.repofilter
-      let re = new RegExp(cfg.repofilter, "g");
+      let re = new RegExp(fre, "g");
       console.log(`Use RE filter: ${re}`);
       d = d.filter( (it) => { return it.key.match(re); });
       console.log(`Filetered down to: ${d.length} items`);
