@@ -1617,9 +1617,9 @@ let fldinfo_jjob = [
 ];
 
 function afarepo_rtype_cell(val, item) {
-  let = cmap = {"LOCAL": "#444444", "VIRTUAL": "#719fe5", "REMOTE": "#FF4444", "": "", };
+  let = cmap = {"LOCAL": "#444444", "VIRTUAL": "#719fe5", "REMOTE": "#be2d2d", "FEDERATED": "#50a109", };
   let c = cmap[val] ? cmap[val] : 'black';
-  return `<span style="background-color: ${c}; color: white;">${val}</span>`;
+  return `<span style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;">${val}</span>`;
 }
 var fldino_afa_repo = [
     { name: "key",         type: "text", title: "Key",          width: 160, itemTemplate: null },
