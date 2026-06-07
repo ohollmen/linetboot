@@ -374,6 +374,7 @@ function app_init(mcfg) { // mcfg
   app.get("/yaml/nets", yaml_show);
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
+  app.get("/afarepos/", afa.afarepo_ls); // TODO: All / one
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
   app.get("/grepo", grepo.hdl_grepo);
   return 1;
