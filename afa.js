@@ -281,8 +281,8 @@ function afarepo_ls(req, res) {
   let rpara = {
     headers: { 'X-JFrog-Art-Api': rcfg.token, 'Accept': 'application/json', }
   };
-  
-  let url = `${rcfg.host}/api/repositories`; // `/{reponame}`;
+  let prefix = rcfg.host.startsWith('http') ? '' : 'https://';
+  let url = `${prefix}${rcfg.host}/api/repositories`; // `/{reponame}`;
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     res.json({status: "ok", data: d});
