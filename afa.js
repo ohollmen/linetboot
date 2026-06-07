@@ -65,7 +65,7 @@ function init(_mcfg) {
     // e.g. afa.conf.yaml
     if (cfg.repocfgfn && fs.existsSync(cfg.repocfgfn)) {
       let cont = fs.readFileSync(cfg.repocfgfn, 'utf8');
-      cfg.repocfg = yaml.load(cont);
+      cfg.repocfg = jsyaml.load(cont);
     }
 }
 // Make various API URL paths derived from the fixed / constant prefix part of the path
