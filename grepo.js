@@ -95,9 +95,15 @@ function manifest_load(fn, cb) {
     data.project.forEach( (it) => {
       if (it["sync-c"]) { it["sync-c"] = String(it["sync-c"]).toLowerCase() === 'true'; }
       // Alt: flag these by true/false
-      if (!it.remote && def)   { it.remote_def = def.remote; }
-      if (!it.revision && def) { it.revision_def = def.revision; }
-      if (!it.revision && def) { it.syncj_def = def["sync-j"]; }
+      if (!it.remote && def)   {
+        //it.remote_def = def.remote;
+        it.remote = def.remote ? def.remote : '???'; it.remisdef= true;
+      } // TODO: to-same-attr, but mark: it.remisdef= true;
+      if (!it.revision && def) { it.revision_def = def.revision; it.revisdef = true; }
+      if (!it["sync-j"] && def) { it["sync-j"] = def["sync-j"] ? def["sync-j"] : '???'; it.syncjisdef= true; }
+      // Handle the revisionType / revision here (for less complexity at client)
+      // encode rev types: branch_head,tag,commit (derive from "revision").
+      // if (it.revision.startsWith("refs/tags/")) { it.revision = it.revision.substring(10); it.revisionType = 'tag'; }
       // Try to lookup OSS project in case user has configured cross-ref and proj. is found there by "name"
       let oi = osstrans[it.name];
       if (oi) { it.ossproj = oi; } // Set URL for corresponding OSS project
@@ -141,7 +147,7 @@ function hdl_grepo(req, res) {
   let bn = cfg.fn;
   if (!bn) { jr.msg += "No repo file given in config !"; return res.json(jr); }
   let fn = mf_abspath(bn); // `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
-  cfg.mergeinc = 1; // TEST
+  // cfg.mergeinc = 1; // TEST
   manifest_load(fn, (err, data) => {
     if (err) { jr.msg += err; return res.json(jr);}
     if (cfg.mergeinc) { manifest_merge(data, (err, data) => {
