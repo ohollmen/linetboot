@@ -286,7 +286,7 @@ function afarepo_ls(req, res) {
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     res.json({status: "ok", data: d});
-  }).catch( (ex) => { jr.msg += `Failed to list AFA repos: {ex}`; return res.json(jr); });
+  }).catch( (ex) => { jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; return res.json(jr); });
   
   //res.json({status: "ok", data: cfg.repocfg});
   function repocfg_node(id) {
