@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /** @file
 * # Lineboot main config loading, processing, validation, access
 * 
@@ -9,12 +10,12 @@
 * Demonstrated as mainconf module API code:
 * ```
 * var mc = require("./mainconf.js");
-* var globalconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
-* var mcfg = mc.mainconf_load(globalconf);
+* var mcfn = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
+* var mcfg = mc.mainconf_load(mcfn);
 * // Do env-merging always first (Unless you know a strong reasong to not do it at all)
 * mc.env_merge(mcfg);
 * mc.mainconf_process(mcfg);
-* var user = mc.user_load(global);
+* var user = mc.user_load(mcfg);
 * ```
 */
 var fs = require("fs");
@@ -25,16 +26,17 @@ var osinst = require("./osinstall.js"); // for recipes. TODO: Pass recipes (arr)
 * @param msg {string} - Error message String to output to STDERR before existing.
 */
 function error(msg) {
-  console.error(msg); process.exit(1);
+  console.error(`mainconf error: App-Init/Prep encountered problem: ${msg}`);
+  process.exit(1);
 }
 /** Load main configuration.
- * @param globalconf {string} - Filename for main configuration.
+ * @param linetconf {string} - Filename for main configuration.
  * @return handle to main config (object)
  */
-function mainconf_load(globalconf) {
-  if (!fs.existsSync(globalconf)) { error("Main conf ('"+globalconf+"') does not exist !");}
-  var global   = require(globalconf);
-  if (!global) { error("Main conf JSON ("+globalconf+") could not be loaded !"); }
+function mainconf_load(linetconf) {
+  if (!fs.existsSync(linetconf)) { error(`mc: Main conf (${linetconf}) does not exist !`);}
+  var mcfg   = require(linetconf);
+  if (!mcfg) { error(`mc: Main conf JSON (${linetconf}) exists, but could not be loaded !`); }
   // Add overlay detection. For now ONLY available via env variable.
   // TODO: Allow secondary overlay point/refer to inherited / super maincfg that should be loaded FIRST.
   // Because we do this EARLY, the whole config is subject to tilde expansion.
@@ -42,9 +44,9 @@ function mainconf_load(globalconf) {
   if (ofn && fs.existsSync(ofn)) {
     var olay = require(ofn);
     console.log("Merging overlay config: ofn: "+ofn+", data: "+ typeof olay);
-    olay_merge(global, olay);
+    olay_merge(mcfg, olay);
   }
-  return global;
+  return mcfg;
   // Merge overlay config with overrides to main config. Assume same layout (spec) as main config.
   // Any violations in overlay will corrupt main config.
   // Note: (for now) The target section must exist in the main config to be accepted from overlay
@@ -64,15 +66,15 @@ function mainconf_load(globalconf) {
 }
 /** Load Initial User (for OS Installation).
  * Note: this should take place after tilde expansion (in mainconf_process()) has taken place.
- * @param global {object} - Main Config
+ * @param mcfg {object} - Main Config
 */
-function user_load(global) {
+function user_load(mcfg) {
   // process.env["LINETBOOT_USER_CONF"] ||
-  var userconf = global.inst.userconfig || "./initialuser.json";
-  if (!fs.existsSync(userconf)) { error("User conf ("+userconf+") does not exist !");}
+  var userconf = mcfg.inst.userconfig || "./initialuser.json";
+  if (!fs.existsSync(userconf)) { error(`User conf (${userconf}) does not exist !`);}
   //var
   user     = require(userconf);
-  if (!user) { error("User conf JSON ("+user+") could not be loaded !"); }
+  if (!user) { error(`User conf JSON (${userconf}) could not be loaded !`); }
   // TODO: user.groups_str = ...
   //OLD: user.groups  = user.groups.join(" ");
   user.groups_str  = user.groups.join(" ");
@@ -81,15 +83,15 @@ function user_load(global) {
 }
 /** Load OS installation profiles.
  */
-function iprofs_load(global) {
-  var iconf = global.inst.iprofsconfig || "";
+function iprofs_load(mcfg) {
+  var iconf = mcfg.inst.iprofsconfig || "";
   if (!fs.existsSync(iconf)) { console.error("Install profile conf ("+iconf+") does not exist !"); return null; }
   var ips = require(iconf) || null;
   // Validate (Object, string keys valued to objects)
-  if (typeof ips !== 'object') { console.log("iprofs - not an object"); return null; }
+  if (typeof ips !== 'object') { console.log("install-profs - not an object"); return null; }
   var okcnt = 0;
   Object.keys(ips).forEach((k) => { okcnt += is_iprof(ips[k]); });
-  if (!okcnt) { console.log("iprofs - none of the nodes are vallid configs"); return 0; } // For now even "some okay" is "okay"
+  if (!okcnt) { console.log("install-profs - none of the nodes are valid configs"); return 0; } // For now even "some okay" is "okay"
   return ips;
   function is_iprof(e) {
     if (e.domain && e.netmask && e.gateway) { return 1; }
@@ -98,78 +100,80 @@ function iprofs_load(global) {
 }
 
 /** Validate config and expand shell-familiar "~" -notation on path / file vars.
- * @param global {object} - Main configuration.
+ * @param mcfg {object} - Main configuration.
 */
-function mainconf_process(global) {
+function mainconf_process(mcfg) {
   // Validate config section presence (for mandatory sections)
   var sectnames = ["core", "tftp", "ipmi", "probe", "net", "inst"]; // "ansible", "docker"
   sectnames.forEach(function (sn) {
     // TODO: Check for real object !
-    if (!global[sn]) { console.error("Main Config (mandatory) Section '"+sn+"' missing. Exiting ..."); process.exit(1); }
+    if (!mcfg[sn]) { error(`Main Config (mandatory) Section '${sn}' missing. Exiting ...`); }
     
   });
   //////// "~" ($HOME) expansion //////////////////
   // ... for config convenience (top-level & some sects ?)
+  // function tilde_expand_all(mcfg) {
   var top_paths = ["fact_path", "hostsfile", "rmgmt_path", "customhosts", "pkglist_path", "lboot_setup_module",
     "passfn", "sshkeyfn"];
-  tilde_expand(global, top_paths);
+  tilde_expand(mcfg, top_paths);
   var home = process.env['HOME'];
-  //console.log("Statring individual sections expand");
+  //console.log("Starting individual sections expand");
   //top_paths.forEach(function (pk) {
-  //  if (global[pk]) { global[pk] = global[pk].replace('~', home); }
+  //  if (mcfg[pk]) { mcfg[pk] = mcfg[pk].replace('~', home); }
   //});
   // Sections: tftp.menutmpl, ipmi.path, docker.config, docker.catalog, ansible.pbpath
-  tilde_expand(global.tftp, ["menutmpl"]);
-  tilde_expand(global.ipmi, ["path"]);
-  tilde_expand(global.esxi, ["cachepath"]);
-  tilde_expand(global.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path", "iprofsconfig"]);
-  //tilde_expand(global.probe, ["???"]);
-  // var dkr = global.docker;
-  if (global.docker) {
-    tilde_expand(global.docker, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
+  tilde_expand(mcfg.tftp, ["menutmpl"]);
+  tilde_expand(mcfg.ipmi, ["path"]);
+  tilde_expand(mcfg.esxi, ["cachepath"]);
+  tilde_expand(mcfg.inst, ["script_path", "tmpl_path", "userconfig", "sshkey_path", "iprofsconfig"]);
+  //tilde_expand(mcfg.probe, ["???"]);
+  // var dkr = mcfg.docker;
+  if (mcfg.docker) {
+    tilde_expand(mcfg.docker, ["config","catalog", "comppath", "compfiles"]); // comppath/compfiles mutually exclusive
   }
-  tilde_expand(global.ansible, ["pbpath"]);
-  tilde_expand(global.core, ["maindocroot"]); // Could have tilde e.g. on Mac
+  tilde_expand(mcfg.ansible, ["pbpath"]);
+  tilde_expand(mcfg.core, ["maindocroot"]); // Could have tilde e.g. on Mac
   //console.log("Done core.");
-  //var deploy = global.deployer;
+  //var deploy = mcfg.deployer;
   //if (deploy) {
-  tilde_expand(global.deployer, ["deployfn", "gitreposfn"]); // }
-  //var gerrit = global.gerrit;
+  tilde_expand(mcfg.deployer, ["deployfn", "gitreposfn"]); // }
+  //var gerrit = mcfg.gerrit;
   //if (gerrit) {
-  tilde_expand(global.gerrit, ["pkey"]); // }
-  tilde_expand(global.gcp, ["dyninvfn", "sakeyfn"]);
-  tilde_expand(global.services, ["conffn"]);
-  tilde_expand(global.afa, ["storpath"]);
-  tilde_expand(global.grepo, ["mfpath"]);
+  tilde_expand(mcfg.gerrit, ["pkey"]); // }
+  tilde_expand(mcfg.gcp, ["dyninvfn", "sakeyfn"]);
+  tilde_expand(mcfg.services, ["conffn"]);
+  tilde_expand(mcfg.afa, ["storpath"]);
+  tilde_expand(mcfg.grepo, ["mfpath"]);
   // For compat use id_rsa.pub, later id_ed25519 (-t ed25519)
-  if (!global.sshkeyfn) { global.sshkeyfn = `${process.env['HOME']}/.ssh/id_rsa`; } // Default (in trans. to ec25519)
-  // Allow LINETBOOT_SSHKEY to override, sync to global.sshkeyfn = 
-  if (process.env.LINETBOOT_SSHKEY) { global.sshkeyfn = process.env.LINETBOOT_SSHKEY; }
-  process.env['LINETBOOT_SSHKEY'] = global.sshkeyfn;
+  if (!mcfg.sshkeyfn) { mcfg.sshkeyfn = `${process.env['HOME']}/.ssh/id_rsa`; } // Default (in trans. to ec25519)
+  // Allow LINETBOOT_SSHKEY to override, sync to mcfg.sshkeyfn = 
+  if (process.env.LINETBOOT_SSHKEY) { mcfg.sshkeyfn = process.env.LINETBOOT_SSHKEY; }
+  process.env['LINETBOOT_SSHKEY'] = mcfg.sshkeyfn;
+  // return 1; } // tilde_expand_all
   //console.log("Done services.");
   /////////// Post Install Scripts ///////
   // TODO: Discontinue use of singular version
-  //if (global.inst.postscript) { error("Legacy config global.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
+  //if (mcfg.inst.postscript) { error("Legacy config mcfg.inst.postscript (scalar/string) is discontinued. Use inst.postscripts (plural work, array value)"); }
   // New stye: Plural - multiple scripts in an Array. Ignore singular key completely.
-  if (global.inst.postscripts) {
-    if (!Array.isArray(global.inst.postscripts)) { error("inst.postscripts not in Array !"); }
+  if (mcfg.inst.postscripts) {
+    if (!Array.isArray(mcfg.inst.postscripts)) { error("inst.postscripts not in Array !"); }
     // Compatibility w. old singular inst.postscript, set first as inst.postscript (Note NO 's')
-    global.inst.postscript = global.inst.postscripts[0];
+    mcfg.inst.postscript = mcfg.inst.postscripts[0];
   }
   // Legacy compatibility for singular version. Set the single script in plural array.
-  else if (global.inst.postscript) {
-    global.inst.postscripts = [global.inst.postscript];
+  else if (mcfg.inst.postscript) {
+    mcfg.inst.postscripts = [mcfg.inst.postscript];
   }
   // Set at least empty array (for recipe templating)
-  else { global.inst.postscripts = []; }
+  else { mcfg.inst.postscripts = []; }
   // Detect disabled features 
-  var dis = disabled_detect(global);
+  var dis = disabled_detect(mcfg);
   // NEW: Allow pushing (appending, add to end) or unshifting (add to head) recipe items
-  if (global.recipes) {
+  if (mcfg.recipes) {
     let debug = 0;
-    // TODO: function recipes_add(global, recipes) {
+    // TODO: function recipes_add(mcfg, recipes) {
     // ra = recipe array, ri = recipe item
-    var nra = global.recipes;
+    var nra = mcfg.recipes;
     var ora = osinst.recipes;
     debug && console.log("Add to recipes ...", nra); // ora, nra
     if ( ! Array.isArray(nra)) { console.error("'recipes' ('add') config not in array"); return; }
@@ -193,6 +197,7 @@ function mainconf_process(global) {
     //  
     //} // recipes_add
   }
+  return 1;
 }
 
 function hasnofiles(dir) {
@@ -202,67 +207,67 @@ function hasnofiles(dir) {
     catch (ex) { return 1; }
     if (files.length > 1) { return 0; }
     return 1;
-  }
+}
 
 /** Detect completeness of various configs and mark things that are not in use as disabled.
   * Use these to customize Web UI. Use UI terms here for ease at UI end (and aim to sync terminology in time).
   * All this means the push() - keywords *must* be in sync with web frontend.
   * IPMI: See if dir exists and if any info collected
   */
-function disabled_detect(global) {
-  var dis = global.disabled = [];
-  if (!fs.existsSync(global.ipmi.path) || hasnofiles(global.ipmi.path)) { dis.push('ipmi'); }
+function disabled_detect(mcfg) {
+  var dis = mcfg.disabled = [];
+  if (!fs.existsSync(mcfg.ipmi.path) || hasnofiles(mcfg.ipmi.path)) { dis.push('ipmi'); }
   // Docker see if both files exist
-  if (!fs.existsSync(global.docker.config) || !fs.existsSync(global.docker.catalog)) { dis.push("dockerenv"); }
-  if (global.docker.compfiles && Array.isArray(global.docker.compfiles)) {
+  if (!fs.existsSync(mcfg.docker.config) || !fs.existsSync(mcfg.docker.catalog)) { dis.push("dockerenv"); }
+  if (mcfg.docker.compfiles && Array.isArray(mcfg.docker.compfiles)) {
     var bad = 0;
-    global.docker.compfiles.forEach((fn) => {
+    mcfg.docker.compfiles.forEach((fn) => {
       if (!fs.existsSync(fn)) { bad++; }
     });
     if (bad) { dis.push("dockercomp"); }
   }
   // Groups
-  if (!global.groups || !global.groups.length) { dis.push("groups"); } // dyngroups
+  if (!mcfg.groups || !mcfg.groups.length) { dis.push("groups"); } // dyngroups
   // Output formats ??
   // if () {}
   // Hostkeys
-  if (!fs.existsSync(global.inst.sshkey_path) || hasnofiles(global.inst.sshkey_path)) { dis.push("hostkeys"); }
+  if (!fs.existsSync(mcfg.inst.sshkey_path) || hasnofiles(mcfg.inst.sshkey_path)) { dis.push("hostkeys"); }
   // PkgStat (pkgstats). Which directory ?
-  if (!global.pkglist_path || !fs.existsSync(global.pkglist_path) || hasnofiles(global.pkglist_path) ) { dis.push("pkgstats"); }
-  var ibc = global.iblox;
+  if (!mcfg.pkglist_path || !fs.existsSync(mcfg.pkglist_path) || hasnofiles(mcfg.pkglist_path) ) { dis.push("pkgstats"); }
+  var ibc = mcfg.iblox;
   if (!ibc || !ibc.user || !ibc.pass) { dis.push("ibloxlist"); }
-  var efc = global.eflow;
+  var efc = mcfg.eflow;
   if (!efc || !efc.user || !efc.pass) { dis.push("eflowlist"); }
   // Flags for docs disa ? Do not enable
   // Reporting (in flux for transition to tabs) "reports"
-  if (global.web && !global.web.reports) { dis.push("reports"); }
+  if (mcfg.web && !mcfg.web.reports) { dis.push("reports"); }
   // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
   // in g.hostnames.length > 0.
   // NOTE: We don't know if groups have been loaded (properly) and it will be hard to test here.
-  // NOTE: The global.groups are already dealt with oabove !!!
-  if (global.groups && 1) {
+  // NOTE: The mcfg.groups are already dealt with oabove !!!
+  if (mcfg.groups && 1) {
     //dis.push("groups");
   }
-  var esxi = global.esxi; // console.log(`ESXI Config:`, esxi);
+  var esxi = mcfg.esxi; // console.log(`ESXI Config:`, esxi);
   if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) {dis.push("esxiguests"); } // Note UI term
-  var proc = global.procster;
+  var proc = mcfg.procster;
   // !proc.urlpath ... does not seemed to be filled in any examples
   if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
-  var cov = global.cov;
+  var cov = mcfg.cov;
   if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("coverity"); }
-  var jenk = global.jenkins;
+  var jenk = mcfg.jenkins;
   if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
-  var dr = global.deployer;
+  var dr = mcfg.deployer;
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
-  let gh = global.github;
+  let gh = mcfg.github;
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("ghprojs"); }
-  gh = global.gitlab; // Reuse gh for gitlab
+  gh = mcfg.gitlab; // Reuse gh for gitlab
   if (!gh || (gh && !gh.org) || (gh && Array.isArray(gh.org) && !gh.org.length)) { dis.push("glprojs"); }
-  var cfl = global.confluence;
+  var cfl = mcfg.confluence;
   if (!cfl || (cfl && !cfl.user) || (cfl && !cfl.pass) ) { dis.push("cflpages"); }
-  var ks = global.k8s;
+  var ks = mcfg.k8s;
   if (!ks || (ks && !ks.host) || (ks && !ks.token) ) { dis.push("kubinfo"); }
-  var ser = global.services;
+  var ser = mcfg.services;
   if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
   return dis;
 } // disabled_detect
@@ -279,80 +284,83 @@ function disabled_detect(global) {
  * For most of the sections affected, a non-existing section will be "stubbed" in place by creating
  * an empty config object for it.
  * 
- * @param global {object} - main config
+ * @param mcfg {object} - main config
  * @return nothing
  * @todo Do (most?) env merges in a data driven way (env var => ds-node name, e.g. "core.maindocroot")
  */
-function env_merge(global) {
-  let mcfg = global; // TODO: Pass
-  if (!global) { error("env_merge: No handle to main config !"); }
+function env_merge(mcfg) {
+  if (!mcfg || typeof mcfg != 'object' && !mcfg.core) { console.error("No mcfg passed (correctly?)"); return; }
+  if (!mcfg_looks_ok(mcfg)) { error("env_merge: mcfg does not look ok !"); }
+  //let mcfg = mcfg; // TODO: Pass
+  //console.log("mcfg:", mcfg);
+  if (!mcfg) { error("env_merge: No handle to main config !"); }
   // TOP
-  if (process.env["FACT_PATH"])           { global.fact_path = process.env["FACT_PATH"]; }
-  if (process.env["LINETBOOT_DEBUG"])	    { global.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
+  if (process.env["FACT_PATH"])           { mcfg.fact_path = process.env["FACT_PATH"]; }
+  if (process.env["LINETBOOT_DEBUG"])	    { mcfg.debug = parseInt(process.env["LINETBOOT_DEBUG"]); }
   // NOTE: This has been moved from top to "core"
-  if (process.env["LINETBOOT_MAINDOCROOT"])	{ global.core.maindocroot = process.env["LINETBOOT_MAINDOCROOT"]; }
+  if (process.env["LINETBOOT_MAINDOCROOT"])	{ mcfg.core.maindocroot = process.env["LINETBOOT_MAINDOCROOT"]; }
   // INST
-  if (process.env["LINETBOOT_USER_CONF"])   { global.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
-  if (process.env["LINETBOOT_SSHKEY_PATH"]) { global.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
+  if (process.env["LINETBOOT_USER_CONF"])   { mcfg.inst.userconfig = process.env["LINETBOOT_USER_CONF"]; }
+  if (process.env["LINETBOOT_SSHKEY_PATH"]) { mcfg.inst.sshkey_path = process.env["LINETBOOT_SSHKEY_PATH"]; }
   // NOT: split(/:/); ? Keep as is as our path resolver can use a string.
-  if (process.env["LINETBOOT_SCRIPT_PATH"]) { global.inst.script_path = process.env["LINETBOOT_SCRIPT_PATH"]; }
-  if (process.env["LINETBOOT_TMPL_PATH"])   { global.inst.tmpl_path   = process.env["LINETBOOT_TMPL_PATH"]; }
+  if (process.env["LINETBOOT_SCRIPT_PATH"]) { mcfg.inst.script_path = process.env["LINETBOOT_SCRIPT_PATH"]; }
+  if (process.env["LINETBOOT_TMPL_PATH"])   { mcfg.inst.tmpl_path   = process.env["LINETBOOT_TMPL_PATH"]; }
   // RMGMT_PATH
-  if (process.env["RMGMT_PATH"])            { stub("ipmi"); global.ipmi.path = process.env["RMGMT_PATH"]; }
+  if (process.env["RMGMT_PATH"])            { stub("ipmi"); mcfg.ipmi.path = process.env["RMGMT_PATH"]; }
   // LINETBOOT_PKGLIST_PATH (Orig. in here) or PKGLIST_PATH (Was found in orig. code)
-  if (process.env["LINETBOOT_PKGLIST_PATH"]) { global.pkglist_path = process.env["LINETBOOT_PKGLIST_PATH"]; }
-  if (process.env["PKGLIST_PATH"])           { global.pkglist_path = process.env["PKGLIST_PATH"]; }
+  if (process.env["LINETBOOT_PKGLIST_PATH"]) { mcfg.pkglist_path = process.env["LINETBOOT_PKGLIST_PATH"]; }
+  if (process.env["PKGLIST_PATH"])           { mcfg.pkglist_path = process.env["PKGLIST_PATH"]; }
   
-  if (process.env["LINETBOOT_LDAP_SIMU"]) { global.ldap.simu = process.env["LINETBOOT_LDAP_SIMU"]; }
-  // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { global. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
+  if (process.env["LINETBOOT_LDAP_SIMU"]) { mcfg.ldap.simu = process.env["LINETBOOT_LDAP_SIMU"]; }
+  // NOT: if (process.env["LINETBOOT_IPTRANS_MAP"]) { mcfg. = parseInt(process.env["LINETBOOT_IPTRANS_MAP"]); }
   // Proprietary systems test modes. To disable it's enough leave out user/pass.
-  if (process.env["IBLOX_TEST"]) { stub("iblox"); global.iblox.test = process.env["IBLOX_TEST"]; }
-  if (process.env["EFLOW_TEST"]) { stub("eflow"); global.eflow.test = process.env["EFLOW_TEST"]; }
-  if (process.env["ANSIBLE_PASS"]) { stub("ansible"); global.ansible.pass = process.env["ANSIBLE_PASS"]; }
-  if (process.env['PLAYBOOK_PATH']) { stub("ansible"); global.ansible.pbpath = process.env["PLAYBOOK_PATH"]; }
-  if (process.env["LINETBOOT_ANSIBLE_DEBUG"]) { stub("ansible"); global.ansible.debug = parseInt(process.env["LINETBOOT_ANSIBLE_DEBUG"]); }
-  if (process.env["LINETBOOT_ESXI_PASS"]) { stub("esxi"); global.esxi.password = process.env["LINETBOOT_ESXI_PASS"]; }
+  if (process.env["IBLOX_TEST"]) { stub("iblox"); mcfg.iblox.test = process.env["IBLOX_TEST"]; }
+  if (process.env["EFLOW_TEST"]) { stub("eflow"); mcfg.eflow.test = process.env["EFLOW_TEST"]; }
+  if (process.env["ANSIBLE_PASS"]) { stub("ansible"); mcfg.ansible.pass = process.env["ANSIBLE_PASS"]; }
+  if (process.env['PLAYBOOK_PATH']) { stub("ansible"); mcfg.ansible.pbpath = process.env["PLAYBOOK_PATH"]; }
+  if (process.env["LINETBOOT_ANSIBLE_DEBUG"]) { stub("ansible"); mcfg.ansible.debug = parseInt(process.env["LINETBOOT_ANSIBLE_DEBUG"]); }
+  if (process.env["LINETBOOT_ESXI_PASS"]) { stub("esxi"); mcfg.esxi.password = process.env["LINETBOOT_ESXI_PASS"]; }
   // Override TFTP ROOT (tftp.root), esp. useful for Mac
-  if (process.env["LINETBOOT_TFTP_ROOT"]) {  global.tftp.root = process.env["LINETBOOT_TFTP_ROOT"]; }
-  if (process.env["LINETBOOT_ISOPATH"])   {  global.isopath = process.env["LINETBOOT_ISOPATH"]; }
+  if (process.env["LINETBOOT_TFTP_ROOT"]) {  mcfg.tftp.root = process.env["LINETBOOT_TFTP_ROOT"]; }
+  if (process.env["LINETBOOT_ISOPATH"])   {  mcfg.isopath = process.env["LINETBOOT_ISOPATH"]; }
 
   if (process.env["LINETBOOT_IPMI_EXECBIN"])   {
-    if (!global.ipmi) {}
-    else { global.ipmi.execbin = process.env["LINETBOOT_IPMI_EXECBIN"]; }
+    if (!mcfg.ipmi) {}
+    else { mcfg.ipmi.execbin = process.env["LINETBOOT_IPMI_EXECBIN"]; }
   }
   if (process.env["LINETBOOT_OPB"])   {
-    if (!global.ldap) {}
-    else { global.ldap.contpb = process.env["LINETBOOT_OPB"]; console.log("OPB: "+global.ldap.contpb); }
+    if (!mcfg.ldap) {}
+    else { mcfg.ldap.contpb = process.env["LINETBOOT_OPB"]; console.log("OPB: "+mcfg.ldap.contpb); }
   }
   if (process.env["LINETBOOT_JENKINS_PASS"])   {
-    if (!global.jenkins) {}
-    else { global.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
+    if (!mcfg.jenkins) {}
+    else { mcfg.jenkins.pass = process.env["LINETBOOT_JENKINS_PASS"]; }
   }
-  if (process.env["LINETBOOT_GERRIT_USER"])   { stub("gerrit"); global.gerrit.user = process.env["LINETBOOT_GERRIT_USER"]; }
-  if (process.env["LINETBOOT_GERRIT_PASS"])   { stub("gerrit"); global.gerrit.pass = process.env["LINETBOOT_GERRIT_PASS"]; }
-  if (process.env["LINETBOOT_GERRIT_PKEY"])   { stub("gerrit"); global.gerrit.pkey = process.env["LINETBOOT_GERRIT_PKEY"]; }
+  if (process.env["LINETBOOT_GERRIT_USER"])   { stub("gerrit"); mcfg.gerrit.user = process.env["LINETBOOT_GERRIT_USER"]; }
+  if (process.env["LINETBOOT_GERRIT_PASS"])   { stub("gerrit"); mcfg.gerrit.pass = process.env["LINETBOOT_GERRIT_PASS"]; }
+  if (process.env["LINETBOOT_GERRIT_PKEY"])   { stub("gerrit"); mcfg.gerrit.pkey = process.env["LINETBOOT_GERRIT_PKEY"]; }
   
-  if (process.env["LINETBOOT_GITHUB_TOKEN"])  { stub("github"); global.github.token = process.env["LINETBOOT_GITHUB_TOKEN"]; }
-  if (process.env["LINETBOOT_GITHUB_ENT"])    { stub("github"); global.github.ent = process.env["LINETBOOT_GITHUB_ENT"]; }
+  if (process.env["LINETBOOT_GITHUB_TOKEN"])  { stub("github"); mcfg.github.token = process.env["LINETBOOT_GITHUB_TOKEN"]; }
+  if (process.env["LINETBOOT_GITHUB_ENT"])    { stub("github"); mcfg.github.ent = process.env["LINETBOOT_GITHUB_ENT"]; }
   if (process.env["LINETBOOT_GITHUB_ORG"])    {
     stub("github");
     //var orgstr = process.env["LINETBOOT_GITHUB_ORG"];
-    //global.github.org = orgstr ? orgstr.split(/,/) : [];
-    strarray_set(global.github, "org", process.env["LINETBOOT_GITHUB_ORG"]);
+    //mcfg.github.org = orgstr ? orgstr.split(/,/) : [];
+    strarray_set(mcfg.github, "org", process.env["LINETBOOT_GITHUB_ORG"]);
   }
 
-  if (process.env["LINETBOOT_GITLAB_TOKEN"])  { stub("github"); global.gitlab.token = process.env["LINETBOOT_GITLAB_TOKEN"]; }
-  if (process.env["LINETBOOT_GITLAB_ENT"])    { stub("github"); global.gitlab.ent = process.env["LINETBOOT_GITLAB_ENT"]; }
+  if (process.env["LINETBOOT_GITLAB_TOKEN"])  { stub("github"); mcfg.gitlab.token = process.env["LINETBOOT_GITLAB_TOKEN"]; }
+  if (process.env["LINETBOOT_GITLAB_ENT"])    { stub("github"); mcfg.gitlab.ent = process.env["LINETBOOT_GITLAB_ENT"]; }
   if (process.env["LINETBOOT_GITLAB_ORG"])    {
     stub("github");
     //var orgstr = process.env["LINETBOOT_GITLAB_ORG"];
-    //global.github.org = orgstr ? orgstr.split(/,/) : [];
-    strarray_set(global.gitlab, "org", process.env["LINETBOOT_GITLAB_ORG"]);
+    //mcfg.github.org = orgstr ? orgstr.split(/,/) : [];
+    strarray_set(mcfg.gitlab, "org", process.env["LINETBOOT_GITLAB_ORG"]);
   }
 
-  if (process.env["LINETBOOT_GIT_BAREROOT"])  { stub("deployer"); global.deployer.bareroot = process.env["LINETBOOT_GIT_BAREROOT"]; }
+  if (process.env["LINETBOOT_GIT_BAREROOT"])  { stub("deployer"); mcfg.deployer.bareroot = process.env["LINETBOOT_GIT_BAREROOT"]; }
   // Fake fact hosts CVS filename
-  if (process.env["LINETBOOT_NEWHOSTS"])  {  global.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
+  if (process.env["LINETBOOT_NEWHOSTS"])  {  mcfg.customhosts = process.env["LINETBOOT_NEWHOSTS"]; } // stub("deployer");
   // unipass support by "$UNIPASS"
   
   if (process.env.LINETBOOT_UNIPASS) {
@@ -363,7 +371,7 @@ function env_merge(global) {
     });
   }
   // Create sub-config object stub under main config
-  function stub(sect) { if (!global[sect]) { global[sect] = {}; } }
+  function stub(sect) { if (!mcfg[sect]) { mcfg[sect] = {}; } }
 }
 /** Replace tilde character (~) with process owners full home directory path ($HOME).
  * Replaces one or more values in object noted by keys passed.
@@ -375,7 +383,9 @@ function env_merge(global) {
 function tilde_expand(obj, keyarr) {
   // if (typeof obj != 'object') { throw "Not an object"; }
   // Be forgiving about particular config section (e.g. "cov") not existing ...
-  if (typeof obj != 'object') { console.error("Warning: Passed config section is not an 'object' (got: '"+typeof obj+"')"); return; }
+  if (typeof obj != 'object') {
+    let got = typeof obj;
+    console.error(`mc: Warning: Passed config section is not an 'object' (got: '${got}'). Looked for ${keyarr.join(',')}`); return; }
   if (!Array.isArray(keyarr)) { throw "Not an array (of property keys)"; }
   var home = process.env['HOME'];
   keyarr.forEach(function (pk) {
@@ -404,6 +414,13 @@ function strarray_set(obj, prop, str) {
   if (!arr.length) { return; } // obj[prop] = [] ???
   obj[prop] = arr;
 }
+function mcfg_looks_ok(mcfg) {
+  if (!mcfg) { console.error(`mcfg_looks_ok: No mcfg not passed !!!`); return 0; }
+  let mtype = typeof mcfg;
+  if (mtype != 'object') { console.error(`mcfg_looks_ok: Not object (but: '${mtype}')`); return 0; }
+  if (!mcfg.core || !mcfg.inst || !mcfg.dhcp) { console.error(`mcfg_looks_ok: Some of keys (core,inst,dhcp) missing !`); return 0; } // Any missing
+  return 1;
+}
 module.exports = {
   mainconf_load: mainconf_load,
   user_load: user_load,
@@ -411,14 +428,22 @@ module.exports = {
   mainconf_process: mainconf_process,
   env_merge: env_merge,
   tilde_expand: tilde_expand,
-  disabled_detect: disabled_detect
+  disabled_detect: disabled_detect,
+  mcfg_looks_ok: mcfg_looks_ok,
+  error: error,
 };
+// Perform full main config processing just like app does it - also in the same order
 if (process.argv[1].match(/\bmainconf.js$/)) {
   var yaml   = require('js-yaml');
   let mcfgfn = `${process.env['HOME']}/.linetboot/global.conf.json`;
   let mcfg = mainconf_load(mcfgfn);
   env_merge(mcfg);
   mainconf_process(mcfg);
+  //let dis = disabled_detect(mcfg); // Run implicitly by mainconf_process
   let ycfg = null;
-  console.log(yaml.dump(mcfg, ycfg));
+  let fmt = process.argv[2];
+  if (!['json','yaml'].includes(fmt)) {fmt = 'yaml'; }
+  if (fmt == 'yaml') { console.log(yaml.dump(mcfg, ycfg)); }
+  else { console.log(JSON.stringify(mcfg, null, 2)); }
+  process.exit(0);
 }
