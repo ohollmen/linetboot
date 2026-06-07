@@ -1615,6 +1615,14 @@ let fldinfo_jjob = [
   {name: "disabled", label: "Disable?", type: "text", width: 20, itemTemplate: null},
   {name: "downstreamProjects", label: "DonwnstreamProj.", type: "text", width: 20, visible: false, itemTemplate: null}, // A or AoO ?
 ];
+//function afarepo_url_cell(val, item) { }
+var fldino_afa_repo = [
+    { name: "key",         type: "text", title: "Key",          width: 160, itemTemplate: null },
+    { name: "description", type: "text", title: "Description",  width: 220, itemTemplate: null },
+    { name: "type",        type: "text", title: "Repo Type",         width:  80, itemTemplate: null },
+    { name: "packageType", type: "text", title: "Package Type", width: 100, itemTemplate: null },
+    { name: "url",         type: "text", title: "URL",          width: 320, itemTemplate: null },
+  ];
    // copyfile
    //[{ "name": "src", "title": "Source Path", "type": "text", "width": 220, "validate": "required" },
    //{ "name": "dest", "title": "Destination Path", "type": "text", "width": 220, "validate": "required" }]
@@ -1638,7 +1646,7 @@ let fldinfo_jjob = [
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
       "certs": fldinfo_certs, "certsysfiles": fldinfo_certfiles, "vulnlist": fldinfo_vulnlist,
       "authimg": fldinfo_authimg, "jiraiss": fldinfo_jiraiss, "jirasprint": fldinfo_jirasprint, "tfnets": fldinfo_tfnets,
-      "afa_images": fldinfo_afa_images,
+      "afa_images": fldinfo_afa_images, "afa_repos": fldino_afa_repo,
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
       "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote,
       "jjob": fldinfo_jjob,

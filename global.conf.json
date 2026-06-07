@@ -301,7 +301,8 @@
     "afarepos": ["my-docker", "my-d-other"],
     "imgpath": "pc1/pc2/pc3",
     "excpatt": "(hello|refactor-\\w|\\w+-backup|legacy-img|windows|junk-folders|master-\\d\\d|test)",
-    "storpath": "~/.linetboot/afa/docker_images_tags.json"
+    "storpath": "~/.linetboot/afa/docker_images_tags.json",
+    "repocfgfn": ""
   },
   "hclparse": {
     "webstats": 1,
@@ -340,10 +341,12 @@
   "grepo": {
     "desc": "Git Repo Tool Manifest view",
     "cache": 1,
+    "disa": 0,
     "remiconpath": {"origin": "web/img/type1.png", "upstream": "web/img/type2.png"},
     "ossreffn": "grepo_osref.json",
     "mfpath": ["~/.linetboot/", "/some/other/path"],
-    "fn": "repo_manifest.xml",
+    "fn": "",
+    "fnXX": "repo_manifest.xml",
     "mergeinc": 0,
     "debug": 2
   },

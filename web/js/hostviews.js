@@ -56,7 +56,7 @@ var rapp;var fldinfo;var Chart;var window;var Mustache; var webview;
 var rmgmt_data = [];
 var grps = [];
 var datasets = {};
-var ee = new EventEmitter(); // events processing.
+// var ee = new EventEmitter(); // events processing.
 
 function on_rmgmt_click(ev) {
   var tmpl = $("#rmgmtusers").html();
@@ -167,14 +167,15 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
     // class fwgrid is on grid-wrapping div-element
     //var diael = $("#"+ dialogsel ).get(0); // Dialog element
-    let diael = document.getElementById("#"+ dialogsel);
-    if (!diael) { console.log(`No dialog element for dialog (id) selector: '${dialogsel}'`); }
+    let diael = document.getElementById(dialogsel); // NOT: "#"+ 
+    if (!diael) { let err = `dialogcb: No dialog element for dialog (id) selector: '${dialogsel}'`;
+       console.log(err); return toastr.error(err); }
     // New: We give gridid directly in model, no need to probe it.
     //var gel = $("#"+ dialogsel + " .fwgrid");
     //var id = gel.attr("id");
     
     var tmplid = am.tmplid || "simplegrid";
-    console.log(`Got template id: '${tmplid}'`);
+    console.log(`dialogcb: Got template id: '${tmplid}'`);
     var titletmpl = diael.getAttribute("nametmpl"); // TODO: Change proper
     // rapp.templated(titletmpl, tpara); - too complex here as template does not have id
     if (titletmpl) { tpara.name = Mustache.render(titletmpl, tpara); } // toastr.info("Formulated title/name: "+tpara.name);
@@ -655,6 +656,9 @@ var tabloadacts = [
   // TODO: longload: 1
   {"name":"Artifactory Image Info", "elselXX": "XX", tmpl: "t_afaimginfo", "hdlr": gendialog,  url: "", // gridid: "", fsetid: "",
     path: "afaimginfo", uisetup: null, dialogid: "afaimginfodialog", longload: 1},
+  // Repo Info
+  {"name":"Artifactory Repos", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/afarepos", gridid: "jsGrid_afarepos", fsetid: "afa_repos",
+    path: "afarepos", uisetup: null, longload: 1},
   {"name":"Fire Wall Rules", "elselXX": "XX", tmpl: "", "hdlr": jgrid_form,  url: "",  fsetid: "nft", formid: "fwform", fldinfo: fldinfo, subtypes: true, debug: 1,
     path: "fwform", uisetup: null,  "optcoll": opts_nft, }, // dialogid: "afaimginfodialog",
   {"name":"Grid Defs", "elselXX": "XX", tmpl: "", "hdlr": jgrid_fielddefs,   fldinfo: fldinfo, // url: "", gridid: "", fsetid: "",
@@ -1015,13 +1019,14 @@ window.onload = function () {
   router.add(acts); /// ...filtered
     if (!datasets.cfg) { return alert("No config - can't work without it !"); }
     // Page Branding (title, image)
-    if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = "url("+ datasets.cfg.hdrbg + ")"; }
+    if (datasets.cfg.hdrbg) { document.getElementById('header').style.backgroundImage = `url(${datasets.cfg.hdrbg})`; }
     if (datasets.cfg.appname) { $("#appname").html(datasets.cfg.appname); }
     if (datasets.cfg.username) {
-      console.log("Got cfg username: '"+datasets.cfg.username+"'");
+      console.log(`Got cfg username: '${datasets.cfg.username}'`);
     }
     // db.hosts = datasets["hostlist"]; // Legacy ...Can't do this globally. now handled by each showgrid()
     // Immediate grids
+    /*
     ee.on("on_jsGrid_net_done", function (d) {  }); // alert("Net Grid done: "+d.msg);
     ee.on("on_jsGrid_dist_done", function (d) {  });
     ee.on("on_jsGrid_hw_done", function (d) {  });
@@ -1043,6 +1048,7 @@ window.onload = function () {
     });
     // Docker
     ee.on("on_dockerimg_done", function (d) { $("#dockerimg").dialog(dopts_grid); });
+    */
     // DONOT: response.data.forEach(function (it) { it.diskrot = parseInt(it.diskrot); });
     //toastr.info("Grids loaded"); // Outdated
     // Shared data (/list), different views
@@ -1304,11 +1310,11 @@ function dockerinfo(hname, dialogsel, cb) { // gridsel
  */
 function nfsinfo(hname, dialogsel, cb) {
   // Load data
-  toastr.info("Loading Exports for "+hname);
+  toastr.info(`Loading Exports for ${hname}`);
   // MOCKUP: return cb([], dialogsel);
   axios.get("/showmounts/" + hname).then(function (resp) {
     var pinfo = resp.data;
-    // console.log(pinfo);
+    //console.log(pinfo);
     return cb(pinfo, dialogsel);
   })
   .catch(function (err) { let estr = `No NFS info:  ${err}`; console.log(estr); alert(estr); });

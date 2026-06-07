@@ -374,7 +374,8 @@ function app_init(mcfg) { // mcfg
   app.get("/yaml/nets", yaml_show);
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
-  app.get("/afarepos/", afa.afarepo_ls); // TODO: All / one
+  app.get("/afarepos", afa.afarepo_ls); // TODO: All / one
+  app.get("/afarepos/:id", afa.afarepo_ls);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
   app.get("/grepo", grepo.hdl_grepo);
   return 1;
@@ -1656,7 +1657,7 @@ function showmounts(req, res) {
   var jr = {status: "err", msg: "Could not run command. "};
   //var hn = req.query["hname"];
   var hn = req.params.hname;
-  console.log("Run op on: "+hn);
+  console.log(`showmounts: Run op on: ${hn}`);
   // Parse exports.
   function parse_exp(out) {
     var lines = out.split("\n");
@@ -1679,9 +1680,9 @@ function showmounts(req, res) {
   var cmd = nd.cmd;
   // var cmd = Mustache.render(nd.cmd, p);
   // 'ssh  ' + hname + " showmount -e localhost"
-  cproc.exec("showmount -e "+ hn, function (error, stdout, stderr) {
+  cproc.exec(`showmount -e ${hn}`, function (error, stdout, stderr) {
     if (error) { jr.msg += error; return res.json(jr); }
-    console.log("RAW: "+ stdout);
+    console.log("showmounts: RAW(stdout): "+ stdout);
     var data = parse_exp(stdout);
     res.json(data);
   });
@@ -3243,7 +3244,8 @@ function gh_projs(req, res) {
   if (req.url.startsWith('/gh_teams')) { // Note: Url has query params, i.e. not: req.url == '/gh_teams'   && ()
     if (!repo) { jr.msg += `No repo param. passed for ACL teams query`; console.log(jr.msg); return res.json(jr); }
     if (ghcfg.ent) { url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
-    else { url = `https://${ghcfg.url}/repos/${org}/${repo}/teams}`; }
+    // This should be:  /repos/ohollmen/crudrest/collaborators (not "".../teams")
+    else { url = `https://${ghcfg.url}/repos/${org}/${repo}/collaborators`; }
   }
   // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
