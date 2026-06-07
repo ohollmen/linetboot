@@ -218,7 +218,7 @@ function hosts_load(global) {
   console.log(colls.hostnames.length+" Hosts from loop");
   //console.log(colls.hostnames.length+" Hosts dynamically post-loop");
   
-  debug && console.log("Inventory Groups: ", groups);
+  (debug > 1) && console.log("Inventory Groups: ", groups);
   //debug && console.log("Final Hostparams: ", colls.hostparams);
   debug && console.log("Final Groupvars: ", groupvars);
   applygroupvars([], groups, groupvars);
@@ -571,7 +571,7 @@ function customhost_load(fname, global, iptrans) {
   // TODO: Analyze hostname, detect format.
   if (!fs.existsSync(fname)) { console.log("No customhost file "+ fname);return; }
   var arr = csv_parse(fname); // AoO (Array of objects)
-  console.log("Customhost (parsed):", arr);
+  if (global.debug > 1) { console.log("Customhost (parsed):", arr); }
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
   arr.forEach(function (it) {

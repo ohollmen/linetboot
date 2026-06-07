@@ -53,7 +53,7 @@ function init(mcfg, app) {
     // Expand tilde here (exceptionally - usually in mainfconf)
     if (v.fn && v.fn.match("~")) {
       v.fn = v.fn.replace(/~/g, home);
-      if (!fs.existsSync(v.fn)) { console.error(`Local data file '${v.fn}' does resolve.`); v.disa = 1; return; }
+      if (!fs.existsSync(v.fn)) { console.error(`htview: Local data file '${v.fn}' does resolve.`); v.disa = 1; return; }
       // Cache (smaller files) ?
     }
     console.log(`htview: Adding ${v.localpath}`);

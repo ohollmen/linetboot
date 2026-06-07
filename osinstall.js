@@ -374,7 +374,7 @@ function url_hdlr_set(app) {
   //urls = Object.keys(tmplmap);
   // TODO: Must exist as static !!
   recipes.forEach(function (r) {
-    console.log("Recipe-URL: "+r.url);
+    //console.log("Recipe-URL: "+r.url);
     app.get(r.url, preseed_gen);
   });
   //////// Additional Install-type specific handlers //////
