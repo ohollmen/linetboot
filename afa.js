@@ -282,6 +282,8 @@ function afarepos_fetch(rcfg, cb) {
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
+    // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
+    // let fre = cfg.repofilter || rcfg.repofilter; // Filter RE
     if (cfg.repofilter) {
       let re = new RegExp(cfg.repofilter, "g");
       d = d.filter( (it) => { return it.key.match(re); });
