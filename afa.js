@@ -315,7 +315,7 @@ function afarepo_ls(req, res) {
   if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
   afarepos_fetch(rcfg, (err, d) => {
     if (err) { jr.msg += `Failed to fetch server repos: ${err}`; return res.json(jr); }
-    return res.json({status: "ok", data: d});
+    return res.json({status: "ok", data: d.repos});
   });
   //res.json({status: "ok", data: cfg.repocfg});
   function repocfg_node(id) {
