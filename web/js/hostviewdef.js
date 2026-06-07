@@ -1621,11 +1621,17 @@ function afarepo_rtype_cell(val, item) {
   let c = cmap[val] ? cmap[val] : 'black';
   return `<span style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;">${val}</span>`;
 }
+function afarepo_ptype_cell(val, item) {
+  let cmap = {"Cargo": "", "Conan": "", "Debian": "", "Docker": "", "Generic": "", "GitLfs": "", "HelmOCI": "",
+      "Maven": "", "Npm": "", "NuGet": "", "Pypi": "", "Terraform": "", "VCS": "", };
+  //let c = cmap[val] ? cmap[val] : 'black';
+  return val;
+}
 var fldino_afa_repo = [
     { name: "key",         type: "text", title: "Key",          width: 160, itemTemplate: null },
     { name: "description", type: "text", title: "Description",  width: 220, itemTemplate: null },
-    { name: "type",        type: "text", title: "Repo Type",         width:  80, itemTemplate: afarepo_rtype_cell },
-    { name: "packageType", type: "text", title: "Package Type", width: 100, itemTemplate: null },
+    { name: "type",        type: "text", title: "Repo Type",    width:  80, itemTemplate: afarepo_rtype_cell },
+    { name: "packageType", type: "text", title: "Package Type", width: 100, itemTemplate: afarepo_ptype_cell },
     { name: "url",         type: "text", title: "URL",          width: 320, itemTemplate: null },
   ];
    // copyfile

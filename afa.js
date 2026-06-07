@@ -44,6 +44,8 @@ var ahdr = "X-JFrog-Art-Api"; // Auth header (See Introduction ..., also Bearer 
 var cfg;
 var creds = {};
 var ropts = {headers: {}};
+
+function dclone(d) { return JSON.parse(JSON.stringify(d)); }
 // Init !
 function init(_mcfg) {
     if (!_mcfg) { throw "No main config passed"; }
@@ -267,17 +269,8 @@ function imgmani(req, res) {
   }
 }
 ////////////////// Normal AFA (non-docker) repos
-function afarepo_ls(req, res) {
-  let jr = {status: "err", msg: ""};
-  // Grab config from the non-official part of cfg.
-  if (!cfg.repocfg) { jr.msg += "No afa repo config (By: repocfgfn) !"; return res.json(jr); }
-  let id = (req.params && req.params.id) ? req.params.id : '';
-  //if (!id) { jr.msg += `No afa repo config id passed' !`; return res.json(jr); }
 
-  let rcfg = id ? repocfg_node(id) : cfg.repocfg[0];
-  //
-  if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
-  if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
+function afarepos_fetch(rcfg, cb) {
   // TODO: Actually list repos
   let rpara = {
     headers: { 'X-JFrog-Art-Api': rcfg.token, 'Accept': 'application/json', }
@@ -285,17 +278,43 @@ function afarepo_ls(req, res) {
   // let apiprefix = 'artifactory';
   let scprefix = rcfg.host.startsWith('http') ? '' : 'https://';
   let url = `${scprefix}${rcfg.host}/artifactory/api/repositories`; // `/{reponame}`;
-  console.log(`afarepos: from ${url} w. cred ${rcfg.token} B`);
+  console.log(`afarepos: from ${url} w. cred ${rcfg.token.length} B`);
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
-    if (!Array.isArray(d)) { jr.msg += "Result not in array."; return res.json(jr); }
+    if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
     if (cfg.repofilter) {
       let re = new RegExp(cfg.repofilter, "g");
       d = d.filter( (it) => { return it.key.match(re); });
     }
-    res.json({status: "ok", data: d});
-  }).catch( (ex) => { jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr); });
-  
+    rcfg.repos = d; delete rcfg.token;
+    return cb(null, rcfg); // Only success
+  }).catch( (ex) => {
+    //jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr);
+    return cb(`Failed to list AFA repos (from ${url}): ${ex}`, null);
+  });
+}
+function afarepo_ls(req, res) {
+  let jr = {status: "err", msg: ""};
+  // Grab config from the non-official part of cfg.
+  if (!cfg.repocfg) { jr.msg += "No afa repo config (By: repocfgfn) !"; return res.json(jr); }
+  let id = (req.params && req.params.id) ? req.params.id : '';
+  //if (!id) { jr.msg += `No afa repo config id passed' !`; return res.json(jr); }
+  if (req.url.startsWith('/afarepos/all')) {
+    let cfgs = dclone(cfg.repocfg);
+    async.map(cfg.repocfg, afarepos_fetch, (err, results) => {
+      if (err) { jr.msg += `Error fetching all repos.`; return res.json(jr); }
+      return res.json({status: "ok", data: results});
+    });
+    return;
+  }
+  let rcfg = id ? repocfg_node(id) : cfg.repocfg[0];
+  //
+  if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
+  if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
+  afarepos_fetch(rcfg, (err, d) => {
+    if (err) { jr.msg += `Failed to fetch server repos: ${err}`; return res.json(jr); }
+    return res.json({status: "ok", data: d});
+  });
   //res.json({status: "ok", data: cfg.repocfg});
   function repocfg_node(id) {
     let rcfg = cfg.repocfg.find( (it) => { return it.id == id; } );

@@ -375,6 +375,7 @@ function app_init(mcfg) { // mcfg
   app.get("/afaimgs", afa.afaimgs);
   app.get("/imgmani", afa.imgmani);
   app.get("/afarepos", afa.afarepo_ls); // TODO: All / one
+  app.get("/afarepos/all", afa.afarepo_ls);
   app.get("/afarepos/:id", afa.afarepo_ls);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
   app.get("/grepo", grepo.hdl_grepo);
