@@ -1528,7 +1528,7 @@ function riskadj_cell(val, item) {
    function revtype_cell(val, item) {
      let rev = item.revision || "";
      // let type = 'default';
-     if (!rev) return "HEAD of"; // HEAD of def. branch
+     if (!rev) { return "HEAD of (def.)"; } // HEAD of def. branch (from defaults)
      if (rev.startsWith("refs/heads/")) return "branch"; // path notation Not Used for type branch (!?). Only branch name
      if (rev.startsWith("refs/tags/")) {
         item.revision = rev.substring(10);
@@ -1537,7 +1537,7 @@ function riskadj_cell(val, item) {
         //return "tag";
         return `<span class="glyphicon glyphicon-tag" aria-hidden="true" title="Tag"></span>`;
     } // return rev.substring(10);
-     if (/^[0-9a-f]{7,40}$/.test(rev)) return "commit";
+     if (/^[0-9a-f]{7,40}$/.test(rev)) return "commit-SHA1";
      return "HEAD of"; // "HEAD (of branch)"
      // const colors = { branch: "#4CAF50", tag: "#2196F3", commit: "#9C27B0", unknown: "#9E9E9E", default: "#607D8B"};
      // return `<span style="padding:2px 6px;border-radius:4px;background:${colors[type]};color:white">${value || "(default)"}</span>`;
@@ -1546,9 +1546,11 @@ function riskadj_cell(val, item) {
     // Lookup icon from data of /config
     let grepo = datasets.cfg && datasets.cfg.grepo ? datasets.cfg.grepo : null;
     let iconsym =  (grepo && grepo.remiconpath && grepo.remiconpath[val]) ? `<img src="${grepo.remiconpath[val]}" width="16px" height="16px">` : '';
-     if (val && !item.remote_def) { return `${val} ${iconsym}`; }
-     //if (!iconsym) {}
-     return `<span style="color: #888888;">${item.remote_def} ${iconsym}</span>`;
+    let color = 'black';
+    //if (val && !item.remote_def) { return `${val} ${iconsym}`; }
+    if (item.remisdef) { color = '#888888'; }
+    //if (!iconsym) {}
+     return `<span style="color: ${color};">${val} ${iconsym}</span>`; // old: item.remote_def
    }
    function grepo_rev_cell(val, item) {
      if (val && !item.revision_def) { return val; }
@@ -1575,7 +1577,7 @@ var fldinfo_repo_proj = [
   { "name": "sync-s", "title": "Sync Submodules", "type": "text", "width": 5 },
   // { "name": "sync-tags", "title": "Sync Tags", "type": "text", "width": 5 },
   // sync-j (rare). you can 1) give this as default, 2) pass this as a CLI flag (-j8)
-  { "name": "sync-j", "title": "Sync Parallel jobs", "type": "text", "width": 5 },
+  { "name": "sync-j", "title": "Sync # Par. jobs", "type": "text", "width": 5 },
 ];
 var fldinfo_repo_remote =[
   { "name": "name", "title": "Remote Name", "type": "text", "width": 14,  }, // "validate": "required"
