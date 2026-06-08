@@ -284,6 +284,8 @@ function afarepos_fetch(rcfg, cb) {
     if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
     // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
     let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
+    // Key exists
+    // if (("repofilter" in rcfg) && (rcfg.repofilter === null)) { fre = null; } // Ask to NOT filter at all
     if (fre) { // cfg.repofilter
       let re = new RegExp(fre, "g");
       console.log(`Use RE filter: ${re}`);
