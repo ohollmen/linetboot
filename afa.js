@@ -278,7 +278,7 @@ function afarepos_fetch(rcfg, cb) {
   // let apiprefix = 'artifactory';
   let scprefix = rcfg.host.startsWith('http') ? '' : 'https://';
   let url = `${scprefix}${rcfg.host}/artifactory/api/repositories`; // `/{reponame}`;
-  console.log(`afarepos: from ${url} w. cred ${rcfg.token.length} B`);
+  console.log(`afarepos: from ${url} w. cred ${rcfg.token ? rcfg.token.length: 0} B`);
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
