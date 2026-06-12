@@ -264,6 +264,10 @@ function afarepos_fetch(rcfg, cb) {
   axios.get(url, rpara).then( (resp) => {
     let d = resp.data;
     if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
+    // TODO: Make secondary search call w. ?type=federated and concat() it to results
+    axios.get(`${url}?type=federated`).then( (resp2) => {
+      let df = resp2.data; // data/federated
+      if (Array.isArray(df) && df.length) { d = d.concat(df); }
     // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
     let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
     // Allow explicit null (YAML: null, Null, NULL, or ~) to singnal "No filtering" (even ig global filter is set)
@@ -272,15 +276,18 @@ function afarepos_fetch(rcfg, cb) {
     if (("repofilter" in rcfg) && (rcfg.repofilter === null)) { fre = null; } // Ask to NOT filter at all
     if (fre) { // cfg.repofilter
       let re = new RegExp(fre, "g");
-      console.log(`Use RE filter: ${re}`);
+      console.log(`${rcfg.id}: Use RE filter: ${re} (${d.length} items)`);
       d = d.filter( (it) => { return it.key.match(re); });
-      console.log(`Filetered down to: ${d.length} items`);
+      console.log(`Filtered down to: ${d.length} items`);
     }
     rcfg.repos = d; delete rcfg.token;
     return cb(null, rcfg); // Only success
+    
+    }).catch( (ex) => { return cb(`Failed to list (Federated) AFA repos (from ${url}): ${ex}`, null); });
+
   }).catch( (ex) => {
     //jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr);
-    return cb(`Failed to list AFA repos (from ${url}): ${ex}`, null);
+    return cb(`Failed to list (Primary-type) AFA repos (from ${url}): ${ex}`, null);
   });
 }
 function afarepo_ls(req, res) {
