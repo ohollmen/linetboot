@@ -90,9 +90,11 @@ var hostarr = [];
 var ldconn; var ldbound;
 var setupmod;
 
-app.use(bodyParser.json({limit: '1mb'}));
+app.use(bodyParser.json({limit: '1mb'})); // Exp v4
+// app.use(express.json({limit: '1mb'})); // Exp. v5
 var rawoptions = { inflate: true, limit: '10kb', type: 'application/octet-stream' };
-app.use(bodyParser.raw(rawoptions));
+app.use(bodyParser.raw(rawoptions)); // Exp v4
+// app.use(express.raw(rawoptions));  // Exp. v5
 
 /** Initialize Application / Module with settings from main confuration.
 * @param cfg {object} -  linetboot configuration
@@ -111,7 +113,7 @@ function app_init(mcfg) { // mcfg
   // Call already upstream !
   //mc.env_merge(mcfg);
   //mc.mainconf_process(mcfg);
-  var user   = mc.user_load(mcfg); // TODO: After env_merge, mainconf_process ?
+  var user   = mc.user_load(mcfg); // Note: After env_merge, mainconf_process
   var iprofs = mc.iprofs_load(mcfg);
   if (!iprofs) { console.log("No (Install profiles) iprofsconfig"); }
   /////// Misc init():s ////////////////
@@ -144,7 +146,7 @@ function app_init(mcfg) { // mcfg
   var logger = function (res, path, stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
-    console.log("Send STATIC file in fspath: " + path + " ("+stat.size+" B, meth: "+res.req.method+")");
+    console.log(`Send STATIC file in fspath: '${path}' (${stat.size} B, meth: ${res.req.method})`);
     // console.log(stat); // Stat Object
   };
   if (mcfg.gerrit) { gerrit.init(mcfg); }
@@ -178,7 +180,7 @@ function app_init(mcfg) { // mcfg
   // For local disk boot (recent) kernels and network install as well
   var maindocroot = mcfg.core.maindocroot;
   if (!fs.existsSync(maindocroot)) {
-    console.error(`Error/Warning: Main docroot '${maindocroot}' does not exist`);
+    console.error(`Error: Main docroot '${maindocroot}' does not exist (exiting) !`);
     process.exit(1);
   }
   // https://expressjs.com/en/4x/api.html#express.static
@@ -192,7 +194,7 @@ function app_init(mcfg) { // mcfg
   if (mcfg.core.addroot && Array.isArray(mcfg.core.addroot)) {
     mcfg.core.addroot.forEach((root) => { app.use(express.static(root, staticconf)); });
   }
-  // No need for custom staticconf (mainly dotfiles)
+  // This serves ALL the APP GUI stuff. No need for custom staticconf (mainly dotfiles)
   app.use('/web', express.static('web', staticconf)); // Host Inventory
   // See need for this (https://expressjs.com/en/4x/api.html#express.text). This is actually reveive-middleware
   // express.text([options]); // inflate
@@ -486,7 +488,7 @@ function app_init(mcfg) { // mcfg
   let hdlrs_ok = sethandlers(mcfg, app);
   if (!hdlrs_ok) { console.error(`Not all URL handlers were set up (rc=${hdlrs_ok})`); process.exit(1); }
   else { console.log(`app_init: Set all URL handlers: rc/ok=${hdlrs_ok}`); }
-  routes_report_v4(app);
+  // routes_report_v4(app);
   // LDAP (when not explicitly disabled)
   // client.starttls({ca: [pemdata]}, function(err, res) { // fs.readFileSync('mycacert.pem')
   var ldc = mcfg.ldap; // ldc - LDAP Config
@@ -622,6 +624,9 @@ function linet_mw(req, res, next) {
   
   next();
 }
+// Report routes for Express 4.X
+//  Express 5 brings back app.router; the app._router.stack diagnostic may stop working.
+// Use var stack = (app._router || app.router) && ...
 function routes_report_v4(app) {
   var stack = app._router && app._router.stack;
   if (!stack) { console.error("routes_report: Express route stack not available"); return; }
@@ -672,8 +677,10 @@ if (!ok_mcp) { mc.error("main: MainConf Processing Failed !"); }
 //mcfg = global;
 app_init(mcfg);
 
+// Express v5 migration guide: https://expressjs.com/en/guide/migrating-5/
 function http_start() {
-  app.listen(port, function () {
+  app.listen(port, function (err) { // Exp v5 : err
+    if (err) { console.error(`app.listen: Problems starting: ${err}`); process.exit(1); } // v5 err.message
     console.log(`main: Linux Network Installer app listening on host:port http://localhost:${port} OK`);
   });
 }
@@ -1653,6 +1660,7 @@ function ansible_plays_list(req, res) {
 * - profile id to give command to run (and it's respective parser)
 * - 
 * @todo Unify CSV-style parsing (w. opt explicit headers).
+* @todo Validate host
 */
 function showmounts(req, res) {
   var jr = {status: "err", msg: "Could not run command. "};
@@ -1665,6 +1673,7 @@ function showmounts(req, res) {
     // Should have(e.g.): Export list for localhost:
     lines.shift();
     lines = lines.filter(function (l) {return l.match(/^\s*$/) ? 0 : 1; }); // Just pop() ?
+    //if (!lines) { }
     var exp = [];
     // The rest: /home              192.168.1.0/24
     exp = lines.map(function (line) { var arr = line.split(/\s+/); return { path: arr[0], iface: arr[1] }; });
