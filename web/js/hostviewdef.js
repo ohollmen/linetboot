@@ -1622,12 +1622,18 @@ function afarepo_rtype_cell(val, item) {
   return `<span class="rtype_${val}" style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;">${val}</span>`;
 }
 // See: https://techicons.dev/icons/nuget (Also: python, npm, maven, docker, debian, git, terraform)
+// Donwnload (SVG): https://icon.icepanel.io/Technology/svg/Python.svg https://icon.icepanel.io/Technology/png-512/NPM.png
 // Also: cmake, git, gitlab, github, jenkins
 function afarepo_ptype_cell(val, item) {
-  let cmap = {"Cargo": "", "Conan": "", "Debian": "", "Docker": "", "Generic": "", "GitLfs": "", "HelmOCI": "",
-      "Maven": "", "Npm": "", "NuGet": "", "Pypi": "", "Terraform": "", "VCS": "", };
+  let cmap = {"Cargo": "", "Conan": "", "Debian": "img/oss/Debian.svg", "Docker": "img/oss/Docker.svg", "Generic": "",
+      "GitLfs": "img/oss/Git.svg", "HelmOCI": "",
+      "Maven": "img/oss/Apache+Maven.svg", "Npm": "img/oss/NPM.svg", "NuGet": "img/oss/NuGet.svg",
+      "Pypi": "img/oss/Python.svg", "Terraform": "img/oss/HashiCorp Terraform.svg", "VCS": "", };
   //let c = cmap[val] ? cmap[val] : 'black';
-  return val;
+  // class="rtype_${val}" style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;"
+  let icon = cmap[val] ? `<img src="${cmap[val]}" height="16px" width="16px">` : '';
+  return `${val} ${icon}`;
+  //return val;
 }
 var fldino_afa_repo = [
     { name: "key",         type: "text", title: "Key",          width: 160, itemTemplate: null },
