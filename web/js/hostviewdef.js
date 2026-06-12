@@ -1619,8 +1619,10 @@ let fldinfo_jjob = [
 function afarepo_rtype_cell(val, item) {
   let = cmap = {"LOCAL": "#555555", "VIRTUAL": "#719fe5", "REMOTE": "#be2d2d", "FEDERATED": "#50a109", };
   let c = cmap[val] ? cmap[val] : 'black';
-  return `<span style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;">${val}</span>`;
+  return `<span class="rtype_${val}" style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;">${val}</span>`;
 }
+// See: https://techicons.dev/icons/nuget (Also: python, npm, maven, docker, debian, git, terraform)
+// Also: cmake, git, gitlab, github, jenkins
 function afarepo_ptype_cell(val, item) {
   let cmap = {"Cargo": "", "Conan": "", "Debian": "", "Docker": "", "Generic": "", "GitLfs": "", "HelmOCI": "",
       "Maven": "", "Npm": "", "NuGet": "", "Pypi": "", "Terraform": "", "VCS": "", };

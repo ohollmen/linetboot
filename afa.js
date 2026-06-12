@@ -25,6 +25,10 @@
  *   - Gotten w. "_catalog" and "/tags/list" (See lsimgs)
  *   - Each image has one or more tags (e.g. latest, 1.0.15, 24.04)
  *   - Each tagged version has manifest: `${imgpath}/manifests/${tag}`, where tag is also called "reference" (like git)
+ * ## Artifactory API Key vs Identity Token
+ * - Modern Artifactory conventions prefer Identity tokens (API key deprecated).
+ * - Navigate: (To right) Profile Icon => Edit Profile (requires password to unlock edits) => Identity token (or Access token)
+ *   - Save immediately to safe place as will only be shown once.
 */
 var axios = require("axios");
 var Mustache = require("mustache");
@@ -41,6 +45,7 @@ var apiprefix = "api/docker/{{ imgrepo }}/v2/";
 // For "neutral" registry, the prefix might be:
 //var apiprefix = "v2/"; // Followed by (spec:) "reponame" aka (here) imgpath
 var ahdr = "X-JFrog-Art-Api"; // Auth header (See Introduction ..., also Bearer token, basic w. user:token)
+// var ahdr = 'Authorization';
 var cfg;
 var creds = {};
 var ropts = {headers: {}};
@@ -57,10 +62,11 @@ function init(_mcfg) {
     if (!cfg.token) { console.log( "No  config token" ); return; }
     //cfg.storepath = cfg.storepath || process.env["HOME"] + "/.linetboot/zzzz/";
     process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
-    // Artifactory appects many variants of creds passing
+    // Artifactory accepts many variants of creds passing: "X-JFrog-Art-Api", `Authorization: Bearer ${token}`
     //creds = cfg.user+":"+cfg.pass;
-    creds[ahdr] = cfg.token;
-    ropts.headers[ahdr] = cfg.token; // axios
+    // ahdr = "Authorization";
+    creds[ahdr] = `${cfg.token}`;
+    ropts.headers[ahdr] = `${cfg.token}`; // axios
     if (cfg.apiprefix) { apiprefix = cfg.apiprefix; }
     if (cfg.afarepo) {  } // Prep  by templating: apiprefix = Mustache.render(apiprefix, cfg)
     //console.log(cfg);
@@ -79,7 +85,7 @@ function mkurl(path) {
   return `https://${cfg.host}/${prefixpath}${path}`;
 }
 function curl(url) {
-  console.log(`curl -H '${ahdr}:${cfg.token}' '${url}'`);
+  console.log(`curl -H '${ahdr}: ${ropts.headers[ahdr]}' '${url}'`);
 }
 // List images and optionally tags (CLI).
 // For now this is only CLI op and web frontend uses cached version produced here.
@@ -208,6 +214,115 @@ function history_list(m) {
     return { Cmd: cmd[0], throwaway: j.throwaway };
   });
 }
+
+////////////////// Web handlers /////////////////////////
+// List images (from top level item) by using cached data (/afaimgs).
+// TODO: Allow passing top-level repo to choose file for *that* toprepo or filter by that repo ?
+function afaimgs(req, res) {
+  let jr = {status: "err", "msg": "Could not serve images info. "};
+  var fn = cfg.storpath;
+  if (!fn) { fn = process.env.HOME +"/.linetboot/afa/docker_images_tags.json"; }
+  if (!fs.existsSync(fn)) { jr.msg += "No cache file found !"; return res.json(jr); }
+  var imgs = require(fn); // Load cached !
+  if (!imgs) { jr.msg += "No valid (cached) JSON loaded !"; return res.json(jr); }
+  res.json({status: "ok", data: imgs});
+}
+// Load image manifest by (full) imagepath and tag (from query params to /imgmani).
+// imgpath should be urlencoded by client ('/' => '%2F') E.g.: ?imgpath=path1%2Fpath2&tag=0.0.1
+function imgmani(req, res) {
+  var jr = {"status": "err", "msg": "Could not produce Manifest info details ! "};
+  // var fn = cfg.storpath; // NOT used here
+  var q = req.query;
+  if (!q.imgpath) { jr.msg += "No 'imgpath' passed in query"; return res.json(jr); }
+  if (!q.tag)     { jr.msg += "No 'tag' passed in query"; return res.json(jr); }
+  // Simulate CLI opts (p) for web mode
+  var p = { tag: q.tag, imgpath: q.imgpath, cb: respond }; // q.imgpath / cfg.imgpath
+  //p.tag = "0.0.13"; // TEST
+  lsmani(p);
+  function respond(err, d) {
+    if (err) { jr.msg += `Error getting image manifest: ${err}`; return res.json(jr); }
+    return res.json({"status": "ok", "data": d});
+  }
+}
+////////////////// Normal AFA (non-docker + docker) repos
+// Perms: artifactory/api/storage/<repo-key>/<path>?permissions
+//function afarepo_perms(rcfg, cb) {
+//  // rcfg must be dclone()d and repokey added. Need path ?
+//  let url = `artifactory/api/storage/${rcfg.repokey}/<path>?permissions`;
+//  
+//}
+function afarepos_fetch(rcfg, cb) {
+  // TODO: Actually list repos
+  let rpara = { headers: { 'X-JFrog-Art-Api': rcfg.token, 'Accept': 'application/json', } };
+  // let apiprefix = 'artifactory';
+  let scprefix = rcfg.host.startsWith('http') ? '' : 'https://';
+  let url = `${scprefix}${rcfg.host}/artifactory/api/repositories`; // `/{reponame}`;
+  // Note: Any second type=... gets ignored
+  // url += '?type=federated&type=local'; // Does NOT work: ?type=local,remote,virtual,federated';
+  // if (rcfg.rtype) { url += `?type={rcfg.rtype}`}
+  console.log(`afarepos: from ${url} w. cred ${rcfg.token ? rcfg.token.length: 0} B`);
+  axios.get(url, rpara).then( (resp) => {
+    let d = resp.data;
+    if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
+    // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
+    let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
+    // Allow explicit null (YAML: null, Null, NULL, or ~) to singnal "No filtering" (even ig global filter is set)
+    if (("repofilter" in rcfg) && rcfg.repofilter === null) { fre = null; }
+    // Key exists
+    if (("repofilter" in rcfg) && (rcfg.repofilter === null)) { fre = null; } // Ask to NOT filter at all
+    if (fre) { // cfg.repofilter
+      let re = new RegExp(fre, "g");
+      console.log(`Use RE filter: ${re}`);
+      d = d.filter( (it) => { return it.key.match(re); });
+      console.log(`Filetered down to: ${d.length} items`);
+    }
+    rcfg.repos = d; delete rcfg.token;
+    return cb(null, rcfg); // Only success
+  }).catch( (ex) => {
+    //jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr);
+    return cb(`Failed to list AFA repos (from ${url}): ${ex}`, null);
+  });
+}
+function afarepo_ls(req, res) {
+  let jr = {status: "err", msg: ""};
+  // Grab config from the non-official part of cfg.
+  if (!cfg.repocfg) { jr.msg += "No afa repo config (By: repocfgfn) !"; return res.json(jr); }
+  let id = (req.params && req.params.id) ? req.params.id : '';
+  //if (!id) { jr.msg += `No afa repo config id passed' !`; return res.json(jr); }
+  // Multi-server report
+  if (req.url.startsWith('/afarepos/all')) {
+    let cfgs = dclone(cfg.repocfg);
+    // Create addl nodes for federated search ?
+    // let cfgs2 = dclone(cfg.repocfg); // For '?type=federated'
+    // cfgs2.forEach( (it) => {it.rtype = 'federated'; } );
+    // let arr_new = [];
+    // for (let i=0;i<cfgs.length;i++ ) { arr_new = arr_new.concat([cfgs[i], cfgs2[i]]); }
+    
+    // cfgs = cfgs.concat(cfgs2); // OR Interleave ?
+    async.map(cfg.repocfg, afarepos_fetch, (err, results) => {
+      if (err) { jr.msg += `Error fetching all repos.`; return res.json(jr); }
+      // Merge (interveaved) 'federated' items 
+      // for (let i=0; i < results.length; i += 2) { }
+      return res.json({status: "ok", data: results});
+    });
+    return;
+  }
+  let rcfg = id ? repocfg_node(id) : cfg.repocfg[0];
+  //
+  if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
+  if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
+  rcfg = dclone(rcfg); // TODO: 'federated' ?
+  afarepos_fetch(rcfg, (err, d) => {
+    if (err) { jr.msg += `Failed to fetch server repos: ${err}`; return res.json(jr); }
+    return res.json({status: "ok", data: d.repos});
+  });
+  //res.json({status: "ok", data: cfg.repocfg});
+  function repocfg_node(id) {
+    let rcfg = cfg.repocfg.find( (it) => { return it.id == id; } );
+    return rcfg ? rcfg : null;
+  }
+}
+
 var acts = [
   // {"id": "apiinfo",    "title": "Api Info (v2/)","cb": apiinfo, }, // function apiinfo(p) {} 200 OK/ 401 / 404
   // List / GET
@@ -238,95 +353,6 @@ function usage(msg) {
   console.log("Options (each may apply to only certain subcommand)");
   clopts.forEach( (o) => { console.log("- "+o[1] + " - " + o[2]); });
   process.exit(1);
-}
-////////////////// Web handlers /////////////////////////
-// List images (from top level item) by using cached data (/afaimgs).
-// TODO: Allow passing top-level repo to choose file for *that* toprepo or filter by that repo ?
-function afaimgs(req, res) {
-  let jr = {status: "err", "msg": "Could not serve images info. "};
-  var fn = cfg.storpath;
-  if (!fn) { fn = process.env.HOME +"/.linetboot/afa/docker_images_tags.json"; }
-  if (!fs.existsSync(fn)) { jr.msg += "No cache file found !"; return res.json(jr); }
-  var imgs = require(fn); // Load cached !
-  if (!imgs) { jr.msg += "No valid (cached) JSON loaded !"; return res.json(jr); }
-  res.json({status: "ok", data: imgs});
-}
-// Load image manifest by (full) imagepath and tag (from query params to /imgmani).
-// imgpath should be urlencoded by client ('/' => '%2F') E.g.: ?imgpath=path1%2Fpath2&tag=0.0.1
-function imgmani(req, res) {
-  var jr = {"status": "err", "msg": "Could not produce Manifest info details ! "};
-  // var fn = cfg.storpath; // NOT used here
-  var q = req.query;
-  if (!q.imgpath) { jr.msg += "No 'imgpath' passed in query"; return res.json(jr); }
-  if (!q.tag)     { jr.msg += "No 'tag' passed in query"; return res.json(jr); }
-  // Simulate CLI opts (p) for web mode
-  var p = { tag: q.tag, imgpath: q.imgpath, cb: respond }; // q.imgpath / cfg.imgpath
-  //p.tag = "0.0.13"; // TEST
-  lsmani(p);
-  function respond(err, d) {
-    if (err) { jr.msg += `Error getting image manifest: ${err}`; return res.json(jr); }
-    return res.json({"status": "ok", "data": d});
-  }
-}
-////////////////// Normal AFA (non-docker) repos
-
-function afarepos_fetch(rcfg, cb) {
-  // TODO: Actually list repos
-  let rpara = {
-    headers: { 'X-JFrog-Art-Api': rcfg.token, 'Accept': 'application/json', }
-  };
-  // let apiprefix = 'artifactory';
-  let scprefix = rcfg.host.startsWith('http') ? '' : 'https://';
-  let url = `${scprefix}${rcfg.host}/artifactory/api/repositories`; // `/{reponame}`;
-  console.log(`afarepos: from ${url} w. cred ${rcfg.token ? rcfg.token.length: 0} B`);
-  axios.get(url, rpara).then( (resp) => {
-    let d = resp.data;
-    if (!Array.isArray(d)) {  return cb("Result not in array.", null); } // jr.msg += ; res.json(jr);
-    // TODO: Allow filtering by either global (cfg) or server specific (rcfg) filter
-    let fre = rcfg.repofilter || cfg.repofilter; // Filter RE
-    // Key exists
-    // if (("repofilter" in rcfg) && (rcfg.repofilter === null)) { fre = null; } // Ask to NOT filter at all
-    if (fre) { // cfg.repofilter
-      let re = new RegExp(fre, "g");
-      console.log(`Use RE filter: ${re}`);
-      d = d.filter( (it) => { return it.key.match(re); });
-      console.log(`Filetered down to: ${d.length} items`);
-    }
-    rcfg.repos = d; delete rcfg.token;
-    return cb(null, rcfg); // Only success
-  }).catch( (ex) => {
-    //jr.msg += `Failed to list AFA repos (from ${url}): ${ex}`; console.log(jr.msg); return res.json(jr);
-    return cb(`Failed to list AFA repos (from ${url}): ${ex}`, null);
-  });
-}
-function afarepo_ls(req, res) {
-  let jr = {status: "err", msg: ""};
-  // Grab config from the non-official part of cfg.
-  if (!cfg.repocfg) { jr.msg += "No afa repo config (By: repocfgfn) !"; return res.json(jr); }
-  let id = (req.params && req.params.id) ? req.params.id : '';
-  //if (!id) { jr.msg += `No afa repo config id passed' !`; return res.json(jr); }
-  if (req.url.startsWith('/afarepos/all')) {
-    let cfgs = dclone(cfg.repocfg);
-    async.map(cfg.repocfg, afarepos_fetch, (err, results) => {
-      if (err) { jr.msg += `Error fetching all repos.`; return res.json(jr); }
-      return res.json({status: "ok", data: results});
-    });
-    return;
-  }
-  let rcfg = id ? repocfg_node(id) : cfg.repocfg[0];
-  //
-  if (!rcfg) { jr.msg += `No afa repo config by '${id}' !`; return res.json(jr); }
-  if (!rcfg.token) { jr.msg += `No afa creds for server by '${id}' !`; return res.json(jr); }
-  rcfg = dclone(rcfg);
-  afarepos_fetch(rcfg, (err, d) => {
-    if (err) { jr.msg += `Failed to fetch server repos: ${err}`; return res.json(jr); }
-    return res.json({status: "ok", data: d.repos});
-  });
-  //res.json({status: "ok", data: cfg.repocfg});
-  function repocfg_node(id) {
-    let rcfg = cfg.repocfg.find( (it) => { return it.id == id; } );
-    return rcfg ? rcfg : null;
-  }
 }
 
 ///////////////////

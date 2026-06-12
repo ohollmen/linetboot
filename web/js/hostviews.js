@@ -161,7 +161,7 @@ function on_docker_info(ev) { // TODO: datadialog (rapp.?)
   // Works both as grid (cache index-object) and dialog (DOM-id) selector id
   var dialogcb = function (pinfo, dialogsel) { // TODO: add (2nd) gridsel OR dialog id
     if (!pinfo ) { console.log("No data set for grid"); return; }
-    if (am.gridid && !Array.isArray(pinfo)) { console.log("Data set not in Array for grid"); return; }
+    if (am.gridid && !Array.isArray(pinfo)) { console.log(`Data set not in Array for grid (tgtid/dialogsel: ${dialogsel})`); return; }
     if (!dialogsel) { console.error("No dialog selector, no dialog gui."); return; }
     console.log(`dialogcb: called (#-sel) dialogsel: '${dialogsel}'`); // e.g. proclist
     // Select child ".fwgrid" of dialogsel elem and find out gridsel (id)
@@ -611,7 +611,9 @@ var tabloadacts = [
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // Git* gh_projs
   {"name": "GitHub Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
-      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
+      path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null,
+      // TODO: with tpcb a click of non-default item suprresses the uisetup created menu !!! FIX
+      tpcbXX: (tpara, arr, ev) => { tpara.subname = ev.target.innerHTML; }, longload: 1},
   {"name": "GitLab Grp. Repos",   "elselXX": "glprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gl_projs", gridid: "jsGrid_glprojs", fsetid: "glprojs",
       path: "glprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",
@@ -1319,9 +1321,10 @@ function nfsinfo(hname, dialogsel, cb) {
   // Load data
   toastr.info(`Loading Exports for ${hname}`);
   // MOCKUP: return cb([], dialogsel);
-  axios.get("/showmounts/" + hname).then(function (resp) {
+  axios.get(`/showmounts/${hname}`).then(function (resp) {
     var pinfo = resp.data;
     //console.log(pinfo);
+    //if (!Array.isArray(pinfo)) { return toarstr.info(``); }
     return cb(pinfo, dialogsel);
   })
   .catch(function (err) { let estr = `No NFS info:  ${err}`; console.log(estr); alert(estr); });

@@ -129,7 +129,7 @@ function simplegrid_url(ev, an) {
     // contbytemplate(an.tmpl, an, ttgt);
     // TODO: dclone an and Merge 1) data info (arr) 2) params info (from event ev)
     let tpara = an; // Default: Use as-is
-    // Allow tpcb - Template parameter callback to mutate copy of an (e.g. add params from ev).
+    // Allow tpcb - Template parameter callback to mutate tpara / copy of an (e.g. add params from ev).
     // For apps that receive "complex data" object (not grid AoO only), we add "data" member to cloned tpara.
     if (an.tpcb && (typeof an.tpcb == 'function')) {
       tpara = rapp.dclone(an);
@@ -148,7 +148,8 @@ function simplegrid_url(ev, an) {
     // NEW(2301): Pass ev, as data within it may contribute to view
     // NEW: Pass tpara i.e. possibly cloned action as that may contribute important info to .uisetup and
     // there should be no downside to it.
-    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(tpara, arr, ev); } // Orig: an (not tpara)
+    // Note/Analyze: we should pass here an, not tpara as dclone() (for tpcb) may have deleted CB functions !!!
+    if (an.uisetup && (typeof an.uisetup == 'function')) { an.uisetup(tpara, arr, ev); } // Orig had: an (not tpara)
   }).catch(function (err) {
     console.log(`Encountered axios (${url}) ex: ${err}. Action '${an.name}'. TODO: Add cb for grid-NA explanation`);
     // Note: On failed .then(...) there may ONLY be the outer dialog div (given by act.dialogid) avail with NO content)
