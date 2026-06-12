@@ -1627,8 +1627,8 @@ function afarepo_rtype_cell(val, item) {
 function afarepo_ptype_cell(val, item) {
   let cmap = {"Cargo": "", "Conan": "", "Debian": "img/oss/Debian.svg", "Docker": "img/oss/Docker.svg", "Generic": "",
       "GitLfs": "img/oss/Git.svg", "HelmOCI": "",
-      "Maven": "img/oss/Apache+Maven.svg", "Npm": "img/oss/NPM.svg", "NuGet": "img/oss/NuGet.svg",
-      "Pypi": "img/oss/Python.svg", "Terraform": "img/oss/HashiCorp Terraform.svg", "VCS": "", };
+      "Maven": "img/oss/Apache%20Maven.svg", "Npm": "img/oss/NPM.svg", "NuGet": "img/oss/NuGet.svg",
+      "Pypi": "img/oss/Python.svg", "Terraform": "img/oss/HashiCorp%20Terraform.svg", "VCS": "", };
   //let c = cmap[val] ? cmap[val] : 'black';
   // class="rtype_${val}" style="background-color: ${c}; color: white; border-radius: 3px; padding: 3px 3px;"
   let icon = cmap[val] ? `<img src="${cmap[val]}" height="16px" width="16px">` : '';
