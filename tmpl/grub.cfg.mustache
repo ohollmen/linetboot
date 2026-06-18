@@ -56,6 +56,24 @@ set timeout=10
 # properties of boot-item (here in grub: linux/initrd).
 set root=(http,{{ httpserver }})
 
+# ====================================================================
+# Central Multi-Arch Router (/var/lib/tftpboot/grub/grub.cfg)
+# ====================================================================
+
+if [ "$grub_cpu" = "arm64" ]; then
+    echo "Routing ARM64 architecture client..."
+    set prefix=(tftp)/grubaa
+    configfile /grubaa/grub.cfg
+fi
+
+#elif [ "$grub_cpu" = "x86_64" ]; then
+#    echo "Routing x86_64 architecture client..."
+#    # Keep standard paths active for your legacy setup
+#    set prefix=(tftp)/grub
+#    configfile /grub/grub.cfg
+#fi
+
+
 menuentry "Memory Test (memtest86, Live)" {
   #set root=(http,{{ httpserver }})
   # file gparted/live/memtest
@@ -100,19 +118,48 @@ menuentry "Ubuntu MATE 24 Desktop (64bit, Live)" {
   initrd /ubuntu24dt/casper/initrd
 }
 
+### Kubuntu
 menuentry "Kubuntu 24 (KDE) Desktop (64bit, Live)" {
-  linux  /kubuntu24dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu24dt/ debug ip=dhcp toram
+  linux  /kubuntu24dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu24dt/ debug ignore_loglevel ip=dhcp toram
   initrd /kubuntu24dt/casper/initrd
 }
-
+menuentry "Kubuntu 26 (KDE) Desktop (64bit, Live)" {
+  linux  /kubuntu26dt/casper/vmlinuz boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu26dt/ debug ignore_loglevel ip=dhcp toram
+  initrd /kubuntu26dt/casper/initrd
+}
+### Debian
+# 'fetch' points directly to the squashfs file on your web server
+menuentry "Debian MATE 13.5 Live (HTTP)" {
+  # set server_ip="{{httpserver}}"
+  linux  /debian13mate/live/vmlinuz boot=live fetch=http://{{ httpserver }}/debian13mate/live/filesystem.squashfs ip=dhcp components
+  # Do we NOT need netboot initrd here ? Compare sizes (144,704,498 vs. 40,661,953 /isomnt/debian13net/debian-installer/amd64/initrd.gz).
+  # ASCII cpio archive (SVR4 with no CRC)
+  initrd /debian13mate/live/initrd.img
+}
+menuentry "Elementary OS 8.0.1 (Live)" {
+  linux http://{{ httpserver }}/elementaryos80/casper/vmlinuz ip=dhcp vga=normal boot=casper netboot=nfs nfsroot={{nfsserver}}:/isomnt/elementaryos80 locale=en_US --
+  initrd http://{{ httpserver }}/elementaryos80/casper/initrd.lz
+}
+menuentry "Zorin 17.3 CORE (Live)" {
+  # label zorin17
+  # menu label Zorin 17.3 CORE (Live)
+  # Note: On ISO there is separate /boot/grub/ with EFI bootloader files)
+  linux http://{{ httpserver }}/zorin17/casper/vmlinuz ip=dhcp root=/dev/ram0 ramdisk_size=1048576 netboot=url url={{ httpserver }}/Zorin-OS-17.3-Core-64-bit-r1.iso
+  # This used to be .lz4 (ver 16), now .zstd (ver 17)
+  initrd http://{{ httpserver }}/zorin17/casper/initrd.zstd
+  #append
+}
 ##################################################
 
 menuentry "Fedora Workstation 39 Live" {
   linux  /fedora_ws/images/pxeboot/vmlinuz root=live:http://{{ httpserver }}/fedora_ws/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
   initrd /fedora_ws/images/pxeboot/initrd.img
 }
-
-
+# Note 4x (>= 40) has changed the kernel,initrd dirs
+menuentry "Fedora Workstation 44 Live" {
+  linux  /fedora_ws_4x/boot/x86_64/loader/linux root=live:http://{{ httpserver }}/fedora_ws_4x/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
+  initrd /fedora_ws_4x/boot/x86_64/loader/initrd
+}
 
 menuentry "Ubuntu 18 Server Non-auto" {
   set gfxpayload=keep
@@ -131,13 +178,39 @@ menuentry 'Centos 7 Auto Install' {
   echo "Booting installation kernel"
 }
 
-### Arch
-menuentry "Arch Linux (Live Console, No Auto Install)" {
-  linux /archlinux/arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
-  # Grub support for multiple initrd items ? 
-  initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
-}
+##### Arch and Manjaro #####
+# Note: These both use multiple initrd images. Unlike pxelinux, they need to be **space delimited** (not comma, ',')
 
+### Arch
+# GRUB (only) error at start/top of screen): Initramfs unpacking failed: invalid magic at start of compressed archive
+# ... Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(1,0)
+menuentry "Arch Linux (Live Console, No Auto Install)" {
+  # BOOTIF=01-${net_default_mac} or rd.bootif=0
+  linux /archlinux/arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/ BOOTIF=01-${net_default_mac} ip=dhcp
+  # Grub support for multiple initrd items: Do not include http server part here.
+  initrd /archlinux/arch/boot/intel-ucode.img /archlinux/arch/boot/amd-ucode.img /archlinux/arch/boot/x86_64/initramfs-linux.img
+}
+### Manjaro
+# Initial Errors ... Please append a correct "root=" boot option. Solved by stripping out 'http://{{httpserver}}' part (GRUB has global sever config)
+menuentry "Manjaro XFCE (Live NFS or HTTP)" {
+  # Suggested (for linux ...): misobasedir=manjaro misolabel=MANJARO_XFCE miso_nfs_srv=${server_ip}:${nfs_path} ip=dhcp
+  #    nouveau.modeset=1 i915.modeset=1 radeon.modeset=1
+  # Also: miso_http_srv=... Also: misolabel=MANJARO_XFCE ??? BOOTIF=01-${net_default_mac} or rd.bootif=0
+  linux /manjaro/boot/vmlinuz-x86_64 miso_http_srv=http://{{ httpserver }}/manjaro/ ip=dhcp misobasedir=manjaro misolabel=manjaro
+  # Must have 3 nfs:// items (as of 2021 forum). Order matters: Microcode must come BEFORE the main initramfs
+  initrd /manjaro/boot/amd_ucode.img /manjaro/boot/intel_ucode.img /manjaro/boot/initramfs-x86_64.img
+}
+### CachyOS
+# https://cdn77.cachyos.org/ISO/desktop/260426/cachyos-desktop-linux-260426.iso
+# Misc errors:
+# - ERROR: Device '2026-04-26-09-32-03-00.uuid' not found (searched earlier as /boot/2026-04-26-09-32-03-00.uuid on /dev/sda1 ... /dev/sda5)
+menuentry "CachyOS KDE 2026 (Live)" {
+  # archisosearchuuid=???  Also: archiso_nfs_srv=192.168.1.10:/srv/nfs/cachyos cow_spacesize=4G copytoram
+  # In arch/boot/x86_64 There are versions w ith and w/o '-lts'. BOOTIF=01-${net_default_mac}
+  # Not needed: XXarchisosearchuuid=2026-04-26-09-32-03-00
+  linux  /cachyos/arch/boot/x86_64/vmlinuz-linux-cachyos archisobasedir=arch archiso_http_srv=http://{{httpserver}}/cachyos/ ip=dhcp 
+  initrd /cachyos/arch/boot/x86_64/initramfs-linux-cachyos.img
+}
 # https://www.cyber-tec.org/2014/07/19/setup-pxe-boot-environment/
 menuentry "FreeDOS 1.0 (Live)" {
   #insmod memdisk
