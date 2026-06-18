@@ -185,6 +185,17 @@ initrd http://{{ httpserver }}/core_tinycore.gz
 #initrd http://{{ httpserver }}/debian10mate/d-i/initrd.gz
 #append interface=auto
 
+# Boot failed: ...
+# No root device specified. Boot arguments must include a root= parameter. (Boot ends up in `(initramds)` prompt).
+label debian13mate
+menu label Debian 13 MATE Live
+# CMP: /debian13net/debian-installer/amd64/linux (Same)
+kernel http://{{ httpserver }}/debian13mate/live/vmlinuz
+initrd http://{{ httpserver }}/debian13mate/live/initrd.img
+#append interface=auto ipv6.disable=1
+# Suggested by Gem
+append boot=live fetch=http://{{ httpserver }}/debian13mate/live/filesystem.squashfs ip=dhcp components
+
 # TODO: Debian 8 Jessie
 
 # TODO: Debian 9 Stretch
@@ -195,11 +206,14 @@ initrd http://{{ httpserver }}/core_tinycore.gz
 # Note: Debian calls PXE booting "netboot" and term PXE appears practically in none of the official Debian documentation.
 # Like with many other distros, the kernel used has to be perfect version match to Package content as some packages
 # are (possibly) kernel modules. Starting w. Debian 10 PXE bootting ("netboot") requires a separate (ISO version matched) netboot.tar.gz
-# package with key files in debian-installer/amd64/: linux (kernel), initrd.gz (init. ramdisk).
+# package with key files in `debian-installer/amd64/`: linux (kernel), initrd.gz (initial ramdisk).
+# Note: netboot tar.gz filename is always missing the version of Debian ISO that it should be "paired" with making it harder to choose correct one.
 # Root for different distro versions (e.g. 8,9,10): http://ftp.us.debian.org/debian/dists/
+# E.g. netboot.tar.gz for 13.5: https://ftp.debian.org/debian/dists/Debian13.5/main/installer-amd64/current/images/netboot/
 # See:
 # - https://www.debian.org/distrib/netinst
 # - https://wiki.debian.org/PXEBootInstall - Info about 
+# - Local docs: doc/README.troubleshoot.md README.osnotes.md for explanation about contents of netboot.tar.gz
 # For cleanest and most supported Debian PXE boot we need (try replace distro name for your distro, e.g. "stretch"
 # these 2 are usually always side-by-side in same website directory, change distro name part - e.g. buster here - to get one for your distro):
 # - http://http.us.debian.org/debian/dists/buster/main/installer-amd64/current/images/netboot/netboot.tar.gz (~35MB) OR 
@@ -225,6 +239,21 @@ initrd http://{{ httpserver }}/debian10net/debian-installer/amd64/initrd.gz
 # Ironically, the kernel (by checksum) is the same on ISO and .tar.gz. initrd differs (~20 vs. ~30MB)
 # initrd http://{{ httpserver }}/debian1070-installer/initrd.gz
 append priority=critical auto=true interface=auto ipv6.disable=1 url=http://{{ httpserver }}/preseed.cfg?osid=debian10
+
+# Debian 13
+# https://www.debian.org/download => 
+# See: https://cdimage.debian.org/debian-cd/
+# Live (var. desktops): https://cdimage.debian.org/debian-cd/13.5.0-live/amd64/iso-hybrid/
+# Non-live: https://cdimage.debian.org/debian-cd/13.5.0/amd64/iso-dvd/debian-13.5.0-amd64-DVD-1.iso
+# Netboot: https://ftp.debian.org/debian/dists/Debian13.5/main/installer-amd64/current/images/netboot/
+label debian13
+menu label Debian 13 Trixie (Server, manual install)
+#kernel http://{{ httpserver }}/debian13net/debian-installer/amd64/linux
+kernel http://{{ httpserver }}/debian13/install.amd/vmlinuz
+initrd http://{{ httpserver }}/debian13net/debian-installer/amd64/initrd.gz
+##### priority=critical auto=true
+append  interface=auto ipv6.disable=1
+######url=http://{{ httpserver }}/preseed.cfg?osid=debian13
 
 # Ubuntu 18 Desktop
 # https://askubuntu.com/questions/1069907/why-is-it-not-possible-to-pxe-boot-ubuntu-desktop-editions
@@ -321,7 +350,21 @@ initrd http://{{ httpserver }}/kubuntu24dt/casper/initrd
 # Remove: toram
 append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu24dt/ debug ip=dhcp
 
+label kubuntu26dt
+menu label Kubuntu 26 Desktop (64bit, Live)
+kernel http://{{ httpserver }}/kubuntu26dt/casper/vmlinuz
+initrd http://{{ httpserver }}/kubuntu26dt/casper/initrd
+# Keep (min): debug ip=dhcp. Check: toram ? Seems toram loads all to ram ~1 min (60/s) * ~ 100MB/sec = ~ 6GB (size of ISO)
+# Remove: toram
+append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu26dt/ debug ip=dhcp
 
+# Xubuntu e.g. https://cdimage.ubuntu.com/xubuntu/releases/resolute/release/
+# https://cdimage.ubuntu.com/xubuntu/releases/resolute/release/xubuntu-26.04-desktop-amd64.iso
+# label xubuntu26dt
+#menu label Xubuntu 26 Desktop (64bit, Live)
+#kernel http://{{ httpserver }}/xubuntu26dt/casper/vmlinuz
+#initrd http://{{ httpserver }}/xubuntu26dt/casper/initrd
+#append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/xubuntu26dt/ debug ip=dhcp
 
 # Ubuntu kickstart DISABLED, waiting for Centos Install
 # label localinst_ks
@@ -337,7 +380,7 @@ label ubuntu2404
 menu label Install Ubuntu 24.04 Server subiquity/Live (WIP Automated)
 kernel http://{{ httpserver }}/ubuntu24/casper/vmlinuz
 initrd http://{{ httpserver }}/ubuntu24/casper/initrd
-# New keyword seems to be iso-url=... (OLD: url=...)
+# New keyword seems to be iso-url=... (OLD: url=...) Also: root=/dev/ram0 ramdisk_size=1500000
 append ip=dhcp iso-url=http://{{ httpserver }}/noble-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
 
 # Ubuntu Server 22.04
@@ -803,7 +846,6 @@ label archlinux
 menu label Arch Linux (Live Console, No Auto Install)
 kernel http://{{ httpserver }}/archlinux/arch/boot/x86_64/vmlinuz-linux
 initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/amd-ucode.img,http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
-# initrd=http://{{ httpserver }}/archlinux/arch/boot/x86_64/initramfs-linux.img
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
 sysappend 3
 
@@ -1123,6 +1165,16 @@ initrd http://{{ httpserver }}/fedora_ws/images/pxeboot/initrd.img
 #append repo=http://{{ httpserver }}/fedora_ws
 append root=live:http://{{ httpserver }}/fedora_ws/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
 
+label fedora_ws_4x
+menu label Fedora Workstation 44 Live
+kernel http://{{ httpserver }}/fedora_ws_4x/images/pxeboot/vmlinuz
+initrd http://{{ httpserver }}/fedora_ws_4x/images/pxeboot/initrd.img
+# Seems repo dir is the root dir (w/o trailing slash ?)
+# NFS alt: root=/dev/nfs nfsroot={{ nfsserver }}:/isomnt/fedora_ws/ (what is here) rw ip=dhcp
+# inst.stage2=http://workstation.example.org/ Fedora Installer (dracut) will get LiveOS/squashfs.img
+#append repo=http://{{ httpserver }}/fedora_ws
+append root=live:http://{{ httpserver }}/fedora_ws_4x/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
+
 # SideroLabs / Talos - Kubernetes distro (notes as of 1.6.5, 2024-02) - WIP
 # - https://www.talos.dev/v1.6/introduction/getting-started/ (ISO links)
 # - Talos PXE: https://www.talos.dev/v1.6/talos-guides/install/bare-metal-platforms/pxe/
@@ -1337,6 +1389,20 @@ append ip=dhcp miso_http_srv={{httpserver}}/manjaro/ misobasedir=manjaro misolab
 # miso_nfs_srv=${server}:${nfs_path} misolabel=manjaro nouveau.modeset=1
 # i915.modeset=1 radeon.modeset=1 logo.nologo nonfree=no showopts ip=dhcp
 
+# See ISO: boot/syslinux/archiso_pxe.cfg (archiso_pxe-linux.cfg)
+# Downloads linux,initrd OK, Even cachyos/arch/x86_64/airootfs.sfs (twice, 2x !?),
+# tries to download cachyos/arch/x86_64/airootfs.sfs.cms.sig (Status 404). Exists: arch/x86_64/airootfs.sha512
+label cachyos
+menu label CachyOS KDE 2026 (Live)
+# Try also -lts
+linux  http://{{ httpserver }}/cachyos/arch/boot/x86_64/vmlinuz-linux-cachyos
+initrd http://{{ httpserver }}/cachyos/arch/boot/x86_64/initramfs-linux-cachyos.img
+# XXBOOTIF=01-${net_default_mac}. Note: cms_verify=y would cause file airootfs.sfs.cms.sig to be downloaded.
+# Use checksum=y - downloads airootfs.sha512 to verify
+# archisosearchuuid=2026-04-26-09-32-03-00 not needed. checksum=y not needed ?
+#append archisobasedir=arch archiso_nfs_srv=${{nfsserver}}:/isomnt/cachyos cms_verify= . 
+append archisobasedir=arch archiso_http_srv=http://{{httpserver}}/cachyos/ ip=dhcp
+sysappend 3
 
 ##### Ubuntu (and other root over NFS root=/dev/nfs
 # nfsroot=${serverip}:/...) Network boot: ####
