@@ -114,9 +114,11 @@ var recipes = [
   // FCOS JSON /config.ign. Recommended to create (Butane) YAML, convert (with Butane/podman) to ign JSON
   {"url":"/config.ign",       "ctype":"fcos", "tmpl":"config.bu.mustache", "defosid": "fcos", "pp": pp_fcos}, // TODO: ign.mustache
   // Talos Matchbox server uses paths like /assets/controlplane.yaml /assets/worker.yaml
-  {"url":"/talos/config",       "ctype":"talos", "tmpl":"talos.config.yaml.mustache", "defosid": "talos",} // Separate controlplane, worker ? or figure out at server osinstall runtime (Inventory) ?
+  {"url":"/talos/config",       "ctype":"talos", "tmpl":"talos.config.yaml.mustache", "defosid": "talos",}, // Separate controlplane, worker ? or figure out at server osinstall runtime (Inventory) ?
   // Photon OS
-  //{"url":"/photon_ks.json",       "ctype":"photon", "tmpl":"photon_ks.json.mustache", "defosid": "talos",} // OR "pp": pp_photon
+  //{"url":"/photon_ks.json",       "ctype":"photon", "tmpl":"photon_ks.json.mustache", "defosid": "talos",}, // OR "pp": pp_photon
+  // KS Fedora Live
+  {"url":"/ks.live.cfg",             "ctype": "ks",         "tmpl":"ks.live.cfg.mustache",             "defosid": "redhat"},
 ];
 
 function user_passwd_crypted(user) {
