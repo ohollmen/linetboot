@@ -356,6 +356,7 @@ kernel http://{{ httpserver }}/kubuntu26dt/casper/vmlinuz
 initrd http://{{ httpserver }}/kubuntu26dt/casper/initrd
 # Keep (min): debug ip=dhcp. Check: toram ? Seems toram loads all to ram ~1 min (60/s) * ~ 100MB/sec = ~ 6GB (size of ISO)
 # Remove: toram
+# Live mode customiz. shell script: live-config.hooks=http://{{ httpserver }}/scripts/ubuntu_live_setup.sh
 append boot=casper netboot=nfs nfsroot={{ nfsserver }}:/isomnt/kubuntu26dt/ debug ip=dhcp
 
 # Xubuntu e.g. https://cdimage.ubuntu.com/xubuntu/releases/resolute/release/
@@ -393,7 +394,7 @@ initrd http://{{ httpserver }}/ubuntu22/casper/initrd
 # 
 # ONLY Grub should need escape for ';' in ds=...
 # With enough memory (8 GB) and No OOM (Out-of-mem) errors, Subiquity *will* fetch recipe.
-# ... BUT somethow autoinstall will not trigger.
+# ... BUT somehow autoinstall will not trigger.
 append ip=dhcp url=http://{{ httpserver }}/ubuntu-22.04.4-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ httpserver }}/
 # root=/dev/ram0 ramdisk_size=2200000
 
@@ -849,8 +850,15 @@ initrd http://{{ httpserver }}/archlinux/arch/boot/intel-ucode.img,http://{{ htt
 append archisobasedir=arch archiso_http_srv=http://{{ httpserver }}/archlinux/
 sysappend 3
 
+# Arch - auto install
 # Same as above, but has script=... with alis installer run wrapper (gotten from Linetboot)
-# See /root/.zlogin => /root/.automated_script.sh on Arch ISO.
+# See on Arch Live mode FS (Or on ISO in arch/x86_64/airootfs.sfs squashfs loop-mounted):
+# - /root/.zlogin - Runs ~/.automated_script.sh (/root/.automated_script.sh)
+# - /root/.automated_script.sh
+#   - Extracts `script=` URL from /proc/cmdline
+#   - Downloads it (to /tmp/startup_script)
+#   - Sets it to executable: chmod +x /tmp/startup_script
+#   - Runs it (!)
 # https://shirotech.com/linux/how-to-automate-arch-linux-installation/
 label archlinux_auto
 menu label Arch Linux (Full Auto Install)
@@ -1172,6 +1180,7 @@ initrd http://{{ httpserver }}/fedora_ws_4x/images/pxeboot/initrd.img
 # Seems repo dir is the root dir (w/o trailing slash ?)
 # NFS alt: root=/dev/nfs nfsroot={{ nfsserver }}:/isomnt/fedora_ws/ (what is here) rw ip=dhcp
 # inst.stage2=http://workstation.example.org/ Fedora Installer (dracut) will get LiveOS/squashfs.img
+# Live mode customiz: inst.ks=http://{{httpserver}}/ks.live.cfg (configs/fedora-live-post.ks)
 #append repo=http://{{ httpserver }}/fedora_ws
 append root=live:http://{{ httpserver }}/fedora_ws_4x/LiveOS/squashfs.img ro rd.live.image rd.luks=0 rd.md=0 rd.dm=0
 
@@ -1392,6 +1401,13 @@ append ip=dhcp miso_http_srv={{httpserver}}/manjaro/ misobasedir=manjaro misolab
 # See ISO: boot/syslinux/archiso_pxe.cfg (archiso_pxe-linux.cfg)
 # Downloads linux,initrd OK, Even cachyos/arch/x86_64/airootfs.sfs (twice, 2x !?),
 # tries to download cachyos/arch/x86_64/airootfs.sfs.cms.sig (Status 404). Exists: arch/x86_64/airootfs.sha512
+# Note: CachyOS has root login dependent support for script=... (/root/.zlogin => /root/.automated_script.sh) and root
+# uses zsh (root:x:0:0:root:/root:/usr/bin/zsh), BUT: ls -al /usr/bin/zsh => ls: cannot access '/usr/bin/zsh': No such file or directory
+# The Exact Sourcing Order (for ZShell Login Shells):
+# 1. /etc/zshenv -> ~/.zshenv
+# 2. /etc/zprofile -> ~/.zprofile
+# 3. /etc/zshrc -> ~/.zshrc
+# 4. /etc/zlogin -> ~/.zlogin (The Final File)
 label cachyos
 menu label CachyOS KDE 2026 (Live)
 # Try also -lts
@@ -1401,7 +1417,7 @@ initrd http://{{ httpserver }}/cachyos/arch/boot/x86_64/initramfs-linux-cachyos.
 # Use checksum=y - downloads airootfs.sha512 to verify
 # archisosearchuuid=2026-04-26-09-32-03-00 not needed. checksum=y not needed ?
 #append archisobasedir=arch archiso_nfs_srv=${{nfsserver}}:/isomnt/cachyos cms_verify= . 
-append archisobasedir=arch archiso_http_srv=http://{{httpserver}}/cachyos/ ip=dhcp
+append archisobasedir=arch archiso_http_srv=http://{{httpserver}}/cachyos/ script=http://{{httpserver}}/scripts/arch_setup.sh  ip=dhcp
 sysappend 3
 
 ##### Ubuntu (and other root over NFS root=/dev/nfs

@@ -25,8 +25,8 @@
 # - Possible Files: bootx64.efi ???
 # - http://archive.ubuntu.com/ubuntu/dists/trusty/main/uefi/grub2-amd64/current/grubnetx64.efi.signed
 # - packages:
-# - Package shim-signed shimx64.efi.signed (NOT:shim.efi.signed) (rename to) => bootx64.efi
-# - Package grub-efi-amd64-signed grubnetx64.efi.signed (rename to - optional) => grubx64.efi
+# - Package shim-signed: shimx64.efi.signed (NOT:shim.efi.signed) (rename to) => bootx64.efi
+# - Package grub-efi-amd64-signed: grubnetx64.efi.signed (rename to - optional) => grubx64.efi
 # - package grub-common has unicode.pf2 (grub/fonts/unicode.pf2)
 # - Package grub-imageboot - important for booting ISO/raw images
 #
@@ -39,7 +39,7 @@
 # ```
 # ./linetadm.js tftpsetup
 # ```
-# Note: grub seems to be lacking the "append" ()
+# Note: grub seems to be lacking the "append" (append options are appended directly to "linux" kernel command line)
 # 
 # # Note on the bootloader executable format (grubnetx64.efi.signed)
 # ```
