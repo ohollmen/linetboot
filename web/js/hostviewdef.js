@@ -1648,6 +1648,25 @@ var fldino_afa_repo = [
    // linkfile
    //[ { "name": "src", "title": "Source Path", "type": "text", "width": 220, "validate": "required" },
    // { "name": "dest", "title": "Link Destination", "type": "text", "width": 220, "validate": "required" }]
+  function facts_size_cell(val, item) {
+    if (!val) { return ""; }
+    return `${val} (${item.linecnt} lines)`;
+  }
+  function facts_retr_cell(val, item) {
+    // Output ansible command ? Provide button to retrieve ?
+    // 
+    let cmd = `ansible '${item.hname}' -i ~/.linetboot/hosts -b -m setup --tree ~/.linetboot/hostinfo --extra-vars "ansible_become_pass=$ANSIBLE_PASS"`;
+    let sym = `<span class="icon" style="cursor:pointer;" onclick="togglePopup(this);" data-width="350px">ℹ️</span>`;
+    return `<div class="cell-wrapper">${sym}<div class="popup-rect" >${cmd}</div></div>`;
+  }
+var fldinfo_getfacts = [
+  { name: "hname",    title: "Hostname",   type: "text",      width: 25, itemTemplate: null },
+  { name: "hasfacts", title: "Has Facts",  type: "text",      width: 5, itemTemplate: null },
+  { name: "size",     title: "Size (B)",   type: "text",      width: 5, itemTemplate: facts_size_cell },
+  //{ name: "linecnt",  title: "#Lines",     type: "text",      width: 5, itemTemplate: null },
+  { name: "slim",     title: "Slim/Fake",  type: "text",      width: 5, itemTemplate: null },
+  { name: "retrieve", title: "Retrieve",    type: "text",      width: 5, itemTemplate: facts_retr_cell },
+];
    // TODO: Send sets as AoO, index by id
    var fldinfo = {"net": fldinfo_net, "dist": fldinfo_dist, "hw": fldinfo_hw, "pkg": fldinfo_pkg,
       "rmgmt": fldinfo_rmgmt, "netprobe" : fldinfo_netprobe, "proc": fldinfo_proc,
@@ -1669,5 +1688,6 @@ var fldino_afa_repo = [
       "nft": fldinfo_nft, "fwrule": fldinfo_fwrule, "hcliusage": fldinfo_hcliusage,
       "repo_proj": fldinfo_repo_proj, "repo_remote": fldinfo_repo_remote,
       "jjob": fldinfo_jjob,
+      "invlist": fldinfo_getfacts,
    };
    

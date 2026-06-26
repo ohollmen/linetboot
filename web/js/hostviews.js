@@ -700,6 +700,8 @@ var tabloadacts = [
     titletmpl: "<h2>{{name}} (ID: {{id}} {{rowcnt}} Teams)</h2><p> Teams:</p>\n",
     uisetup: null, 
   },
+  {"name":"Inventory and Facts", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/invlist", gridid: "jsGrid_invlist", fsetid: "invlist",
+    path: "invlist", uisetup: null, },
 ];
 
 function hcliusage_urlpara(ev, an) {
@@ -800,11 +802,11 @@ function gendialog(ev, act) {
     var diael = document.getElementById(act.dialogid);
     // Wipe out dialog contents - previous view may be there !
     diael.innerHTML = ''; // `Waiting for dialog data ...`
-    // TODO: Data may async-load or there may be other errors. How to know if dialog is wort popping up ?!
+    // TODO: Data may async-load or there may be other errors. How to know if dialog is worth popping up ?!
     // act could contain a CB to ack if async part (data load) worked OK: loadok: (err, data) => { if (err) {return;} rundialog(diael); }
     // BUT: All possible action hdlr: ... functions would need to support it (to prevent empty dialog from popping ) !!!
     act.hdlr(ev, act);
-    
+    // Note handler (http) may still be running
     rundialog(diael);
     return;
   }

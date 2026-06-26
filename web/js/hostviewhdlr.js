@@ -1912,3 +1912,21 @@ function afaimgs_uisetup(act, data, ev) {
     }).catch( (ex) => { console.log(ex); });
   });
 }
+// Toggle a popup from a click to particular (e.g.) icon/span+text element.
+// Popup-element (text div) must follow immediately as a sibling of original element.
+function togglePopup(el) {
+  // Find the popup relative to the clicked icon
+  const popup = el.nextElementSibling;
+  // Set width dynamically from data attribute
+  if (el.dataset.width) { popup.style.width = el.dataset.width; }
+  // Toggle visibility of popup
+  popup.classList.toggle('show');
+
+  // Optional: Close popup when clicking elsewhere
+  document.addEventListener('click', function close(ev) {
+    if (!iconElement.contains(ev.target) && !popup.contains(ev.target)) {
+      popup.classList.remove('show');
+      document.removeEventListener('click', close);
+    }
+  });
+}
