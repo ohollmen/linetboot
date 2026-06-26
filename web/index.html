@@ -193,6 +193,34 @@ a:link { color: #203090; }
   <style>
     form label { display: inline-flex; width: 250px; vertical-align: middle; }
   </style>
+  <style name="popup-rectangle">
+  /* Anchor for the popup */
+  .cell-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* The Popup Rectangle */
+  .popup-rect {
+    display: none;      /* Hidden by default */
+    position: absolute;
+    z-index: 100;       /* Higher depth */
+    top: 100%;          /* Appears below the icon */
+    left: 0;
+    background: #333;
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    white-space: normal; /* Allows wrapping */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    user-select: text; /* -webkit-user-select: text; */
+    cursor: text;
+  }
+
+  /* Toggle class */
+  .popup-rect.show { display: block; }
+  </style>
 </head>
 <!--
 Links:
