@@ -9,10 +9,10 @@
 * ## TODO:
 * Start allowing changing settings.
 */
-var fs = require('fs');
+var fs = require("fs");
 var node_ssh = require("node-ssh");
 var async = require("async");
-var dns = require('dns');
+var dns = require("node:dns");
 
 function lan_test () {
   var lfn = "./ipmi_lan_sample.txt";
