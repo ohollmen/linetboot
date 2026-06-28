@@ -21,7 +21,7 @@
     "node-ssh": "13.2.1",
     "ping": "0.4.4",
     "properties-parser": "0.6.0",
-    "sha512crypt-node": "^1.0.2",
+    
     "showdown": "^2.1.0",
     "sqlite3": "^5.1.7",
     "ssh2": "1.17.0",
@@ -36,10 +36,7 @@
     
   },
   "optionalDependencies": {
-    "@google-cloud/compute": "^3.0.0",
-    "morgan": "1.9.1",
-    "node-arp": "1.0.6",
-    "serve-static": "1.13.2"
+    "node-arp": "1.0.6"
   },
   "scripts": {
     "pminfo": "echo 'The successful package manager of this week is npm.'",
