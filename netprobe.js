@@ -10,7 +10,7 @@
  * - See 1, 5 and 15 minute CPU loads
  * - Show uptime and number of logged-in users
  */
-var dns  = require("dns");
+var dns  = require("node:dns");
 var ping = require('ping');
 // Disable 'node-arp' because of pkg manager level (dependency) incompat with node-ssh (Causes mutual
 // uninstall between node-ssh and node-arp, yet manual install (on remote dir) allows linetboot to run fine)
@@ -96,7 +96,7 @@ function resolve(hnode, cb) {
       // Avoid: The "name" argument must be of type string. Received type undefined
       var ipaddr = rec.address || ip_org; // rec.value; // Skip IPv6 ?
       dns.reverse(ipaddr, function (err, domains) {
-        if (err) { console.log("Reverse Resolution error: " + err); return cb(null, prec); }
+        if (err) { console.log(`Reverse Resolution error: ${err}`); return cb(null, prec); }
         if (domains[0] == hn) { prec.nameok = 1; }
         console.log("Reverse result ("+ipaddr+"): " + JSON.stringify(domains));
         // Note: Linetboot host itself does not resolve. Implement self-check differentiation !
