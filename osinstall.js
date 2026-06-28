@@ -71,7 +71,9 @@ var crypto = require("crypto");
 
 var hlr    = require("./hostloader.js"); // file_path_resolve
 var osdisk = require("./osdisk.js");
-var sha512crypt = require("sha512crypt-node");
+// Moved to use extracted core function (and its very few functions deps).
+//var sha512crypt = require("sha512crypt-node");
+var sha512crypt = require("./vendor/sha512crypt.js");
 
 // console.log("OSINTALL-osdisk", osdisk);
 
