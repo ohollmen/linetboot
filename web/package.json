@@ -20,8 +20,8 @@
     "tests"
   ],
   "dependencies": {
-    "async": "2.6.2",
-    "axios": "0.18.0",
+    "async": "3.2.6",
+    "axios": "1.16.0",
     "bootstrap": "3.3.5",
     "chart.js": "2.7.3",
     "docindex": "0.0.5",
@@ -34,8 +34,7 @@
     "spin.js": "2.3.2",
     "toastr": "2.1.4",
     "vis": "4.21.0",
-    "websome": "1.0.0",
-    "wolfy87-eventemitter": "5.2.9"
+    "websome": "1.0.0"
   },
   "devDependencies": {},
   "oldDependencies": {
