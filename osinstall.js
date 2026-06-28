@@ -66,7 +66,7 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.loa
 var fs = require("fs");
 var Mustache = require("mustache");
 var yaml   = require('js-yaml'); // subiquity
-var dns    = require("dns");
+var dns    = require("node:dns");
 var crypto = require("crypto");
 
 var hlr    = require("./hostloader.js"); // file_path_resolve
@@ -117,8 +117,8 @@ var recipes = [
   {"url":"/talos/config",       "ctype":"talos", "tmpl":"talos.config.yaml.mustache", "defosid": "talos",}, // Separate controlplane, worker ? or figure out at server osinstall runtime (Inventory) ?
   // Photon OS
   //{"url":"/photon_ks.json",       "ctype":"photon", "tmpl":"photon_ks.json.mustache", "defosid": "talos",}, // OR "pp": pp_photon
-  // KS Fedora Live
-  {"url":"/ks.live.cfg",             "ctype": "ks",         "tmpl":"ks.live.cfg.mustache",             "defosid": "redhat"},
+  // KS Fedora Live. Note: We must keep ctype unique (No template content for ctype: ks). TODO: Change filter() => find()
+  {"url":"/ks.live.cfg",             "ctype": "kslive",         "tmpl":"ks.live.cfg.mustache",             "defosid": "redhat"},
 ];
 
 function user_passwd_crypted(user) {
