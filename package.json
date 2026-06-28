@@ -9,7 +9,7 @@
     "axios": "1.16.0",
 	
     "digest-fetch": "2.0.3",
-    "dns": "0.2.2",
+
     "express": "5.2.1",
     "express-session": "1.19.0",
     "hcl2-parser": "^1.0.3",
