@@ -354,11 +354,22 @@
       
     },
     {
-      "name": "Fedora Workstation - Live",
+      "name": "Fedora Workstation - Live (< 40)",
+      "note": "Path format: /fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-Live-44-1.7.x86_64.iso",
       "vertypeXX": "sv2",
       "url":  "Fedora-Workstation-Live-x86_64-39-1.5.iso",
       "imgpatt": "Fedora-Workstation-Live-x86_64-((\\d+)-(\\d+)\\.(\\d+))\\.iso",
       "mntpatt": "fedora_ws",
+      "kernel": "images/pxeboot/vmlinuz",
+      "initrd": "images/pxeboot/initrd.img"
+    },
+    {
+      "name": "Fedora Workstation - Live (>= 40)",
+      "note": "Path format: /fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-Live-44-1.7.x86_64.iso",
+      "vertypeXX": "sv2",
+      "url":  "Fedora-Workstation-Live-44-1.7.x86_64.iso",
+      "imgpatt": "Fedora-Workstation-Live-((\\d+)-(\\d+)\\.(\\d+))\\.x86_64\\.iso",
+      "mntpatt": "fedora_ws_4x",
       "kernel": "images/pxeboot/vmlinuz",
       "initrd": "images/pxeboot/initrd.img"
     },
