@@ -72,6 +72,7 @@ var afa      = require("./afa.js");
 var hclparse = require("./hclparse.js");
 var grepo    = require("./grepo.js");
 var htview   = require("./htview.js");
+//var tasmota = = require("./tasmota.js");
 var gcp;
 //console.log("linetboot-osinst", osinst);
 //console.log("linetboot-osdisk", osdisk);
@@ -143,10 +144,13 @@ function app_init(mcfg) { // mcfg
   hclparse.init(mcfg);
   grepo.init(mcfg);
   htview.init(mcfg, app);
+  // tasmota.init(); // void. TODO: mcfg
   var logger = function (res, path, stat) {
     // TODO: Extract URL from res ? (res has ref to req in res.req)
     //var req = res.req;
-    console.log(`Send STATIC file in fspath: '${path}' (${stat.size} B, meth: ${res.req.method})`);
+    let ts = new Date().toISOString();
+    // file in fspath
+    console.log(`Send STATIC (${ts}): '${path}' (${stat.size} B, meth: ${res.req.method})`);
     // console.log(stat); // Stat Object
   };
   if (mcfg.gerrit) { gerrit.init(mcfg); }
@@ -381,6 +385,13 @@ function app_init(mcfg) { // mcfg
   app.get("/afarepos/:id", afa.afarepo_ls);
   app.get("/tfmodusage", hclparse.hdl_tfmod_usage);
   app.get("/grepo", grepo.hdl_grepo);
+  
+  app.get("/invlist", inv_list);
+  // Initial Workaround for CachyOS cms_verify=y (do not use, use boot CLI opts, see menu)
+  /*(app.get("/cachyos/arch/x86_64/airootfs.sfs.cms.sig", (req, res) => {
+    let cont = fs.readFileSync("/isomnt/cachyos/arch/x86_64/airootfs.sha512", 'utf8');
+    return res.send(cont);
+  });*/
   return 1;
  } // sethandlers
   //////////////// Load Templates ////////////////
@@ -666,7 +677,7 @@ function routes_report_v4(app) {
 
 /////////////////////////// MAIN ///////////////////////////
 // 
-var linetconf = process.env["LINETBOOT_GLOBAL_CONF"] || process.env["HOME"] + "/.linetboot/global.conf.json" || "./global.conf.json";
+var linetconf = process.env["LINETBOOT_GLOBAL_CONF"] || `${process.env["HOME"]}/.linetboot/global.conf.json` || "./global.conf.json";
 console.log(`main: Choosing mainconf: ${linetconf}`);
 mcfg = global = mc.mainconf_load(linetconf);
 // console.log(JSON.stringify(mcfg, null, 2));
@@ -737,7 +748,7 @@ function oninstallevent(req,res) {
   if (!p || !p.evtype)   { jr.msg += "No params or no event type"; return res.json(jr); }
   if (!evok[ p.evtype ]) { jr.msg += "Not a valid event type: " + p.evtype; return res.json(jr); }
   // lookup facts. TODO: possibly be more abstract. But would work in osinstall.
-  var f = hostcache[ip];
+  var f = hostcache[ip]; // TODO: Lookup from colls.hostcache - not module-global
   if (!f) { jr.msg += "Could not lookup facts for " + ip; osinst.ilog(ip, "installevent", p.evtype); return res.json(jr); }
   var now = new Date();
   console.log("IP:" + ip + ", install-event: " + p.evtype + ", path: "+q.path+", time:" + now.toISOString());
@@ -792,19 +803,19 @@ function oninstallevent(req,res) {
 function pkg_counts (req, res) {
   // Package dir root. TODO mcfg.ospkgs
   var root = global.pkglist_path || process.env["HOME"] + "/.linetboot/hostpkginfo";
-  var jr = {status: "err", msg: "Package list collection failed."};
-  if (!fs.existsSync(root)) { jr.msg += " Package path does not exist."; console.log(jr.msg); return res.json(jr); }
-  // Get package count for a single host. Uses mcfg hostcache and 9outer var) root.
+  var jr = { status: "err", msg: "Package list collection failed." };
+  if (!fs.existsSync(root)) { jr.msg += ` Package path does not exist ('${root}').`; console.log(jr.msg); return res.json(jr); }
+  // Get package count for a single host. Uses mcfg hostcache and router var root.
   // TODO: Pass facts, map(hostarr, ...)
   function gethostpackages(hn, cb) {
     var path = `${root}/${hn}`;
     // Lookup host for addl. info (for set to be self-contained)
-    var f = hostcache[hn];
+    var f = hostcache[hn]; // TODO: colls.hostcache
     var stat = {hname: hn, pkgcnt: 0, "distname": (f ? f.ansible_distribution: "???")};
     // Consider as error ? return cb(err, null); This would stop the whole stats gathering.
     var err;
     if (!fs.existsSync(path)) { err = "No pkg file for host: " + hn; console.log(err); return cb(null, stat); }
-    if (hn.indexOf("_") > -1) { err = "Not an internet name: " + hn; console.log(err); return cb(err, null); }
+    if (hn.indexOf("_") > -1) { err = "Not an internet DNS host name: " + hn; console.log(err); return cb(err, null); }
     // Call wc or open, split and count ? fgets() ?
     cproc.exec('wc -l ' + path, function (error, stdout, stderr) {
       if (error) { return cb(error, null); }
@@ -1277,7 +1288,7 @@ function grouplist(req, res) {
     g.hostnames.map(function (hn) {
       var f = hostcache[hn];
       if (!f) { return; } // Todo - improve - should splice hostname out ?
-      var h = {hname: f.ansible_fqdn};
+      var h = { hname: f.ansible_fqdn };
       cbs[''](f, h); // Fill info !
       g.hosts.push(h);
     });
@@ -2290,7 +2301,7 @@ function tftp_listing(req, res) { // global
   var jr = {status: "err", "msg": "Could List PXE Linux dir. "};
   // PXE Linux Config dir
   var path = global.tftp.root + "/pxelinux.cfg/";
-  if (!fs.existsSync(path)) { jr.msg += "TFTP subdir for PXE linux Config does not exist"; return res.json(jr); }
+  if (!fs.existsSync(path)) { jr.msg += "TFTP subdir for PXE linux Config does not exist"; console.log(jr.msg + `(${path})`); return res.json(jr); }
   console.log("Found Path: "+path);
   var list = tboot.pxelinuxcfg_list(path, 1);
   // Blend in hostnames (loose-coupled way) + dig up target ?
@@ -2394,6 +2405,8 @@ function bootreset(req, res) {
 }
 /** List Media directories (Under image mount dir) GET: /medialist
  * Additionally probes into stub directories to see if they are mounted (and have one or more files).
+ * Requires that mcfg.core.maindocroot (/isomnt) mount dirs exist and preferably have ISOs loop mounted
+ * (to provide a meaningful view).
  * TODO:
  * - Resolve loop mount image: 1) df 2) losetup --list.  /proc/mounts
  * - Resolve descriptive name from ISO FS for distro (e.g. Ubu 2X: $ISOROOT/.disk/info)
@@ -2401,10 +2414,10 @@ function bootreset(req, res) {
 function media_listing (req, res) {
   var jr = {status: "err", "msg": "Could properly list media dirs. "};
   // TODO: This should be imgmntpath or isomntpath
-  var path = global.core.maindocroot; // Already validated by main server globally
-  if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; return res.json(jr); }
+  var path = global.core.maindocroot; // Already validated by main server globally (/isomnt)
+  if (!fs.existsSync(path)) { jr.msg += "maindocroot not there (does not exist)"; console.error(jr.msg);return res.json(jr); }
   var list = fs.readdirSync(path);
-  if (!list || !list.length) { jr.msg += "No (accessible) dirs under maindocroot"; return res.json(jr); }
+  if (!list || !list.length) { jr.msg += "No (accessible) dirs under maindocroot"; console.error(jr.msg);return res.json(jr); }
   var slash = global.core.maindocroot.match(/\/$/) ? "" : "/";
   var list2 = [];
   list.forEach(function (subdir) {
@@ -3276,9 +3289,10 @@ function gh_projs(req, res) {
     var d = resp.data;
     if (Array.isArray(d)) { console.log("Got "+d.length+" repos (or teams)"); }
     if (ghcfg.debug > 1) { console.log(d); }
+    if ((resp.status < 200) || (resp.status >= 300)) { jr.msg += "Failed GH Api Server HTTP Call"+ex; console.log(jr.msg); return res.json(jr); }
     res.json({status: "ok", data: d});
   })
-  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; console.log(jr.msg); res.json(jr); });
+  .catch((ex) => { jr.msg += "Failed GH Api Server HTTP Call"+ex; console.log(jr.msg); return res.json(jr); });
 }
 
 /** View projects for single GitLab group (~org).
@@ -3496,4 +3510,44 @@ function dockerd_rsc_list(hn, rsctype) {
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
     conn.connect(sshcfg);
   //}
+}
+// List inventory vs. facts comparision to show missing facts.
+// See: colls, here:  (access via hlr.colls) that has mix or inventory and facts members:
+// - Inventory: .hostparams, .hostnames
+// - Facts: .hostcache, .hostarr - do not dump these, they have massive data
+// - 
+// Note: .hostcache is an index (OoO) by hname,ipaddr,macaddr, .hostarr is (AoO) ordered facts
+// hlr.groupnames()
+function inv_list(req, res) {
+  // Load / inventory if needed (?) NOT needed, .hostnames contains ALL inventory hostnames !!
+  let hns = hlr.colls.hostnames;
+  if (!hns) { return res.json([]); }
+  //let ckeys = Object.keys();
+  let arr = hns.map( (hn) => {
+    let f = hlr.colls.hostcache[hn];
+    // Measure number of keys in facts to derive fake/slim facts
+    let it = { hname: hn, hasfacts: (f ? 1 : 0) };
+    if (!it.hasfacts) { return it; }
+    // Test network presence / rechability ? Should have SSH connectivity !
+    // resolve(f, () {}); // 
+    let ffn = `${mcfg.fact_path}/${hn}`; // Should be there ...
+    try {
+      let st = fs.statSync(ffn);
+      let isfile = st.isFile();
+      if (!isfile) { it.slim = 1; return it; } // keep here too ? See ctach()
+      if (isfile) {
+        it.size = st.size;
+        try {
+          // Note: Seems wc -l counts lines based on "\n". 0 may mean: All in one line, but no "\n"
+          let out = cproc.execSync(`wc -l '${ffn}'`).toString();
+          if (out) { let flds = out.split(/\s+/, 2); it.linecnt = parseInt(flds[0]); }
+        } catch (ex) { console.error(`Could not count lines (${ffn}): ${ex}`); }
+      }
+    } catch (ex) { console.error(`No real facts for ${hn} in ${ffn}`); it.slim = 1; return it; }
+    // if (can_be_reached) { it.netok = 1; }
+    return it;
+  });
+  // Problem: probe_all / resolve does not allow probing hosts w/o facts !!!
+  // probe_all(harr, usecase, cb)
+  res.json(arr); // {hostnames: hns, data: arr }
 }
