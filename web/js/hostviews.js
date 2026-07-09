@@ -473,18 +473,19 @@ function tabsetview(ev, act) {
   
   //function tabs_get(tabselarr) {
   var tabs = tabloadacts.filter((ti) => {
-    //console.log("Find "+ti.elsel+" from ", act.tabs);
+    //console.log(`Find ${ti.elsel} from `, act.tabs);
     // Auto filters missing entries (?!)
-    return act.tabs.includes(ti.elsel);
+    return act.tabs.includes(ti.elsel); // ti.path ?
     });
   //  return tabs;
   //}
-  console.log("tabsetview: Got "+tabs.length + " tab items for parent view '"+act.name+"'");
+  console.log(`tabsetview: Got ${tabs.length} tab items for parent view '${act.name}'`);
   //return;
   //act.tabs.forEach((ti) => {});
   // Setup router div to contain tab structure
   var contdiv = "routerdiv"; // ID !
-  $('#'+contdiv).html("<div id=\"tabsnest\"></div>");
+  //let el = document.getElemenetById(contdiv); // || throw ""; ???
+  $('#'+contdiv).html(`<div id="tabsnest"></div>`);
   $('#tabsnest').html( webview.tabs(tabs, null, {idattr: "elsel"}) );
   $( "#tabsnest" ).tabs({active: 1});
   $( "#tabsnest" ).tabs({ activate: ontabactivate }); // Set click handler !
@@ -702,6 +703,9 @@ var tabloadacts = [
   },
   {"name":"Inventory and Facts", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/invlist", gridid: "jsGrid_invlist", fsetid: "invlist",
     path: "invlist", uisetup: null, },
+  //{"name":"Tasmota Devices", tabs: ["tas-0", "tas-1","tas-2","tas-3"], hdlr: tabsetview },
+  //{"name":"Tasmota Devices", "elselXX": "XX", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/tasmota/1", gridid: "jsGrid_tasmota", fsetid: "tasmota",
+  //  path: "tasmota", uisetup: null, },
 ];
 
 function hcliusage_urlpara(ev, an) {
@@ -899,13 +903,14 @@ var dopts_grid = { modal: true, width: 1000, height: 500 };
 */
 function ontabactivate( event, ui ) {
   //var tgt = ui.newTab['0'].attributes["aria-controls"]; // id of panel
+  // Note: Can we get this from event ?
   var tgt = ui.newPanel[0].id; // ui.newTab['0'].id; => Not valid
-  console.log("Tab ("+tgt+") active ...NewP:", tgt); // , " NP:",ui.newPanel[0].id
+  console.log(`Tab (${tgt}) active ...NewP: ${tgt}`); // , " NP:",ui.newPanel[0].id
   // Do event forwarding ? Lookup action. TODO: Store acts in a deterministic place.
   // acts.find((n) => { return n.elsel == tgt; }); // ??
-  var an = tabloadacts_idx[tgt]; // "#"+ // Index by .elsel
+  var an = tabloadacts_idx[tgt]; // "#"+ // Index by act.elsel
   // TODO: var an = rapp.findtabact(acts, tgt);
-  if (!an) { console.error("No action node for:" + tgt); return; } // toastr.error("No Action node");
+  if (!an) { console.error(`No action node for: ${tgt}`); return; } // toastr.error("No Action node");
   // Load template ? 
   //if (an.tmpl) { var c = Mustache.render($('#'+an.tmpl).html(), an); $("#"+an.elsel).html(c); }
   // Pre-handler ("like-routing-handler") templating. Handler may need to re-template.
