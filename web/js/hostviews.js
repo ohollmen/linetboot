@@ -683,9 +683,10 @@ var tabloadacts = [
   {"name": "Git Repo Remotes", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/grepo",
     gridid: "jsGrid_grepo_remote", fsetid: "repo_remote",
     path: "grepo_remote", uisetup: null,  datapath: "remote", tpcb: grepo_tpcb}, // dialogid: "",
+  // Note datapath: ... should not include (envelope) "data" component - it is auto-skipped by simplegrid_url()
   {"name": "Jenkins Jobs", "elselXX": "XX", tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/jenkins_jobs",
     gridid: "jsGrid_jjob", fsetid: "jjob",
-    path: "jjobs", uisetup: null,  datapath: "data.jobs", tpcb: null, longload: 1, }, // grepo_tpcb dialogid: "",
+    path: "jjobs", uisetup: null,  datapath: "jobs", tpcb: null, longload: 1, }, // grepo_tpcb dialogid: "",
   // See gh_projs  gendialog
   // TODO: How to set view to render content to (dialog)
   {"name": "GH Repo Teams", "elselXX": "XX", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",

@@ -1588,32 +1588,35 @@ var fldinfo_repo_remote =[
   { "name": "fetch", "title": "Fetch URL", "type": "text", "width": 26,  }, // "validate": "required"
   { "name": "review", "title": "Code Review URL", "type": "text", "width": 22 },
 ];
-function builds_cell(val, item) {
+function jj_name_cell(val, item) {
+  return `<a href="${item.url}" target="jobpane" class="XXmenuactive" XXstyle="background-color: #aaaaaa; " title="${item.url}">${val}</a>`;
+}
+function jj_builds_cell(val, item) {
   return val.map( (b) => {
-    return `<a href="${b.url}" target="buildpane" class="menuactive">${b.number}</a>`;
-  }).join(', ');
+    return `<a href="${b.url}" target="buildpane" class="menuactive" style="background-color: #aaaaaa; ">${b.number}</a>`;
+  }).join(' ');
 }
 let fldinfo_jjob = [
-  {name: "displayName", label: "Name", type: "text", width: 20, itemTemplate: null}, // In JSON this is 2nd
-  {name: "description", label: "Description", type: "text", width: 20, itemTemplate: null},
+  {name: "displayName", title: "Name", type: "text", width: 20, itemTemplate: jj_name_cell}, // In JSON this is 2nd
+  {name: "description", title: "Description", type: "text", width: 20, itemTemplate: null},
   // displayNameOrNull, fullDisplayName, fullName, name
-  {name: "url", label: "URL", type: "text", width: 20, itemTemplate: null}, // visible: false
-  {name: "buildable", label: "Buildable", type: "text", width: 20, itemTemplate: null}, // true/false
+  {name: "url", title: "URL", type: "text", width: 20, itemTemplate: null}, // visible: false
+  {name: "buildable", title: "Buildable", type: "text", width: 20, itemTemplate: null}, // true/false
   // AoO w. _class, number,url (depth=1)
   // TODO: Color these based on last*Build ?
-  {name: "builds", label: "Builds", type: "text", width: 20, itemTemplate: builds_cell}, // 
-  {name: "color", label: "Color", type: "text", width: 20, itemTemplate: null}, // blue, red, 
+  {name: "builds", title: "Builds", type: "text", width: 20, itemTemplate: jj_builds_cell}, // 
+  {name: "color", title: "Color", type: "text", width: 20, itemTemplate: null}, // blue, red, 
   // AoO description (e.g. Build stability: 1 out of the last 5 builds failed.), iconClassName, iconUrl, score (e.g. 80, 100)
-  {name: "healthReport", label: "Health", type: "text", width: 20, itemTemplate: null},
-  {name: "inQueue", label: "In-Queue", type: "text", width: 20, itemTemplate: null},
+  {name: "healthReport", title: "Health", type: "text", width: 20, itemTemplate: null},
+  {name: "inQueue", title: "In-Queue", type: "text", width: 20, itemTemplate: null},
   // lots of _last*Build fields (1 object)
-  {name: "nextBuildNumber", label: "NextBN", type: "text", width: 20, itemTemplate: null}, // visible: false ?
+  {name: "nextBuildNumber", title: "NextBN", type: "text", width: 20, itemTemplate: null}, // visible: false ?
   // Has AoO, which has one item for parameters:  "_class": "hudson.model.ParametersDefinitionProperty", "parameterDefinitions": [...]
   // w. description, name, type, choices: []
   //{name: "property", label: "Property", type: "text", width: 20, itemTemplate: null},
-  {name: "concurrentBuild", label: "Conc.Bld.", type: "text", width: 20, itemTemplate: null}, // true / false
-  {name: "disabled", label: "Disable?", type: "text", width: 20, itemTemplate: null},
-  {name: "downstreamProjects", label: "DonwnstreamProj.", type: "text", width: 20, visible: false, itemTemplate: null}, // A or AoO ?
+  {name: "concurrentBuild", title: "Conc.Bld.", type: "text", width: 20, itemTemplate: null}, // true / false
+  {name: "disabled", title: "Disable?", type: "text", width: 20, itemTemplate: null},
+  {name: "downstreamProjects", title: "DonwnstreamProj.", type: "text", width: 20, visible: false, itemTemplate: null}, // A or AoO ?
 ];
 
 function afarepo_rtype_cell(val, item) {
