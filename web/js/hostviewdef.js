@@ -1600,7 +1600,7 @@ let fldinfo_jjob = [
   {name: "displayName", title: "Name", type: "text", width: 20, itemTemplate: jj_name_cell}, // In JSON this is 2nd
   {name: "description", title: "Description", type: "text", width: 20, itemTemplate: null},
   // displayNameOrNull, fullDisplayName, fullName, name
-  {name: "url", title: "URL", type: "text", width: 20, itemTemplate: null}, // visible: false
+  {name: "url", title: "URL", type: "text", width: 30, visible: false, itemTemplate: null}, // visible: false
   {name: "buildable", title: "Buildable", type: "text", width: 20, itemTemplate: null}, // true/false
   // AoO w. _class, number,url (depth=1)
   // TODO: Color these based on last*Build ?
