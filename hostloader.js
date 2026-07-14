@@ -49,7 +49,7 @@ function dyninv_load(fn) {
  * @param hfn {string} - Filename for hosts file
  * @return Array of Lines (on failures an empty array is still returned)
  */
-function hostsfile_load(hfn) {
+function hostlines_load(hfn) {
   var hnames = [];
   // Fatal or NOT ?!!!
   if (!fs.existsSync(hfn)) { console.log("hostsfile given ("+hfn+"), but does not exist !"); }
@@ -68,11 +68,11 @@ function hostsfile_load(hfn) {
 
 /** Find out the configured hostnames (from various possible places) and load host inventory.
 
-**NO facts*** are loaded here (See `facts_load_all()` or `facts_load()` for that). 
+**NO facts** are loaded here (See `facts_load_all()` or `facts_load()` for that). 
 
 Hosts list can come from:
 - An Inventory style text file given in `global.hostsfile`
-- A JSON array given (directly) in main config `global.hostnames` (Array)
+- DEPRECATE: A JSON array given (directly) in main config `global.hostnames` (Array)
 
 In either case the (string) entries are in the same format, String:
 - Starts with hostname
@@ -104,12 +104,14 @@ minimalistic loading of hosts for a generic app:
 * TODO:
 * - throw on errors, strip out any process.exit().
 * - Change global to opts object w. grpattr
+* @return Hostnames (AoS) earlier set to colls.hostnames
 */
 function hosts_load(global) {
-  var hlines = global.hostnames;
+  // var hlines = global.hostnames; // Deprecate !!!??? linet.js
   var hfn = global.hostsfile;
+  if (!hfn) { console.error(`No inventory file (.hostsfile) in main config `); process.exit(1); }
   // Line oriented text file. Renamed hnames => hlines
-  if (hfn) { hlines = hostsfile_load(hfn); }
+  if (hfn) { hlines = hostlines_load(hfn); }
   if (!hlines || !Array.isArray(hlines)) { console.error("No Hostnames gotten from any possible source (main JSON config or external text file)"); process.exit(1);}
   (debug > 3) && console.error(hlines.length + " Hostlines (before parsing):", hlines); // global.debug && ...
   // Allow easy commenting-out as JSON itself does not have comments.
@@ -118,8 +120,8 @@ function hosts_load(global) {
   // Trim all lines ? Seems trailing space used to crash parsing, now eliminated by pre-processing
   if (!hlines.length) { console.error("No hosts remain after filtering"); process.exit(1); }
   // NEW: Parse inventory-style free-form params here
-  global.hostparams = {};
-  colls.hostparams = {};
+  global.hostparams = {}; // Needed. Does any party use this ?
+  colls.hostparams = {}; // OK
   var sectypes = {
     "": 1, // No sections encountered (yet)
     "group": 1,
@@ -127,7 +129,7 @@ function hosts_load(global) {
     "groupofgroup": 1,
   };
   //var i = 0;
-  // Main "data" to collect - Groups, group vars, hnames
+  // Main "data" to collect - 1) Groups, 2) group vars, 3) hnames
   var groups = {}; // record group members
   var groupvars = {}; // Collected group vars (assign at end)
   //var groupofgroup = {}; var hostparams = {};
@@ -212,16 +214,16 @@ function hosts_load(global) {
   });
   // 
   global.hostparams = colls.hostparams; // = hostparams; // For e.g. custom setup
-  global.hostnames = hnames2; // NEW (OLD: hlines)
+  global.hostnames = hnames2; // NEW (OLD: hlines). Is this for compatibility ? TODO: deprecate, instead access colls.hostnames
   colls.hostnames = hnames2;
-  debug && console.log("Inventory Hostnames: " + JSON.stringify(global.hostnames));
-  console.log(colls.hostnames.length+" Hosts from loop");
+  debug && console.log(`Inventory Hostnames: ${JSON.stringify(colls.hostnames)}`); // Changes from global.hostnames to colls.hostnames
+  console.log(colls.hostnames.length+" Hosts from inventory parser loop");
   //console.log(colls.hostnames.length+" Hosts dynamically post-loop");
   
   (debug > 1) && console.log("Inventory Groups: ", groups);
   //debug && console.log("Final Hostparams: ", colls.hostparams);
   debug && console.log("Final Groupvars: ", groupvars);
-  applygroupvars([], groups, groupvars);
+  applygroupvars([], groups, groupvars); // Expand group vars to individual hosts
   // NEW: Store groups
   colls.groups = groups;
   // NEW: Return for third party app (with no real global conf)
@@ -236,7 +238,7 @@ function hosts_load(global) {
    * @param groups  {object} - Object with keys mapped to array list of group member hosts
    * @param groupvars {object} - Object of objects with outer objects keyed by groupnames and inner groups containing vars as key-val pairs
    */
-  function applygroupvars(hnames, groups, groupvars) {
+function applygroupvars(hnames, groups, groupvars) {
     // Drive by groupvars or groups (valid existing groups)
     Object.keys(groups).forEach((gn) => {
       
@@ -257,16 +259,16 @@ function hosts_load(global) {
         //colls.hostparams[hn][]
       });
     });
-  }
+}
 //var p  = hline_parse(hnames, i, hnline);
     //var hn = hnames[i];
     //global.hostparams[hn] = p;
 //else {global.hostparams[hnline] = {}; return;};
 
-/** Parse single hostline.
+/** Parse single inventory hostline with hostname and optional host parameters to follow.
 Internal function to be used by hosts_load().
 @param hline {string} - Current hostline to parse (from text file as-is)
-@return object with "hn" (hostname) and "p" (host parameters)
+@return object with "hn" (hostname) and "p" (key-value host parameters)
 */
 function hline_parse(hnline) {
   var p = {}; // Host params for the host presented by this line.
@@ -287,7 +289,7 @@ function hline_parse(hnline) {
     });
     //debug && console.log("Pairs found (for hn:"+hn+"): ", p);
   }
-  return {hn: hn, p: p}; // NEW (OLD: return p;)
+  return { hn: hn, p: p }; // NEW (OLD: return p;)
 }
 //var hn = hnames[i] = rec.shift(); // OLD (Going by index gets out-of-sync)
 //@param hnames {array} - An array of hostnames
@@ -296,7 +298,7 @@ function hline_parse(hnline) {
 /** Load Facts for all hosts.
  * Uses `facts_load(hn, opts) load individual host facts.
  * After this facts should be in module var colls.hostcache and colls.hostarr (See 2nd param passed to module init())
- * @param opts {object} - Options object to be forwarded to facts_load()
+ * @param opts {object} - Options object to be forwarded to facts_load(). May have: .short (use short hostname)
  * @return Hostarray
  */
 function facts_load_all(opts) {
@@ -306,7 +308,7 @@ function facts_load_all(opts) {
   if (!Array.isArray(colls.hostnames)) { throw "No member hostnames (as array) colls object !"; }
   colls.hostnames.forEach(function (hn) {
     var f = facts_load(hn, opts);
-    if (!f) { console.log("facts_load_all: No facts for: "+hn); return; }
+    if (!f) { console.log(`facts_load_all: No facts for: ${hn}`); return; }
     // ansible_fqdn vs. ansible_hostname
     if (opts.short && (f.ansible_fqdn != f.ansible_hostname)) { f.ansible_fqdn = f.ansible_hostname; }
     host_add(f);
@@ -325,19 +327,18 @@ function facts_load_all(opts) {
 */
 function facts_load(hn, opts) { // ipaddr
   opts = opts || {};
-  var absname = fact_path + "/" + hn;
+  var absname = `${fact_path}/${hn}`;
   var facts;
   try {
-    //facts = require(absname);
-    if (!fs.existsSync(absname)) { console.error("No ansible_facts file ("+absname+") for host '" + hn + "'"); return null; }
-    // For some reason this works for ansible host files as require() does not.
+    if (!fs.existsSync(absname)) { console.error(`No ansible_facts file (${absname}) for host '${hn}'`); return null; }
+    // require() does not work here as fact files do not have ".json" suffix (!!!).
     var cont = fs.readFileSync(absname, 'utf8');
-    
+    if (!cont) { console.error(`No fact content for ${hn}`); return null; }
     facts = JSON.parse(cont);
-    if (!facts) { console.log("No Facts loaded - corrupt JSON ?"); } // Check Object
+    if (!facts) { console.log(`No Facts loaded for '${hn}' - corrupt JSON ?`); } // Check Object
     var facts0 = facts.ansible_facts; // Simplify !
     if (!facts0) {
-      opts.debug && console.error("No 'ansible_facts' branch for host '" + hn + "'");
+      opts.debug && console.error(`No 'ansible_facts' branch for host '${hn}'`);
       // Sample a known property to "recover" a file
       var ipv4 = facts.ansible_all_ipv4_addresses;
       if (!ipv4) { console.error("ERROR: No facts in file "+absname+" by member-test"); return null; }
@@ -362,11 +363,11 @@ function facts_load(hn, opts) { // ipaddr
   // host_add(facts); // Do NOT add here
   return facts; // NEW
 }
-/** Add a host to appropriate array and index collections (by various props).
+/** Add a host to appropriate array and index collections (by 1) hostname, 2) ip addrress, 3) mac address).
  * Collections that single host facts are added to:
- * - colls.hostcache (index object): Index by hostname, ip-address, mac address
- * - colls.hostarr (array): Append
- * @param facts {object} - Single host facts
+ * - colls.hostcache (index object, OoO): Index by 1) hostname, 2) ip address, 3) mac address
+ * - colls.hostarr (AoO): Append fact object
+ * @param facts {object} - Single host facts (object)
  */
 function host_add(facts) {
   if (!facts) { console.log("host_add: Got non-facts: '"+facts+"'"); return; }
@@ -483,14 +484,14 @@ function hosts_filter(hostarr, patt, propname) {
  * Fake-facts are created based on main config network setting defaults (in "net" section).
  * All propseries to allow indexing (mac,ip,hname) should be present.
  * @param h {object} - Minimal host record with hname,macaddr,ipaddr (And optional bmcipaddr)
- * @param global {object} - Main config with likely-to-be-valid info to create fake facts.
+ * @param mcfg {object} - Main config with likely-to-be-valid info to create fake facts.
  * @return Minimal facts (with most essential info only)
  */
-function host2facts(h, global) {
+function host2facts(h, mcfg) {
   var f = {ansible_default_ipv4: {}, ansible_dns: {nameservers: [] } };
   var anet = f.ansible_default_ipv4;
   var adns = f.ansible_dns;
-  var net = global.net || {};
+  var net = mcfg.net || {};
   anet.alias = anet.interface = net.ifdefault || 'eno1';
   anet.address = h.ipaddr;
   anet.macaddress = h.macaddr;
@@ -563,29 +564,29 @@ function csv_parse_data(cont, opts) {
  * Parsing for CSV is "naive" - and does not allow any quotes in file.
  * Special hosts are finally added just like real legacy hosts (w. facts) to all indexes, etc. (hostcache, hostarr) by host_add(f);
  * @param fname {string} - CSV filename
- * @param global {object} - Main configuration (will be used to generate facts heuristically by "guessing" good values)
+ * @param mcfg {object} - Main configuration (will be used to generate facts heuristically by "guessing" good values)
  * @param iptrans {object} - Optional legacy IP translation "fixup" table. Usage not recommended (and there's no need with proper DHCP).
  * TODO: json, sqlite ?
  */
-function customhost_load(fname, global, iptrans) {
+function customhost_load(fname, mcfg, iptrans) {
   // TODO: Analyze hostname, detect format.
   if (!fs.existsSync(fname)) { console.log("No customhost file "+ fname);return; }
   var arr = csv_parse(fname); // AoO (Array of objects)
-  if (global.debug > 1) { console.log("Customhost (parsed):", arr); }
+  if (mcfg.debug > 1) { console.log("Customhost (parsed):", arr); }
   // return arr; // AoO from CSV
   // TODO: Do earlier parsing and this host conversion separately
   arr.forEach(function (it) {
     // Ensure MAC is always mangled to lower case (Linetboot convention)
     if (it.macaddr) { it.macaddr = it.macaddr.toLowerCase(); }
-    var f = host2facts(it, global);
+    var f = host2facts(it, mcfg);
     if (!f) { console.log("host2facts() made none for "+it.hname); return; }
     if (iptrans && it.tempipaddr) { iptrans[it.tempipaddr] = it.ipaddr; }
     // Create stub hostparams
     colls.hostparams[it.hname] = {};
-    global.hostparams[it.hname] = {}; // BAD / Compat
+    mcfg.hostparams[it.hname] = {}; // BAD / Compat
     if (it.bmcipaddr) {
       colls.hostparams[it.hname].bmcipaddr = it.bmcipaddr;
-      global.hostparams[it.hname].bmcipaddr = it.bmcipaddr; // BAD
+      mcfg.hostparams[it.hname].bmcipaddr = it.bmcipaddr; // BAD
     }
     host_add(f);
   });
@@ -595,7 +596,7 @@ function customhost_load(fname, global, iptrans) {
 /** Lookup inventory parameters for a host by facts (object) or  hostname (string).
  * Using this allows changing hostloader implementation w/o breaking callers.
  * @param f {object} - Ansible facts for hostname (OR exact hostname to lookup params by)
- * @return Host parameters object (for the host referrd by f parameter)
+ * @return Host parameters (key-value) object (for the host referred by f parameter)
  */
 function hostparams(f) { // obj
   if (!f) { console.log("No facts (and hostname) for looking up hostparams"); return null; }
@@ -622,6 +623,7 @@ function groupmemmap() {
 }
 module.exports = {
   init: init,
+  // Loaders: inventory and facts
   hosts_load: hosts_load,
   facts_load: facts_load,
   file_path_resolve: file_path_resolve,
@@ -632,9 +634,12 @@ module.exports = {
   facts_load_all: facts_load_all,
   csv_parse: csv_parse,
   csv_parse_data: csv_parse_data,
-  hostparams: hostparams,
+  // Inventory: Accessors, that ALL access data from "colls" (see below them)
+  hostparams: hostparams, // (f_or_hn)
   groupnames: groupnames,
   groupmemmap: groupmemmap,
+  // Facts collections: colls.hostcache, colls.hostarr (AoO)
+
   // Hosts collections (!)
   colls: colls
 };
@@ -645,9 +650,9 @@ if (process.argv[1].match(/\hostloader.js$/)) {
   let hfn = `${process.env['HOME']}/.linetboot/hosts`;
   let fact_path = `${process.env['HOME']}/.linetboot/hostinfo`;
   let hlr = module.exports;
-  //let hdata = hostsfile_load(hfn); // ret. string !
-  let hcfg = { fact_path: fact_path, hostsfile: hfn};
-  hlr.init(hcfg);
+  //let hdata = hostlines_load(hfn); // ret. string !
+  let hcfg = { fact_path: fact_path, hostsfile: hfn}; // .hostparams
+  hlr.init(hcfg); // Note: mcfg missing ???
   // Adds inventory to cfg.hostparams
   let hostarr = hlr.hosts_load(hcfg);
   if (!hostarr) { console.log(`No hosts loaded !`); process.exit(1); }
