@@ -18,8 +18,8 @@
 * var user = mc.user_load(mcfg);
 * ```
 */
-var fs = require("fs");
-
+var fs   = require("fs");
+var path = require("path"); // For .env
 var osinst = require("./osinstall.js"); // for recipes. TODO: Pass recipes (arr) separately ?
 
 /** Exit the app process on fatal config errors.
@@ -46,6 +46,12 @@ function mainconf_load(linetconf) {
     console.log("Merging overlay config: ofn: "+ofn+", data: "+ typeof olay);
     olay_merge(mcfg, olay);
   }
+  // See if .env is needed (Node 20 +). This happens early, so load here.
+  // TODO: How do we still allow override from local shell env ?
+  let dotenvfn = `${path.dirname(linetconf)}/${mcfg.dotenv ? mcfg.dotenv : '.env'}`;
+  console.log(`Check presence/Try loading ${dotenvfn}`);
+  //if () {} // Detect if mcfg.dotenv starts w. ~ or / ... should be used as-is ?
+  if (fs.existsSync(dotenvfn)) { process.loadEnvFile(dotenvfn); console.log(`Loaded .env from '${dotenvfn}'`); }
   return mcfg;
   // Merge overlay config with overrides to main config. Assume same layout (spec) as main config.
   // Any violations in overlay will corrupt main config.
@@ -147,7 +153,11 @@ function mainconf_process(mcfg) {
   // For compat use id_rsa.pub, later id_ed25519 (-t ed25519)
   if (!mcfg.sshkeyfn) { mcfg.sshkeyfn = `${process.env['HOME']}/.ssh/id_rsa`; } // Default (in trans. to ec25519)
   // Allow LINETBOOT_SSHKEY to override, sync to mcfg.sshkeyfn = 
-  if (process.env.LINETBOOT_SSHKEY) { mcfg.sshkeyfn = process.env.LINETBOOT_SSHKEY; }
+  if (process.env.LINETBOOT_SSHKEY) {
+    mcfg.sshkeyfn = process.env.LINETBOOT_SSHKEY;
+    tilde_expand(mcfg, ['sshkeyfn']); // Do (exceptionally) tilde_expand here befor setting env below. Will prevent netprobe.init from crash
+  }
+  if (!fs.existsSync(mcfg.sshkeyfn)) { console.log(`WARNING: SSH Key ('${mcfg.sshkeyfn}' (literal name) does not seem to exist. netprobe.init may crash.)`); }
   process.env['LINETBOOT_SSHKEY'] = mcfg.sshkeyfn;
   // return 1; } // tilde_expand_all
   //console.log("Done services.");
@@ -422,6 +432,15 @@ function mcfg_looks_ok(mcfg) {
   if (mtype != 'object') { console.error(`mcfg_looks_ok: Not object (but: '${mtype}')`); return 0; }
   if (!mcfg.core || !mcfg.inst || !mcfg.dhcp) { console.error(`mcfg_looks_ok: Some of keys (core,inst,dhcp) missing !`); return 0; } // Any missing
   return 1;
+}
+function mcfg_load_n_process(linetconf) {
+  let mc = module.exports;
+  let mcfg =  mc.mainconf_load(linetconf);
+  // console.log(JSON.stringify(mcfg, null, 2));
+  mc.env_merge(mcfg);
+  let ok_mcp = mc.mainconf_process(mcfg);
+  if (!ok_mcp) { mc.error("main: MainConf Processing Failed !"); }
+  return mcfg;
 }
 module.exports = {
   mainconf_load: mainconf_load,
