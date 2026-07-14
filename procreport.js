@@ -7,11 +7,14 @@
  * - PROC_NAMERE - Hostname regexp (to include host in process reporting)
  * - PROC_USER - User, who's processes are included in reporting.
  * - PROC_AGEDAYS - The process age limit in number of days (processes older than this are included)
- * - PROC_ALLOK - When set to any true integer value, do not fail reporting with one (or more) hosts failing 
+ * - PROC_ALLOK - When set to any true integer value, do not fail reporting with one (or more) hosts failing
+ * # Host configuration for process analysis
+ * 
+ * In inventory set property "pana" (process analysis) to true value
 */
 var async = require("async");
 var axios = require("axios");
-var hlr   = require("./hostloader.js");
+var hlr   = require("./hostloader.js"); // For "pana" flag
 //var Getopt = require("node-getopt");
 var seen = {}; // Helper for testing
 var inited = 0;
@@ -27,12 +30,13 @@ var proccfg = {
   nre: null,
   user: (process.env["PROC_USER"] || "root"),
   agedays: 5, allok: 0, debug: 0, "apikey": "",
+  token: "",
 };
 
 // Basic / default host filtering callback.
 function filtercb (hname) {
   var p = hlr.hostparams(hname);
-  if (p.pana) { return 1; }
+  if (p && p.pana) { return 1; }
   if (proccfg.nre && hname.match(proccfg.nre)) { return 1; }
   return 0;
 }
@@ -49,10 +53,10 @@ function proccfg_init(mcfg) {
     // nrestr
     // let keys = ["nrestr", "agedays", "allok", "apikey"];
     // keys.forEach( (k) => { if (pcfg[k]) { proccfg[k] = pcfg[k]; } });
-    if (pcfg.nrestr)  { proccfg.nrestr = pcfg.nrestr; }
+    if (pcfg.nrestr)  { proccfg.nrestr  = pcfg.nrestr; }
     if (pcfg.agedays) { proccfg.agedays = pcfg.agedays; }
-    if (pcfg.allok)   { proccfg.allok = pcfg.allok; }
-    if (pcfg.apikey)   { proccfg.apikey = pcfg.apikey; }
+    if (pcfg.allok)   { proccfg.allok   = pcfg.allok; }
+    if (pcfg.apikey)  { proccfg.apikey  = pcfg.apikey; }
   }
   // TODO: When not passed, use proccfg_default
   //else { proccfg = proccfg_default; }
@@ -70,13 +74,13 @@ function proccfg_init(mcfg) {
 // TODO: allow parametrizing port !
 // TODO: Can we also inject api credentials centrally here ?
 function hosturl_formulate(host) {
-  var url = "http://"+host+":8181/proclist"; // 
+  var url = `http://{host}:8181/proclist`; // 
   seen[host] = seen[host] ? seen[host] + 1 : 1;
-  if (seen[host]) { url += "?id="+seen[host]; } // Append custom ?
+  if (seen[host]) { url += "?id="+seen[host]; } // Append custom params ?
   
   return url;
 }
-/** Retrieve Process info asynchronously in parallel.
+/** Retrieve Process info asynchronously in parallel from all configured hosts.
  * 
  */
 function staleprocs_report(hostnames, proccfg, cb) {
@@ -85,11 +89,11 @@ function staleprocs_report(hostnames, proccfg, cb) {
   var reqpara = {
     // 'Content-Type': Connection: 'keep-alive', 'Access-Control-Allow-Origin': '*', withCredentials: true,
     // credentials: 'include', cookie: ...
-    headers: {}, // API Key ?
+    headers: {}, // API Key ? Yes, proccfg.token
   };
   // var pdata = ""; // String Or JSON
   console.time("fetch");
-  // axios GET calls in parallel
+  // axios GET calls in parallel. TODO: Put into named func.
   async.map(hostnames, function (hname, cb) {
     //console.log("Call "+url);
     var url = hosturl_formulate(hname);
@@ -128,7 +132,7 @@ function staleprocs_report(hostnames, proccfg, cb) {
       if (err) { let errmsg = "async.map completion error: "+ err; console.log(errmsg) ; return cb(errmsg, null); }
       if (!results) { console.log("No completion results"); return cb("No compl. results", null);}
       console.timeEnd("fetch");
-      console.log("Got ("+results.length+") process resultsets"); // of type: "+ (typeof results) ... Says "object" ... sigh
+      console.log(`Got (${results.length}) process resultsets`); // of type: "+ (typeof results) ... Says "object" ... sigh
       // console.log("Got results: "+ JSON.stringify(results, null, 2));
       //return;
       // TODO: Have analysis function as configurable callback
@@ -156,7 +160,8 @@ function staleprocs_report(hostnames, proccfg, cb) {
 
 }
 
-/** Analyze processes from one host for stale state and return suspects
+/** Analyze processes from one host for stale state and return suspects (synchronously).
+* Filter all processes and set bad processes to hp.bads.
 */
 function procs_analyze(hp, ctx) {
   var procs = hp.procs;
@@ -193,8 +198,8 @@ function procreport_web(req, res) {
   var hostarr = hlr.colls.hostnames; // Host*names*
   console.log("Initial hosts: ", hostarr);
   console.log("Proccfg: ", proccfg);
-  var hnames = hostarr.filter(filtercb); // Use default filter CB
-  if (!hnames || !hnames.length) { jr.msg += "No Reporting to do !"; return res.json(jr); }
+  var hnames = hostarr.filter(filtercb); // Use default module provided filter CB
+  if (!hnames || !hnames.length) { jr.msg += "No hosts - No process reporting to do !"; return res.json(jr); }
   console.log(hnames.length + " hosts remain after filtering:", hnames); // proccfg.debug
   staleprocs_report(hnames, proccfg, function (err, badrep) {
     if (err) { jr.msg += "Error extracting report:"+err; return res.json(jr); }
@@ -218,10 +223,10 @@ module.exports = {
 function climain() {
   proccfg_init(); // proccfg
   // Hostloader config
-  var cfg = { hostsfile: process.env["HOME"]+"/.linetboot/hosts", };
-  hlr.init({ fact_path: process.env["HOME"]+"/.linetboot/hostinfo" });
+  var cfg = { hostsfile: `${process.env["HOME"]}/.linetboot/hosts`, };
+  hlr.init({ fact_path: `${process.env["HOME"]}/.linetboot/hostinfo` });
   var hostarr = hlr.hosts_load(cfg);
-  console.log("Host names:", hostarr); // DEBUG
+  console.log("(All) Host names:", hostarr); // DEBUG
 
   var hnames = hostarr.filter(filtercb);
   console.log(hnames.length + " hosts remain after filtering:", hnames); // proccfg.debug
