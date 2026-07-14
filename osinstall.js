@@ -65,7 +65,7 @@ node -e "var yaml = require('js-yaml'); var fs = require('fs'); var y = yaml.loa
  */
 var fs = require("fs");
 var Mustache = require("mustache");
-var yaml   = require('js-yaml'); // subiquity
+var yaml   = require("js-yaml"); // subiquity
 var dns    = require("node:dns");
 var crypto = require("crypto");
 
