@@ -140,6 +140,8 @@ function simplegrid_url(ev, an) {
     rapp.templated(an.tmpl, tpara, ttgt); // Initial templating
     var fsetid = an.fsetid;
     if (typeof an.fsetidgen == 'function') { fsetid = an.fsetidgen(ev, an); } // NEW (Pass tapara ?)
+    // Look for fsetid in data (OR even full fset: if (data.fset) { } ?)
+    else if (data.fsetid) { fsetid = data.fsetid; }
     //TODO: let fldinfo = an.fldinfo || window.fldinfo;
     showgrid(an.gridid, arr, fldinfo[fsetid]); // No need for act as uisetup is not within Grid (<= re-eval)
     // Must be late-enough, after initial templating (contbytemplate()/rapp.templated()) !!
