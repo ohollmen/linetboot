@@ -1,0 +1,52 @@
+# Must mount .lineboot config dir tree to ~/linerboot (whoever the docker
+# running user is).
+# Build from top dir: docker build -t "linetboot-alpine:0.0.1" -f docker/Dockerfile.alpine .
+# Run (note ash): docker run -it --rm -p 3000:3000 -v ~/.linetboot:/root/.linetboot -v /isoimages:/isoimages -v /isomnt:/isomnt -v ~/.ssh:/root/.ssh linetboot-alpine:0.0.1 ash
+
+FROM alpine:3.22 AS builder
+LABEL maintainer="Olli Hollmen" description="Linetboot App Server (Alpine Edition)"
+# For package files, do: apk info -L curl
+RUN apk add --no-cache openssh wget nodejs
+# Add node from Alpine distro.
+# TODO: Try/experiment installing node.js from nodejs.org (e.g.)
+# https://nodejs.org/en/download/archive/v21.7.3 ... v22.21.1 (31MB)
+# -P / --directory-prefix
+# wget https://nodejs.org/dist/latest-v22.x/node-v22.23.1-linux-x64.tar.xz
+# ash: /usr/local/bin/node: not found (Seems not good with Alpine musl libc)
+# musl libc compat layer (for glibc): gcompat (older/legacy: libc6-compat
+# still used w. Node, python extensions)
+# /lib/ld-musl-*.so.1
+# RUN wget https://nodejs.org/dist/v22.23.1/node-v22.23.1-linux-x64.tar.xz -O - | tar -C /usr/local -Jxf -
+#RUN wget http://192.168.1.159:3000/node-v22.23.1-linux-x64.tar.xz -O - | tar -C /usr/local -Jxf -
+# RUN for d in bin include lib share
+RUN cd /usr/local && ln -s node-v22.23.1-linux-x64 node && cd bin && ln -s /usr/local/node/bin/node node
+# Debug build
+RUN apk add --no-cache file npm
+WORKDIR /app
+COPY ./ .
+# By default ash does not have any user - this would work around it
+# NEW: better, dynamic detection by os.userInfo()
+#ENV USER=root
+# Opts to go by ../package-lock.json: ci == Clean install
+# npm install --omit=dev --omit=optional
+# --omit should also work with ci (Clean install) driven by package-lock.json
+# BUT: npm error `npm ci` can only install packages when your package.json and
+# package-lock.json or npm-shrinkwrap.json are in sync.
+# Please update your lock file with `npm install` before continuing.
+RUN npm ci --omit=dev --omit=optional
+WORKDIR /app/web
+# install / ci
+RUN npm ci --omit=dev --omit=optional
+WORKDIR /app
+# Removals (for e.g. 2nd stage build)
+RUN rm -rf package-lock.json web/package-lock.json web/yarn.lock node_modules/@google-cloud/ node_modules/sqlite3/build/Release/obj/ node_modules/sqlite3/deps node_modules/sqlite3/build/ ./node_modules/mocha web/node_modules/vis/dist/vis.js.map node_modules/jsdoc
+
+################## 2nd stage ###############
+# 271MB 58MB => Client side NPM cleanup: 247MB 53.8MB
+FROM alpine:3.22
+#### NOTE: NOT needed in linetboot.js runtime: openssh wget
+RUN apk add --no-cache nodejs
+#### COPY --from=0 /usr/local /usr/local
+COPY --from=0 /app /app
+WORKDIR /app
+
