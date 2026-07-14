@@ -1593,7 +1593,7 @@ function jj_name_cell(val, item) {
 }
 function jj_builds_cell(val, item) {
   return val.map( (b) => {
-    return `<a href="${b.url}" target="buildpane" class="menuactive" style="background-color: #aaaaaa; ">${b.number}</a>`;
+    return `<a href="${b.url}" target="buildpane" class="menuactive" style="background-color: #cccccc; ">${b.number}</a>`;
   }).join(' ');
 }
 let fldinfo_jjob = [
