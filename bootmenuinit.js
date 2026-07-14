@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 // Boot media helper.
 // This utility should manage all about ISO media download and storage, loop mountpoints and even (parts of / tentative) menu generation.
 // Implements or should implement (command generation for ...):
@@ -83,7 +83,7 @@ function images_ls() {}
  * - main config: cfg.imgpath and cfg.mountpath (base directories)
  * - image/distro item: it.img_bn and it.lbl (ISO fn, mount subdir)
  * @return content (cmds or fstab) for all mounts
- * NOTE: This should be drive by images on the filesystem, not by URL:s !!!
+ * NOTE: This should be driven by images on the filesystem, not by URL:s - items must have it.lbl !!!
  * cross-correlate / lookup image def. for image by testing all items (.find(cb))
  * 
 */
@@ -99,7 +99,7 @@ function mount(opts) { // OLD: exitems
     if (!fs.existsSync(an)) { cont +=  `# Warning: Img ('${an}') not found.\n`; prefix = "# NA: ";}
     // console.log(it); // prefix +
     else if (!it.img_bn) { cont += "# Warning: 'img_bn' missing for item below\n"; prefix = "# "; }
-    else if (!it.lbl) { cont += "# Warning: 'lbl' missing for item below\n"; prefix = "# ";
+    else if (!it.lbl) { cont += "# Warning: 'lbl' (mnt dir bn) missing for item below\n"; prefix = "# ";
        cont += `DEBUG: ${JSON.stringify(it, null, 2)}`;
     }
     if (opts.op == 'mount' || opts.op == 'imglist') { cont +=  `${prefix}sudo mount -o loop ${an} ${cfg.mountpath}/${it.lbl}\n`; }
@@ -111,6 +111,7 @@ function mount(opts) { // OLD: exitems
  * Match filename to a distro naming pattern (RE) to conclude how it should be mounted.
  * Version numbers are extracted with nested RegExp, where outer parens match **whole** version
  * number and the inner parts of it (major, minor, patch). These should be coming from config.
+ * op: 'imglist' or ...
 */
 function images_list(opts) {
   console.log("OPTIONS:", opts);
@@ -121,6 +122,7 @@ function images_list(opts) {
   files.sort();
   let origcnt = files.length;
   let ign = ignore_load(files, `.imgignore`); // ${isopath}/
+  if (!ign) { ign = []; }
   files = ignore_list(files, ign);
   let igncnt = origcnt - files.length;
   //console.log(`${files.length} ISO Images found.`, files);
@@ -156,7 +158,16 @@ function images_list(opts) {
   console.error(`${stats.isocnt} ISO:s, ${stats.matchcnt} Matches, ${stats.misscnt} Misses, ${stats.mountcnt} Mounts discovered, ${stats.igncnt} Ignored`);
   console.error(`Missing match (${missnames.length}):\n`, missnames);
   opts.items = items;
-  mount(opts);
+  if (opts.op == 'imglist') { mount(opts); }
+  else if (opts.op == 'mkmntdir') {
+    items.forEach( (it) => {
+	  let comm = '';
+	  let an = `${cfg.mountpath}/${it.mntpath}`; // What means it.lbl (fixed)
+	  if (!it.mntpath) { comm = `# Missing dir bn (it.lbl): `; }
+	  else if (fs.existsSync(an)) { comm = `# Already exixts: `; }
+	  console.log(`${comm}sudo mkdir -p ${an}`);
+	});
+  }  
   // Try to match image basename to a distro item by its imgpatt (RE).
   // @return Cloned distro item if matching was successufl, null if there ws no match for file basename.
   function find_item_by_imgname(fn) { // ISO fn
@@ -255,9 +266,10 @@ var ops = [
   {id: "mount",   desc: "Generate loop-mount commands (for ISO media)", cb: mount},
   {id: "fstab",   desc: "Generate fstab loop-mount lines (for ISO media)", cb: mount},
   
-  {id: "download", desc: "Generate ISO media download commands)", cb: download},
+  {id: "download", desc: "Generate ISO media download commands", cb: download},
   {id: "validate_ki", "desc":"Validate Mounted media kernel and initrd file presence", cb: validate_ki},
   {id: "imglist",  desc: "List Images from default image dir (e.g. /isoimages/)", cb: images_list},
+  {id: "mkmntdir",  desc: "Make dirs for loop mounts (e.g. in /isomnt/) for ISO images discovered", cb: images_list},
   // Any ubuntu.*, kubuntu.*, elementaryos.*, popos, finnix126
   // libreelec12, libreelec_data,
   // NOTE: NOT needed on debian (!!!)
