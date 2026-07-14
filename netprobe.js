@@ -18,9 +18,9 @@ var ping = require('ping');
 // var snmp = require ("net-snmp");
 // https://github.com/steelbrain/node-ssh (promises based)
 // Also: https://github.com/mscdex/ssh2 (More popular)
-var node_ssh = require('node-ssh');
-var ssh2  = require('ssh2'); // .Client;
-var fs    = require('fs');
+var node_ssh = require("node-ssh");
+var ssh2  = require("ssh2"); // .Client;
+var fs    = require("fs");
 var async = require("async");
 var ipmi  = require("./ipmi.js"); // IPMI !!!!
 var hlr   = require("./hostloader.js"); // NEW (for hostparams)
@@ -37,21 +37,23 @@ var pkey;   // Priv key **content**
 var pubkey; // Needed for purposes other than ssh2 connection
 var selfmac; // Discover own mac (for better report, where self would have mac error)
 var tout;
-var opts = {tout: 0, debug: 0};
+var opts = {tout: 0, debug: 0, user: process.env.USER };
 var debugarr = []; // Like async results
 function privkey() { return pkey; }
 function pubkey() { return pubkey; }
 /**
 */
-function init(popts) {
+function init(popts) { // From mcfg.probe
   if (inited) { return; }
   inited++;
+  // Name section probe => netprobe ?
   //if (mcfg.netprobe) { popts = mcfg.netprobe; }
   //else { popts = mcfg; }
   popts = popts || {};
   // MUST read in utf8 (to not get a binary buffer)
   //pkey   = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa', 'utf8');
   //pubkey = fs.readFileSync(process.env['HOME']+'/.ssh/id_rsa.pub', 'utf8');
+  // Env. LINETBOOT_SSHKEY is setup by mainconf.js
   pkey   = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}`, 'utf8'); // id_rsa
   pubkey = fs.readFileSync(`${process.env['LINETBOOT_SSHKEY']}.pub`, 'utf8'); // id_rsa
   if (!pkey || !pubkey) { console.log("Warning: Linetboot should have SSH keys to interact effectively during installation.");}
@@ -60,6 +62,12 @@ function init(popts) {
   // require('os').networkInterfaces() // [{mac: ...},{mac:...},...]
   if (popts.tout) { tout = opts.tout = popts.tout; }
   if (popts.debug) { opts.debug = popts.debug; }
+  if (!opts.user) {
+    let os    = require("os"); // For user.username
+    let user = os.userInfo();
+    opts.user = user.username;
+  }
+  if (popts.user) { opts.user = popts.user; } // Override process.env.USER (e.g. root) as keys and user have to match !
 }
 /** Probe Network connectivity and setup on single host (DNS, Ping, SSH).
  * The checks *must* be run in sequence as following steps are dependent on the earlier (e.g. host must be pinable to SSH in).
@@ -74,7 +82,7 @@ function resolve(hnode, cb) {
   var prec = {hname: hn, ip: ip_org, ipok: 0, nameok: 0, macok: 0}; // probe record
   var pingcfg = {timeout: 10};
   // TODO: Pull from module config
-  var sshuser = process.env['USER'];
+  var sshuser = opts.user; // process.env['USER'];
   let p = hlr.hostparams(hn);
   if (p && p.sshuser) { sshuser = p.sshuser; }
   var sshcfg = {host: hn, username: sshuser, privateKey: pkey};
@@ -195,7 +203,7 @@ function stats_proc_0(hnode, cb) {
   var prec = {"pcnt": -1};
   var hn = hnode.ansible_fqdn;
   // Compat w. node-ssh (port?) and ssh2
-  var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
+  var sshcfg = {host: hn, username: opts.user, privateKey: pkey, port: 22}; // process.env['USER']
   if (!pkey) { console.log("No pkey !"); return cb("No pkey", null); }
   console.log("Starting to connect " + hn);
   ssh.connect(sshcfg).then(function () {
@@ -251,7 +259,8 @@ function stats_proc(hnode, cb) {
   var hn = hnode.ansible_fqdn;
   var prec = {"hname": hn, "pcnt": -1};
   // readyTimeout
-  var sshcfg = {host: hn, username: process.env['USER'], privateKey: pkey, port: 22};
+  var sshcfg = {host: hn, username: opts.user, privateKey: pkey, port: 22}; // process.env['USER']
+  //if () {sshcfg.username = ""; }
   if (tout) { sshcfg.readyTimeout =  tout; }
   if (!pkey) { console.log("No pkey !"); prec.ssherr = "No pkey"; return cb(null, prec); }
   //console.log("Starting to connect to: " + hn);
@@ -311,6 +320,8 @@ function stats_proc(hnode, cb) {
       //return cb(null, prec); // Recent try (jam)
     });
     // {host: hn,port: 22,username: process.env['USER'],privateKey: pkey}
+    // NEW: use explicit SSH user instead of process.env['USER']
+    console.log(`SSH-CONNECT-CFG: ${JSON.stringify(sshcfg, null, 0)}`);
     conn.connect(sshcfg);
   }
   // Universal conn error handler
