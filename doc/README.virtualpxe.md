@@ -1,8 +1,6 @@
 # PXE Boot in Virtual Environments
 
-## Using Virtualization Environments to PXE Boot
-
-### Using VirtualBox "virtual PXE boot using virtual TFTP server"
+## Using VirtualBox "virtual PXE boot using virtual TFTP server"
 
 Less advertised feature of VirtualBox is it's ability to allow PXE boot via its Virtual TFTP server.
 There is no actual TFTP server running but only a specifically created directory layout that mimicks
@@ -67,7 +65,7 @@ VirtualBoxVM --startvm RHEL8
 
 Info Source: https://gerardnico.com/virtualbox/pxe.
 
-### Using virt-manager to PXE Boot
+## Using virt-manager to PXE Boot
 
 virt-manager differs from VirtualBox in regards to holistic PXE boot setup by:
 - It does not internally implement a "virtual" TFTP server of its own
@@ -77,9 +75,25 @@ virt-manager differs from VirtualBox in regards to holistic PXE boot setup by:
 DHCP server for the clients.
 
 
+Installing: "New VM" => Manual Install => Choose OS: Generic Linux 2024 =>
+  4096 MB RAM / 2 CPUS => Enable Storage, 2.0 GB =>
+  Choose: Customize configuration before install, Device name: prefer to leave empty => (In) Overview: 
+  Choose: Firmware: OVMF_CODE_4M.fd (also variants .ms.fd, .secboot.fd)
+
+Boot Options: Elevate NIC as first (over VirtIO Disk 1)
+
 After creating a VM "stub" (even empty, unpartitioned, unformatted disk
 is okay), you can toggle the VM to 1) be PXE bootable, 2) set boot priority
 to PXE by: Left Navigation Pane: Boot Options => Boot Device Order => NIC: ... (Bring item up / prioritize item "NIC:..." using arrow-up button)
+
+BIOS: ...
+
+UEFI
+```
+>>Start PXE over iPv4
+  PXE-E16 No valid offer received.
+BdsDxe: failed to load Boot0002 "UEFI PXEv4 (MAC:5254...)" from PciRoot ...
+```
 
 Already at the time of creating the VM (in wizard, step 1 of 5, in some versions of virt-manager, or does this depend on Non-wifi NIC being connected), there is an option
 "Choose how you would like to install the operating system:" => "Network Boot (PXE)", so you could choose PXE boot already there.
@@ -92,7 +106,7 @@ virt-manager internally runs:
 # (fragment / partial config) from /etc/libvirt/dnsmasq/default.conf
 /usr/bin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf
 ```
-XML Config:
+"Virtual Networks" (global) XML Config (for virt-manager private dnsmasq):
 ```
 <network>
   <name>default</name>
@@ -108,20 +122,65 @@ XML Config:
 </network>
 ```
 
+### VM NIC Config (XML)
+
+Network Source: Macvtap XML config (Note: dev may juggle between e.g. enp6s0 and virbr0, only ...) - works with lineboot NOT running on VM host:
+```
+<interface type="direct">
+  <mac address="52:54:00:f3:76:f5"/>
+  <source dev="enp6s0" mode="bridge"/>
+  <model type="e1000e"/>
+  <boot order="1"/>
+  <address type="pci" domain="0x0000" bus="0x01" slot="0x00" function="0x0"/>
+</interface>
+```
+PXE-E18: Server response timeout.
+Error: Could not retrieve NBP size ...
+
+
+Network Source: NAT config (Changes interface "type" and "source" only):
+```
+<interface type="network">
+  <mac address="52:54:00:f3:76:f5"/>
+  <source network="default"/>
+  <model type="e1000e"/>
+  <boot order="1"/>
+  <address type="pci" domain="0x0000" bus="0x01" slot="0x00" function="0x0"/>
+</interface>
+```
+Network Source: Bridge device w. Device name "virbr0" (changes interface "type" and "source" only)
+```
+<interface type="bridge">
+  <mac address="52:54:00:f3:76:f5"/>
+  <source bridge="virbr0"/>
+  <model type="e1000e"/>
+  <boot order="1"/>
+  <address type="pci" domain="0x0000" bus="0x01" slot="0x00" function="0x0"/>
+</interface>
+```
+
 Links:
 - https://blog.scottlowe.org/2015/05/11/using-pxe-with-virt-install/
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/virtualization_host_configuration_and_guest_installation_guide/chap-virtualization_host_configuration_and_guest_installation_guide-libvirt_network_booting
 
+### Errors
 
-### Using QEMU to Boot PXE
+```
+error: timeout: could not resolve hardware address.
+error: you need to load the kernel first.
 
-QEMU also has a built-in TFTP server, whset root diretory you provide
+Press any key to continue...
+```
+
+## Using QEMU to Boot PXE
+
+QEMU also has a built-in TFTP server, with root directory you provide
 on comand line (as part of -netdev parameter). You also provide the
 normally "delivered-by-DHCP" parameters like `bootfile=...` as part of
 command line (-netdev) instead of using actual DHCP (In VBox this came
 from config file).
 
-Example script to run as run-qemu -m 8192 -hda ~/pxebootdisk.vmdk, reusing
+Example script to run as `run-qemu -m 8192 -hda ~/pxebootdisk.vmdk`, reusing
 the earlier established TFTP area:
 ```
 #!/bin/sh
