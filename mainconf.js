@@ -254,7 +254,7 @@ function disabled_detect(mcfg) {
   // Groups. The test for validity for groups (other than patt == null, policy == nongrouped) would be to detect members
   // in g.hostnames.length > 0.
   // NOTE: We don't know if groups have been loaded (properly) and it will be hard to test here.
-  // NOTE: The mcfg.groups are already dealt with oabove !!!
+  // NOTE: The mcfg.groups are already dealt with above !!!
   if (mcfg.groups && 1) {
     //dis.push("groups");
   }
@@ -262,11 +262,11 @@ function disabled_detect(mcfg) {
   if (!esxi || (esxi && !esxi.password) || (esxi && !esxi.vmhosts)) {dis.push("esxiguests"); } // Note UI term
   var proc = mcfg.procster;
   // !proc.urlpath ... does not seemed to be filled in any examples
-  if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ?
+  if (proc && proc.disable) { dis.push("tabs-bprocs"); } // tabs-bprocs - How to do this tab ? (Detect '-' or '.' or '/' or ':' notation ?)
   var cov = mcfg.cov;
   if (!cov || (cov && !cov.pass) || (cov && !cov.user)) { dis.push("coverity"); }
   var jenk = mcfg.jenkins;
-  if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); }
+  if (!jenk || (jenk && !jenk.pass) || (jenk && !jenk.user)) { dis.push("jenkins"); dis.push("jjobs"); }
   var dr = mcfg.deployer;
   if (!dr || (dr && !dr.deployfn) || !fs.existsSync(dr.deployfn) || (dr && !dr.gitreposfn) || !fs.existsSync(dr.gitreposfn) ) { dis.push("gitproj"); } // OLD: "deploy"
   let gh = mcfg.github;
@@ -281,7 +281,28 @@ function disabled_detect(mcfg) {
   if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
   let grepo = mcfg.grepo;
   if (!grepo || (grepo && !grepo.fn)) { dis.push("grepo"); }
+  //let jenk = mcfg.jenkins;
+  //if (!jenk || (jenk && !jenk.pass)) { dis.push("jjobs"); }
   return dis;
+  // Universal disablement detection (assume truthy object with pass set)
+  function is_disabled(cfg, tcb) {
+    if (!cfg) { return 1; }
+    if (typeof cfg != 'object') { return 1; }
+    if (tcb && typeof tcb == 'function' && tcb(cfg)) { return 1; }
+    //if ("user" in cfg && !cfg.pass) { return 1; }
+    if ("pass" in cfg && !cfg.pass) { return 1; }
+
+    return 0;
+  }
+  function has_config(fn) {
+    // if (Array.isArray(fn)) {
+    //  let ok = 1; // Any missing => ok = 0;
+    //  / for (fnx in fn ????) { } and break !!!
+    //  fn.forEach( (fnx) => { if () {} });
+    //}
+    if (!fs.existsSync(fn)) { return 1; }
+    return 0;
+  }
 } // disabled_detect
 
 ////// TRANSFER KEY ENV VARS /////////////////
