@@ -996,7 +996,11 @@ function ibip_cell(val, item) {
     //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
     //{"name": "status.nodeInfo.",      "title": "",  type: "text", width: 8},
    ];
-
+   function gerr_chstatus_cell(val, item) {
+      let c = {NEW: "", MERGED: "#33DD33", ABANDONED: "#FF5555"};
+      if (c[val]) { return `<span style="background-color: ${c[val]}; color: white; border-radious: 4px; ">${val}</span>`; }
+      return val;
+   }
    var fldinfo_gerr_change = [
      {"name": "_number",     "title": "Number",    type: "number", width: 8},
      
@@ -1005,7 +1009,7 @@ function ibip_cell(val, item) {
      //{"name": "hashtags",     "title": "Hashtags",  type: "text", width: 20},
      {"name": "change_id",   "title": "Change ID",  type: "text", width: 12,  itemTemplate: gridplug.csum_short},
      {"name": "subject",     "title": "Subject",   type: "text", width: 50},
-     {"name": "status",      "title": "Status",    type: "text", width: 10},
+     {"name": "status",      "title": "Status",    type: "text", width: 10, itemTemplate: gerr_chstatus_cell},
      {"name": "created",     "title": "Created",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // Trunc
      {"name": "updated",     "title": "Updated",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // trunc
      // {name: "submitted", title: "Time Subm.", type: "text", width: 20, itemTemplate: null},
@@ -1024,10 +1028,15 @@ function ibip_cell(val, item) {
      if (!gserv) { return decpath; }
      return `<a href="https://${gserv}/plugins/gitiles/${decpath}" target="gerrproj">${decpath}</a>`;
    }
+   function gerr_repodesc_cell(val, item) {
+     if (val && val.match(/open.source/, "i")) { return `<span style="border-radius: 4px; padding: 5px 5px; color: #5082ed">${val}</span>`; }
+     return val;
+   }
    let fldinfo_gerr_proj =[
     // Simple fields for listing (/a/projects)
     // Note: value has '/' escaped to %2F
-    {name: "id",      title: "Repo Path", type: "text", width: 15, itemTemplate: null},
+    {name: "id",      title: "Repo Path", type: "text", width: 15, itemTemplate: gerr_repoenc_cell},
+    // E.g. PROPRIETARY, OPEN_SOURCE
     {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
     {name: "state",   title: "State", type: "text", width: 20, itemTemplate: null},
     // Note: This is path only. Add host-part on server side ? Note2: Repo has mutliple path comps (basename is not sufficient)
