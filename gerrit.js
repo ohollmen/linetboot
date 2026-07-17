@@ -83,10 +83,11 @@ function gerrapi(req, res) {
 
   var owner = cfg.user; // Get from req... (session)
   let urlpath = upath2; // upath2+owner; // `${upath2}${owner}`
+  let proj = 0;
   if (req.url.match(/changes_my/) && owner)  { urlpath += `q=owner:${owner}`; }
   else if (req.url.match(/gerr\/repos/)) { urlpath = `a/projects/?d`; proj = 1; }
 
-  let proj = 0;
+  
   console.log(`Calling gerrit: ${urlpath}`);
   let rpara = { headers: { }};
   
