@@ -998,7 +998,7 @@ function ibip_cell(val, item) {
    ];
    function gerr_chstatus_cell(val, item) {
       let c = {NEW: "", MERGED: "#33DD33", ABANDONED: "#FF5555"};
-      if (c[val]) { return `<span style="background-color: ${c[val]}; color: white; border-radious: 4px; ">${val}</span>`; }
+      if (c[val]) { return `<span style="background-color: ${c[val]}; color: white; border-radius: 4px; padding: 5px 5px">${val}</span>`; }
       return val;
    }
    var fldinfo_gerr_change = [
