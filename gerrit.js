@@ -16,7 +16,7 @@ var ssh2 = require("ssh2");
 var cfl  = require("./confluence.js");
 
 // var upath = "a/accounts/$USER";
-var upath2 = "a/changes/?q=owner:"; // Olli+Hollmen";
+var upath2 = "a/changes/?"; // q=owner:... Olli+Hollmen";
 
 let cfg = {};
 var client;
@@ -82,9 +82,11 @@ function changes_recv() {
 function gerrapi(req, res) {
 
   var owner = cfg.user; // Get from req... (session)
-  let urlpath = upath2+owner; // `${upath2}${owner}`
+  let urlpath = upath2; // upath2+owner; // `${upath2}${owner}`
+  if (req.url.match(/changes_my/) && owner)  { urlpath += `q=owner:${owner}`; }
+  else if (req.url.match(/gerr\/repos/)) { urlpath = `a/projects/?d`; proj = 1; }
+
   let proj = 0;
-  if (req.url.match(/gerr\/repos/)) { urlpath = `a/projects/?d`; proj = 1; }
   console.log(`Calling gerrit: ${urlpath}`);
   let rpara = { headers: { }};
   
