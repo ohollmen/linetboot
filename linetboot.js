@@ -2110,6 +2110,7 @@ function config_send(req, res) {
   var gl   = global.gitlab;
   var cfl  = global.confluence;
   var hclparse = global.hclparse;
+  var gerr = global.gerrit;
   var afa  = global.afa;
   var grepo = global.grepo;
   // Docker
@@ -2149,6 +2150,7 @@ function config_send(req, res) {
   cfg.kubimap = (kubi && (kubi.kubimap) ) ? kubi.kubimap : [];
   if (hclparse && hclparse.modnames) { cfg.hclmodnames = hclparse.modnames; }
   if (grepo && grepo.remiconpath) { cfg.grepo.remiconpath = grepo.remiconpath } else { cfg.grepo.remiconpath = {}; }
+  if (gerr && gerr.host) { cfg.gerrhost = gerr.host; }
   res.json(cfg);
 }
 

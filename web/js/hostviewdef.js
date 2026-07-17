@@ -1018,11 +1018,17 @@ function ibip_cell(val, item) {
      {"name": "current_revision_number", title: "Patchset", type: "text", width: 20, itemTemplate: null},
      
    ];
+   function gerr_repoenc_cell(val, item) {
+     let decpath = decodeURIComponent(val);
+     let gserv = (datasets && datasets.cfg && datasets.cfg.gerrhost) ? datasets.cfg.gerrhost : null;
+     if (!gserv) { return decpath; }
+     return `<a href="https://${gserv}/plugins/gitiles/${decpath}" target="gerrproj">${decpath}</a>`;
+   }
    let fldinfo_gerr_proj =[
     // Simple fields for listing (/a/projects)
     // Note: value has '/' escaped to %2F
-    {name: "id",      title: "ID", type: "text", width: 20, itemTemplate: null},
-    {name: "description", title: "Description", type: "text", width: 20, itemTemplate: null},
+    {name: "id",      title: "Repo Path", type: "text", width: 15, itemTemplate: null},
+    {name: "description", title: "Description", type: "text", width: 25, itemTemplate: null},
     {name: "state",   title: "State", type: "text", width: 20, itemTemplate: null},
     // Note: This is path only. Add host-part on server side ? Note2: Repo has mutliple path comps (basename is not sufficient)
     // Strip prefix '/plugins/gitiles/' from visible part ?
