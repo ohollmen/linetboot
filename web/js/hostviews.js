@@ -610,7 +610,7 @@ var tabloadacts = [
   {"name": "K8S Namespaces",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/kubinfo?info=nss", gridid: "jsGrid_kubnss",
     fsetid: "kubnss", fsetidgen: kub_fsetidgen, path: "kubnss", dprep: null, uisetup: kub_uisetup, urlpara: kub_urlpara }, // TODO: Fieldsets (use meta ?)
   */
-  {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
+  {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/changes", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
   {name: "Gerrit Projects", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/repos", gridid: "jsGrid_gerrproj", fsetid: "gerr_proj", path: "gerrproj", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // Git* gh_projs
