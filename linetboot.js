@@ -356,6 +356,7 @@ function app_init(mcfg) { // mcfg
   //app.get("/kubapirsc", kubi.kube_info);
   app.get("/kubinfo", kubi.kube_info);
   app.get("/gerr/mychanges", gerrit.gerrapi);
+  app.get("/gerr/repos", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
   app.get("/gh_teams", gh_projs); // overload
   app.get("/gl_projs", gl_projs);
@@ -2969,7 +2970,7 @@ function listguests(req, res) {
     res.json(harr); // {status: "ok", data: harr}
   }
 }
-/** Fetch and store guest info for all configured (mcfg.esxi.vmhosts) VM hosts.
+/** Fetch and store ESXI guest info for all configured (mcfg.esxi.vmhosts) VM hosts.
  */
 function cacheguestinfo(req, res) {
   var jr = {"status":"err", "msg":"Error getting info for esxi guests. "};
@@ -2983,7 +2984,7 @@ function cacheguestinfo(req, res) {
   async.eachSeries(hostnames, esxi.hostworker, function (err) {
     if (err) { jr.msg += "cacheall error: "+err; return res.json(jr); }
     //console.log("cacheall series completion success (ls -al /tmp/*.xml) ");
-    res.json({status: "ok", msg: "Saved Guestinfo for "+hostnames.length+" hosts."});
+    res.json({status: "ok", msg: `Saved Guestinfo for ${hostnames.length} hosts.`});
   });
 }
 /** List Docker compose config.
@@ -3024,7 +3025,7 @@ function listdc(req, res) {
   if (typeof servs == 'string') { jr.msg += servs; return res.json(jr); }
   res.json({status:"ok", data: servs});
   /////////////////// 
-  /** Load docker-compose services re-organized into an array. */
+  /** Load docker-compose services (top-level only ?) re-organized into an array. */
 function load_dc_services(fpath) {
   var y;
   var ssidx; // Services index
@@ -3050,6 +3051,8 @@ function load_dc_services(fpath) {
 } // load_dc_services
   
 }
+// module.exports = {init: init, load_dc_services: load_dc_services, listdc: listdc};
+
 /** Report portal member addition as web service.
  * Add all logged in users to all groups for the ease of access for trusted people (in a
  * simple environment where earlier situation holds true.
@@ -3269,6 +3272,8 @@ function gh_projs(req, res) {
     if (ghcfg.ent) { url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
     // This should be:  /repos/ohollmen/crudrest/collaborators (not "".../teams")
     else { url = `https://${ghcfg.url}/repos/${org}/${repo}/collaborators`; }
+    // Call ?affiliation=direct
+
   }
   // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
