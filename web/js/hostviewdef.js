@@ -1029,7 +1029,7 @@ function ibip_cell(val, item) {
      return `<a href="https://${gserv}/plugins/gitiles/${decpath}" target="gerrproj">${decpath}</a>`;
    }
    function gerr_repodesc_cell(val, item) {
-     if (val && val.match(/open.source/, "i")) { return `<span style="border-radius: 4px; padding: 5px 5px; color: #5082ed">${val}</span>`; }
+     if (val && val.match(/open.source/i)) { return `<span style="border-radius: 4px; padding: 5px 5px; background-color: #7796d8; color: white; ">${val}</span>`; }
      return val;
    }
    let fldinfo_gerr_proj =[
