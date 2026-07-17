@@ -533,7 +533,9 @@ var tabloadacts = [
   // logout (todo: literal template)
   {"name": "Logout",   "tmpl":"", hdlr: logout, url: "/logout",  path: "logout"}, // TODO: Add tmpl for ack ?
   // Directory  (TODO: composite templating)
-  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad2", path: "peopledir"},
+  {"name": "People Lookup", elsel: "tabs-pd", tmpl: "simplegrid", "hdlr": showpeople, url: "/ldaptest", gridid: "jsGrid_ldad", fsetid: "ldad2", path: "peopledir",
+    idattr: "sAMAccountName",
+  },
   {"name": "People Entry", tmpl: "lduser", "hdlr": gendialog, url: "", path: "uent", dialogid: "userdialog"},
   // Iblox
   {"name": "InfoBlox", tabs: ["tabs-ibnet", "tabs-ibhost"], hdlr: tabsetview, "path": "ibloxlist"},
@@ -609,6 +611,7 @@ var tabloadacts = [
     fsetid: "kubnss", fsetidgen: kub_fsetidgen, path: "kubnss", dprep: null, uisetup: kub_uisetup, urlpara: kub_urlpara }, // TODO: Fieldsets (use meta ?)
   */
   {name: "Gerrit - My Changes", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/mychanges", gridid: "jsGrid_mych", fsetid: "gerr_change", path: "mychange", uisetup: null, dprep: null},
+  {name: "Gerrit Projects", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gerr/projects", gridid: "jsGrid_gerrproj", fsetid: "gerr_proj", path: "gerrproj", uisetup: null, dprep: null},
   {name: "Test Form", tmpl: null, "hdlr": jgrid_form, url: null, fsetid: "gerr_change", path: "testform"},
   // Git* gh_projs
   {"name": "GitHub Org. Repos",   "elselXX": "ghprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_projs", gridid: "jsGrid_ghprojs", fsetid: "ghprojs",
