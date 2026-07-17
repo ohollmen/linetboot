@@ -1002,7 +1002,7 @@ function ibip_cell(val, item) {
       return val;
    }
    var fldinfo_gerr_change = [
-     {"name": "_number",     "title": "Number",    type: "number", width: 8},
+     {"name": "_number",     "title": "Number",    type: "number", width: 6},
      
      {"name": "project",     "title": "Project",   type: "text", width: 30},
      {"name": "branch",      "title": "Branch",    type: "text", width: 15},
@@ -1013,8 +1013,8 @@ function ibip_cell(val, item) {
      {"name": "created",     "title": "Created",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // Trunc
      {"name": "updated",     "title": "Updated",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // trunc
      // {name: "submitted", title: "Time Subm.", type: "text", width: 20, itemTemplate: null},
-     {"name": "mergeable",   "title": "MergeOK",   type: "text", width: 6}, // 
-     {"name": "submittable", "title": "SubmitOK",  type: "text", width: 6},
+     {"name": "mergeable",   "title": "Merge OK",   type: "text", width: 6}, // 
+     {"name": "submittable", "title": "Submit OK",  type: "text", width: 6},
      {"name": "insertions",  "title": "Added Lines", type: "text", width: 8}, // 12 -> 10 ?
      {"name": "deletions",   "title": "Deleted Lines",  type: "text", width: 8}, // 12 ->> 10
      
