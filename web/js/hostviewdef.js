@@ -1008,13 +1008,28 @@ function ibip_cell(val, item) {
      {"name": "status",      "title": "Status",    type: "text", width: 10},
      {"name": "created",     "title": "Created",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // Trunc
      {"name": "updated",     "title": "Updated",   type: "text", width: 12, itemTemplate: gridplug.isodate}, // trunc
+     // {name: "submitted", title: "Time Subm.", type: "text", width: 20, itemTemplate: null},
      {"name": "mergeable",   "title": "MergeOK",   type: "text", width: 6}, // 
      {"name": "submittable", "title": "SubmitOK",  type: "text", width: 6},
      {"name": "insertions",  "title": "Added Lines", type: "text", width: 12},
      {"name": "deletions",   "title": "Deleted Lines",  type: "text", width: 12},
      
      {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 10},
+     {"name": "current_revision_number", title: "Patchset", type: "text", width: 20, itemTemplate: null},
      
+   ];
+   let fldinfo_gerr_proj =[
+    // Simple fields for listing (/a/projects)
+    // Note: value has '/' escaped to %2F
+    {name: "id",      title: "ID", type: "text", width: 20, itemTemplate: null},
+    {name: "description", title: "Description", type: "text", width: 20, itemTemplate: null},
+    {name: "state",   title: "State", type: "text", width: 20, itemTemplate: null},
+    // Note: This is path only. Add host-part on server side ? Note2: Repo has mutliple path comps (basename is not sufficient)
+    // Strip prefix '/plugins/gitiles/' from visible part ?
+    {name: "web_links.url", title: "URL", type: "text", width: 20, itemTemplate: null}, // gridplug.url_link_bn
+    // Details 
+    //{name: "", title: "", type: "text", width: 20, itemTemplate: null},
+    //{name: "", title: "", type: "text", width: 20, itemTemplate: null},
    ];
    // User/Organization site, Project sites. For links use item.full_name first part (org/repo) item.owner.login ?
    // https://pages.github.com/
@@ -1681,7 +1696,7 @@ var fldinfo_getfacts = [
       "covstr": fldinfo_covstr, "coviss": fldinfo_coviss, "covcomp": fldinfo_covcomp,
       "jjobs": fldinfo_jjobs, "dproj": fldinfo_dproj, "actinfo": fldinfo_actinfo,
       "kubapis": fldinfo_kub_apis, "syspods": fldinfo_kub_systempods, "kubnss": fldinfo_kub_nss, "kubnodes": fldinfo_kub_nodes,
-      "gerr_change": fldinfo_gerr_change,
+      "gerr_change": fldinfo_gerr_change, "gerr_proj": fldinfo_gerr_proj,
       "ghprojs": fldinfo_gh_projs, "ghteams": fldinfo_gh_teams, "ghmems": fldinfo_gh_mems,
       "cflpages": fldinfo_cflpages, "gcpdi": fldinfo_gcpdi, "tfinst": fldinfo_tf_google_project,
       "hostserv": fldinfo_hostservices, "dr": fldinfo_dr, "nscan": fldinfo_nscan, "glprojs": fldinfo_gl_projs,
