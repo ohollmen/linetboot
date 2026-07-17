@@ -1,7 +1,7 @@
 # Must mount .lineboot config dir tree to ~/linerboot (whoever the docker
 # running user is).
 # Build from top dir: docker build -t "linetboot-alpine:0.0.1" -f docker/Dockerfile.alpine .
-# Run (note ash): docker run -it --rm -p 3000:3000 -v ~/.linetboot:/root/.linetboot -v /isoimages:/isoimages -v /isomnt:/isomnt -v ~/.ssh:/root/.ssh linetboot-alpine:0.0.1 ash
+# Run (note ash): docker run -it --rm -p 3000:3000 -v ~/.linetboot:/root/.linetboot -v /isoimages:/isoimages -v /isomnt:/isomnt -v ~/.ssh:/root/.ssh -v /var/lib/tftpboot:/var/lib/tftpboot linetboot-alpine:0.0.1 ash
 
 FROM alpine:3.22 AS builder
 LABEL maintainer="Olli Hollmen" description="Linetboot App Server (Alpine Edition)"
@@ -21,8 +21,9 @@ RUN apk add --no-cache openssh wget nodejs
 # RUN for d in bin include lib share
 RUN cd /usr/local && ln -s node-v22.23.1-linux-x64 node && cd bin && ln -s /usr/local/node/bin/node node
 # Debug build
-RUN apk add --no-cache file npm
+# RUN apk add --no-cache file npm
 WORKDIR /app
+# Add node_modules to .dockerignore to have a fresh modules install
 COPY ./ .
 # By default ash does not have any user - this would work around it
 # NEW: better, dynamic detection by os.userInfo()
@@ -45,7 +46,10 @@ RUN rm -rf package-lock.json web/package-lock.json web/yarn.lock node_modules/@g
 # 271MB 58MB => Client side NPM cleanup: 247MB 53.8MB
 FROM alpine:3.22
 #### NOTE: NOT needed in linetboot.js runtime: openssh wget
+# Except: linetadm.js tftpsetup will need scp or rsync
 RUN apk add --no-cache nodejs
+# TFTP Staging area (for `tftpsetup`, in case this will be needed.
+RUN mkdir -p /var/lib/tftpboot
 #### COPY --from=0 /usr/local /usr/local
 COPY --from=0 /app /app
 WORKDIR /app
