@@ -11,8 +11,9 @@
 var fs = require("fs");
 // Legacy dependency (package.json): "digest-fetch": "1.2.1",
 // var fetch = require("node-fetch"); // Use later node.js fetch (build in) API directly
-var DigestFetch = require('digest-fetch');
+var DigestFetch = require("digest-fetch");
 var ssh2 = require("ssh2");
+var cfl  = require("./confluence.js");
 
 // var upath = "a/accounts/$USER";
 var upath2 = "a/changes/?q=owner:"; // Olli+Hollmen";
@@ -25,11 +26,11 @@ var debug = 0;
 
 // var conn; // SSH
 function init(_cfg) {
-  if (!cfg) { return; }
+  if (!_cfg) { return; }
   cfg = _cfg;
   if (cfg.gerrit) { cfg = cfg.gerrit; }
   debug && console.log("G-CONF: ", cfg);
-  client = new DigestFetch(cfg.user, cfg.pass, { basic: false })
+  client = new DigestFetch(cfg.user, cfg.pass, { basic: false });
   // Can work with password ?
   var pkey;
   if (cfg.pkey) { pkey= fs.readFileSync(cfg.pkey, 'utf8'); }
@@ -81,7 +82,15 @@ function changes_recv() {
 function gerrapi(req, res) {
 
   var owner = cfg.user; // Get from req... (session)
-  client.fetch("https://"+cfg.host+"/"+upath2+owner).then((resp) => {
+  let urlpath = upath2+owner; // `${upath2}${owner}`
+  let proj = 0;
+  if (req.url.match(/gerr\/repos/)) { urlpath = `a/projects/?d`; proj = 1; }
+  console.log(`Calling gerrit: ${urlpath}`);
+  let rpara = { headers: { }};
+  
+  cfl.add_basic_creds(cfg, rpara);
+  // "https://"+cfg.host+"/"+upath2+owner
+  client.fetch(`https://${cfg.host}/${urlpath}`, rpara).then((resp) => {
     // console.log("Got to resp: ", resp);
     // resp.json();
     console.log("=========================================");
@@ -90,26 +99,48 @@ function gerrapi(req, res) {
     //console.log(resp.text());
     return resp.text();
   }).then((data) => {
-    data = data.replace(/\)\]\}'/, '');
-    // 
-    data = JSON.parse(data);
+    data = gerrit_json(data);
+    //if (!data) {}
+    if (proj) {
+      const rre = new RegExp(cfg.repopatt, "");
+      let rns = Object.keys(data);
+      if (rre) {
+        rns = rns.filter( (k) => {
+          return k.match(rre) ? 1 : 0;
+        });
+      }
+      data = rns.map( (k) => { return data[k]; });
+      //data = okrepos;
+    }
     if (res) { res.json({status: "ok", data: data}); }
     console.log(data, null, 2);
   });
-
+  
 } // gerrapi
 
+function gerrit_json(data) {
+    if (!data) { return null; }
+    data = data.replace(/\)\]\}'/, '');
+    // 
+    data = JSON.parse(data);
+    return data;
+}
 //const body = await response.text();
 // console.log(body);
 
 module.exports = {
   init: init,
   gerrapi: gerrapi,
+  gerrit_json: gerrit_json,
 };
-
+let ops = [
+  {id: "chstream", title: "Stream Gerrit Changes (by SSH)", cb: null},
+  {id: "changes", title: "Gerrit Changes", cb: null},
+  {id: "repos",   title: "Gerrit Repos/Projects", cb: null},
+];
 if (process.argv[1].match("gerrit.js")) {
   var mc = require("./mainconf.js");
-  var mcfg = require(process.env["HOME"]+"/.linetboot/global.conf.json");
+  var mcfg = require(`${process.env["HOME"]}/.linetboot/global.conf.json`);
   // mcfg = mc.mainconf_load(globalconf);
   mc.env_merge(mcfg);
   mc.mainconf_process(mcfg);
