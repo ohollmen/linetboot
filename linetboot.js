@@ -355,7 +355,8 @@ function app_init(mcfg) { // mcfg
   //app.get("/kubdash", kubi.kube_info);
   //app.get("/kubapirsc", kubi.kube_info);
   app.get("/kubinfo", kubi.kube_info);
-  app.get("/gerr/mychanges", gerrit.gerrapi);
+  app.get("/gerr/changes_my", gerrit.gerrapi);
+  app.get("/gerr/changes", gerrit.gerrapi);
   app.get("/gerr/repos", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
   app.get("/gh_teams", gh_projs); // overload
