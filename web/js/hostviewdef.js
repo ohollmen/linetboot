@@ -1004,7 +1004,7 @@ function ibip_cell(val, item) {
    var fldinfo_gerr_change = [
      {"name": "_number",     "title": "Number",    type: "number", width: 8},
      
-     {"name": "project",     "title": "Project",   type: "text", width: 20},
+     {"name": "project",     "title": "Project",   type: "text", width: 30},
      {"name": "branch",      "title": "Branch",    type: "text", width: 15},
      //{"name": "hashtags",     "title": "Hashtags",  type: "text", width: 20},
      {"name": "change_id",   "title": "Change ID",  type: "text", width: 12,  itemTemplate: gridplug.csum_short},
@@ -1015,11 +1015,11 @@ function ibip_cell(val, item) {
      // {name: "submitted", title: "Time Subm.", type: "text", width: 20, itemTemplate: null},
      {"name": "mergeable",   "title": "MergeOK",   type: "text", width: 6}, // 
      {"name": "submittable", "title": "SubmitOK",  type: "text", width: 6},
-     {"name": "insertions",  "title": "Added Lines", type: "text", width: 12},
-     {"name": "deletions",   "title": "Deleted Lines",  type: "text", width: 12},
+     {"name": "insertions",  "title": "Added Lines", type: "text", width: 8}, // 12 -> 10 ?
+     {"name": "deletions",   "title": "Deleted Lines",  type: "text", width: 8}, // 12 ->> 10
      
      {"name": "owner._account_id",     "title": "Acct ID",  type: "text", width: 10},
-     {"name": "current_revision_number", title: "Patchset", type: "text", width: 20, itemTemplate: null},
+     {"name": "current_revision_number", title: "Patchset", type: "text", width: 8, itemTemplate: null},
      
    ];
    function gerr_repoenc_cell(val, item) {
