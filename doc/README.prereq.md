@@ -8,6 +8,9 @@ List of prerequisites for a functional linetboot system:
 - nodejs and npm - The linetboot system is written in Node.js and thus needs this 
 - ansible - to extract and record host facts form inventoried machines (Ansible also depends on Python)
 
+Related (Debian/Ubuntu) bootloader packages: isolinux (deps on) => syslinux-common (no deps). pxelinux (deps on) => syslinux-common.
+Also: rpi-eeprom, rpi-eeprom-firmware, shim, shim-signed, syslinux-efi
+
 Additionally you need download OS/Distro Intallation CD/DVD ISO Images, e.g:
 - Ubuntu Install ISO:s (from  https://cdimage.ubuntu.com )
 - Gparted Live ISO/CD Image (from https://gparted.org/download.php )
