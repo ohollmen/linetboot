@@ -216,6 +216,7 @@ Note: The postinst module sets up a set of (very) useful environment variables f
 
 Note that in a hi-grade software testing environment, which requires fresh OS install as basis for testing, the "execact" could be the
 (direct or indirect - e.g. doing a few DB lookups for right test suite) test command to run on the host.
+
 ### Section "ipmi" - Remote Management Info
 
 This section is for BMC based host management and interactivety by IPMI and RedFish (protocols).
@@ -277,6 +278,13 @@ Adding recipes is an expert option for special OS installations, but may be nece
   - playbooks (arr) - Array of playbook names for this profile
 
 By default the inverntory file used will be the Linetboot inventory.
+
+### Section "probe" - Network realtime probes
+
+- tout (int) - Timeout value in milliseconds for SSH e.g. 5000 (If SSH connection times out, try increasing this e.g. from 5000 => 8000 ms)
+- user (str) - Optional explicit SSH remote username for the ssh connection (Default: The effective user username of current linetboot runtime / process).
+  Giving this correctly / explicitly is likely to give you more successful SSH connections / execution results (e.g. 9 vs 6).
+- debug (int) - turn on debugging
 
 ## Linetboot Environment Variables
 
