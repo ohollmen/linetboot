@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** Load Google repo tool XML manifest (for analysis, diplay).
+ * Spec: https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
 * TODO: Specify config to allow multiple manifests to be retrievable (by name/filename)
 * Note: project element may have inner elems: copyfile, linkfile, annotation (k-v pairs), but they are
 * not supported as "rare" (easy to add).
@@ -32,6 +33,7 @@ function init(mcfg) {
     osstrans = require(otfn);
     if (!osstrans) { osstrans = {}; } // revert to {}
   }
+  console.log(`Work with manifest: '${cfg.fn}' (from paths: '${cfg.mfpath.join(', ')}')`);
   if (cfg.cache) {
     // Later: For all manifests ...
     /*
@@ -56,6 +58,7 @@ function mf_abspath(bn) {
     if (fs.existsSync(fna)) { return 1; }
     return 0;
   });
+  if (!pathok) { throw `Could not find MF (${bn}) in any of the paths (${cfg.mfpath}) !`; }
   return `${pathok}/${bn}`;
 }
 
@@ -94,7 +97,7 @@ function manifest_load(fn, cb) {
     // - Compensate for client side complexity by adding info from "default" into project nodes
     data.project.forEach( (it) => {
       if (it["sync-c"]) { it["sync-c"] = String(it["sync-c"]).toLowerCase() === 'true'; }
-      // Alt: flag these by true/false
+      // Alt: flag these by true/false. Only remote label is here (e.g. origin, github, gitlab), not full server
       if (!it.remote && def)   {
         //it.remote_def = def.remote;
         it.remote = def.remote ? def.remote : '???'; it.remisdef= true;
@@ -172,7 +175,25 @@ function hdl_grepo_stats(req, res) {
   });
 
 }
+// Remote URL (without trailing slash)
+function remote_url(data) {
+  let rems = data.remote;
+  rems.find( (it) => {  });
 
+}
+// Sync. operation of converting
+function to_submodules(data) {
+  let ps = data.project;
+  // submodule lbl is arbitrary, but conventionally set to local path (See path = ...)
+  let cont = "";
+  ps.forEach( (it) => {
+    // Process one repo
+    let sm = { lbl: it.path, path: it.path, url: `${remote_url(data)}/${it.name}` };
+    cont += `[submodule "${it.lbl}"]\n  path = ${it.path}\n  url = ${it.url}\n`;
+  });
+  if (data.out) { console.log(cont); }
+  return cont;
+}
 module.exports = {
   init: init,
   manifest_load: manifest_load,
@@ -181,7 +202,17 @@ module.exports = {
   hdl_grepo: hdl_grepo,
   hdl_grepo_stats: hdl_grepo_stats,
 };
+function mf_load_cli(opts) {
 
+}
+let ops = [
+  {id: "load", title: "Load Manifest (and its submanifests)", cb: null},
+  {id: "tosubmod", title: "Load MF and convert it to submodules", cb: null},
+];
+function usage(msg) {
+  if (msg) { console.error(msg); }
+  process.exit(1);
+}
 if (process.argv[1].match("grepo.js")) {
   let cfgfn = `${process.env.HOME}/.linetboot/global.conf.json`;
   let mcfg = require(cfgfn);
@@ -189,14 +220,22 @@ if (process.argv[1].match("grepo.js")) {
   let mc = require("./mainconf.js");
   mc.tilde_expand(mcfg.grepo, ["mfpath"]); // MUST expand !!!
   init(mcfg);
+  let op = '';
+  let opts = {};
+  //opts.data = 
+  // 
   let cb = (err, data) => {
     if (err) { console.error(`Error processing: ${err}`); return; }
     //console.error(`cb - Success`);
     console.error(`INC:`, data.include);
     // manifest_merge(data, () => { console.log(`Done inc.`); });
+    //if (op == 'tosubmod') { data.out = 1; let cont = to_submodules(data); }
   };
   let bn = cfg.fn || "manifest.xml";
-  let fna = mf_abspath(bn); // let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  let fna = null;
+  try { fna = mf_abspath(bn); } // let fn = `${process.env.HOME}/.linetboot/${bn}`; // ${bn}
+  catch (ex) { usage(`Problems loading manifest: ${ex} (ex)`);  }
+  if (!fna) { usage(`Problems loading manifest: (empty/null)`); }
   console.log(`mf_abspath resolved ${bn} => fna: ${fna}`);
   manifest_load(fna, cb);
   
