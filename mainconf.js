@@ -280,7 +280,7 @@ function disabled_detect(mcfg) {
   var ser = mcfg.services;
   if (!ser || (ser && !ser.conffn) || !fs.existsSync(ser.conffn) ) { dis.push("services"); }
   let grepo = mcfg.grepo;
-  if (!grepo || (grepo && !grepo.fn)) { dis.push("grepo"); }
+  if (!grepo || (grepo && !grepo.fn) || !fs.existsSync(grepo.fn)) { dis.push("grepo"); }
   //let jenk = mcfg.jenkins;
   //if (!jenk || (jenk && !jenk.pass)) { dis.push("jjobs"); }
   return dis;
@@ -295,11 +295,12 @@ function disabled_detect(mcfg) {
     return 0;
   }
   function has_config(fn) {
-    // if (Array.isArray(fn)) {
-    //  let ok = 1; // Any missing => ok = 0;
-    //  / for (fnx in fn ????) { } and break !!!
-    //  fn.forEach( (fnx) => { if () {} });
-    //}
+    if (Array.isArray(fn)) {
+      let ok = 1; // Any missing => ok = 0;
+      // for (fnx in fn ????) { } and break !!!
+      fn.forEach( (fnx) => { if (!has_config(fnx)) { ok = 0; } });
+      return ok;
+    }
     if (!fs.existsSync(fn)) { return 1; }
     return 0;
   }
