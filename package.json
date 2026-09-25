@@ -37,7 +37,8 @@
     
   },
   "optionalDependencies": {
-    "node-arp": "1.0.6"
+    "node-arp": "1.0.6",
+    "@modelcontextprotocol/sdk": "^1.27.1"
   },
   "scripts": {
     "pminfo": "echo 'The successful package manager of this week is npm.'",

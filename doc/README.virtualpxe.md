@@ -121,7 +121,13 @@ virt-manager internally runs:
   </ip>
 </network>
 ```
+Notes about key additions in above:
 
+- `dhcp` -> `bootp file='lpxelinux.0'` - Simulate DHCP response with bootfile (NBP) `lpxelinux.0`
+- `ip` -> `tftp root='/var/lib/tftpboot'` - Simulate DHCP `next-server` TFTP server
+  (with no explicit hostname or ip address) and supply TFTP files from under virt-manager visible path `/var/lib/tftpboot` (by relative paths from that root dir)
+
+  
 ### VM NIC Config (XML)
 
 Network Source: Macvtap XML config (Note: dev may juggle between e.g. enp6s0 and virbr0, only ...) - works with lineboot NOT running on VM host:
