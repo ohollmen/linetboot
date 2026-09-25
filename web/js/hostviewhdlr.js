@@ -811,7 +811,7 @@ function showpeople(ev, act) {
   $("#"+ev.viewtgtid).prepend(rapp.templated("searchui"));
   // new Spinner
   var spel = document.getElementById(ev.viewtgtid); // spinner && spinner.stop();
-  
+  if (!act.idattr) { return alert(`No 'idattr' to index by in action`); }
   function search(p) {
     var spinner = new Spinner(spinopts).spin(spel);
     // TODO: Analyze params to support different use cases
@@ -827,7 +827,7 @@ function showpeople(ev, act) {
       // if (cb) { cb(d.data); }
       // Need to index or populate id / sequence numbers
       var idx = {};
-      d.data.forEach((it) => { idx[it.sAMAccountName] = it; });
+      d.data.forEach((it) => { idx[it[act.idattr]] = it; }); // it.sAMAccountName
       console.log("Assign click hdlr");
       // Secondary UISETUP: TODO: Alternatively fetch by DN
       $('.unamecell').click(function (jev) {
@@ -838,8 +838,8 @@ function showpeople(ev, act) {
         console.log(e);
         //var out = rapp.templated("lduser", e); // app.gridid
         //console.log(out);
-        var act = tabloadacts.filter((a) => { return a.path == "uent"; })[0];
-        if (!act) { console.log("No Action"); return; }
+        var act = tabloadacts.find((a) => { return a.path == "uent"; }); // filter ... [0];
+        if (!act) { console.log("No Action for dialog"); return; }
         jev.viewdata = e;
         gendialog(jev, act);
         return false;
