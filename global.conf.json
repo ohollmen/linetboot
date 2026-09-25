@@ -1,11 +1,12 @@
 {
-  "httpserver": "192.168.1.141:3000",
+  "httpserver": "192.168.1.159:3000",
   "nfsserver" : "192.168.1.141",
   "smbserver" : "192.168.1.141",
   "mirrorserver": "",
   "debug": 1,
   "passfn": "~/.linetboot/.htpasswd",
   "sshkeyfn": "~/.ssh/id_ed25519",
+  "dotenv": "linetboot.env.sh",
   "inst": {
     "desc": "Settings for OS Installer or scripts run during install",
     "userconfig": "~/.linetboot/initialuser.conf.json",
@@ -97,7 +98,9 @@
     "execbin": ""
   },
   "probe" : {
+    "desc": "Network Real-time probes (ping, dns, ssh)",
     "tout": 5000,
+    "user": "",
     "debug": 0
   },
   "docker": {
@@ -347,8 +350,7 @@
     "remiconpath": {"origin": "web/img/type1.png", "upstream": "web/img/type2.png"},
     "ossreffn": "grepo_osref.json",
     "mfpath": ["~/.linetboot/", "/some/other/path"],
-    "fn": "",
-    "fnXX": "repo_manifest.xml",
+    "fn": "repo_manifest.xml",
     "mergeinc": 0,
     "debug": 2
   },
