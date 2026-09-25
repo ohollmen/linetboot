@@ -177,7 +177,7 @@ function probe_all(harr, usecase, cb) {
   // var cbs = {"net": resolve, "proc": stats_proc};
   // callable = cbc[usecase];
   // if (!callable) { return cb("Processing not found for "+usecase, null); }
-  if (usecase == "proc") { callable = stats_proc; }
+  if (usecase == "proc") { callable = stats_proc; } // num procs, load avg:s (by uptime)
   debugarr = [];
   // Only on debug:
   opts.debug && setTimeout(function () {
