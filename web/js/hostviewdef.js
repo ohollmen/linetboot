@@ -1004,7 +1004,7 @@ function ibip_cell(val, item) {
    var fldinfo_gerr_change = [
      {"name": "_number",     "title": "Number",    type: "number", width: 6},
      
-     {"name": "project",     "title": "Project",   type: "text", width: 30},
+     {"name": "project",     "title": "Project",   type: "text", width: 33}, // 30
      {"name": "branch",      "title": "Branch",    type: "text", width: 15},
      //{"name": "hashtags",     "title": "Hashtags",  type: "text", width: 20},
      {"name": "change_id",   "title": "Change ID",  type: "text", width: 12,  itemTemplate: gridplug.csum_short},
@@ -1025,8 +1025,12 @@ function ibip_cell(val, item) {
    function gerr_repoenc_cell(val, item) {
      let decpath = decodeURIComponent(val);
      let gserv = (datasets && datasets.cfg && datasets.cfg.gerrhost) ? datasets.cfg.gerrhost : null;
+     //let branc = item.
      if (!gserv) { return decpath; }
-     return `<a href="https://${gserv}/plugins/gitiles/${decpath}" target="gerrproj">${decpath}</a>`;
+     //decpath += `/+/refs/heads/${branch}`;
+     // https://gerrit.company.com/plugins/gitiles/embeddedx/builderx
+     // https://gerrit.company.com/plugins/gitiles/embeddedx/builderx/+/refs/heads/master (Particular branch)
+     return `<a href="https://${gserv}/plugins/gitiles/${decpath}" target="gerrproj">${decpath}</a>`; 
    }
    function gerr_repodesc_cell(val, item) {
      if (val && val.match(/open.source/i)) { return `<span style="border-radius: 4px; padding: 5px 5px; background-color: #7796d8; color: white; ">${val}</span>`; }
@@ -1152,6 +1156,21 @@ function ibip_cell(val, item) {
     // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
     // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
     // {name: "",      title: "", type: "text", width: 5, itemTemplate: null},
+   ];
+   var fldinfo_gh_hooks = [
+     //{name: "type", title: "Webhook Type (Org/Repo)", type: "text", itemTemplate: null},
+    {name: "id",      title: "ID", type: "text", width: 6, itemTemplate: null},
+    // "name": "web" ???
+    {name: "active",  title: "Active", type: "text", width: 6, itemTemplate: null},
+    {name: "events",  title: "Trigger Events", type: "text", width: 15, itemTemplate: null}, // AoS (join)
+    {name: "config.insecure_ssl",  title: "Insecure SSL", type: "text", width: 6, itemTemplate: null},
+    {name: "config.url",           title: "CI/CD URL",    type: "text", width: 22, itemTemplate: null}, // basename or path ?
+    {name: "config.content_type",  title: "Format (Form / JSON)", type: "text", width: 6, itemTemplate: null},
+    {name: "updated_at",           title: "Updated",      type: "text", width: 9, itemTemplate: null},
+    {name: "created_at",           title: "Created",      type: "text", width: 9, itemTemplate: null},
+    {name: "last_response.status", title: "Last Status",  type: "text", width: 6, itemTemplate: null},
+    {name: "last_response.message",title: "Last Message", type: "text", width: 15, itemTemplate: null},
+    //{name: "", title: "", type: "text", itemTemplate: null},
    ];
    // High similarity to GitHub
    var fldinfo_gl_projs = [
