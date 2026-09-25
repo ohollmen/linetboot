@@ -5,13 +5,18 @@
 * Config item should have following
 * - id - view id to be used from CLI
 * - url - External URL to fetch AoO from
-* - localurl - local URL to attach handler to
+* - localurl - local URL to attach `htview_send(req,res)` handler to
+* - fn - Filename to get AoO data from (.json supported)
 * - arrsel - Array selection dot-notation expression in case array is not
-*   on top of the structure
+*   on top of the structure or special value 'ONLYKEY' for extracting the
+    value of only key found at the top level.
 * - user - Username (for basic auth)
 * - pass - Password for basic auth
 * - token - Singular Token for Bearer authentication
 * - TODO: - fmt -format other than (default) JSON (i.e. "yaml")
+* - TODO: - deindex_attr - Enablement flag and attribute name for "de-indexing" an OoO data to AoO form
+*   (e.g. "deindex_attr": "id"). The named key/atttribute/property will be created (within objects) from the key(s)
+*   of original OoO structure. TODO: Allow arrsel to select OoO location in larger data structure.
 * 
 * ## TODO
 * - Use Jira/Other module for adding creds
@@ -25,15 +30,18 @@ var fs    = require("fs");
 var path  = require("path");
 var axios = require("axios");
 var cfl   = require("./confluence.js"); // For add_basic_creds() ONLY
+//var jsyaml  = require("js-yaml");
 // var datapop = require("./datapop.js");
 var cfg = {};
 var cbmod = null; // Transformational callbacks, etc.
+let vdefs = null; // {};
+
 /** Init htview mainly based on .js config file (JS for the code/callbacks)  */
 function init(mcfg, app) {
   if (mcfg["htview"]) { cfg = mcfg["htview"]; }
   else { cfg = mcfg; }
   if (!cfg) { console.error("htview: No config found");  return; }
-  console.log(`htview: init !!!`);
+  console.log(`htview: init(cfg, app) !!!`);
   // TODO: Secondary (separate file) for configs !!! (e.g. htviews.conf.json)
   var views;
   if (cfg.conffn) { views = require(cfg.conffn); } // Rely on ext. conf file
@@ -47,18 +55,21 @@ function init(mcfg, app) {
   // if (cbmod) { ... }
   if (!app) { console.error(`htview: No App ! Need app to set data URLs.`); return; } // Not a (express) webapp context
   let home = process.env['HOME'];
+  ["viewdeffn"].forEach( (k) => { if (cfg[k]) { cfg[k] = cfg[k].replace(/~/g, home); } });
   // Mark unusable items disabled !
   views.forEach( (v) => {
-    if (!v.localpath) { console.error(`No URL path for view profile '${v.id}' - skip.`); v.disa = 1; return; }
+    //if (!v.localpath) { console.error(`No URL path for view profile '${v.id}' - skip.`); v.disa = 1; return; } // ???
     // Expand tilde here (exceptionally - usually in mainfconf)
     if (v.fn && v.fn.match("~")) {
       v.fn = v.fn.replace(/~/g, home);
-      if (!fs.existsSync(v.fn)) { console.error(`htview: Local data file '${v.fn}' does resolve.`); v.disa = 1; return; }
+      if (!fs.existsSync(v.fn)) { console.error(`Error: htview: Local data file '${v.fn}' does resolve.`); v.disa = 1; return; }
       // Cache (smaller files) ?
     }
-    console.log(`htview: Adding ${v.localpath}`);
+    console.log(`htview: Adding htview_send() as handler for '${v.localpath}'`);
     app.get(v.localpath, htview_send);
   });
+  // Custom view defs (sent w. data). Note: data-only (how to conv. itemtemplate to func ?)
+  if (cfg.viewdeffn && fs.existsSync(cfg.viewdeffn)) { vdefs = json_load(fn); } // Validate OoA: Object.keys(vdefs)
 }
 /** Merge data transformation callbacks to original structure (at init()).
  * If structure of datacb changes, do changes ONLY here.
@@ -97,26 +108,29 @@ function json_load(fn) {
   try { return JSON.parse(cont); }
   catch (ex) { console.error(`Failed to parse ${fn} as JSON !`); return null; }
 }
+function csv_load(fn) {
 
+}
 function htview_send(req, res) {
   var jr = { status: "err", msg: "Could not create htdata result. " };
   // Resolve url to profile. Note: url should not have query params (?k1=v1&k2=v2&...) to work
   if (!cfg.views || !Array.isArray(cfg.views)) { jr.msg += `No views to lookup from.`; return res.json(jr); }
   // TODO: Possibly do (parse):
-  let id = path.basename(req.url); // Match by id: { return id = vp.id; }
+  let id = path.basename(req.url); // Match by id: (vp) => { return id = vp.id; }
   let vp = cfg.views.find( (vp) => { return req.url == vp.localpath; } );
-  if (!vp) { jr.msg += `No view profile (for path '${req.url}') found.`; console.error(jr.msg); return res.json(jr); }
+  if (!vp) { jr.msg += `No view profile (for URL path '${req.url}') found.`; console.error(jr.msg); return res.json(jr); }
   var d = htdata(vp, (err, d) => {
-    if (err) { jr.msg += `Problem: ${err}`; return res.json(jr); }
-    // Inject additional info ?
-    return res.json({status: "ok", data: d});
+    if (err) { jr.msg += `Problem (getting htview data): ${err}`; return res.json(jr); }
+    if (!Array.isArray(d)) { console.error(`Warning: htdata AoO is not an Array (got ${typeof d}) !`); }
+    // Inject additional info ? Should be able to resp. with grid fset.
+    let rdata = {status: "ok", data: d};
+    //if () {rdata.fset = ...; }
+    return res.json(rdata);
   });
-  // if (!d) { jr.msg += ""; return res.json(jr); }
-  //res.json({status: "ok", data: d});
 }
 
-/** GET data by http (GET) and
- * Optionally use dot-notation selctor to access correct data within returned JSON data.
+/** GET htview AoO data from file (sync) or by http (GET, async) call a callback with retrieved data.
+ * Optionally use dot-notation selector to access correct AoO data within returned JSON data.
  * @param vp - view profile (params)
  */
 function htdata(vp, cb) {
@@ -149,8 +163,9 @@ function htdata(vp, cb) {
     //console.log(d);
     cfg.debug && console.error( JSON.stringify(d, null, 2) );
     return cb(null, d);
-  }).catch( function (ex) {
-    let err = `Error fetching data for view: ${ex}`;
+  })
+  .catch( function (ex) {
+    let err = `Error fetching data (from '${vp.url}') for view: ${ex}`;
     console.log(err);
     return cb(err, null);
   });
