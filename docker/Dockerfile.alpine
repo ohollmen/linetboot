@@ -6,7 +6,7 @@
 FROM alpine:3.22 AS builder
 LABEL maintainer="Olli Hollmen" description="Linetboot App Server (Alpine Edition)"
 # For package files, do: apk info -L curl
-RUN apk add --no-cache openssh wget nodejs
+RUN apk add --no-cache openssh wget nodejs npm
 # Add node from Alpine distro.
 # TODO: Try/experiment installing node.js from nodejs.org (e.g.)
 # https://nodejs.org/en/download/archive/v21.7.3 ... v22.21.1 (31MB)
