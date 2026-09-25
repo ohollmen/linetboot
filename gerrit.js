@@ -30,7 +30,8 @@ function init(_cfg) {
   cfg = _cfg;
   if (cfg.gerrit) { cfg = cfg.gerrit; }
   debug && console.log("G-CONF: ", cfg);
-  client = new DigestFetch(cfg.user, cfg.pass, { basic: false });
+  let usebasic = cfg.basic ? true : false;
+  client = new DigestFetch(cfg.user, cfg.pass, { basic: usebasic });
   // Can work with password ?
   var pkey;
   if (cfg.pkey) { pkey= fs.readFileSync(cfg.pkey, 'utf8'); }
@@ -86,7 +87,7 @@ function gerrapi(req, res) {
   let proj = 0;
   if (req.url.match(/changes_my/) && owner)  { urlpath += `q=owner:${owner}`; }
   else if (req.url.match(/gerr\/repos/)) { urlpath = `a/projects/?d`; proj = 1; }
-
+  // gerrit_api_call(url).then();
   
   console.log(`Calling gerrit: ${urlpath}`);
   let rpara = { headers: { }};
@@ -94,6 +95,7 @@ function gerrapi(req, res) {
   cfl.add_basic_creds(cfg, rpara);
   // "https://"+cfg.host+"/"+upath2+owner
   client.fetch(`https://${cfg.host}/${urlpath}`, rpara).then((resp) => {
+  //axios.get(`https://${cfg.host}/${urlpath}`, rpara).then( (resp) => {
     // console.log("Got to resp: ", resp);
     // resp.json();
     console.log("=========================================");
@@ -104,23 +106,26 @@ function gerrapi(req, res) {
   }).then((data) => {
     data = gerrit_json(data);
     //if (!data) {}
-    if (proj) {
-      const rre = new RegExp(cfg.repopatt, "");
-      let rns = Object.keys(data);
-      if (rre) {
-        rns = rns.filter( (k) => {
-          return k.match(rre) ? 1 : 0;
-        });
-      }
-      data = rns.map( (k) => { return data[k]; });
-      //data = okrepos;
-    }
+    if (proj) { data = projects_arr(data); }
     if (res) { res.json({status: "ok", data: data}); }
     console.log(data, null, 2);
-  });
+  }).catch( (ex) => { console.log(`Gerrit fetch Exception: {ex}`);});
   
 } // gerrapi
 
+// Convert projects from name-indexed OoO to AoO
+function projects_arr(data) {
+  let rre = new RegExp(cfg.repopatt, "");
+  let rns = Object.keys(data);
+  if (rre) {
+    rns = rns.filter( (k) => {
+      return k.match(rre) ? 1 : 0;
+    });
+  }
+  data = rns.map( (k) => { return data[k]; }); // Add key (k) as data[k].key = k; ?
+  //data = okrepos;
+  return data;
+}
 function gerrit_json(data) {
     if (!data) { return null; }
     data = data.replace(/\)\]\}'/, '');
