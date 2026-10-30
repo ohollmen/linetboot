@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /** @file
 
  # Netboot server for Installation of OS
@@ -359,6 +360,7 @@ function app_init(mcfg) { // mcfg
   app.get("/gerr/changes", gerrit.gerrapi);
   app.get("/gerr/repos", gerrit.gerrapi);
   app.get("/gh_projs", gh_projs);
+  app.get("/gh_repoteams", gh_projs); // overload
   app.get("/gh_teams", gh_projs); // overload
   app.get("/gl_projs", gl_projs);
   // 
@@ -3263,26 +3265,30 @@ function gh_projs(req, res) {
   // Optional repo for repo teams/groups ACL query
   let repo = req.query.repo;
   console.log(`Show org: ${org}`);
-  var url = `https://${ghcfg.url}/`;
-  let apistart = "users"; // Public github.com w. host: api.gihub.com
-  if (ghcfg.ent) { url += "api/v3/"; apistart = 'orgs'; }
+  var apihost = `https://${ghcfg.url}`;
+  let apipath = "/users"; apiprefix = ""; // Public github.com w. host: api.gihub.com
+  if (ghcfg.ent) { apiprefix = "/api/v3"; apipath = '/orgs'; }
   // For github.com priv. repos this should be: https:/api.github.com/user/repos ???
-  url += `${apistart}/${org}/repos`; // "users/" On public repo only ? GHE Must have "orgs/" to work uniformally
-  // Overload: allow to also handle /gh_teams. Need orgid=... and 
+  apipath += `/${org}/repos`; // "users/" On public repo only ? GHE Must have "orgs/" to work uniformally
+  // apipath = 
+  // Overload: allow to also handle /gh_repoteams. Need orgid=... and 
   // Members: https://${ghcfg.url}/api/v3/organizations/${orgidnum}/team/${teamidnum}}/members
-  if (req.url.startsWith('/gh_teams')) { // Note: Url has query params, i.e. not: req.url == '/gh_teams'   && ()
+  // TODO: Make this /gh_repoteams
+  if (req.url.startsWith('/gh_repoteams')) { // Note: Url has query params, i.e. not: req.url == '/gh_repoteams'   && ()
     if (!repo) { jr.msg += `No repo param. passed for ACL teams query`; console.log(jr.msg); return res.json(jr); }
-    if (ghcfg.ent) { url = `https://${ghcfg.url}/api/v3/repos/${org}/${repo}/teams`; }
+    if (ghcfg.ent) { apipath = `/repos/${org}/${repo}/teams`; }
     // This should be:  /repos/ohollmen/crudrest/collaborators (not "".../teams")
-    else { url = `https://${ghcfg.url}/repos/${org}/${repo}/collaborators`; }
+    else { apipath = `/repos/${org}/${repo}/collaborators`; }
     // Call ?affiliation=direct
 
   }
+  else if (req.url.startsWith('/gh_teams')) { apipath = ghcfg.ent ? `/orgs/${org}/teams` : `/users/${org}/teams`; } // url_org_teams
   // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
   // W. token priv repo on github.com will: 1) users/ - ret [], 2) orgs/ ret 404 (Not found)
   // /search/repositories?q=user:USERNAME - will return repos (!?) "visibility": "private",
-  
+  // TODO:
+  let url = `${apihost}${apiprefix}${apipath}`;
   var opts = {};
   if (ghcfg.token) { opts.headers = { Authorization : "Bearer "+ghcfg.token}; console.log(`Using token: ${ghcfg.token.length} B`); }
   // page=2&per_page=100
@@ -3295,7 +3301,7 @@ function gh_projs(req, res) {
   //ghcfg.debug = 2;
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
-    if (Array.isArray(d)) { console.log("Got "+d.length+" repos (or teams)"); }
+    if (Array.isArray(d)) { console.log("Got "+d.length+" GH ents - repos (or teams)"); }
     if (ghcfg.debug > 1) { console.log(d); }
     if ((resp.status < 200) || (resp.status >= 300)) { jr.msg += "Failed GH Api Server HTTP Call"+ex; console.log(jr.msg); return res.json(jr); }
     res.json({status: "ok", data: d});
