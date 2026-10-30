@@ -618,6 +618,11 @@ var tabloadacts = [
       path: "ghprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null,
       // TODO: with tpcb a click of non-default item suprresses the uisetup created menu !!! FIX
       tpcbXX: (tpara, arr, ev) => { tpara.subname = ev.target.innerHTML; }, longload: 1},
+  // GH (Org) Teams
+  {"name": "GitHub Org. Teams",   "elselXX": "ghteams", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gh_teams", gridid: "jsGrid_ghteams", fsetid: "ghteams",
+      path: "ghteams", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null,
+      // TODO: with tpcb a click of non-default item suprresses the uisetup created menu !!! FIX
+      tpcbXX: (tpara, arr, ev) => { tpara.subname = ev.target.innerHTML; }, longload: 1},
   {"name": "GitLab Grp. Repos",   "elselXX": "glprojs", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/gl_projs", gridid: "jsGrid_glprojs", fsetid: "glprojs",
       path: "glprojs", uisetup: ghprojs_uisetup, urlpara: ghprojs_urlpara, dprep: null, longload: 1},
   {"name": "Confluence Docs",   "elselXX": "", tmpl: "simplegrid", "hdlr": simplegrid_url,  url: "/confluence", gridid: "jsGrid_cflpages", fsetid: "cflpages",
@@ -692,7 +697,7 @@ var tabloadacts = [
     path: "jjobs", uisetup: null,  datapath: "jobs", tpcb: null, longload: 1, }, // grepo_tpcb dialogid: "",
   // See gh_projs  gendialog
   // TODO: How to set view to render content to (dialog)
-  {"name": "GH Repo Teams", "elselXX": "XX", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_teams",
+  {"name": "GH Repo Teams", "elselXX": "XX", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_repoteams",
     gridid: "jsGrid_ghteams", fsetid: "ghteams", eldataurl: 1, // Experim.
     path: "ghteams", urlpara: (ev, act) => {
       let ds = ev.target.dataset; return `${act.url}?org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
