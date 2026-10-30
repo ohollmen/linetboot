@@ -698,10 +698,10 @@ var tabloadacts = [
   // See gh_projs  gendialog
   // TODO: How to set view to render content to (dialog)
   {"name": "GH Repo Teams", "elselXX": "XX", hdlrXX: gendialog, tmpl: "simplegrid_x", "hdlr": simplegrid_url,  url: "/gh_repoteams",
-    gridid: "jsGrid_ghteams", fsetid: "ghteams", eldataurl: 1, // Experim.
-    path: "ghteams", urlpara: (ev, act) => {
+    gridid: "jsGrid_ghrepoteams", fsetid: "ghteams", eldataurl: 1, // Experim.
+    path: "ghrepoteams", urlpara: (ev, act) => {
       let ds = ev.target.dataset; return `${act.url}?org=${ds.org}&repo=${ds.repo}`; // ${act.url}?
-    }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1},
+    }, uisetup: null, dialogid: "ghteams_dialog", datapathXX: "remote", tpcb: null, useact: 1}, // TODO: rename ghteams_dialog here and in index.html
   // htview for GH repo, teams (and mems - to be custom dialog viewed)
   // Should patch url based on config at client init()
   {"name": "GH Repo Teams Grouping", tmpl: null, hdlr: multigridview, url: "/htview/ghrt", gridid: "jsGrid_ghteams", fsetid: "ghteams", path: "ghrt",

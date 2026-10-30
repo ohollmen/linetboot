@@ -1794,8 +1794,8 @@ function ghprojs_uisetup(act, data) {
     let ds = jev.target.dataset;
     console.log(`Org: ${ds.org}, Repo: ${ds.repo}`);
     // Get this from elem ? data-actpath
-    let act = tabloadacts.find((a) => { return a.path == "ghteams"; });
-    if (!act) { console.log("No Dialog Action"); return; }
+    let act = tabloadacts.find((a) => { return a.path == "ghrepoteams"; }); // ch from ghteams
+    if (!act) { console.log("No Dialog Action for GH teams popup"); return; }
     console.log(`Gen dialog by action, event: `, act, jev);
     //jev.viewdata = e;
     gendialog(jev, act);

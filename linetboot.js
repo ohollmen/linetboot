@@ -3264,7 +3264,7 @@ function gh_projs(req, res) {
   if (!org) { jr.msg += "No GH Org resolved."; return res.json(jr); }
   // Optional repo for repo teams/groups ACL query
   let repo = req.query.repo;
-  console.log(`Show org: ${org}`);
+  console.log(`Show org: ${org}. Orig req.url: '${req.url}'`);
   var apihost = `https://${ghcfg.url}`;
   let apipath = "/users"; apiprefix = ""; // Public github.com w. host: api.gihub.com
   if (ghcfg.ent) { apiprefix = "/api/v3"; apipath = '/orgs'; }
@@ -3278,11 +3278,14 @@ function gh_projs(req, res) {
     if (!repo) { jr.msg += `No repo param. passed for ACL teams query`; console.log(jr.msg); return res.json(jr); }
     if (ghcfg.ent) { apipath = `/repos/${org}/${repo}/teams`; }
     // This should be:  /repos/ohollmen/crudrest/collaborators (not "".../teams")
-    else { apipath = `/repos/${org}/${repo}/collaborators`; }
+    else           { apipath = `/repos/${org}/${repo}/collaborators`; }
     // Call ?affiliation=direct
-
+    console.log(`Warning: Private User repo may not have teams.`);
   }
-  else if (req.url.startsWith('/gh_teams')) { apipath = ghcfg.ent ? `/orgs/${org}/teams` : `/users/${org}/teams`; } // url_org_teams
+  else if (req.url.startsWith('/gh_teams')) {
+    apipath = ghcfg.ent ? `/orgs/${org}/teams` : `/users/${org}/collaborators`; // teams or collaborators for non-ent ???
+    console.log(`Warning: Private User repo may not have teams. Need to use collaborators here ?`); // <== NOTE
+  } // url_org_teams
   // Info on vieweing private/all repos: https://github.com/orgs/community/discussions/24382
   // https://api.github.com/user/repos  https://api.github.com/search/repositories?q=user:USERNAME
   // W. token priv repo on github.com will: 1) users/ - ret [], 2) orgs/ ret 404 (Not found)
@@ -3299,6 +3302,7 @@ function gh_projs(req, res) {
   //Object.keys(addh).forEach( (k) => { opts.headers[k] = addh[k]; });
   console.log(`Final URL: curl -H "Authorization: Bearer $GH_TOKEN" '${url}'`);
   //ghcfg.debug = 2;
+  // TODO: fetch all/multiple pages
   axios.get(url, opts).then((resp) => {
     var d = resp.data;
     if (Array.isArray(d)) { console.log("Got "+d.length+" GH ents - repos (or teams)"); }

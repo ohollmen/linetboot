@@ -1062,11 +1062,13 @@ function ibip_cell(val, item) {
        let url = `https://${un}.github.io/${item.name}`;
        cont += `<a href="${url}" class="menuactive" style="color: white" target="gh_page">Pages</a> `;
      }
+     // See: hostiviewhdlr / ghprojs_uisetup how these links get set up (.teamslink)
      let o_r = item.full_name.split('/'); // Org, Repo
      let id = `${o_r[0]}_${o_r[1]}`;
      if (item.teams_url) { cont += `<span id="${id}" data-org="${o_r[0]}" data-repo="${o_r[1]}" class="menuactive teamslink">Teams</span>`; }
      return cont;
    }
+   // Bare Web GUI Link
    function gh_repolink_cell(val, item) {
     return `<a href="${item.html_url}" title="${item.html_url}" target="gh_html_page">${val}</a>`;
    }
