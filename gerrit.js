@@ -11,7 +11,7 @@
 var fs = require("fs");
 // Legacy dependency (package.json): "digest-fetch": "1.2.1",
 // var fetch = require("node-fetch"); // Use later node.js fetch (build in) API directly
-var DigestFetch = require("digest-fetch");
+var DigestFetch = require("digest-fetch"); // Try elim
 var ssh2 = require("ssh2");
 var cfl  = require("./confluence.js");
 
